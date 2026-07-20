@@ -1,0 +1,13 @@
+{
+  "name": "propositions-watcher",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Scheduled email watcher for shared conviction bets among watched traders.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "check": "node check-propositions.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  }
+}

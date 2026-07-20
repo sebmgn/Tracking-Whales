@@ -1,0 +1,2671 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Positions & Stats — Traders suivis | Predict.fun & Polymarket</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* "Sable clair" — light warm-sand theme, no gray anywhere. --green/--red
+     are semantic (literal Yes/No outcomes only, see sideColorFor()), --accent
+     (royal blue) is reserved for interactive/active chrome (filters, tabs,
+     links) — never used to mean "this outcome is winning". */
+  :root {
+    --bg: #faf6ec;
+    --panel: #fffdf8;
+    --panel-border: #e3d3b8;
+    --text: #332b1e;
+    --text-dim: #8c7a5c;
+    --green: #2e6b45;
+    --red: #a13030;
+    --accent: #1b3358;
+    --gold: #b28f3f;
+    --row-hover: #f3ead6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px 24px;
+    margin-bottom: 4px;
+  }
+  h1 {
+    font-family: "Times New Roman", Times, Georgia, serif;
+    font-size: 38px;
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: .01em;
+    margin: 4px 0 0;
+    color: var(--text);
+  }
+  /* Daily-changing Monet reproduction, top-right — a small framed print, not
+     a hero image. The specific painting is picked deterministically from the
+     date, so it's the same all day and changes tomorrow. */
+  .monet-frame { flex: none; width: 190px; text-align: center; }
+  .monet-frame img {
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+    display: block;
+    border-radius: 4px;
+    border: 1px solid var(--panel-border);
+    box-shadow: 0 4px 16px rgba(51,43,30,.2);
+    background: var(--panel);
+  }
+  .monet-caption {
+    margin-top: 6px;
+    font-family: "Times New Roman", Times, Georgia, serif;
+    font-style: italic;
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: var(--text-dim);
+  }
+  @media (max-width: 620px) {
+    .monet-frame { width: 140px; }
+    .monet-frame img { height: 95px; }
+  }
+  h2.section-title {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-dim);
+    margin: 22px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2.section-title .count-pill {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 1px 9px;
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .status-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 18px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    margin: 10px 0 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .status-bar .dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+  .status-bar .dot.error { background: var(--red); box-shadow: 0 0 6px var(--red); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+  .status-bar button, .rt-filters button {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+  }
+  .status-bar button:hover, .rt-filters button:hover { border-color: var(--accent); color: var(--accent); }
+  .error-msg { color: var(--red); }
+
+  /* --- Tabs --- */
+  .tab-bar {
+    display: flex;
+    gap: 22px;
+    border-bottom: 1px solid var(--panel-border);
+    margin-bottom: 4px;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    padding: 9px 2px 11px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* --- Value trades --- */
+  .value-trades-box { display: flex; flex-direction: column; gap: 14px; }
+  .value-trade-item {
+    background: linear-gradient(180deg, #fffef9, #fbf5e9);
+    border: 1px solid var(--panel-border);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    padding: 16px 20px 18px;
+    box-shadow: 0 1px 4px rgba(51,43,30,.08);
+  }
+  .vt-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .vt-question { font-weight: 700; font-size: 15px; }
+  .vt-leader {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: .01em;
+  }
+  .vt-leader-price { font-weight: 500; font-size: 10.5px; opacity: .82; margin-left: 2px; }
+  .vt-outcome {
+    display: inline-block;
+    padding: 3px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .vt-badge { color: var(--gold); font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .vt-traders { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+  .vt-trader-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: 7px;
+    background: #332b1e0d;
+    border: 1px solid var(--panel-border);
+    overflow: hidden;
+    font-size: 12.5px;
+  }
+  .vt-trader-row-bar { position: absolute; left: 0; top: 0; bottom: 0; opacity: .18; z-index: 0; }
+  .vt-trader-row-name, .vt-trader-row-right { position: relative; z-index: 1; }
+  .vt-trader-name, .vt-trader-row-name { font-weight: 700; }
+  .w-badge {
+    display: inline-block;
+    margin-left: 7px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    border: 1px solid;
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+  }
+  .plat-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border-radius: 5px;
+    font-size: 10.5px;
+    font-weight: 800;
+    border: 1px solid;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+  .vt-linked-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .vt-linked-note .link-icon { font-size: 12.5px; cursor: help; }
+  .vt-linked-note a { color: var(--text-dim); text-decoration: none; }
+  .vt-linked-note a:hover { text-decoration: underline; color: var(--accent); }
+  /* Propositions: collapsed by default (native <details>) — the summary IS
+     the proposition; opening it reveals the trader-by-trader "why". */
+  .prop-item { padding: 0; cursor: default; }
+  .prop-item > .prop-summary { cursor: pointer; list-style: none; padding: 16px 20px 18px; }
+  .prop-item > .prop-summary::-webkit-details-marker { display: none; }
+  .prop-item[open] > .prop-summary { padding-bottom: 10px; }
+  .prop-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+  }
+  .prop-summary::after {
+    content: "▾ voir la répartition";
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .prop-item[open] .prop-summary::after { content: "▴ masquer"; }
+  .prop-rank { font-weight: 800; color: var(--text-dim); font-size: 12.5px; }
+  .prop-question { font-weight: 700; font-size: 14.5px; }
+  .prop-why {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+    border-radius: 999px;
+    padding: 2px 10px;
+  }
+  .prop-misc { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+  .prop-odds { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  /* ROI is the number that actually says whether a proposition is worth
+     taking — it gets the boldest, highest-contrast treatment on the card. */
+  .prop-roi-badge {
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    background: var(--green);
+    border-radius: 999px;
+    padding: 3px 12px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .prop-detail { padding: 0 20px 18px; }
+  .vt-trader-row-right { color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .vt-trader-row-right b { color: var(--text); }
+  .vt-book-pct { font-size: 9.5px; opacity: .75; margin-left: 6px; }
+  .empty-note { color: var(--text-dim); padding: 16px 18px; font-size: 13px; }
+
+  .balance-group { margin: 12px 0 14px; }
+  .balance-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .balance-row:last-child { margin-bottom: 0; }
+  .balance-label {
+    width: 60px;
+    flex: none;
+    color: var(--text-dim);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .balance-bar { flex: 1; display: flex; position: relative; border-radius: 999px; background: var(--panel-border); }
+  .balance-bar.bar-traders { height: 11px; }
+  .balance-bar.bar-dollars { height: 6px; opacity: .8; }
+  .bal-seg { height: 100%; position: relative; }
+  .bal-seg:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
+  .bal-seg:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
+  /* Marks exactly where green ends and red begins — the color change alone
+     is subtle when the split is close to 50/50, this makes the seam explicit. */
+  .bal-tick {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    background: var(--text);
+    border-radius: 1px;
+    transform: translateX(-1px);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .bal-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-7px);
+    background: var(--text);
+    border: 1px solid var(--text);
+    color: var(--bg);
+    font-size: 11.5px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .12s;
+    z-index: 6;
+    box-shadow: 0 4px 14px rgba(51,43,30,.25);
+  }
+  .bal-seg:hover .bal-tooltip { opacity: 1; visibility: visible; }
+  .vt-side-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 4px;
+    align-items: start;
+  }
+  /* Wraps the 1-2 side-blocks for one outcome. When a Predict.fun and a
+     Polymarket block are paired (same prediction, two platforms), a tight
+     6px gap + shared container keeps them visually "glued" together instead
+     of reading as two unrelated stacked sections. */
+  .vt-outcome-group { display: flex; flex-direction: column; gap: 6px; }
+  .vt-outcome-group.paired {
+    background: rgba(255,255,255,.025);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 6px;
+  }
+  .vt-outcome-group.paired .vt-side-block { border-radius: 6px; }
+  .vt-side-block {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .vt-side-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; }
+  .vt-side-head .plat-badge { margin-left: 0; margin-right: 4px; }
+  .vt-side-head .dim { color: var(--text-dim); font-size: 12px; }
+  .vt-side-metrics { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-dim); margin: 8px 0 4px; }
+  .vt-odds b, .vt-roi b { color: var(--text); }
+  .vt-roi b { color: var(--green); }
+  .vt-entry-diff { font-size: 12px; font-weight: 700; }
+
+  /* --- Recent trades --- */
+  .rt-filters, .vt-filters { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
+  .rt-filters button, .vt-filters button {
+    border-radius: 999px;
+    padding: 6px 15px;
+    font-weight: 600;
+  }
+  .rt-filters button.active, .vt-filters button.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+    font-weight: 700;
+    box-shadow: 0 2px 10px rgba(27,51,88,.35);
+  }
+
+  /* --- Match / confrontation filters --- */
+  .match-section {
+    background: linear-gradient(180deg, #ecd9a8, #f6ecd2);
+    border: 1px solid #c9a55a;
+    border-radius: 10px;
+    padding: 12px 16px 14px;
+    margin: 4px 0 16px;
+  }
+  .match-section-title {
+    font-family: "Times New Roman", Times, Georgia, serif;
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--gold);
+    font-weight: 700;
+    margin-bottom: 9px;
+  }
+  .match-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+  .match-chip {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    padding: 7px 14px 7px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .match-chip:hover { border-color: var(--gold); }
+  .match-chip .chip-count {
+    background: var(--panel-border);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 700;
+  }
+  /* The active/selected chip is always --accent, whichever catalog it's in —
+     one consistent "this is the selected thing" signal everywhere. */
+  .match-chip.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 10px rgba(27,51,88,.35);
+  }
+  .match-chip.active .chip-count { background: rgba(0,0,0,.2); color: #fff; }
+  /* Cool-tinted container for the "filter to one specific bet" catalog, so it
+     still reads as a distinct (finer-grained) box from the warm sand-tinted
+     confrontation chips above it — only the container tint differs, not the
+     active-chip color. */
+  .title-section {
+    background: linear-gradient(180deg, #c9dbee, #e3edf7);
+    border-color: #6f96bd;
+  }
+  .title-section .match-section-title { color: #2d456e; }
+  .title-section .match-chip:hover { border-color: #2d456e; }
+  /* Sage-tinted container for the "bet type" grouping — a third, distinct
+     tint between the confrontation (warm) and specific-bet (cool) catalogs. */
+  .type-section {
+    background: linear-gradient(180deg, #cde3c7, #e3f0df);
+    border-color: #6f9c62;
+  }
+  .type-section .match-section-title { color: #2c4f24; }
+  .type-section .match-chip:hover { border-color: #2c4f24; }
+  .caveat-box {
+    background: #221607;
+    border: 1px solid #4a2f10;
+    color: #e8c98d;
+    font-size: 12.5px;
+    line-height: 1.5;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  .caveat-box b { color: #ffb84d; }
+  .rt-side { font-weight: 700; }
+  .rt-side.buy { color: var(--green); }
+  .rt-side.sell { color: var(--red); }
+  .rt-time { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+
+  /* --- Trader sections --- */
+  .trader-section { margin-bottom: 8px; }
+  .trader-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 10px; }
+  .trader-name { font-size: 17px; font-weight: 700; }
+  .trader-wallet {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 12.5px;
+  }
+  .trader-wallet:hover { color: var(--accent); text-decoration: underline; }
+  .trader-stats { color: var(--text-dim); font-size: 12.5px; }
+  .trader-stats b { color: var(--text); }
+  .collapse-btn {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 4px 11px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: auto;
+  }
+  .collapse-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .table-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+  }
+  .table-scroll.collapsed { display: none; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-dim);
+    font-weight: 600;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--panel-border);
+    z-index: 1;
+  }
+  thead th.num { text-align: right; }
+  thead th.sortable { cursor: pointer; user-select: none; }
+  thead th.sortable:hover { color: var(--text); }
+  tbody td { padding: 11px 12px; border-bottom: 1px solid var(--panel-border); vertical-align: middle; }
+  tbody tr.data-row:hover, tbody tr:hover { background: var(--row-hover); }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .market-title { font-weight: 500; }
+  .market-sub { color: var(--text-dim); font-size: 11.5px; margin-top: 2px; }
+  /* background/color set inline per-instance via sideColorFor() — same
+     yes=green/no=red/other convention used in the Value Trades cards. */
+  .side {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .price-arrow { color: var(--text-dim); font-size: 12px; }
+  .pnl-pos { color: var(--green); font-weight: 600; }
+  .pnl-neg { color: var(--red); font-weight: 600; }
+  .pnl-sub { font-size: 11.5px; opacity: .85; font-weight: 400; }
+  .rank-cell { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+  .copy-btn {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--accent);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .copy-btn:hover { border-color: var(--accent); }
+  .copy-btn.is-open { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  tr.copy-row.collapsed { display: none; }
+  .copy-panel {
+    background: #f2ece0;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 18px;
+  }
+  .copy-panel label { color: var(--text-dim); font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .copy-panel input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 7px 9px;
+    border-radius: 6px;
+    width: 120px;
+    font-size: 13px;
+  }
+  .copy-panel input[type="number"]:focus { outline: none; border-color: var(--accent); }
+  .calc-results { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 12.5px; color: var(--text-dim); }
+  .calc-results b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .calc-results .profit-pos b { color: var(--green); }
+  .calc-results .profit-neg b { color: var(--red); }
+  .open-market-btn {
+    margin-left: auto;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .open-market-btn:hover { opacity: .88; }
+  .copy-disclaimer { width: 100%; color: var(--text-dim); font-size: 11px; }
+
+  tfoot td { padding: 12px; font-weight: 700; border-top: 2px solid var(--panel-border); font-variant-numeric: tabular-nums; }
+  tfoot td.num { text-align: right; }
+
+  .empty-state, .loading-state { text-align: center; color: var(--text-dim); padding: 40px 20px; }
+
+  footer { margin-top: 26px; color: var(--text-dim); font-size: 11.5px; text-align: center; }
+
+  /* --- Mon historique --- */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat-tile {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+  .stat-label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .stat-value { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-value.pos { color: var(--green); }
+  .stat-value.neg { color: var(--red); }
+  .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .evolution-row { display: flex; gap: 14px; align-items: stretch; margin-bottom: 20px; }
+  .evolution-row .chart-box { flex: 1 1 65%; min-width: 0; margin-bottom: 0; }
+  .chart-box {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px 16px 8px;
+    position: relative;
+  }
+  .chart-box svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart-tooltip {
+    position: absolute;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 11.5px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -100%);
+    transition: opacity .1s;
+    z-index: 5;
+    box-shadow: 0 4px 14px rgba(51,43,30,.25);
+  }
+  .chart-tooltip.show { opacity: 1; }
+  .chart-pt { cursor: pointer; }
+  .daily-pnl-box {
+    flex: 1 1 30%;
+    max-width: 240px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 10px 6px;
+    max-height: 296px;
+    overflow-y: auto;
+  }
+  .daily-pnl-title {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-dim);
+    padding: 2px 10px 8px;
+  }
+  .daily-pnl-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 5px;
+  }
+  .daily-pnl-row:hover { background: var(--row-hover); }
+  .daily-pnl-row .d { color: var(--text-dim); }
+  .daily-pnl-row .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .daily-pnl-row .v.flat { color: var(--text-dim); font-weight: 400; }
+  .result-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .result-badge.won { color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); }
+  .result-badge.lost { color: var(--red); background: color-mix(in srgb, var(--red) 16%, transparent); }
+  .detail-toggle {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    padding: 3px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+  .detail-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  tr.detail-row.collapsed { display: none; }
+  tr.detail-row td { background: var(--row-hover); padding: 10px 14px 12px 40px; }
+  .detail-timeline { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--text-dim); }
+  .detail-timeline .redemption { color: var(--text); font-weight: 700; }
+  .detail-timeline b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 780px) {
+    .col-avg { display: none; }
+    body { padding: 14px; }
+    .open-market-btn { margin-left: 0; }
+    .evolution-row { flex-direction: column; }
+    .daily-pnl-box { max-width: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Analyse Whales Rentables 🐋</h1>
+    <div class="monet-frame">
+      <img id="monetImg" src="" alt="">
+      <div class="monet-caption"><span id="monetTitle"></span>, <span id="monetYear"></span></div>
+    </div>
+  </header>
+
+  <div class="status-bar">
+    <span><span class="dot" id="statusDot"></span><span id="statusText">Chargement…</span></span>
+    <span>Dernière mise à jour : <strong id="lastUpdate">—</strong></span>
+    <span id="countdownWrap">Prochain refresh dans <strong id="countdown">10</strong>s</span>
+    <button id="toggleBtn" type="button">Pause</button>
+    <button id="refreshBtn" type="button">Rafraîchir maintenant</button>
+    <button id="collapseAllBtn" type="button">Réduire tous les profils</button>
+    <span class="error-msg" id="errorMsg"></span>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="value-trades" type="button">Value Trades</button>
+    <button class="tab-btn" data-tab="propositions" type="button">Propositions</button>
+    <button class="tab-btn" data-tab="recent-trades" type="button">Trades récents</button>
+    <button class="tab-btn" data-tab="trades-profiles" type="button">Trades par profils</button>
+    <button class="tab-btn" data-tab="stats-profiles" type="button">Statistiques profils</button>
+    <button class="tab-btn" data-tab="mon-historique" type="button">Mon historique</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-value-trades">
+    <h2 class="section-title">Value Trades <span class="count-pill" id="vtCount">—</span></h2>
+    <div class="vt-filters" id="vtFilters">
+      <button data-min="4" type="button">≥ 4 traders</button>
+      <button data-min="5" class="active" type="button">≥ 5 traders</button>
+      <button data-min="6" type="button">≥ 6 traders</button>
+      <button data-min="7" type="button">≥ 7 traders</button>
+      <button data-min="8" type="button">≥ 8 traders</button>
+      <button data-min="9" type="button">≥ 9 traders</button>
+    </div>
+    <div class="vt-filters" id="playerFilters">
+      <button data-trader="" class="active" type="button">Tous les joueurs</button>
+      <button data-trader="swisstony" type="button">swisstony</button>
+      <button data-trader="JJJJ" type="button">JJJJ</button>
+      <button data-trader="WsCz" type="button">WsCz</button>
+      <button data-trader="VeryLucky888" type="button">VeryLucky888</button>
+      <button data-trader="predict847" type="button">predict847</button>
+    </div>
+    <div class="vt-filters" id="sportFilters">
+      <button data-sport="all" type="button">Tous les sports</button>
+      <button data-sport="football" class="active" type="button">⚽ Football</button>
+      <button data-sport="other" type="button">Autres</button>
+    </div>
+    <div class="match-section" id="matchSection" style="display:none;">
+      <div class="match-section-title">Confrontations avec value bets</div>
+      <div class="match-filters" id="matchFilters"></div>
+    </div>
+    <div class="match-section type-section" id="typeSection" style="display:none;">
+      <div class="match-section-title">Type de pari</div>
+      <div class="match-filters" id="typeFilters"></div>
+    </div>
+    <div class="match-section title-section" id="titleSection" style="display:none;">
+      <div class="match-section-title">Filtrer un pari précis</div>
+      <div class="match-filters" id="titleFilters"></div>
+    </div>
+    <div id="valueTradesContent" class="value-trades-box">
+      <div class="loading-state">Analyse des positions communes…</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-propositions">
+    <h2 class="section-title">Propositions <span class="count-pill" id="propCount">—</span></h2>
+    <div class="empty-note" style="padding:8px 4px 18px;">Classées selon la conviction des traders suivis : leur accord entre eux (%), leur note de qualité moyenne, et la mise engagée sur le camp qu'ils privilégient. Respecte le filtre sport sélectionné dans l'onglet Value Trades.</div>
+    <div id="propositionsContent" class="value-trades-box">
+      <div class="loading-state">Analyse des meilleures positions…</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-recent-trades">
+    <h2 class="section-title">Trades récents <span class="count-pill" id="rtCount">—</span></h2>
+    <div class="rt-filters" id="rtFilters">
+      <button data-min="0" class="active" type="button">Tous</button>
+      <button data-min="100" type="button">&gt; 100 $</button>
+      <button data-min="1000" type="button">&gt; 1 000 $</button>
+      <button data-min="10000" type="button">&gt; 10 000 $</button>
+    </div>
+    <div class="rt-filters" id="rtPlayerFilters"></div>
+    <div id="recentTradesContent" class="table-scroll">
+      <div class="loading-state">Chargement des trades récents…</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-trades-profiles">
+    <h2 class="section-title">Positions par profil</h2>
+    <div id="tradersContent">
+      <div class="loading-state">Chargement des positions…</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-stats-profiles">
+    <h2 class="section-title">Statistiques profils</h2>
+    <div class="empty-note" style="padding:8px 4px 18px;">Le PnL et le volume de trading exacts (identiques à ceux affichés sur les profils officiels) ne sont accessibles que via une API réservée à chaque plateforme — pas de calcul approximatif ici. Direction le profil officiel de chacun pour ces chiffres :</div>
+    <div id="statsProfilesContent"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-mon-historique">
+    <h2 class="section-title">Mon historique <a id="histWalletLink" href="#" target="_blank" rel="noopener" class="trader-wallet" style="margin-left:10px;"></a></h2>
+    <div class="status-bar" style="margin-top:0;">
+      <span id="histStatusText">—</span>
+      <button id="histRefreshBtn" type="button">Rafraîchir</button>
+      <span class="error-msg" id="histErrorMsg"></span>
+    </div>
+    <div id="histContent">
+      <div class="loading-state">Ouvre cet onglet pour charger l'historique…</div>
+    </div>
+  </div>
+
+  <footer>Page générée le <span id="genTime"></span> — données live via les API Predict.fun & Polymarket (refresh auto 10s)</footer>
+
+</div>
+
+<script>
+(function () {
+  // --- Configuration ---
+  // "weight" = subjective quality rating (1-10) assigned to each profile;
+  // drives the color-graded badge and display ordering everywhere on the page.
+  // "platform" drives which API a profile is fetched from and its badge/link everywhere.
+  var TRADERS = [
+    { name: "predict847", platform: "predict", address: "0x21f861D43B2E2E05F9974D1a27d0c8959e59a1F8", weight: 7.5 },
+    { name: "JJJJ", platform: "predict", address: "0x8Ad2C531324567a4008D9e2BCcC59CC5C8fcFC25", weight: 9 },
+    { name: "WsCz", platform: "predict", address: "0x51925155f83E155592825b96AC5887505Af0aCD8", weight: 9 },
+    { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496", weight: 8 },
+    { name: "dated-pop", platform: "predict", address: "0x4d3A03939b2Fc9C22559d629F2228F33ee15F407", weight: 4 },
+    { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE", weight: 6 },
+    { name: "VestedForceLeak888", platform: "predict", address: "0xa9Dd6741383d634c7dd938aF32e39027c29f204a", weight: 6 },
+    { name: "StaticNotionalSnap888", platform: "predict", address: "0x778a3EC095315283F81e730ACBfc0667393233bA", weight: 5 },
+    { name: "WideStrainTrend6", platform: "predict", address: "0x452b3B5e25Ee796Cc759f4cFCeE9DF482795dD1b", weight: 5 },
+    { name: "aaaaaaa9", platform: "predict", address: "0x1faa0851074eCd1Baa4744Dbb43F9b10E2EFd636", weight: 7 },
+    { name: "mean-slippage-run", platform: "predict", address: "0x10F75A07837E4Af8B77182383443895cA7520747", weight: 7 },
+    { name: "marginal-fill-moon", platform: "predict", address: "0xab5c4a6d8923d0fC6a30B15d099B4F5650bF2d9F", weight: 5 },
+    { name: "sbimbg", platform: "polymarket", address: "0xf5198df69e13937a40d1c76d6f72d9aa067d906b", weight: 7 },
+    { name: "Anon", platform: "polymarket", address: "0x076daa87c4fe1a85402a9b6b8e0a866224388d4c", weight: 5.5 },
+    { name: "CandleHammerDrums", platform: "polymarket", address: "0x7c1ee865a785de4c00ee90ed86a38489fb8bbab3", weight: 7 },
+    { name: "Boned", platform: "polymarket", address: "0x335d3dedf02b9884db93dc4c1a90cf578e598c00", weight: 6 },
+    { name: "juanitooo12358", platform: "polymarket", address: "0xecdb673d790f2469f1bd9b87841ff17e6b18c4c7", weight: 6 },
+    { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14", weight: 9.5 },
+    { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c", weight: 7.5 },
+    { name: "8a7sh2", platform: "polymarket", address: "0xbdb0e406400033ada6ffe03f8915b5e23873f8ba", weight: 7.5 },
+    { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563", weight: 6 },
+    { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 8 }
+  ];
+  var WEIGHT_BY_NAME = {};
+  var PLATFORM_BY_NAME = {};
+  TRADERS.forEach(function (t) { WEIGHT_BY_NAME[t.name] = t.weight; PLATFORM_BY_NAME[t.name] = t.platform; });
+  // Best-rated profiles first wherever profiles are listed top-to-bottom.
+  var TRADERS_BY_WEIGHT = TRADERS.slice().sort(function (a, b) { return (b.weight || 0) - (a.weight || 0); });
+  // Predict = violet, Polymarket = dark blue — distinct from --accent
+  // (royal blue) so a platform tag is never mistaken for an active/selected
+  // control, and distinct from each other at a glance.
+  var PLATFORMS = {
+    predict: {
+      label: "Predict.fun", short: "Predict", color: "#6f4e97",
+      profileUrl: function (addr) { return "https://predict.fun/portfolio/" + addr; }
+    },
+    polymarket: {
+      label: "Polymarket", short: "Poly", color: "#1f3f66",
+      profileUrl: function (addr) { return "https://polymarket.com/fr/profile/" + addr; }
+    }
+  };
+  function platformBadge(platform) {
+    var info = PLATFORMS[platform];
+    if (!info) return "";
+    return '<span class="plat-badge" style="color:' + info.color + ';background:' + info.color + '22;border-color:' + info.color + '55" title="' + info.label + '">' + info.short + '</span>';
+  }
+  var API_KEY = "364ab494-f7cc-4d69-872b-8a2f991abd86";
+  var PREDICT_POSITIONS_BASE = "https://api.predict.fun/v1/positions/";
+  var PREDICT_MATCHES_BASE = "https://api.predict.fun/v1/orders/matches";
+  var POLY_POSITIONS_BASE = "https://data-api.polymarket.com/positions";
+  var POLY_TRADES_BASE = "https://data-api.polymarket.com/trades";
+  var REFRESH_MS = 10000;
+
+  var statusDot = document.getElementById("statusDot");
+  var statusText = document.getElementById("statusText");
+  var lastUpdateEl = document.getElementById("lastUpdate");
+  var countdownEl = document.getElementById("countdown");
+  var errorMsgEl = document.getElementById("errorMsg");
+  var toggleBtn = document.getElementById("toggleBtn");
+  var refreshBtn = document.getElementById("refreshBtn");
+  var collapseAllBtn = document.getElementById("collapseAllBtn");
+  var valueTradesContent = document.getElementById("valueTradesContent");
+  var vtCountEl = document.getElementById("vtCount");
+  var propositionsContent = document.getElementById("propositionsContent");
+  var propCountEl = document.getElementById("propCount");
+  var tradersContent = document.getElementById("tradersContent");
+  var recentTradesContent = document.getElementById("recentTradesContent");
+  var rtCountEl = document.getElementById("rtCount");
+  var rtFilters = document.getElementById("rtFilters");
+  var statsProfilesContent = document.getElementById("statsProfilesContent");
+
+  document.getElementById("genTime").textContent = new Date().toLocaleString("fr-FR");
+
+  // ---------- daily Monet (top-right) ----------
+  // 8 public-domain reproductions, each verified to load from Wikimedia
+  // Commons and cross-checked (title/year) against the holding museum
+  // (NGA, Courtauld, Musée d'Orsay, Met). Picked deterministically from the
+  // day of year, so it's stable all day and changes tomorrow — no randomness.
+  var MONET_PAINTINGS = [
+    { title: "Impression, soleil levant", year: 1872, file: "Monet - Impression, Sunrise.jpg" },
+    { title: "Coquelicots (Poppy Field)", year: 1873, file: "Claude Monet - Poppy Field - Google Art Project.jpg" },
+    { title: "Argenteuil", year: 1872, file: "Claude Monet - Argenteuil.jpg" },
+    { title: "Camille Monet au jardin, Argenteuil", year: 1876, file: "Claude Monet - Camille Monet in the Garden at Argenteuil.jpg" },
+    { title: "La Cathédrale de Rouen, façade ouest, soleil", year: 1894, file: "Claude Monet - Rouen Cathedral, West Facade, Sunlight.jpg" },
+    { title: "Antibes", year: 1888, file: "Claude Monet - Antibes.jpg" },
+    { title: "Le Pont japonais", year: 1899, file: "Claude Monet - The Japanese Footbridge.jpg" },
+    { title: "Le Parlement de Londres, effet de soleil", year: 1903, file: "Claude Monet - The Houses of Parliament, Sunset.jpg" }
+  ];
+  (function initDailyMonet() {
+    var now = new Date();
+    var startOfYear = new Date(now.getFullYear(), 0, 0);
+    var dayOfYear = Math.floor((now - startOfYear) / 86400000);
+    var pick = MONET_PAINTINGS[dayOfYear % MONET_PAINTINGS.length];
+    var url = "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(pick.file).replace(/%20/g, "_");
+    var img = document.getElementById("monetImg");
+    img.src = url;
+    img.alt = pick.title + ", Claude Monet, " + pick.year;
+    document.getElementById("monetTitle").textContent = pick.title;
+    document.getElementById("monetYear").textContent = pick.year;
+  })();
+
+  var paused = false;
+  var isFetching = false;
+  var secondsLeft = REFRESH_MS / 1000;
+  var tradersData = {};      // name -> array of open positions
+  var recentMatches = {};    // name -> array of recent match events
+  var positionIndex = {};    // key -> { position, trader }
+  var panelState = {};       // key -> { open, stake }
+  var traderCollapsed = {};  // trader name -> bool
+  var portfolioValueByName = {}; // trader name -> sum of valueUsd across their tracked open positions
+  var expandedProposals = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list
+  var rtMinValue = 0;
+  var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
+  var vtMinTraders = 5;
+  var vtSelectedMatch = null; // matchKey or null (= all matches)
+  var vtSelectedType = null; // bet-type label or null (= all types)
+  var vtSelectedTitle = null; // unit key (primary group's key) or null (= all bets)
+  var vtSelectedPlayers = []; // trader names currently toggled on (empty = all players)
+  var sportFilter = "football"; // "all" | "football" | "other" — shared between Value Trades and Propositions
+
+  // ---------- helpers ----------
+  function amountToFloat(amountStr, decimals) {
+    decimals = decimals || 18;
+    var neg = false;
+    var s = String(amountStr);
+    if (s.charAt(0) === "-") { neg = true; s = s.slice(1); }
+    while (s.length <= decimals) { s = "0" + s; }
+    var intPart = s.slice(0, s.length - decimals);
+    var fracPart = s.slice(s.length - decimals);
+    var val = parseFloat(intPart + "." + fracPart);
+    return neg ? -val : val;
+  }
+  function fmtUSD(n) {
+    var sign = n < 0 ? "-" : "";
+    return sign + new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n)) + " $";
+  }
+  // Rounded, no-decimals variant for tight spaces (catalog chips) — same $ unit, just less noisy.
+  function fmtUSDCompact(n) {
+    var sign = n < 0 ? "-" : "";
+    return sign + new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Math.abs(n))) + " $";
+  }
+  function fmtShares(n) {
+    return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(n));
+  }
+  function fmtCents(p) { return (p * 100).toFixed(1) + "¢"; }
+  function fmtPct(n) { var sign = n > 0 ? "+" : ""; return sign + n.toFixed(2) + "%"; }
+  function esc(s) {
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+  function safeId(key) { return key.replace(/[^a-zA-Z0-9_]/g, "_"); }
+  // ---------- profile rating badge (red = faible, gold = moyen, vert = excellent) ----------
+  function weightHue(w) {
+    var t = Math.max(0, Math.min(1, ((w || 0) - 1) / 9));
+    return t < 0.5 ? (t / 0.5) * 45 : 45 + ((t - 0.5) / 0.5) * 95;
+  }
+  function weightBadge(w) {
+    if (w == null) return "";
+    var hue = weightHue(w);
+    // Darker/lower-lightness than a dark-theme version needs, so the solid
+    // text color stays legible against the light sand background.
+    var solid = "hsl(" + hue.toFixed(0) + ",45%,36%)";
+    var bg = "hsla(" + hue.toFixed(0) + ",45%,36%,.14)";
+    var border = "hsla(" + hue.toFixed(0) + ",45%,36%,.4)";
+    var label = w.toFixed(1).replace(/\.0$/, "");
+    return '<span class="w-badge" style="color:' + solid + ';background:' + bg + ';border-color:' + border +
+      '" title="Note qualite : ' + label + '/10">' + label + '</span>';
+  }
+  function currentPriceOf(p) {
+    if (p.outcome && p.outcome.bestAsk && typeof p.outcome.bestAsk.price === "number") return p.outcome.bestAsk.price;
+    var shares = amountToFloat(p.amount, 18);
+    var value = parseFloat(p.valueUsd) || 0;
+    return shares > 0 ? value / shares : 0;
+  }
+
+  function calcTrade(stake, price, feeRateBps) {
+    stake = Math.max(0, stake || 0);
+    var feeRate = (feeRateBps || 0) / 10000;
+    var fee = stake * feeRate;
+    var netStake = Math.max(0, stake - fee);
+    var shares = price > 0 ? netStake / price : 0;
+    var payout = shares * 1;
+    var profit = payout - stake;
+    return { fee: fee, netStake: netStake, shares: shares, payout: payout, profit: profit };
+  }
+
+  // ---------- global throttle: keep total request rate safely under the
+  // API's 240 req/60s limit even when many paginated fetches run at once ----------
+  // Spaces out request STARTS (not full completions) so multiple requests can be
+  // in flight concurrently — otherwise network latency (~400-500ms/call) would
+  // serialize everything and make large paginated loads take minutes.
+  var __rqGate = Promise.resolve();
+  var __rqIntervalMs = 260; // ~3.8 req/s ceiling on new request starts
+  function throttledFetch(url, options) {
+    var myTurn = __rqGate.then(function () {
+      return new Promise(function (resolve) { setTimeout(resolve, __rqIntervalMs); });
+    });
+    __rqGate = myTurn;
+    return myTurn.then(function () { return fetch(url, options); });
+  }
+
+  // ---------- fetch + normalize: positions (Predict.fun & Polymarket) ----------
+  // Both platforms are normalized into one common position shape so every
+  // renderer below (value trades, per-profile tables, copy calculator) works
+  // the same regardless of which platform a profile trades on.
+  async function fetchAllPredictPositions(address) {
+    var all = [];
+    var after = null;
+    for (var i = 0; i < 20; i++) {
+      var url = PREDICT_POSITIONS_BASE + encodeURIComponent(address) +
+        "?first=100&isResolved=false&sort=SHARES_VALUE_DESC" +
+        (after ? "&after=" + encodeURIComponent(after) : "");
+      var res = await throttledFetch(url, { headers: { "x-api-key": API_KEY } });
+      if (!res.ok) {
+        var body = "";
+        try { body = await res.text(); } catch (e) {}
+        throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
+      }
+      var json = await res.json();
+      all = all.concat(json.data || []);
+      if (!json.cursor || !json.data || json.data.length === 0) break;
+      after = json.cursor;
+    }
+    return all;
+  }
+  // Polymarket's data-api has no isResolved filter; "redeemable" marks a
+  // position whose market has already settled, so exclude those to mirror
+  // Predict.fun's isResolved=false (open positions only).
+  async function fetchAllPolyPositions(address) {
+    var all = [];
+    var offset = 0, pageSize = 500;
+    for (var i = 0; i < 10; i++) {
+      var url = POLY_POSITIONS_BASE + "?user=" + encodeURIComponent(address) +
+        "&limit=" + pageSize + "&offset=" + offset + "&sizeThreshold=0.01";
+      var res = await throttledFetch(url);
+      if (!res.ok) {
+        var body = "";
+        try { body = await res.text(); } catch (e) {}
+        throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
+      }
+      var page = await res.json();
+      all = all.concat(page || []);
+      if (!page || page.length < pageSize) break;
+      offset += pageSize;
+    }
+    return all.filter(function (p) { return p.redeemable !== true; });
+  }
+  function normalizePredictPosition(p, t) {
+    var shares = amountToFloat(p.amount, 18);
+    return {
+      trader: t.name, platform: "predict",
+      marketKey: "predict|" + p.market.id,
+      question: (p.market && (p.market.question || p.market.title)) || "—",
+      subtitle: p.market && p.market.question && p.market.title && p.market.title !== p.market.question ? p.market.title : "",
+      slug: p.market && p.market.categorySlug,
+      outcomeName: (p.outcome && p.outcome.name) || "—",
+      outcomeKey: String(p.outcome && p.outcome.indexSet),
+      shares: shares,
+      avgPrice: parseFloat(p.averageBuyPriceUsd) || 0,
+      curPrice: currentPriceOf(p),
+      valueUsd: parseFloat(p.valueUsd) || 0,
+      pnlUsd: parseFloat(p.pnlUsd) || 0,
+      feeRateBps: (p.market && p.market.feeRateBps) || 0,
+      marketUrl: p.market.categorySlug ? "https://predict.fun/market/" + p.market.categorySlug : "https://predict.fun"
+    };
+  }
+  function normalizePolyPosition(p, t) {
+    var shares = p.size || 0;
+    return {
+      trader: t.name, platform: "polymarket",
+      marketKey: "polymarket|" + p.conditionId,
+      question: p.title || "—",
+      subtitle: "",
+      // p.slug is the market-SPECIFIC slug (e.g. "...-spread-home-1pt5");
+      // p.eventSlug is the generic event-level bucket shared by many distinct
+      // markets ("...-more-markets") — using eventSlug here caused a real bug
+      // (see linkScore below), so the specific slug must come first.
+      slug: p.slug || p.eventSlug,
+      outcomeName: p.outcome || "—",
+      outcomeKey: String(p.outcomeIndex),
+      shares: shares,
+      avgPrice: p.avgPrice || 0,
+      curPrice: typeof p.curPrice === "number" ? p.curPrice : (shares > 0 ? (p.currentValue || 0) / shares : 0),
+      valueUsd: p.currentValue || 0,
+      pnlUsd: p.cashPnl || 0,
+      feeRateBps: 0,
+      marketUrl: (p.eventSlug || p.slug) ? "https://polymarket.com/fr/event/" + (p.eventSlug || p.slug) : "https://polymarket.com/fr"
+    };
+  }
+  function fetchPositionsForTrader(t) {
+    var raw = t.platform === "polymarket" ? fetchAllPolyPositions(t.address) : fetchAllPredictPositions(t.address);
+    var normalize = t.platform === "polymarket" ? normalizePolyPosition : normalizePredictPosition;
+    return raw.then(function (list) { return list.map(function (p) { return normalize(p, t); }); })
+      .catch(function (err) { console.error("Positions " + t.name + " (" + t.platform + "): " + err.message); return null; });
+  }
+
+  // ---------- fetch + normalize: recent trades (Predict.fun matches & Polymarket trades) ----------
+  async function fetchPredictMatchesRaw(address, limit) {
+    var url = PREDICT_MATCHES_BASE + "?signerAddress=" + encodeURIComponent(address) + "&first=" + limit;
+    var res = await throttledFetch(url, { headers: { "x-api-key": API_KEY } });
+    if (!res.ok) {
+      var body = "";
+      try { body = await res.text(); } catch (e) {}
+      throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
+    }
+    var json = await res.json();
+    return json.data || [];
+  }
+  async function fetchPolyTradesRaw(address, limit) {
+    var url = POLY_TRADES_BASE + "?user=" + encodeURIComponent(address) + "&limit=" + limit;
+    var res = await throttledFetch(url);
+    if (!res.ok) {
+      var body = "";
+      try { body = await res.text(); } catch (e) {}
+      throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
+    }
+    return (await res.json()) || [];
+  }
+  function matchLegForTrader(match, address) {
+    var addrLower = address.toLowerCase();
+    if (match.taker && match.taker.signer && match.taker.signer.toLowerCase() === addrLower) return match.taker;
+    var found = null;
+    (match.makers || []).forEach(function (m) {
+      if (!found && m.signer && m.signer.toLowerCase() === addrLower) found = m;
+    });
+    return found;
+  }
+  function normalizePredictMatch(match, t) {
+    var leg = matchLegForTrader(match, t.address);
+    // BUG FIXED: match.priceExecuted / match.amountFilled are always the
+    // TAKER's price and total fill for this match event — reading them
+    // unconditionally showed the counterparty's price whenever the tracked
+    // trader was actually a MAKER (verified directly against Predict.fun's
+    // API: a maker on "Spain" at 59¢ was shown at the taker's "Argentina"
+    // price of 41.77¢). Each leg (taker or maker) carries its OWN price and
+    // amount — those must be read from the leg matching this trader's
+    // address, not from the match-level fields.
+    var shares = leg ? amountToFloat(leg.amount, 18) : amountToFloat(match.amountFilled, 18);
+    var price = leg ? amountToFloat(leg.price, 18) : amountToFloat(match.priceExecuted, 18);
+    return {
+      trader: t.name, platform: "predict",
+      time: new Date(match.executedAt),
+      question: (match.market && (match.market.question || match.market.title)) || "—",
+      side: leg && leg.outcome ? leg.outcome.name : "—",
+      direction: leg ? (leg.quoteType === "Bid" ? "Achat" : "Vente") : "—",
+      price: price,
+      value: shares * price
+    };
+  }
+  function normalizePolyMatch(m, t) {
+    return {
+      trader: t.name, platform: "polymarket",
+      time: new Date((m.timestamp || 0) * 1000),
+      question: m.title || "—",
+      side: m.outcome || "—",
+      direction: m.side === "BUY" ? "Achat" : "Vente",
+      price: m.price || 0,
+      value: (m.size || 0) * (m.price || 0)
+    };
+  }
+  function fetchRecentMatchesForTrader(t, limit) {
+    var raw = t.platform === "polymarket" ? fetchPolyTradesRaw(t.address, limit) : fetchPredictMatchesRaw(t.address, limit);
+    var normalize = t.platform === "polymarket" ? normalizePolyMatch : normalizePredictMatch;
+    return raw.then(function (list) { return list.map(function (m) { return normalize(m, t); }); })
+      .catch(function (err) { console.error("Trades " + t.name + " (" + t.platform + "): " + err.message); return null; });
+  }
+
+  // ---------- value trades computation ----------
+  // Grouped by MARKET (not by single outcome) so opposite sides (e.g. Yes vs No)
+  // taken by different tracked traders are shown together, giving the real
+  // aggregate "lean" of the group instead of hiding disagreement.
+  // Semantic outcome coloring, used everywhere a side/outcome name is shown
+  // (Value Trades cards, recent trades, per-profile tables): a literal
+  // Yes/Oui is always pine green, a literal No/Non is always carmine red —
+  // never positional. Anything else (team names, multi-way outcomes) gets a
+  // stable color from OTHER_SIDE_COLORS, keyed by the name itself so e.g.
+  // "Argentina" is colored the same everywhere it appears on the page.
+  var OTHER_SIDE_COLORS = ["#96742c", "#96481f", "#2f6672", "#8a4a5e"];
+  function otherColorIndex(name) {
+    var s = String(name || ""), sum = 0;
+    for (var i = 0; i < s.length; i++) sum += s.charCodeAt(i);
+    return sum;
+  }
+  function sideColorFor(name) {
+    // Literal hex (not var(--green)/var(--red)) because callers append an
+    // alpha suffix to these (e.g. color + "22") to get a tinted background —
+    // that trick only works on a real hex value. Must match :root's --green/--red.
+    var n = (name || "").trim().toLowerCase();
+    if (n === "yes" || n === "oui") return "#2e6b45";
+    if (n === "no" || n === "non") return "#a13030";
+    return OTHER_SIDE_COLORS[otherColorIndex(name) % OTHER_SIDE_COLORS.length];
+  }
+
+  // ---------- sport classification (heuristic) ----------
+  // Neither API exposes an explicit "sport" field. This is built from slug
+  // prefixes and keywords actually observed across both platforms' data —
+  // it correctly covers everything currently tracked, but an obscure league
+  // this hasn't seen yet could slip through as "Other". Not a guarantee.
+  var FOOTBALL_SLUG_PREFIXES = { fifwc: 1, ucl: 1, uel: 1, mls: 1, chi: 1, kor: 1, swe: 1, rou1: 1, epl: 1, laliga: 1, bundesliga: 1, seriea: 1, ligue1: 1, eredivisie: 1, brasileirao: 1, concacaf: 1, copa: 1 };
+  var NON_FOOTBALL_HINTS = /\bmlb\b|\bnba\b|\bwnba\b|\batp\b|\bwta\b|\bnpb\b|\bkbo\b|\blol\b|\bdota ?2\b|grand prix|\bf1\b|drivers.? champion|open championship|\bgolf\b|world series|nba finals|nhl\b|nfl\b/i;
+  var FOOTBALL_KEYWORDS = /\bfc\b|fifa world cup|world cup golden|world cup winner|champions league|europa league|premier league|\bla liga\b|bundesliga|\bserie a\b|ligue 1|copa america|\buefa\b|\bmls\b/i;
+  function isFootball(question, slug) {
+    var q = (question || "").toLowerCase();
+    var s = (slug || "").toLowerCase();
+    if (NON_FOOTBALL_HINTS.test(q) || NON_FOOTBALL_HINTS.test(s)) return false;
+    var prefix = s.split("-")[0];
+    if (FOOTBALL_SLUG_PREFIXES[prefix]) return true;
+    if (FOOTBALL_KEYWORDS.test(q) || FOOTBALL_KEYWORDS.test(s)) return true;
+    return false;
+  }
+
+  // ---------- bet-type classification (heuristic, question-text based) ----------
+  // Groups markets by what kind of bet they are (e.g. every "Exact Score:
+  // X - Y" across every scoreline is one "Score exact" type), independent of
+  // sport or specific line/score. Order matters: more specific patterns are
+  // checked before broader ones (e.g. "Total Corners" before generic O/U).
+  var BET_TYPE_RULES = [
+    { label: "Score exact", test: /exact score/i },
+    { label: "Corners", test: /corner/i },
+    { label: "Spread", test: /^spread:|handicap/i },
+    { label: "Total (O/U)", test: /\bo\/u\b|\btotal\b/i },
+    { label: "Les 2 marquent", test: /both teams to score/i },
+    { label: "Qualification", test: /team to advance/i },
+    { label: "1er but", test: /to score first|first to score/i },
+    { label: "Mi-temps", test: /halftime/i },
+    { label: "2nde période", test: /second half/i },
+    { label: "Match nul", test: /end in a draw/i },
+    { label: "Vainqueur du match", test: /^will .+ win on \d{4}-\d{2}-\d{2}\??$/i },
+    { label: "Vainqueur / Outright", test: /champion|grand prix|world cup|open championship|golden ball|golden glove|top goalscorer|finals?\b|fdv|senate|election|fed rate|rate hike/i }
+  ];
+  function betTypeOf(question) {
+    var q = question || "";
+    for (var i = 0; i < BET_TYPE_RULES.length; i++) {
+      if (BET_TYPE_RULES[i].test.test(q)) return BET_TYPE_RULES[i].label;
+    }
+    return "Autre";
+  }
+
+  function computeMarketGroups() {
+    // Groups are keyed per platform+market so the same real-world event on
+    // two different platforms stays two distinct groups here; linkAcrossPlatforms()
+    // below is what connects them for display.
+    var groups = {};
+    TRADERS.forEach(function (t) {
+      var positions = tradersData[t.name] || [];
+      positions.forEach(function (p) {
+        var mid = p.marketKey;
+        if (!groups[mid]) {
+          groups[mid] = {
+            key: mid, platform: p.platform, question: p.question, slug: p.slug, marketUrl: p.marketUrl,
+            bySide: {},
+            traderSet: {}
+          };
+        }
+        var g = groups[mid];
+        g.traderSet[t.name] = true;
+        var sk = p.outcomeKey;
+        if (!g.bySide[sk]) {
+          g.bySide[sk] = { name: p.outcomeName, price: p.curPrice, entries: [] };
+        }
+        g.bySide[sk].entries.push({
+          trader: t.name,
+          valueUsd: p.valueUsd,
+          avgPrice: p.avgPrice,
+          shares: p.shares,
+          stake: p.avgPrice * p.shares // amount actually risked (cost basis), not current mark-to-market value
+        });
+      });
+    });
+
+    var result = [];
+    Object.keys(groups).forEach(function (mid) {
+      var g = groups[mid];
+      var traderCount = Object.keys(g.traderSet).length;
+      var sides = Object.keys(g.bySide).map(function (sk) {
+        var s = g.bySide[sk];
+        s.totalStake = s.entries.reduce(function (sum, e) { return sum + e.stake; }, 0);
+        var uniq = {};
+        s.entries.forEach(function (e) { uniq[e.trader] = true; });
+        s.traderCount = Object.keys(uniq).length;
+        return s;
+      });
+      sides.sort(function (a, b) { return b.traderCount - a.traderCount || b.totalStake - a.totalStake; });
+      var totalStake = sides.reduce(function (s, side) { return s + side.totalStake; }, 0);
+      var totalSideTraders = sides.reduce(function (s, side) { return s + side.traderCount; }, 0);
+      result.push({
+        key: mid, platform: g.platform, question: g.question, slug: g.slug, marketUrl: g.marketUrl,
+        sides: sides, traderCount: traderCount, totalStake: totalStake, totalSideTraders: totalSideTraders
+      });
+    });
+    result.sort(function (a, b) { return b.traderCount - a.traderCount || b.totalStake - a.totalStake; });
+    return result;
+  }
+
+  // ---------- cross-platform market linking ----------
+  // INCIDENT: this used to trust an exact match on the slug "tail" after the
+  // shared date-confrontation prefix as a near-certain link. That broke in
+  // practice — Predict.fun's categorySlug is NOT a per-market identifier: it
+  // groups many distinct bets under one shared bucket (verified directly
+  // against the API: "...-more-markets" alone covers "Team to Advance",
+  // "Both Teams to Score", every Spread line, every O/U line, penalty
+  // shootout — same for "...-exact-score", "...-total-corners", etc., each
+  // covering several different specific markets). A Polymarket "Spread:
+  // Spain (-1.5)" position was therefore wrongly merged into a "Team to
+  // Advance" card because both sides' tails collapsed to the same generic
+  // string. (Also fixed: normalizePolyPosition was preferring Polymarket's
+  // own generic eventSlug over its specific per-market slug, which
+  // independently contributed to the collision.)
+  //
+  // Fix: never trust either side's slug tail alone. Require (1) the title
+  // wording to overlap heavily (Jaccard on significant words) AND (2) any
+  // numbers in the title — spread lines, totals, exact scores — to match
+  // exactly, since two markets in the same category almost always differ
+  // only in a number that Jaccard alone can't see (short numeric fragments
+  // are filtered out of significantTokens). When in doubt, this must NOT
+  // link — two separate cards is a safe outcome; a false link isn't.
+  var LINK_STOPWORDS = { will: 1, the: 1, win: 1, wins: 1, on: 1, to: 1, in: 1, of: 1, and: 1, or: 1, is: 1, be: 1, at: 1, by: 1, for: 1, than: 1, le: 1, la: 1, les: 1, de: 1, du: 1, des: 1, et: 1, ou: 1, un: 1, une: 1, qui: 1, va: 1, pour: 1, par: 1, en: 1, vs: 1, quel: 1, quelle: 1 };
+  function normalizeMatchText(s) {
+    return (s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+  }
+  function significantTokens(s) {
+    return normalizeMatchText(s).filter(function (w) { return w.length >= 3 && !LINK_STOPWORDS[w]; });
+  }
+  function jaccard(aTokens, bTokens) {
+    var setA = {}; aTokens.forEach(function (w) { setA[w] = 1; });
+    var setB = {}; bTokens.forEach(function (w) { setB[w] = 1; });
+    var union = {}; var inter = 0;
+    Object.keys(setA).forEach(function (w) { union[w] = 1; if (setB[w]) inter++; });
+    Object.keys(setB).forEach(function (w) { union[w] = 1; });
+    var uniCount = Object.keys(union).length;
+    return uniCount > 0 ? inter / uniCount : 0;
+  }
+  // Every digit sequence in the title, in order (e.g. "Spread: Spain (-1.5)"
+  // -> "1.5"; "Exact Score: Spain 2 - 3 Argentina?" -> "2,3"). Two markets
+  // that differ only in their line/score produce different fingerprints.
+  function numericFingerprint(s) {
+    var m = (s || "").match(/\d+(\.\d+)?/g);
+    return m ? m.join(",") : "";
+  }
+  function sharedTokenCount(aTokens, bTokens) {
+    var setB = {}; bTokens.forEach(function (w) { setB[w] = 1; });
+    var n = 0;
+    aTokens.forEach(function (w) { if (setB[w]) n++; });
+    return n;
+  }
+  function linkScore(pg, mg) {
+    var sameConfrontation = pg.matchKey && mg.matchKey && pg.matchKey === mg.matchKey;
+    var bothOutright = !pg.matchKey && !mg.matchKey; // e.g. "Will Spain win the 2026 FIFA World Cup?"
+    if (!sameConfrontation && !bothOutright) return 0; // one dated, one not -> not comparable
+    var pNum = numericFingerprint(pg.question), mNum = numericFingerprint(mg.question);
+    if ((pNum || mNum) && pNum !== mNum) return 0; // different line/score -> never the same bet
+    if (sharedTokenCount(pg.tokens, mg.tokens) < 2) return 0; // too little wording overlap to trust
+    var j = jaccard(pg.tokens, mg.tokens);
+    var threshold = sameConfrontation ? 0.7 : 0.5;
+    return j >= threshold ? j : 0;
+  }
+  function linkAcrossPlatforms(groups) {
+    groups.forEach(function (g) {
+      g.tokens = significantTokens(g.question);
+      g.matchKey = matchKeyFromSlug(g.slug);
+      g.linkedGroup = null;
+    });
+    var predictGroups = groups.filter(function (g) { return g.platform === "predict"; });
+    var polyGroups = groups.filter(function (g) { return g.platform === "polymarket"; });
+    polyGroups.forEach(function (mg) {
+      var best = null, bestScore = 0;
+      predictGroups.forEach(function (pg) {
+        if (pg.linkedGroup) return; // already paired with another poly group
+        var score = linkScore(pg, mg);
+        if (score > bestScore) { bestScore = score; best = pg; }
+      });
+      if (best) { mg.linkedGroup = best; best.linkedGroup = mg; }
+    });
+  }
+  function buildRenderUnits(allGroups) {
+    var consumed = {};
+    var units = [];
+    allGroups.forEach(function (g) {
+      if (consumed[g.key]) return;
+      var partner = g.linkedGroup;
+      consumed[g.key] = true;
+      if (partner) consumed[partner.key] = true;
+      var members = partner ? [g, partner].sort(function (a, b) { return b.traderCount - a.traderCount; }) : [g];
+      units.push({
+        members: members,
+        traderCount: members.reduce(function (s, m) { return s + m.traderCount; }, 0),
+        totalStake: members.reduce(function (s, m) { return s + m.totalStake; }, 0),
+        matchKey: members[0].matchKey
+      });
+    });
+    units.sort(function (a, b) { return b.traderCount - a.traderCount || b.totalStake - a.totalStake; });
+    return units;
+  }
+
+  function sideTooltipLabel(s, g) {
+    var traderPct = g.totalSideTraders > 0 ? (s.traderCount / g.totalSideTraders * 100) : 0;
+    var stakePct = g.totalStake > 0 ? (s.totalStake / g.totalStake * 100) : 0;
+    return esc(s.name) + " — " + s.traderCount + "/" + g.totalSideTraders + " traders (" + traderPct.toFixed(0) + "%) · " +
+      "mise " + fmtUSD(s.totalStake) + " / " + fmtUSD(g.totalStake) + " (" + stakePct.toFixed(0) + "%)";
+  }
+
+  function weightedAvgEntry(entries) {
+    var totalShares = 0, totalCost = 0;
+    entries.forEach(function (e) { totalCost += e.avgPrice * e.shares; totalShares += e.shares; });
+    return totalShares > 0 ? totalCost / totalShares : null;
+  }
+
+  // ---------- match / confrontation grouping ----------
+  // Sub-markets of the same real-world match (moneyline, spreads, O/U, props…)
+  // share a categorySlug prefix up to the event date, e.g. both
+  // "fifwc-esp-arg-2026-07-19" and "fifwc-esp-arg-2026-07-19-more-markets"
+  // belong to the same Spain vs Argentina match. Slugs without a date
+  // (tournament winners, crypto FDV markets, …) aren't tied to one
+  // confrontation and are left out of the grouping.
+  function matchKeyFromSlug(slug) {
+    if (!slug) return null;
+    var m = slug.match(/^(.*?-\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : null;
+  }
+  function matchLabelFromGroups(groupsForKey, key) {
+    // The "vs" pairing isn't always before the first colon — e.g. tennis
+    // qualification markets read "Tournament, Round: Player A vs Player B",
+    // where it's the segment AFTER the colon. Check every segment before
+    // falling back to slug parsing, so the confrontation label always reads
+    // as a real match/event name instead of a truncated single name.
+    for (var i = 0; i < groupsForKey.length; i++) {
+      var segments = (groupsForKey[i].question || "").split(":");
+      for (var s = 0; s < segments.length; s++) {
+        var seg = segments[s].trim();
+        if (/\bvs\.?\b/i.test(seg)) return seg;
+      }
+    }
+    var parts = key.split("-");
+    var yearIdx = -1;
+    for (var j = 0; j < parts.length; j++) { if (/^\d{4}$/.test(parts[j])) { yearIdx = j; break; } }
+    var nameParts = yearIdx > 1 ? parts.slice(1, yearIdx) : parts.slice(1);
+    if (!nameParts.length) return key;
+    // Exactly two short tokens (e.g. "esp","arg") reads as a team-code pair;
+    // anything else (single events like a Grand Prix) is just title-cased.
+    if (nameParts.length === 2 && nameParts[0].length <= 4 && nameParts[1].length <= 4) {
+      return nameParts.map(function (p) { return p.toUpperCase(); }).join(" vs ");
+    }
+    return nameParts.map(function (p) { return p.charAt(0).toUpperCase() + p.slice(1); }).join(" ");
+  }
+  function computeMatchBuckets(units) {
+    var buckets = {};
+    units.forEach(function (u) {
+      var key = u.matchKey;
+      if (!key) return;
+      if (!buckets[key]) buckets[key] = [];
+      buckets[key].push(u);
+    });
+    return Object.keys(buckets).map(function (key) {
+      var arr = buckets[key];
+      var groupsForLabel = arr.map(function (u) { return { question: u.members[0].question }; });
+      return {
+        key: key,
+        label: matchLabelFromGroups(groupsForLabel, key),
+        marketCount: arr.length,
+        totalStake: arr.reduce(function (s, u) { return s + u.totalStake; }, 0)
+      };
+    }).sort(function (a, b) { return b.marketCount - a.marketCount || b.totalStake - a.totalStake; });
+  }
+
+  // Renders ONE platform's side-block (odds/ROI/entries stay per-platform —
+  // never blended with the other platform's, since live prices legitimately
+  // differ between them). showPlatformTag is only turned on for linked units
+  // so single-platform cards stay uncluttered.
+  function renderSideBlock(s, g, color, showPlatformTag) {
+    var roi = s.price > 0 ? ((1 - s.price) / s.price * 100) : 0;
+    var avgEntry = weightedAvgEntry(s.entries);
+    var entryDiffPct = (avgEntry && avgEntry > 0 && s.price > 0) ? ((s.price - avgEntry) / avgEntry * 100) : null;
+    // Lower current price than the traders' average entry = cheaper/better
+    // opportunity for someone copying now (higher potential ROI) -> green.
+    // Higher current price = pricier than what they got -> red.
+    var entryDiffHtml = entryDiffPct == null ? "" :
+      '<span class="vt-entry-diff ' + (entryDiffPct <= 0 ? "pnl-pos" : "pnl-neg") + '">' +
+      Math.abs(entryDiffPct).toFixed(2) + '% ' + (entryDiffPct <= 0 ? "moins cher" : "plus cher") +
+      ' que l\'entrée moy. (' + fmtCents(avgEntry) + ')</span>';
+    // Best-rated traders surface first within a side, stake breaks ties.
+    var sortedEntries = s.entries.slice().sort(function (a, b) {
+      return (WEIGHT_BY_NAME[b.trader] || 0) - (WEIGHT_BY_NAME[a.trader] || 0) || b.stake - a.stake;
+    });
+    var maxStake = sortedEntries.length ? sortedEntries[0].stake : 0;
+    var rows = sortedEntries.map(function (e) {
+      var barPct = maxStake > 0 ? (e.stake / maxStake * 100) : 0;
+      // % of this trader's own tracked book committed to this one position —
+      // a quick read on how much conviction/risk they're taking here.
+      var pv = portfolioValueByName[e.trader];
+      var bookPct = pv > 0 ? (e.stake / pv * 100) : null;
+      var bookPctHtml = bookPct == null ? "" :
+        '<span class="vt-book-pct" title="Part de son book suivi engagée sur cette position">' + bookPct.toFixed(1) + '% de son book</span>';
+      return '<div class="vt-trader-row">' +
+        '<div class="vt-trader-row-bar" style="width:' + barPct.toFixed(1) + '%;background:' + color + '"></div>' +
+        '<span class="vt-trader-row-name">' + esc(e.trader) + platformBadge(PLATFORM_BY_NAME[e.trader]) + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<span class="vt-trader-row-right">mise <b>' + fmtUSD(e.stake) + '</b> <span class="dim">@ ' + fmtCents(e.avgPrice) + '</span>' + bookPctHtml + '</span>' +
+      '</div>';
+    }).join("");
+    return '<div class="vt-side-block" style="border-left-color:' + color + '">' +
+      '<div class="vt-side-head">' +
+        '<span>' + (showPlatformTag ? platformBadge(g.platform) : '') + '<span class="vt-outcome" style="background:' + color + '22;color:' + color + '">' + esc(s.name) + '</span></span>' +
+        '<span class="dim">' + s.traderCount + ' trader' + (s.traderCount > 1 ? "s" : "") + ' · mise totale <b>' + fmtUSD(s.totalStake) + '</b></span>' +
+      '</div>' +
+      '<div class="vt-side-metrics">' +
+        '<span class="vt-odds">Cote actuelle : <b>' + fmtCents(s.price) + '</b></span>' +
+        entryDiffHtml +
+        '<span class="vt-roi">ROI si gagné : <b>' + fmtPct(roi) + '</b></span>' +
+      '</div>' +
+      '<div class="vt-traders">' + rows + '</div>' +
+    '</div>';
+  }
+
+  // Merges sides across a unit's members by normalized outcome name, so a
+  // linked pair (e.g. "Argentina" on Predict.fun + "Argentina" on Polymarket)
+  // is treated as one outcome with a combined trader count — used both to
+  // render the combined balance bars and to score trader consensus below.
+  function mergeUnitSides(u) {
+    var byName = {};
+    var order = [];
+    u.members.forEach(function (g) {
+      g.sides.forEach(function (s) {
+        var key = s.name.trim().toLowerCase();
+        if (!byName[key]) { byName[key] = { name: s.name, traderCount: 0, stake: 0, items: [] }; order.push(key); }
+        var slot = byName[key];
+        slot.traderCount += s.traderCount;
+        slot.stake += s.totalStake;
+        slot.items.push({ s: s, g: g });
+      });
+    });
+    var mergedSides = order.map(function (k) { return byName[k]; });
+    mergedSides.sort(function (a, b) { return b.traderCount - a.traderCount || b.stake - a.stake; });
+    return mergedSides;
+  }
+  // How strongly the tracked traders agree with each other on this bet: share
+  // of traders sitting on the leading side (1.0 = everyone agrees, ~0.5 =
+  // evenly split). Used to rank the "filtrer un pari précis" catalog so the
+  // most one-sided (highest-conviction) bets surface first.
+  function unitConsensusScore(u) {
+    var mergedSides = mergeUnitSides(u);
+    var total = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
+    if (total <= 0 || !mergedSides.length) return 0;
+    return mergedSides[0].traderCount / total;
+  }
+  function unitHasTrader(u, name) {
+    return u.members.some(function (g) {
+      return g.sides.some(function (s) {
+        return s.entries.some(function (e) { return e.trader === name; });
+      });
+    });
+  }
+
+  // Computes everything renderUnitCard needs, split into header (question +
+  // leader badge) and body (balance bars + trader breakdown) so Propositions
+  // can show its own compact summary and reveal just the body on expand,
+  // instead of repeating the header inside the expanded detail.
+  function computeUnitCardParts(u) {
+    var members = u.members;
+    var primary = members[0];
+    var secondary = members[1];
+    var linked = !!secondary;
+    var mergedSides = mergeUnitSides(u);
+
+    var totalTradersAll = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
+    var totalStakeAll = mergedSides.reduce(function (s, m) { return s + m.stake; }, 0);
+
+    // The gauges use a plain leading=green / rest=red reading regardless of
+    // outcome name — with 4 possible "other" colors the two segments could
+    // look too close to tell apart at a glance; a strict green/red split reads
+    // instantly. The side-blocks below keep the per-name semantic/other color.
+    function gaugeColor(i) { return i === 0 ? "var(--green)" : "var(--red)"; }
+    // A small tick mark right at the green/red seam — clearer than relying on
+    // the color change alone, especially when the split is close to 50/50.
+    function gaugeTick(leadPct) {
+      return (leadPct > 0 && leadPct < 100) ? '<div class="bal-tick" style="left:' + leadPct.toFixed(2) + '%"></div>' : '';
+    }
+    var traderLeadPct = totalTradersAll > 0 ? (mergedSides[0].traderCount / totalTradersAll * 100) : 0;
+    var dollarLeadPct = totalStakeAll > 0 ? (mergedSides[0].stake / totalStakeAll * 100) : 0;
+    var traderSegments = mergedSides.map(function (m, i) {
+      var pct = totalTradersAll > 0 ? (m.traderCount / totalTradersAll * 100) : 0;
+      var label = esc(m.name) + " — " + m.traderCount + "/" + totalTradersAll + " traders (" + pct.toFixed(0) + "%) · mise " + fmtUSD(m.stake);
+      return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeColor(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
+    }).join("") + gaugeTick(traderLeadPct);
+    var dollarSegments = mergedSides.map(function (m, i) {
+      var pct = totalStakeAll > 0 ? (m.stake / totalStakeAll * 100) : 0;
+      var label = esc(m.name) + " — mise " + fmtUSD(m.stake) + " / " + fmtUSD(totalStakeAll) + " (" + pct.toFixed(0) + "%)";
+      return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeColor(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
+    }).join("") + gaugeTick(dollarLeadPct);
+
+    var sideGroupsHtml = mergedSides.map(function (m) {
+      var color = sideColorFor(m.name);
+      var blocksHtml = m.items.map(function (it) { return renderSideBlock(it.s, it.g, color, linked); }).join("");
+      var paired = m.items.length > 1;
+      return '<div class="vt-outcome-group' + (paired ? ' paired' : '') + '">' + blocksHtml + '</div>';
+    }).join("");
+
+    var leaderGroup = mergedSides.length ? mergedSides[0] : null;
+    var leaderName = leaderGroup ? leaderGroup.name : null;
+    // The leader badge takes the leading outcome's own semantic color — green
+    // for a literal Yes, red for a literal No, its stable "other" color for a
+    // team/multi-way name. --accent (navy) is reserved for interactive
+    // chrome (filters, tabs) and never used to mean "this side is winning".
+    var leaderColor = leaderName ? sideColorFor(leaderName) : "var(--accent)";
+    // Show the current odds right on the leader badge — that's the number
+    // that tells you what a bet on the leading side would actually pay out.
+    // When linked across platforms, show one averaged price rather than
+    // both platforms' figures side by side.
+    var leaderAvgPrice = leaderGroup ?
+      leaderGroup.items.reduce(function (sum, it) { return sum + it.s.price; }, 0) / leaderGroup.items.length : null;
+    var leaderPriceText = leaderAvgPrice != null ? fmtCents(leaderAvgPrice) : '';
+    var leaderRoi = leaderAvgPrice != null && leaderAvgPrice > 0 ? (1 - leaderAvgPrice) / leaderAvgPrice * 100 : null;
+    var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
+      (leaderPriceText ? ' <span class="vt-leader-price">@ ' + leaderPriceText + '</span>' : '') + '</span>' : "";
+
+    var linkedNote = linked ?
+      '<div class="vt-linked-note"><span class="link-icon" title="Marché équivalent détecté sur l\'autre plateforme (formulation parfois différente)">🔗</span>Même prédiction sur ' +
+        platformBadge(primary.platform) + ' et ' + platformBadge(secondary.platform) +
+        (secondary.question !== primary.question ? ' — <a href="' + secondary.marketUrl + '" target="_blank" rel="noopener">voir le libellé ' + esc(PLATFORMS[secondary.platform].label) + '</a>' : '') +
+      '</div>' : "";
+
+    var headerHtml =
+      '<div class="vt-top">' +
+        '<span><span class="vt-question">' + esc(primary.question) + '</span>' + platformBadge(primary.platform) + (linked ? platformBadge(secondary.platform) : '') + leaderBadge + '</span>' +
+        '<span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' +
+      '</div>' +
+      linkedNote;
+    var bodyHtml =
+      '<div class="balance-group">' +
+        '<div class="balance-row"><span class="balance-label">Traders</span><div class="balance-bar bar-traders">' + traderSegments + '</div></div>' +
+        '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
+      '</div>' +
+      '<div class="vt-side-grid">' + sideGroupsHtml + '</div>';
+
+    return {
+      primary: primary, secondary: secondary, linked: linked,
+      leaderColor: leaderColor, leaderName: leaderName,
+      leaderPriceText: leaderPriceText, leaderRoi: leaderRoi,
+      headerHtml: headerHtml, bodyHtml: bodyHtml
+    };
+  }
+
+  function renderUnitCard(u) {
+    var parts = computeUnitCardParts(u);
+    return '<div class="value-trade-item" style="border-left-color:' + parts.leaderColor + '">' + parts.headerHtml + parts.bodyHtml + '</div>';
+  }
+
+  function renderValueTrades() {
+    var allGroups = computeMarketGroups();
+    linkAcrossPlatforms(allGroups);
+    var allUnits = buildRenderUnits(allGroups);
+    var traderFiltered = allUnits.filter(function (u) {
+      if (u.traderCount < vtMinTraders) return false;
+      if (vtSelectedPlayers.length && !vtSelectedPlayers.every(function (name) { return unitHasTrader(u, name); })) return false;
+      if (sportFilter !== "all") {
+        var football = isFootball(u.members[0].question, u.members[0].slug);
+        if (sportFilter === "football" && !football) return false;
+        if (sportFilter === "other" && football) return false;
+      }
+      return true;
+    });
+
+    var matches = computeMatchBuckets(traderFiltered);
+    if (vtSelectedMatch && !matches.some(function (m) { return m.key === vtSelectedMatch; })) {
+      vtSelectedMatch = null; // selection no longer valid under the current trader-count filter
+    }
+    var matchSection = document.getElementById("matchSection");
+    var matchFiltersEl = document.getElementById("matchFilters");
+    if (!matches.length) {
+      matchSection.style.display = "none";
+    } else {
+      matchSection.style.display = "";
+      var chipsHtml = '<button type="button" class="match-chip' + (!vtSelectedMatch ? " active" : "") + '" data-key="">Tous les matchs</button>';
+      chipsHtml += matches.map(function (m) {
+        return '<button type="button" class="match-chip' + (vtSelectedMatch === m.key ? " active" : "") + '" data-key="' + esc(m.key) + '">' +
+          esc(m.label) + '<span class="chip-count">' + m.marketCount + '</span></button>';
+      }).join("");
+      matchFiltersEl.innerHTML = chipsHtml;
+      matchFiltersEl.querySelectorAll(".match-chip").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          vtSelectedMatch = btn.getAttribute("data-key") || null;
+          renderValueTrades();
+        });
+      });
+    }
+
+    var units = vtSelectedMatch ? traderFiltered.filter(function (u) { return u.matchKey === vtSelectedMatch; }) : traderFiltered;
+
+    // Groups the currently visible bets by TYPE (every "Exact Score: X-Y"
+    // regardless of scoreline becomes one "Score exact" chip, etc.) so the
+    // huge specific-bet catalog below can be narrowed before scrolling it.
+    var types = (function computeTypeBuckets() {
+      var buckets = {};
+      units.forEach(function (u) {
+        var type = betTypeOf(u.members[0].question);
+        if (!buckets[type]) buckets[type] = { label: type, marketCount: 0, totalStake: 0 };
+        buckets[type].marketCount++;
+        buckets[type].totalStake += u.totalStake;
+      });
+      return Object.keys(buckets).map(function (k) { return buckets[k]; })
+        .sort(function (a, b) { return b.marketCount - a.marketCount || b.totalStake - a.totalStake; });
+    })();
+    if (vtSelectedType && !types.some(function (t) { return t.label === vtSelectedType; })) {
+      vtSelectedType = null; // selection no longer valid under the current filters
+    }
+    var typeSection = document.getElementById("typeSection");
+    var typeFiltersEl = document.getElementById("typeFilters");
+    if (!types.length) {
+      typeSection.style.display = "none";
+    } else {
+      typeSection.style.display = "";
+      var typeChipsHtml = '<button type="button" class="match-chip' + (!vtSelectedType ? " active" : "") + '" data-type="">Tous les types</button>';
+      typeChipsHtml += types.map(function (t) {
+        return '<button type="button" class="match-chip' + (vtSelectedType === t.label ? " active" : "") + '" data-type="' + esc(t.label) + '">' +
+          esc(t.label) + '<span class="chip-count">' + t.marketCount + '</span></button>';
+      }).join("");
+      typeFiltersEl.innerHTML = typeChipsHtml;
+      typeFiltersEl.querySelectorAll(".match-chip").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          vtSelectedType = btn.getAttribute("data-type") || null;
+          renderValueTrades();
+        });
+      });
+    }
+    units = vtSelectedType ? units.filter(function (u) { return betTypeOf(u.members[0].question) === vtSelectedType; }) : units;
+
+    // Catalog of the individual bets currently in view (respects the
+    // confrontation + min-traders filters above) — click one to isolate it.
+    if (vtSelectedTitle && !units.some(function (u) { return u.members[0].key === vtSelectedTitle; })) {
+      vtSelectedTitle = null; // selection no longer valid under the current filters
+    }
+    var titleSection = document.getElementById("titleSection");
+    var titleFiltersEl = document.getElementById("titleFilters");
+    if (!units.length) {
+      titleSection.style.display = "none";
+    } else {
+      titleSection.style.display = "";
+      // Ordered by trader consensus (most one-sided / highest-conviction bets
+      // first), not by volume — this catalog is a "where do they agree most"
+      // shortcut, independent of the card list's own ordering below.
+      var titleCatalogUnits = units.slice().sort(function (a, b) {
+        return unitConsensusScore(b) - unitConsensusScore(a) || b.totalStake - a.totalStake;
+      });
+      var titleChipsHtml = '<button type="button" class="match-chip' + (!vtSelectedTitle ? " active" : "") + '" data-key="">Tous les paris</button>';
+      titleChipsHtml += titleCatalogUnits.map(function (u) {
+        var k = u.members[0].key;
+        return '<button type="button" class="match-chip' + (vtSelectedTitle === k ? " active" : "") + '" data-key="' + esc(k) + '">' +
+          esc(u.members[0].question) + '<span class="chip-count">' + fmtUSDCompact(u.totalStake) + '</span></button>';
+      }).join("");
+      titleFiltersEl.innerHTML = titleChipsHtml;
+      titleFiltersEl.querySelectorAll(".match-chip").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          vtSelectedTitle = btn.getAttribute("data-key") || null;
+          renderValueTrades();
+        });
+      });
+    }
+    var finalUnits = vtSelectedTitle ? units.filter(function (u) { return u.members[0].key === vtSelectedTitle; }) : units;
+
+    var selectedLabel = vtSelectedMatch ? matches.filter(function (m) { return m.key === vtSelectedMatch; })[0] : null;
+    vtCountEl.textContent = finalUnits.length + " marché" + (finalUnits.length > 1 ? "s" : "") +
+      " avec ≥" + vtMinTraders + " traders (sur " + allUnits.length + " au total)" +
+      (selectedLabel ? " — " + selectedLabel.label : "");
+    if (!finalUnits.length) {
+      valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ').</div>';
+      return;
+    }
+    valueTradesContent.innerHTML = finalUnits.map(renderUnitCard).join("");
+  }
+
+  // ---------- propositions: rank bets by trader conviction ----------
+  // score = consensus (share of traders agreeing) x average quality rating
+  // of the traders on the leading side x a log-dampened stake factor (so a
+  // single huge whale position can't dominate purely on size). Combines the
+  // three signals the user asked for: correlation between big traders,
+  // their notation, and their mises — nothing else (no odds/ROI weighting).
+  function renderPropositions() {
+    var allGroups = computeMarketGroups();
+    linkAcrossPlatforms(allGroups);
+    var allUnits = buildRenderUnits(allGroups);
+    var eligible = allUnits.filter(function (u) {
+      if (u.traderCount < 2) return false;
+      if (sportFilter !== "all") {
+        var football = isFootball(u.members[0].question, u.members[0].slug);
+        if (sportFilter === "football" && !football) return false;
+        if (sportFilter === "other" && football) return false;
+      }
+      return true;
+    });
+    var scored = eligible.map(function (u) {
+      var mergedSides = mergeUnitSides(u);
+      var leader = mergedSides[0];
+      if (!leader) return null;
+      var traderSet = {};
+      leader.items.forEach(function (it) { it.s.entries.forEach(function (e) { traderSet[e.trader] = true; }); });
+      var names = Object.keys(traderSet);
+      var avgWeight = names.length ? names.reduce(function (s, n) { return s + (WEIGHT_BY_NAME[n] || 0); }, 0) / names.length : 0;
+      var consensus = u.traderCount > 0 ? leader.traderCount / u.traderCount : 0;
+      var score = consensus * (avgWeight / 10) * Math.log10(leader.stake + 10);
+      return { u: u, score: score, consensus: consensus, avgWeight: avgWeight, leaderName: leader.name, leaderStake: leader.stake };
+    }).filter(Boolean);
+    scored.sort(function (a, b) { return b.score - a.score; });
+    var top = scored.slice(0, 20);
+    propCountEl.textContent = top.length + " proposition" + (top.length > 1 ? "s" : "");
+    if (!top.length) {
+      propositionsContent.innerHTML = '<div class="empty-note">Aucune proposition ne correspond à ce filtre pour le moment.</div>';
+      return;
+    }
+    propositionsContent.innerHTML = top.map(function (item, i) {
+      var parts = computeUnitCardParts(item.u);
+      var why = proposalWhy(item);
+      var key = item.u.members[0].key;
+      // ROI gets its own bold, high-contrast badge — the odds ("Cote") stay
+      // small/secondary next to it since ROI is the number that actually
+      // answers "is this worth taking".
+      var oddsHtml = parts.leaderPriceText ? '<span class="prop-odds">Cote ' + parts.leaderPriceText + '</span>' : '';
+      var roiHtml = parts.leaderRoi != null ? '<span class="prop-roi-badge">ROI ' + fmtPct(parts.leaderRoi) + '</span>' : '';
+      var summary =
+        '<summary class="prop-summary">' +
+          '<span class="prop-rank">#' + (i + 1) + '</span>' +
+          '<span class="prop-question">' + esc(parts.primary.question) + '</span>' +
+          platformBadge(parts.primary.platform) + (parts.linked ? platformBadge(parts.secondary.platform) : '') +
+          '<span class="vt-leader" style="background:' + parts.leaderColor + '">→ ' + esc(parts.leaderName) + '</span>' +
+          oddsHtml + roiHtml +
+          '<span class="prop-why">' + esc(why) + '</span>' +
+          '<span class="prop-misc">' + item.u.traderCount + ' traders · ' + fmtUSD(item.u.totalStake) + '</span>' +
+        '</summary>';
+      // expandedProposals survives the auto-refresh rebuilding this HTML every
+      // 10s — otherwise a card the user just opened would silently re-collapse.
+      return '<details class="value-trade-item prop-item" data-key="' + esc(key) + '"' + (expandedProposals[key] ? " open" : "") +
+        ' style="border-left-color:' + parts.leaderColor + '">' +
+        summary +
+        '<div class="prop-detail">' + parts.bodyHtml + '</div>' +
+      '</details>';
+    }).join("");
+  }
+  // A 2-4 word gut-check on WHY this scored well. Consensus isn't part of
+  // this — every proposition here already has strong consensus by
+  // definition (that's how they made the list), so calling it out on every
+  // single card said nothing. This picks whichever OTHER signal (track
+  // record or size of the bet) is most extreme instead.
+  function proposalWhy(item) {
+    var bigStake = item.leaderStake >= 500000;
+    var midStake = item.leaderStake >= 100000;
+    var topWeight = item.avgWeight >= 8.5;
+    var goodWeight = item.avgWeight >= 7;
+    if (bigStake && topWeight) return "Grosse mise, traders très fiables";
+    if (bigStake) return "Mise énorme engagée";
+    if (topWeight) return "Traders très fiables";
+    if (midStake && goodWeight) return "Bonne mise, traders fiables";
+    if (midStake) return "Grosse mise engagée";
+    if (goodWeight) return "Traders fiables";
+    return "Bon compromis global";
+  }
+
+  // ---------- recent trades ----------
+  function renderRecentTrades() {
+    var all = [];
+    TRADERS.forEach(function (t) {
+      (recentMatches[t.name] || []).forEach(function (m) { all.push(m); });
+    });
+    all.sort(function (a, b) { return b.time - a.time; });
+    var filtered = all.filter(function (x) {
+      if (x.value < rtMinValue) return false;
+      if (rtSelectedPlayers.length && rtSelectedPlayers.indexOf(x.trader) === -1) return false;
+      return true;
+    });
+    rtCountEl.textContent = filtered.length + " trade" + (filtered.length > 1 ? "s" : "") + (rtMinValue > 0 ? " (> " + fmtUSD(rtMinValue) + ")" : "");
+    var shown = filtered.slice(0, 100);
+    if (!shown.length) {
+      recentTradesContent.innerHTML = '<div class="empty-note">Aucun trade récent' + (rtMinValue > 0 ? " au-dessus de " + fmtUSD(rtMinValue) : "") + '.</div>';
+      return;
+    }
+    var rowsHtml = shown.map(function (x) {
+      var dirClass = x.direction === "Achat" ? "rt-side buy" : "rt-side sell";
+      return '<tr>' +
+        '<td class="rt-time">' + x.time.toLocaleString("fr-FR") + '</td>' +
+        '<td><b>' + esc(x.trader) + '</b>' + platformBadge(x.platform) + weightBadge(WEIGHT_BY_NAME[x.trader]) + '</td>' +
+        '<td>' + esc(x.question) + '</td>' +
+        '<td><span class="side" style="background:' + sideColorFor(x.side) + '22;color:' + sideColorFor(x.side) + '">' + esc(x.side) + '</span></td>' +
+        '<td class="' + dirClass + '">' + x.direction + '</td>' +
+        '<td class="num">' + fmtUSD(x.value) + '</td>' +
+        '<td class="num">' + fmtCents(x.price) + '</td>' +
+      '</tr>';
+    }).join("");
+    recentTradesContent.innerHTML =
+      '<table><thead><tr>' +
+        '<th>Heure</th><th>Trader</th><th>Marché</th><th>Side</th><th>Sens</th><th class="num">Montant</th><th class="num">Prix</th>' +
+      '</tr></thead><tbody>' + rowsHtml + '</tbody></table>';
+  }
+
+  // ---------- trader sections rendering ----------
+  function renderTraderSection(trader) {
+    var positions = (tradersData[trader.name] || []).slice();
+    positions.sort(function (a, b) { return (b.valueUsd || 0) - (a.valueUsd || 0); });
+
+    var totalValue = positions.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
+    var totalPnl = positions.reduce(function (s, p) { return s + (p.pnlUsd || 0); }, 0);
+    var totalPnlClass = totalPnl >= 0 ? "pnl-pos" : "pnl-neg";
+
+    var section = document.createElement("div");
+    section.className = "trader-section";
+
+    var collapsed = !!traderCollapsed[trader.name];
+    var info = PLATFORMS[trader.platform];
+
+    var head = document.createElement("div");
+    head.className = "trader-head";
+    head.innerHTML =
+      '<span class="trader-name">' + esc(trader.name) + '</span>' + platformBadge(trader.platform) + weightBadge(trader.weight) +
+      '<a class="trader-wallet" href="' + info.profileUrl(trader.address) + '" target="_blank" rel="noopener">' +
+        trader.address.slice(0, 6) + '…' + trader.address.slice(-4) + ' ↗</a>' +
+      '<span class="trader-stats">' + positions.length + ' position' + (positions.length > 1 ? "s" : "") +
+        ' · valeur totale <b>' + fmtUSD(totalValue) + '</b> · pnl <b class="' + totalPnlClass + '">' + fmtUSD(totalPnl) + '</b></span>' +
+      '<button type="button" class="collapse-btn" data-trader="' + esc(trader.name) + '">' + (collapsed ? "▸ Afficher" : "▾ Réduire") + '</button>';
+    section.appendChild(head);
+
+    if (!positions.length) {
+      var empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "Aucune position ouverte actuellement.";
+      section.appendChild(empty);
+      return section;
+    }
+
+    var scrollWrap = document.createElement("div");
+    scrollWrap.className = "table-scroll" + (collapsed ? " collapsed" : "");
+
+    var rowsHtml = positions.map(function (p) {
+      var key = trader.name + "|" + p.marketKey + "|" + p.outcomeKey;
+      positionIndex[key] = { position: p, trader: trader };
+      if (!panelState[key]) panelState[key] = { open: false, stake: 100 };
+
+      var shares = p.shares;
+      var value = p.valueUsd;
+      var avgPrice = p.avgPrice;
+      var curPrice = p.curPrice;
+      var pnl = p.pnlUsd;
+      var costBasis = avgPrice * shares;
+      var pnlPct = costBasis !== 0 ? (pnl / costBasis) * 100 : 0;
+      var pnlClass = pnl >= 0 ? "pnl-pos" : "pnl-neg";
+      var title = p.question;
+      var sub = p.subtitle;
+      var side = p.outcomeName;
+      var isOpen = panelState[key].open;
+      var sid = safeId(key);
+
+      var mainRow =
+        '<tr class="data-row">' +
+          '<td><div class="market-title">' + esc(title) + '</div>' + (sub ? '<div class="market-sub">' + esc(sub) + '</div>' : '') + '</td>' +
+          '<td><span class="side" style="background:' + sideColorFor(side) + '22;color:' + sideColorFor(side) + '">' + esc(side) + '</span></td>' +
+          '<td class="num">' + fmtShares(shares) + '</td>' +
+          '<td class="num col-avg">' + fmtCents(avgPrice) + ' <span class="price-arrow">→</span> ' + fmtCents(curPrice) + '</td>' +
+          '<td class="num">' + fmtUSD(value) + '</td>' +
+          '<td class="num ' + pnlClass + '">' + fmtUSD(pnl) + '<div class="pnl-sub">' + fmtPct(pnlPct) + '</div></td>' +
+          '<td class="num"><button type="button" class="copy-btn' + (isOpen ? ' is-open' : '') + '" data-key="' + esc(key) + '">' + (isOpen ? 'Fermer' : 'Copier') + '</button></td>' +
+        '</tr>';
+
+      var calc = calcTrade(panelState[key].stake, curPrice, p.feeRateBps);
+      var profitClass = calc.profit >= 0 ? "profit-pos" : "profit-neg";
+      var marketUrl = p.marketUrl;
+      var platformLabel = PLATFORMS[p.platform].label;
+
+      var panelRow =
+        '<tr class="copy-row' + (isOpen ? '' : ' collapsed') + '" data-panel-key="' + esc(key) + '">' +
+          '<td colspan="7">' +
+            '<div class="copy-panel">' +
+              '<label>Mise ($)<input type="number" class="stake-input" min="0" step="10" value="' + panelState[key].stake + '" data-key="' + esc(key) + '"></label>' +
+              '<div class="calc-results" id="calc_' + sid + '">' +
+                '<span>Prix actuel : <b>' + fmtCents(curPrice) + '</b></span>' +
+                '<span>Frais est. (' + ((p.feeRateBps || 0) / 100).toFixed(2) + '%) : <b>' + fmtUSD(calc.fee) + '</b></span>' +
+                '<span>Shares estimées : <b>' + fmtShares(calc.shares) + '</b></span>' +
+                '<span>Gain potentiel si gagné : <b>' + fmtUSD(calc.payout) + '</b></span>' +
+                '<span class="' + profitClass + '">Profit potentiel : <b>' + fmtUSD(calc.profit) + '</b></span>' +
+              '</div>' +
+              '<a class="open-market-btn" href="' + marketUrl + '" target="_blank" rel="noopener">Ouvrir sur ' + platformLabel + ' →</a>' +
+              '<div class="copy-disclaimer">Estimation approximative (hors slippage). Le prix, les frais réels et l\'exécution sont déterminés sur ' + platformLabel + ' au moment de votre ordre — vous restez seul(e) à valider et signer la transaction.</div>' +
+            '</div>' +
+          '</td>' +
+        '</tr>';
+
+      return mainRow + panelRow;
+    }).join("");
+
+    var table = document.createElement("table");
+    table.innerHTML =
+      '<thead><tr>' +
+        '<th>Marché</th><th>Side</th><th class="num">Shares</th>' +
+        '<th class="num col-avg">Prix entrée → actuel</th>' +
+        '<th class="num">Valeur</th><th class="num">PnL non réalisé</th><th class="num">Copier</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+      '<tfoot><tr>' +
+        '<td colspan="4">Total (' + positions.length + ' position' + (positions.length > 1 ? "s" : "") + ')</td>' +
+        '<td class="num">' + fmtUSD(totalValue) + '</td>' +
+        '<td class="num ' + totalPnlClass + '">' + fmtUSD(totalPnl) + '</td>' +
+        '<td></td>' +
+      '</tr></tfoot>';
+
+    scrollWrap.appendChild(table);
+    section.appendChild(scrollWrap);
+    return section;
+  }
+
+  function updateCalcDisplay(key) {
+    var entry = positionIndex[key];
+    if (!entry) return;
+    var p = entry.position;
+    var curPrice = p.curPrice;
+    var calc = calcTrade(panelState[key].stake, curPrice, p.feeRateBps);
+    var profitClass = calc.profit >= 0 ? "profit-pos" : "profit-neg";
+    var el = document.getElementById("calc_" + safeId(key));
+    if (!el) return;
+    el.innerHTML =
+      '<span>Prix actuel : <b>' + fmtCents(curPrice) + '</b></span>' +
+      '<span>Frais est. (' + ((p.feeRateBps || 0) / 100).toFixed(2) + '%) : <b>' + fmtUSD(calc.fee) + '</b></span>' +
+      '<span>Shares estimées : <b>' + fmtShares(calc.shares) + '</b></span>' +
+      '<span>Gain potentiel si gagné : <b>' + fmtUSD(calc.payout) + '</b></span>' +
+      '<span class="' + profitClass + '">Profit potentiel : <b>' + fmtUSD(calc.profit) + '</b></span>';
+  }
+
+  function wireInteractions() {
+    tradersContent.querySelectorAll(".copy-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var key = btn.getAttribute("data-key");
+        if (!panelState[key]) panelState[key] = { open: false, stake: 100 };
+        panelState[key].open = !panelState[key].open;
+        var row = tradersContent.querySelector('.copy-row[data-panel-key="' + CSS.escape(key) + '"]');
+        if (row) row.classList.toggle("collapsed", !panelState[key].open);
+        btn.classList.toggle("is-open", panelState[key].open);
+        btn.textContent = panelState[key].open ? "Fermer" : "Copier";
+      });
+    });
+    tradersContent.querySelectorAll(".stake-input").forEach(function (inp) {
+      inp.addEventListener("input", function () {
+        var key = inp.getAttribute("data-key");
+        if (!panelState[key]) panelState[key] = { open: true, stake: 100 };
+        panelState[key].stake = parseFloat(inp.value) || 0;
+        updateCalcDisplay(key);
+      });
+    });
+    tradersContent.querySelectorAll(".collapse-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var name = btn.getAttribute("data-trader");
+        traderCollapsed[name] = !traderCollapsed[name];
+        var section = btn.closest(".trader-section");
+        var scrollWrap = section && section.querySelector(".table-scroll");
+        if (scrollWrap) scrollWrap.classList.toggle("collapsed", traderCollapsed[name]);
+        btn.textContent = traderCollapsed[name] ? "▸ Afficher" : "▾ Réduire";
+      });
+    });
+  }
+
+  // ---------- profile stats: each platform computes real lifetime PnL/volume
+  // via an internal API restricted to its own frontend origin (verified for
+  // Predict.fun: requests from any other origin, including a local file, get
+  // a 403) so we can't reproduce those numbers here. Link out to the official
+  // profile instead of guessing. Open-position count/value below IS accurate
+  // (same public APIs used everywhere else on this page). ----------
+  function renderStatsProfiles() {
+    var html = TRADERS_BY_WEIGHT.map(function (t) {
+      var open = tradersData[t.name] || [];
+      var openValue = open.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
+      var info = PLATFORMS[t.platform];
+      return '<div class="value-trade-item">' +
+        '<div class="vt-top">' +
+          '<span class="vt-question">' + esc(t.name) + '</span>' + platformBadge(t.platform) + weightBadge(t.weight) +
+          '<a class="open-market-btn" href="' + info.profileUrl(t.address) + '" target="_blank" rel="noopener">Voir le profil complet sur ' + info.label + ' →</a>' +
+        '</div>' +
+        '<div class="trader-stats" style="margin-top:6px;">' + t.address.slice(0, 6) + '…' + t.address.slice(-4) +
+          ' · ' + open.length + ' position' + (open.length > 1 ? "s" : "") + ' ouverte' + (open.length > 1 ? "s" : "") +
+          ' · valeur <b>' + fmtUSD(openValue) + '</b></div>' +
+      '</div>';
+    }).join("");
+    statsProfilesContent.innerHTML = '<div class="value-trades-box">' + html + '</div>';
+  }
+
+  function renderAll() {
+    // Recomputed fresh each cycle: sum of valueUsd across each trader's own
+    // tracked open positions — used as the denominator for the "% of book"
+    // note on each trader row (see renderSideBlock). This is NOT their real
+    // wallet/cash balance (neither API exposes that) — it's the total of
+    // their positions this dashboard actually tracks, which is the closest
+    // available proxy for "how concentrated is this bet in their book".
+    portfolioValueByName = {};
+    TRADERS.forEach(function (t) {
+      portfolioValueByName[t.name] = (tradersData[t.name] || []).reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
+    });
+    renderValueTrades();
+    renderPropositions();
+    renderRecentTrades();
+    tradersContent.innerHTML = "";
+    positionIndex = {};
+    TRADERS_BY_WEIGHT.forEach(function (t) {
+      tradersContent.appendChild(renderTraderSection(t));
+    });
+    wireInteractions();
+    renderStatsProfiles();
+  }
+
+  // ---------- Mon historique (single wallet, own trade history + PnL chart) ----------
+  var HIST_WALLET = "0x60BA5423e4BFaBBA93C5dA112413363D193fC78C";
+  var histLoaded = false;
+  var histStatusText = document.getElementById("histStatusText");
+  var histErrorMsg = document.getElementById("histErrorMsg");
+  var histRefreshBtn = document.getElementById("histRefreshBtn");
+  var histContent = document.getElementById("histContent");
+  var histWalletLink = document.getElementById("histWalletLink");
+  histWalletLink.href = "https://predict.fun/portfolio/" + HIST_WALLET;
+  histWalletLink.textContent = HIST_WALLET.slice(0, 6) + "…" + HIST_WALLET.slice(-4);
+
+  function fmtUSDSigned(n) { return (n >= 0 ? "+" : "") + fmtUSD(n); }
+  function fmtDateShort(d) { return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }); }
+  function fmtDateLong(d) { return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }); }
+  function fmtDateTime(d) { return d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+  function histDayKey(d) { return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+
+  async function fetchAllMatchesForWallet(address) {
+    var all = [];
+    var after = null;
+    for (var i = 0; i < 40; i++) {
+      var url = PREDICT_MATCHES_BASE + "?signerAddress=" + encodeURIComponent(address) + "&first=100" +
+        (after ? "&after=" + encodeURIComponent(after) : "");
+      var res = await throttledFetch(url, { headers: { "x-api-key": API_KEY } });
+      if (!res.ok) {
+        var body = "";
+        try { body = await res.text(); } catch (e) {}
+        throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
+      }
+      var json = await res.json();
+      var data = json.data || [];
+      all = all.concat(data);
+      if (!json.cursor || data.length === 0) break;
+      after = json.cursor;
+    }
+    return all;
+  }
+
+  function normalizeHistoryMatch(match) {
+    var leg = matchLegForTrader(match, HIST_WALLET);
+    if (!leg) return null;
+    var market = match.market || {};
+    var outcome = leg.outcome || {};
+    var shares = amountToFloat(leg.amount, 18);
+    var price = amountToFloat(leg.price, 18);
+    var isBuy = leg.quoteType === "Bid";
+    return {
+      time: new Date(match.executedAt),
+      outcomeKey: market.id + "|" + outcome.indexSet,
+      question: market.question || market.title || "—",
+      categorySlug: market.categorySlug,
+      sideName: outcome.name || "—",
+      status: outcome.status,
+      isBuy: isBuy,
+      price: price,
+      shares: shares,
+      amount: shares * price,
+      cashFlow: isBuy ? -(shares * price) : (shares * price)
+    };
+  }
+
+  // A BUY is a cash<->asset swap, not a gain or loss — it must NOT show up
+  // as a dip on the chart. PnL is only realized (a) on a SELL, measured
+  // against the running average cost basis of the shares just sold, or
+  // (b) once at resolution, for whatever shares are still held then
+  // (redemption value vs. their cost basis), using the WON/LOST status
+  // embedded in the outcome. No fee accounting — this is a reconstruction,
+  // not the official ledger (see caveat-box below). Per-market totals are
+  // unaffected by this vs. a naive cash-flow sum (it's the same total,
+  // conservation of cost basis) — only which DAY each dollar is attributed
+  // to changes, which is the whole point: holding an open position must
+  // read as "unrealized, unknown yet", not as an instant loss.
+  function buildHistoryPnl(trades) {
+    trades.sort(function (a, b) { return a.time - b.time; });
+    var EPS = 0.01;
+    var groups = {};
+    var events = []; // realized PnL only: sells (immediate) + final resolution of any leftover
+    trades.forEach(function (t) {
+      var g = groups[t.outcomeKey];
+      if (!g) {
+        g = groups[t.outcomeKey] = {
+          sharesHeld: 0, costBasis: 0, realizedPnl: 0, buyTotal: 0,
+          lastTime: t.time, status: t.status,
+          question: t.question, sideName: t.sideName, categorySlug: t.categorySlug,
+          days: {}
+        };
+      }
+      g.status = t.status;
+      if (t.time > g.lastTime) g.lastTime = t.time;
+      // Per-day buy/sell breakdown — shown in each market's "Détail" panel
+      // as context, independent of how PnL itself gets attributed below.
+      var dk = histDayKey(t.time);
+      var dg = g.days[dk] || (g.days[dk] = { day: new Date(t.time), buy: 0, sell: 0 });
+      if (t.isBuy) {
+        g.sharesHeld += t.shares;
+        g.costBasis += t.amount;
+        g.buyTotal += t.amount;
+        dg.buy += t.amount;
+      } else {
+        var sellShares = Math.min(t.shares, g.sharesHeld);
+        var avgCost = g.sharesHeld > EPS ? (g.costBasis / g.sharesHeld) : 0;
+        var costOfSold = sellShares * avgCost;
+        var realized = t.amount - costOfSold;
+        events.push({ time: t.time, delta: realized });
+        g.realizedPnl += realized;
+        g.sharesHeld -= sellShares;
+        g.costBasis -= costOfSold;
+        dg.sell += t.amount;
+      }
+      groups[t.outcomeKey] = g;
+    });
+
+    var closedMarkets = [];
+    Object.keys(groups).forEach(function (key) {
+      var g = groups[key];
+      var resolved = g.status === "WON" || g.status === "LOST";
+      if (!resolved) return;
+      var redemption = 0;
+      if (g.sharesHeld > EPS) {
+        redemption = g.status === "WON" ? g.sharesHeld : 0;
+        var finalPnl = redemption - g.costBasis;
+        events.push({ time: g.lastTime, delta: finalPnl });
+        g.realizedPnl += finalPnl;
+      }
+      var timeline = Object.keys(g.days).sort().map(function (k) { return g.days[k]; });
+      closedMarkets.push({
+        question: g.question, sideName: g.sideName, categorySlug: g.categorySlug,
+        won: g.status === "WON", lastTime: g.lastTime,
+        buyTotal: g.buyTotal, pnl: g.realizedPnl,
+        timeline: timeline, redemption: redemption
+      });
+    });
+    closedMarkets.sort(function (a, b) { return b.lastTime - a.lastTime; });
+    events.sort(function (a, b) { return a.time - b.time; });
+
+    var running = 0;
+    var daily = {}; // dayKey -> cumulative value at end of that day
+    events.forEach(function (e) {
+      running += e.delta;
+      daily[histDayKey(e.time)] = running;
+    });
+
+    // Forward-fill a continuous daily series from the first event to today,
+    // so the line reaches "now" instead of stopping at the last trade — and
+    // record each day's OWN delta (not cumulative) for the side-by-side list.
+    var series = [];
+    var dailyDeltas = [];
+    if (events.length) {
+      var cursor = new Date(events[0].time); cursor.setHours(0, 0, 0, 0);
+      var end = new Date(); end.setHours(0, 0, 0, 0);
+      var last = 0;
+      while (cursor <= end) {
+        var k = histDayKey(cursor);
+        var prev = last;
+        if (k in daily) last = daily[k];
+        series.push({ date: new Date(cursor), value: last });
+        dailyDeltas.push({ date: new Date(cursor), delta: last - prev });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    }
+
+    return { total: running, closedMarkets: closedMarkets, series: series, dailyDeltas: dailyDeltas, trades: trades };
+  }
+
+  function buildHistoryChartSvg(series) {
+    if (series.length < 2) return "";
+    var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var values = series.map(function (p) { return p.value; });
+    var min = Math.min.apply(null, values.concat([0]));
+    var max = Math.max.apply(null, values.concat([0]));
+    if (min === max) { min -= 1; max += 1; }
+    var range = max - min;
+    var n = series.length;
+    function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
+    function y(v) { return padT + innerH - ((v - min) / range) * innerH; }
+    var finalPos = series[n - 1].value >= 0;
+    var lineColor = finalPos ? "#2e6b45" : "#a13030";
+
+    var pathD = series.map(function (p, i) { return (i === 0 ? "M" : "L") + x(i).toFixed(2) + "," + y(p.value).toFixed(2); }).join(" ");
+    var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + y(0).toFixed(2) + " L" + x(0).toFixed(2) + "," + y(0).toFixed(2) + " Z";
+
+    var zeroY = y(0);
+    var zeroLine = (min < 0 && max > 0)
+      ? '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>'
+      : "";
+
+    var labelCount = Math.min(7, n);
+    var xLabels = "";
+    for (var li = 0; li < labelCount; li++) {
+      var idx = Math.round((li / (labelCount - 1 || 1)) * (n - 1));
+      xLabels += '<text x="' + x(idx).toFixed(2) + '" y="' + (H - 6) + '" font-size="10" fill="var(--text-dim)" text-anchor="middle">' + fmtDateShort(series[idx].date) + '</text>';
+    }
+    var yLabels =
+      '<text x="' + (padL - 8) + '" y="' + (y(max) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(max) + '</text>' +
+      '<text x="' + (padL - 8) + '" y="' + (y(min) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(min) + '</text>';
+
+    var points = series.map(function (p, i) {
+      return '<circle class="chart-pt" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + lineColor + '" ' +
+        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"></circle>';
+    }).join("");
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+        '<path d="' + areaD + '" fill="' + lineColor + '" fill-opacity="0.12" stroke="none"/>' +
+        zeroLine +
+        '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2"/>' +
+        yLabels + xLabels + points +
+      '</svg>';
+  }
+
+  function wireHistoryChartTooltip(box) {
+    var tip = document.createElement("div");
+    tip.className = "chart-tooltip";
+    box.appendChild(tip);
+    box.querySelectorAll(".chart-pt").forEach(function (pt) {
+      pt.addEventListener("mouseenter", function () {
+        tip.textContent = pt.getAttribute("data-date") + " : " + pt.getAttribute("data-value");
+        tip.classList.add("show");
+      });
+      pt.addEventListener("mousemove", function (ev) {
+        var r = box.getBoundingClientRect();
+        tip.style.left = (ev.clientX - r.left) + "px";
+        tip.style.top = (ev.clientY - r.top - 10) + "px";
+      });
+      pt.addEventListener("mouseleave", function () { tip.classList.remove("show"); });
+    });
+  }
+
+  function renderHistoryStats(pnl, openPositions) {
+    var won = pnl.closedMarkets.filter(function (m) { return m.won; }).length;
+    var lost = pnl.closedMarkets.length - won;
+    var winRate = pnl.closedMarkets.length ? (won / pnl.closedMarkets.length * 100) : 0;
+    var volume = pnl.trades.reduce(function (s, t) { return s + t.amount; }, 0);
+    var openValue = openPositions.reduce(function (s, p) { return s + (parseFloat(p.valueUsd) || 0); }, 0);
+    var range = pnl.trades.length ? [pnl.trades[0].time, pnl.trades[pnl.trades.length - 1].time] : null;
+
+    var tiles = [
+      { label: "PnL réalisé", value: fmtUSDSigned(pnl.total), cls: pnl.total >= 0 ? "pos" : "neg" },
+      { label: "Marchés gagnés / perdus", value: won + " / " + lost, sub: winRate.toFixed(0) + "% de réussite" },
+      { label: "Volume tradé", value: fmtUSD(volume) },
+      { label: "Nombre de trades", value: String(pnl.trades.length) }
+    ];
+    if (range) tiles.push({ label: "Période", value: fmtDateShort(range[0]) + " → " + fmtDateShort(range[1]) });
+    if (openPositions.length) tiles.push({ label: "Positions ouvertes", value: openPositions.length + " (" + fmtUSD(openValue) + ")" });
+
+    return '<div class="stat-grid">' + tiles.map(function (t) {
+      return '<div class="stat-tile"><div class="stat-label">' + esc(t.label) + '</div>' +
+        '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div>' +
+        (t.sub ? '<div class="stat-sub">' + esc(t.sub) + '</div>' : "") + '</div>';
+    }).join("") + '</div>';
+  }
+
+  // Day-by-day PnL delta, side-by-side with the chart, so its trend can be
+  // checked line-by-line against the cumulative curve instead of just trusted.
+  function renderHistoryDailyList(dailyDeltas) {
+    if (!dailyDeltas.length) return "";
+    var rows = dailyDeltas.slice().reverse().map(function (d) {
+      var flat = Math.abs(d.delta) < 0.005;
+      var cls = flat ? "flat" : (d.delta >= 0 ? "pnl-pos" : "pnl-neg");
+      return '<div class="daily-pnl-row"><span class="d">' + esc(fmtDateShort(d.date)) + '</span>' +
+        '<span class="v ' + cls + '">' + esc(flat ? "—" : fmtUSDSigned(d.delta)) + '</span></div>';
+    }).join("");
+    return '<div class="daily-pnl-box"><div class="daily-pnl-title">PnL du jour</div>' + rows + '</div>';
+  }
+
+  function renderHistoryTimeline(m) {
+    var lines = m.timeline.map(function (d) {
+      var parts = [];
+      if (d.buy > 0) parts.push('achat <b>' + fmtUSD(d.buy) + '</b>');
+      if (d.sell > 0) parts.push('vente <b>' + fmtUSD(d.sell) + '</b>');
+      return '<div>' + esc(fmtDateShort(d.day)) + ' — ' + parts.join(', ') + '</div>';
+    }).join("");
+    var resLine = m.won
+      ? '<div class="redemption">Résolution : gagné → +' + esc(fmtUSD(m.redemption)) + '</div>'
+      : '<div class="redemption">Résolution : perdu → +0,00 $</div>';
+    return '<div class="detail-timeline">' + lines + resLine + '</div>';
+  }
+
+  function renderHistoryClosedTable(closedMarkets) {
+    if (!closedMarkets.length) return '<div class="empty-state">Aucun marché clôturé pour le moment.</div>';
+    var rows = closedMarkets.map(function (m, i) {
+      var url = m.categorySlug ? "https://predict.fun/market/" + m.categorySlug : "https://predict.fun";
+      var roi = m.buyTotal > 0 ? (m.pnl / m.buyTotal * 100) : 0;
+      var rid = "hcm_" + i + "_" + safeId(m.question).slice(0, 24);
+      return '<tr class="market-row" data-target="' + rid + '">' +
+        '<td class="rt-time">' + esc(fmtDateTime(m.lastTime)) + '</td>' +
+        '<td class="market-title"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(m.question) + '</a></td>' +
+        '<td><span class="side" style="color:' + sideColorFor(m.sideName) + ';background:' + sideColorFor(m.sideName) + '1f">' + esc(m.sideName) + '</span></td>' +
+        '<td><span class="result-badge ' + (m.won ? "won" : "lost") + '" title="Issue finale du marché — le PnL peut différer si tu es sorti avant la résolution">' + (m.won ? "Gagné" : "Perdu") + '</span></td>' +
+        '<td class="num">' + esc(fmtUSD(m.buyTotal)) + '</td>' +
+        '<td class="num ' + (m.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(m.pnl)) + '</td>' +
+        '<td class="num">' + esc((roi >= 0 ? "+" : "") + roi.toFixed(0) + "%") + '</td>' +
+        '<td><button class="detail-toggle" type="button" data-target="' + rid + '">Détail</button></td>' +
+      '</tr>' +
+      '<tr class="detail-row collapsed" id="' + rid + '"><td colspan="8">' + renderHistoryTimeline(m) + '</td></tr>';
+    }).join("");
+    return '<div class="table-scroll"><table>' +
+      '<thead><tr>' +
+        '<th>Clôturé le</th><th>Marché</th><th>Camp</th><th>Résultat</th>' +
+        '<th class="num">Mise</th><th class="num">PnL</th><th class="num">ROI</th><th></th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function renderHistory(pnl, openPositions) {
+    var chartSvg = buildHistoryChartSvg(pnl.series);
+    var html =
+      renderHistoryStats(pnl, openPositions) +
+      '<h2 class="section-title">Évolution du PnL</h2>' +
+      '<div class="caveat-box"><b>Reconstruction locale, non officielle.</b> Un achat n\'est jamais compté comme une perte : le PnL n\'est réalisé qu\'à la revente ou à la résolution du marché (WON/LOST), par rapport au prix d\'achat moyen — une position encore ouverte reste neutre sur la courbe. Hors frais de plateforme. Peut différer légèrement du chiffre affiché sur le profil predict.fun.</div>' +
+      '<div class="evolution-row">' +
+        '<div class="chart-box" id="histChartBox">' + (chartSvg || '<div class="empty-state">Pas assez de données pour tracer une courbe.</div>') + '</div>' +
+        renderHistoryDailyList(pnl.dailyDeltas) +
+      '</div>' +
+      '<h2 class="section-title">Marchés clôturés <span class="count-pill">' + pnl.closedMarkets.length + '</span></h2>' +
+      renderHistoryClosedTable(pnl.closedMarkets);
+    histContent.innerHTML = html;
+    var chartBox = document.getElementById("histChartBox");
+    if (chartBox) wireHistoryChartTooltip(chartBox);
+    histContent.querySelectorAll(".detail-toggle").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var row = document.getElementById(btn.getAttribute("data-target"));
+        if (row) row.classList.toggle("collapsed");
+      });
+    });
+  }
+
+  async function loadHistorique() {
+    histStatusText.textContent = "Chargement…";
+    histErrorMsg.textContent = "";
+    histRefreshBtn.disabled = true;
+    try {
+      var results = await Promise.all([fetchAllMatchesForWallet(HIST_WALLET), fetchAllPredictPositions(HIST_WALLET)]);
+      var trades = results[0].map(normalizeHistoryMatch).filter(Boolean);
+      var openPositions = results[1];
+      var pnl = buildHistoryPnl(trades);
+      renderHistory(pnl, openPositions);
+      histStatusText.textContent = "À jour — " + new Date().toLocaleTimeString("fr-FR");
+      histLoaded = true;
+    } catch (err) {
+      histStatusText.textContent = "Erreur";
+      histErrorMsg.textContent = "Échec du chargement : " + err.message;
+      console.error(err);
+    }
+    histRefreshBtn.disabled = false;
+  }
+  histRefreshBtn.addEventListener("click", loadHistorique);
+
+  // ---------- tabs ----------
+  document.querySelectorAll(".tab-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+      document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.getAttribute("data-tab")).classList.add("active");
+      if (btn.getAttribute("data-tab") === "mon-historique" && !histLoaded) loadHistorique();
+    });
+  });
+  rtFilters.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      rtFilters.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      rtMinValue = parseFloat(btn.getAttribute("data-min")) || 0;
+      renderRecentTrades();
+    });
+  });
+  var vtFilters = document.getElementById("vtFilters");
+  vtFilters.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      vtFilters.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      vtMinTraders = parseFloat(btn.getAttribute("data-min")) || 5;
+      renderValueTrades();
+    });
+  });
+  var playerFiltersEl = document.getElementById("playerFilters");
+  function syncPlayerFilterButtons() {
+    playerFiltersEl.querySelectorAll("button").forEach(function (b) {
+      var name = b.getAttribute("data-trader");
+      b.classList.toggle("active", name ? vtSelectedPlayers.indexOf(name) !== -1 : vtSelectedPlayers.length === 0);
+    });
+  }
+  playerFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var name = btn.getAttribute("data-trader");
+      if (!name) {
+        vtSelectedPlayers = []; // "Tous les joueurs" resets the selection
+      } else {
+        var idx = vtSelectedPlayers.indexOf(name);
+        if (idx === -1) vtSelectedPlayers.push(name); else vtSelectedPlayers.splice(idx, 1);
+      }
+      syncPlayerFilterButtons();
+      renderValueTrades();
+    });
+  });
+  var sportFiltersEl = document.getElementById("sportFilters");
+  sportFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      sportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      sportFilter = btn.getAttribute("data-sport") || "all";
+      renderValueTrades();
+      renderPropositions(); // shared filter — keep both tabs in sync
+    });
+  });
+  // Top-5-by-weight player filter for "Trades récents" — multi-select (OR):
+  // built from TRADERS_BY_WEIGHT so it stays correct if ratings ever change.
+  var rtPlayerFiltersEl = document.getElementById("rtPlayerFilters");
+  rtPlayerFiltersEl.innerHTML = '<button data-trader="" class="active" type="button">Tous les joueurs</button>' +
+    TRADERS_BY_WEIGHT.slice(0, 5).map(function (t) {
+      return '<button data-trader="' + esc(t.name) + '" type="button">' + esc(t.name) + '</button>';
+    }).join("");
+  function syncRtPlayerFilterButtons() {
+    rtPlayerFiltersEl.querySelectorAll("button").forEach(function (b) {
+      var name = b.getAttribute("data-trader");
+      b.classList.toggle("active", name ? rtSelectedPlayers.indexOf(name) !== -1 : rtSelectedPlayers.length === 0);
+    });
+  }
+  rtPlayerFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var name = btn.getAttribute("data-trader");
+      if (!name) {
+        rtSelectedPlayers = []; // "Tous les joueurs" resets the selection
+      } else {
+        var idx = rtSelectedPlayers.indexOf(name);
+        if (idx === -1) rtSelectedPlayers.push(name); else rtSelectedPlayers.splice(idx, 1);
+      }
+      syncRtPlayerFilterButtons();
+      renderRecentTrades();
+    });
+  });
+  // ---------- refresh loop ----------
+  async function refresh(isManual) {
+    if (isFetching) return; // never allow overlapping fetch cycles
+    isFetching = true;
+    statusDot.className = "dot";
+    statusText.textContent = isManual ? "Rafraîchissement…" : "Mise à jour automatique…";
+    errorMsgEl.textContent = "";
+    var discard = false;
+    try {
+      var results = await Promise.all([
+        Promise.all(TRADERS.map(function (t) {
+          return fetchPositionsForTrader(t).then(function (positions) { return { name: t.name, positions: positions }; });
+        })),
+        Promise.all(TRADERS.map(function (t) {
+          return fetchRecentMatchesForTrader(t, 20).then(function (matches) { return { name: t.name, matches: matches }; });
+        }))
+      ]);
+      var posResults = results[0], matchResults = results[1];
+      if (paused && !isManual) { discard = true; }
+      else {
+        // A null result means this trader's fetch failed this cycle (already
+        // logged to console) — keep its last known data instead of blanking it.
+        posResults.forEach(function (r) { if (r.positions) tradersData[r.name] = r.positions; });
+        matchResults.forEach(function (r) { if (r.matches) recentMatches[r.name] = r.matches; });
+        renderAll();
+        lastUpdateEl.textContent = new Date().toLocaleTimeString("fr-FR");
+        statusText.textContent = paused ? "En pause" : "Live";
+      }
+    } catch (err) {
+      if (!(paused && !isManual)) {
+        statusDot.className = "dot error";
+        statusText.textContent = "Erreur";
+        errorMsgEl.textContent = "Échec du refresh : " + err.message + " (dernières données conservées)";
+        console.error(err);
+      }
+    }
+    isFetching = false;
+    if (paused) {
+      countdownEl.textContent = "—";
+      if (!discard) statusText.textContent = "En pause";
+    } else {
+      secondsLeft = REFRESH_MS / 1000;
+      countdownEl.textContent = secondsLeft;
+    }
+  }
+
+  function tick() {
+    if (paused || isFetching) return;
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      refresh(false);
+    } else {
+      countdownEl.textContent = secondsLeft;
+    }
+  }
+
+  toggleBtn.addEventListener("click", function () {
+    paused = !paused;
+    toggleBtn.textContent = paused ? "Reprendre" : "Pause";
+    statusDot.style.background = paused ? "#8c7a5c" : "";
+    statusDot.style.animation = paused ? "none" : "";
+    if (paused) {
+      statusText.textContent = "En pause";
+      countdownEl.textContent = "—";
+    } else {
+      secondsLeft = REFRESH_MS / 1000;
+      countdownEl.textContent = secondsLeft;
+      if (!isFetching) statusText.textContent = "Live";
+    }
+  });
+  refreshBtn.addEventListener("click", function () { refresh(true); });
+  // "toggle" doesn't bubble, but capturing phase still sees it on an
+  // ancestor — one listener here survives every innerHTML rebuild of
+  // propositionsContent, unlike a listener attached to the <details> itself.
+  propositionsContent.addEventListener("toggle", function (e) {
+    if (e.target && e.target.classList.contains("prop-item")) {
+      expandedProposals[e.target.getAttribute("data-key")] = e.target.open;
+    }
+  }, true);
+  collapseAllBtn.addEventListener("click", function () {
+    var anyExpanded = TRADERS.some(function (t) { return !traderCollapsed[t.name]; });
+    TRADERS.forEach(function (t) { traderCollapsed[t.name] = anyExpanded; });
+    collapseAllBtn.textContent = anyExpanded ? "Tout afficher" : "Réduire tous les profils";
+    renderAll();
+  });
+
+  refresh(true);
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
