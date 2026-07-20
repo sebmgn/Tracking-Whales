@@ -202,8 +202,8 @@ async function sendEmail(alerts) {
     auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD }
   });
   const subject = alerts.length === 1
-    ? "Trade suivi : " + alerts[0].question
-    : alerts.length + " nouveaux trades suivis";
+    ? "Corrélation Whales : " + alerts[0].question
+    : "Corrélation Whales : " + alerts.length + " nouveaux trades suivis";
   const lines = alerts.map((a) =>
     `• ${a.question}\n  Camp : ${a.side}\n  Traders (${a.traders.length}) : ${a.traders.join(", ")}\n  Mise combinée : ${fmtUSD(a.stake)}\n  ${a.urls.filter(Boolean).join("\n  ")}`
   );
