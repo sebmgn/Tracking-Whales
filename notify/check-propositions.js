@@ -30,6 +30,50 @@ const WATCHED = [
 const PREDICT_POSITIONS_BASE = "https://api.predict.fun/v1/positions/";
 const POLY_POSITIONS_BASE = "https://data-api.polymarket.com/positions";
 
+// ---------- resilience helpers ----------
+// A single transient hiccup (network blip, 5xx, rate-limit) on any one of
+// these upstream APIs used to throw straight out of main() and kill the
+// whole cycle in a few seconds — see the 2026-07-20 22:59/00:04 failures.
+// Retry transient errors, and never let one bad source block the others.
+const FETCH_TIMEOUT_MS = 15000;
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function withRetry(fn, { attempts = 3, delayMs = 800, isRetryable = () => true } = {}) {
+  let lastErr;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i === attempts || !isRetryable(e)) throw e;
+      await sleep(delayMs * i);
+    }
+  }
+  throw lastErr;
+}
+
+async function fetchJson(url, options) {
+  return withRetry(
+    async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        if (!res.ok) {
+          const err = new Error("HTTP " + res.status + " on " + url);
+          err.status = res.status;
+          throw err;
+        }
+        return await res.json();
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    { attempts: 3, delayMs: 800, isRetryable: (e) => !e.status || e.status >= 500 || e.status === 429 }
+  );
+}
+
 // ---------- fetch + normalize (same shape/conventions as positions.html) ----------
 async function fetchAllPredict(address) {
   const all = [];
@@ -37,9 +81,7 @@ async function fetchAllPredict(address) {
   for (let i = 0; i < 20; i++) {
     const url = PREDICT_POSITIONS_BASE + encodeURIComponent(address) +
       "?first=100&isResolved=false&sort=SHARES_VALUE_DESC" + (after ? "&after=" + encodeURIComponent(after) : "");
-    const res = await fetch(url, { headers: { "x-api-key": API_KEY } });
-    if (!res.ok) throw new Error("predict.fun HTTP " + res.status);
-    const json = await res.json();
+    const json = await fetchJson(url, { headers: { "x-api-key": API_KEY } });
     all.push(...(json.data || []));
     if (!json.cursor || !json.data || json.data.length === 0) break;
     after = json.cursor;
@@ -54,9 +96,7 @@ async function fetchAllPoly(address) {
   for (let i = 0; i < 10; i++) {
     const url = POLY_POSITIONS_BASE + "?user=" + encodeURIComponent(address) +
       "&limit=" + pageSize + "&offset=" + offset + "&sizeThreshold=0.01";
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Polymarket HTTP " + res.status);
-    const page = await res.json();
+    const page = await fetchJson(url);
     all.push(...(page || []));
     if (!page || page.length < pageSize) break;
     offset += pageSize;
@@ -65,14 +105,16 @@ async function fetchAllPoly(address) {
 }
 
 function normPredict(p, t) {
+  const market = p.market || {};
+  const outcome = p.outcome || {};
   return {
-    trader: t.name, platform: "predict", marketKey: "predict|" + p.market.id,
-    question: (p.market && (p.market.question || p.market.title)) || "—",
-    slug: p.market && p.market.categorySlug,
-    outcomeKey: String(p.outcome && p.outcome.indexSet),
-    outcomeName: (p.outcome && p.outcome.name) || "—",
+    trader: t.name, platform: "predict", marketKey: "predict|" + market.id,
+    question: market.question || market.title || "—",
+    slug: market.categorySlug,
+    outcomeKey: String(outcome.indexSet),
+    outcomeName: outcome.name || "—",
     valueUsd: parseFloat(p.valueUsd) || 0,
-    marketUrl: p.market.categorySlug ? "https://predict.fun/market/" + p.market.categorySlug : "https://predict.fun"
+    marketUrl: market.categorySlug ? "https://predict.fun/market/" + market.categorySlug : "https://predict.fun"
   };
 }
 
@@ -86,12 +128,24 @@ function normPoly(p, t) {
   };
 }
 
+// One trader/platform failing (bad data, exhausted retries) no longer aborts
+// the whole cycle — it's skipped and logged, the rest still gets checked.
 async function fetchAllWatchedPositions() {
   const positions = [];
   for (const t of WATCHED) {
-    const raw = t.platform === "polymarket" ? await fetchAllPoly(t.address) : await fetchAllPredict(t.address);
-    const norm = t.platform === "polymarket" ? normPoly : normPredict;
-    raw.forEach((p) => positions.push(norm(p, t)));
+    try {
+      const raw = t.platform === "polymarket" ? await fetchAllPoly(t.address) : await fetchAllPredict(t.address);
+      const norm = t.platform === "polymarket" ? normPoly : normPredict;
+      raw.forEach((p) => {
+        try {
+          positions.push(norm(p, t));
+        } catch (e) {
+          console.error("Position ignorée pour " + t.name + " (" + t.platform + ") : " + e.message);
+        }
+      });
+    } catch (e) {
+      console.error("Source ignorée pour ce cycle — " + t.name + " (" + t.platform + ") : " + e.message);
+    }
   }
   return positions;
 }
@@ -208,7 +262,7 @@ async function sendEmail(alerts) {
     `• ${a.question}\n  Camp : ${a.side}\n  Traders (${a.traders.length}) : ${a.traders.join(", ")}\n  Mise combinée : ${fmtUSD(a.stake)}\n  ${a.urls.filter(Boolean).join("\n  ")}`
   );
   const text = "Nouvelle(s) proposition(s) : au moins " + MIN_TRADERS + " traders sur le même camp, " + fmtUSD(MIN_STAKE) + "+ engagés.\n\n" + lines.join("\n\n");
-  await transporter.sendMail({ from: GMAIL_USER, to: NOTIFY_TO, subject, text });
+  await withRetry(() => transporter.sendMail({ from: GMAIL_USER, to: NOTIFY_TO, subject, text }), { attempts: 3, delayMs: 2000 });
 }
 
 // ---------- main ----------
