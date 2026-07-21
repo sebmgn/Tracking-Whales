@@ -36,5 +36,13 @@ jobs:
           git config user.name "propositions-watcher-bot"
           git config user.email "actions@users.noreply.github.com"
           git add notify/state.json
-          git diff --cached --quiet || git commit -m "chore: update notification state"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: update notification state"
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            echo "Push rejected (attempt $i) — rebasing onto origin/main and retrying."
+            git fetch origin main
+            git rebase origin/main
+          done
+          echo "Failed to push state after retries."
+          exit 1
