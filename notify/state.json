@@ -1,4 +1,9 @@
 {
+  "polymarket|0xcc24c6953459465959bc542bbfeed5488ed1461e0648ba8dbcd21b6e2dd24286+predict|796734|minnesota twins": {
+    "firstSeen": "2026-07-21T23:11:19.638Z",
+    "question": "Minnesota Twins vs. Cleveland Guardians",
+    "side": "Minnesota Twins"
+  },
   "polymarket|0xd347cece253053a680155a812ac64ba05df056c18b3c52a1925f83d2d7da195a+predict|733979|no": {
     "firstSeen": "2026-07-21T22:03:00.490Z",
     "question": "Will Inter Miami CF win on 2026-07-22?",
