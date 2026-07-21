@@ -768,6 +768,12 @@
       <button data-trader="VeryLucky888" type="button">VeryLucky888</button>
       <button data-trader="predict847" type="button">predict847</button>
     </div>
+    <div class="vt-filters" id="vtStakeFilters">
+      <button data-min="0" class="active" type="button">Toutes les mises</button>
+      <button data-min="1000" type="button">&gt; 1 000 $</button>
+      <button data-min="5000" type="button">&gt; 5 000 $</button>
+      <button data-min="10000" type="button">&gt; 10 000 $</button>
+    </div>
     <div class="vt-filters" id="sportFilters">
       <button data-sport="all" type="button">Tous les sports</button>
       <button data-sport="football" class="active" type="button">⚽ Football</button>
@@ -962,6 +968,7 @@
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   var vtMinTraders = 5;
+  var vtMinStake = 0; // 0 = no floor; else each selected player individually needs this much staked (or the unit's total, if none selected)
   var vtSelectedMatch = null; // matchKey or null (= all matches)
   var vtSelectedType = null; // bet-type label or null (= all types)
   var vtSelectedTitle = null; // unit key (primary group's key) or null (= all bets)
@@ -1599,6 +1606,19 @@
       });
     });
   }
+  // A single trader's own stake within a unit, summed across their entries
+  // (they can appear on both sides, or on both linked platforms).
+  function traderStakeInUnit(u, name) {
+    var total = 0;
+    u.members.forEach(function (g) {
+      g.sides.forEach(function (s) {
+        s.entries.forEach(function (e) {
+          if (e.trader === name) total += e.stake;
+        });
+      });
+    });
+    return total;
+  }
 
   // Computes everything renderUnitCard needs, split into header (question +
   // leader badge) and body (balance bars + trader breakdown) so Propositions
@@ -1701,6 +1721,13 @@
     var traderFiltered = allUnits.filter(function (u) {
       if (u.traderCount < vtMinTraders) return false;
       if (vtSelectedPlayers.length && !vtSelectedPlayers.every(function (name) { return unitHasTrader(u, name); })) return false;
+      if (vtMinStake > 0) {
+        if (vtSelectedPlayers.length) {
+          if (!vtSelectedPlayers.every(function (name) { return traderStakeInUnit(u, name) >= vtMinStake; })) return false;
+        } else if (u.totalStake < vtMinStake) {
+          return false;
+        }
+      }
       if (sportFilter !== "all") {
         var football = isFootball(u.members[0].question, u.members[0].slug);
         if (sportFilter === "football" && !football) return false;
@@ -1809,6 +1836,7 @@
     var selectedLabel = vtSelectedMatch ? matches.filter(function (m) { return m.key === vtSelectedMatch; })[0] : null;
     vtCountEl.textContent = finalUnits.length + " marché" + (finalUnits.length > 1 ? "s" : "") +
       " avec ≥" + vtMinTraders + " traders (sur " + allUnits.length + " au total)" +
+      (vtMinStake > 0 ? " · mise " + (vtSelectedPlayers.length ? "de chaque joueur sélectionné " : "") + "≥ " + fmtUSD(vtMinStake) : "") +
       (selectedLabel ? " — " + selectedLabel.label : "");
     if (!finalUnits.length) {
       valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ').</div>';
@@ -2518,6 +2546,15 @@
       vtFilters.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       vtMinTraders = parseFloat(btn.getAttribute("data-min")) || 5;
+      renderValueTrades();
+    });
+  });
+  var vtStakeFiltersEl = document.getElementById("vtStakeFilters");
+  vtStakeFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      vtStakeFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      vtMinStake = parseFloat(btn.getAttribute("data-min")) || 0;
       renderValueTrades();
     });
   });
