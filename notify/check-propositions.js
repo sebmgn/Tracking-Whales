@@ -297,5 +297,10 @@ async function main() {
 
 main().catch((err) => {
   console.error(err);
+  // Surface the real error as a GitHub Actions annotation — readable from
+  // the run's "Annotations" panel (and the public API) without needing to
+  // sign in to view the raw job logs.
+  const msg = (err && err.message ? err.message : String(err)).replace(/\n/g, " ");
+  console.log("::error::" + msg);
   process.exit(1);
 });
