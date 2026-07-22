@@ -4,10 +4,20 @@
     "question": "Will Chicago Fire FC win on 2026-07-22?",
     "side": "No"
   },
+  "polymarket|0xf194634652d8dbdb464a85ef173ca2d037cc6d488d547da4b56aace7b5b3a6ec+predict|831358|no": {
+    "firstSeen": "2026-07-22T18:07:20.422Z",
+    "question": "Will Bohemian FC win on 2026-07-22?",
+    "side": "No"
+  },
   "polymarket|0x98a73d72d15f9fae4c907c1b777762ffe463533e7c7f7a534208364890db716b+predict|733602|no": {
     "firstSeen": "2026-07-22T16:45:46.873Z",
     "question": "Will Vancouver Whitecaps FC win on 2026-07-22?",
     "side": "No"
+  },
+  "polymarket|0x7a7ad0575539fd552e61444429c0ccad374ee9efa3e7352f5d6433c6300c69fe+predict|806522|athletics": {
+    "firstSeen": "2026-07-22T18:07:20.422Z",
+    "question": "Athletics vs. Arizona Diamondbacks",
+    "side": "Athletics"
   },
   "polymarket|0xd347cece253053a680155a812ac64ba05df056c18b3c52a1925f83d2d7da195a+predict|733979|no": {
     "firstSeen": "2026-07-21T22:03:00.490Z",
@@ -27,6 +37,11 @@
   "polymarket|0xcf28c08fee8c8ea3407eb1d263f02333b2b844003ca6cbf6fef6b6b5ed889531+predict|733773|no": {
     "firstSeen": "2026-07-21T22:03:00.490Z",
     "question": "Will San Jose Earthquakes win on 2026-07-22?",
+    "side": "No"
+  },
+  "polymarket|0x055ae2ce1a9d54d1230b0ec51a3ba2c872544209e3dcc98d38fa2b0453fa278f+predict|809500|no": {
+    "firstSeen": "2026-07-22T18:07:20.422Z",
+    "question": "Will PFK Levski Sofia win on 2026-07-22?",
     "side": "No"
   }
 }
