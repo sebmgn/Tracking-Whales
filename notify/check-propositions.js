@@ -1,10 +1,13 @@
 // Scheduled watcher (runs via GitHub Actions, not the local PC): alerts by
 // email when at least MIN_TRADERS of the 4 watched traders hold the same
 // side of the same real-world bet (matched across Predict.fun and
-// Polymarket the same way positions.html links them) with a combined
-// position value of at least MIN_STAKE. State is persisted to state.json
-// (committed back to the repo each run) so an already-notified bet doesn't
-// re-trigger every 15 minutes — only new qualifying bets send an email.
+// Polymarket the same way positions.html links them), each staking at
+// least MIN_STAKE individually on that side, AND that side outnumbers the
+// opposing side(s) by at least MIN_RATIO to 1 (e.g. 3 vs 1 qualifies, 4 vs 2
+// doesn't — same absolute gap, but a weaker majority). State is persisted
+// to state.json (committed back to the repo each run) so an already-notified
+// bet doesn't re-trigger every 15 minutes — only new qualifying bets send an
+// email.
 "use strict";
 
 const fs = require("fs");
@@ -17,7 +20,8 @@ const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 const NOTIFY_TO = process.env.NOTIFY_TO || GMAIL_USER;
 
 const MIN_TRADERS = 3;
-const MIN_STAKE = 1000;
+const MIN_STAKE = 1000; // per trader, not combined
+const MIN_RATIO = 3; // qualifying side must have >= 3x as many traders as the opposing side(s) combined
 const STATE_FILE = path.join(__dirname, "state.json");
 
 const WATCHED = [
@@ -219,19 +223,37 @@ function findAlerts(positions) {
       });
     });
 
-    Object.values(bySideName).forEach((side) => {
-      const uniqTraders = {};
-      let stake = 0;
-      side.entries.forEach((e) => { uniqTraders[e.trader] = true; stake += e.valueUsd; });
-      const traderCount = Object.keys(uniqTraders).length;
-      if (traderCount >= MIN_TRADERS && stake >= MIN_STAKE) {
-        const key = members.map((m) => m.key).sort().join("+") + "|" + side.name.trim().toLowerCase();
-        alerts.push({
-          key, question: members[0].question, side: side.name,
-          traders: Object.keys(uniqTraders).sort(), stake,
-          urls: members.map((m) => m.marketUrl)
-        });
-      }
+    // Per side: collapse entries into one total stake per trader (a trader
+    // can appear more than once — both platforms, or several positions on
+    // the same side — those all count toward their own MIN_STAKE test), then
+    // keep only traders staking at least MIN_STAKE individually on that side.
+    const sides = Object.values(bySideName).map((side) => {
+      const stakeByTrader = {};
+      side.entries.forEach((e) => { stakeByTrader[e.trader] = (stakeByTrader[e.trader] || 0) + e.valueUsd; });
+      const qualifying = Object.keys(stakeByTrader)
+        .filter((trader) => stakeByTrader[trader] >= MIN_STAKE)
+        .map((trader) => ({ trader, stake: stakeByTrader[trader] }))
+        .sort((a, b) => b.stake - a.stake);
+      return { name: side.name, qualifying };
+    });
+    const totalQualifying = sides.reduce((n, s) => n + s.qualifying.length, 0);
+
+    sides.forEach((side) => {
+      const traderCount = side.qualifying.length;
+      if (traderCount < MIN_TRADERS) return;
+      const opposingCount = totalQualifying - traderCount;
+      // No opposition at all = infinite ratio, always passes; otherwise the
+      // qualifying side must outnumber the rest combined by MIN_RATIO to 1.
+      if (opposingCount > 0 && traderCount / opposingCount < MIN_RATIO) return;
+      const opposingSides = sides.filter((s) => s !== side && s.qualifying.length > 0);
+      const key = members.map((m) => m.key).sort().join("+") + "|" + side.name.trim().toLowerCase();
+      alerts.push({
+        key, question: members[0].question, side: side.name,
+        traders: side.qualifying,
+        stake: side.qualifying.reduce((s, t) => s + t.stake, 0),
+        opposingSides: opposingSides.map((s) => s.name + " (" + s.qualifying.length + ")"),
+        urls: members.map((m) => m.marketUrl)
+      });
     });
   });
   return alerts;
@@ -258,10 +280,13 @@ async function sendEmail(alerts) {
   const subject = alerts.length === 1
     ? "Corrélation Whales : " + alerts[0].question
     : "Corrélation Whales : " + alerts.length + " nouveaux trades suivis";
-  const lines = alerts.map((a) =>
-    `• ${a.question}\n  Camp : ${a.side}\n  Traders (${a.traders.length}) : ${a.traders.join(", ")}\n  Mise combinée : ${fmtUSD(a.stake)}\n  ${a.urls.filter(Boolean).join("\n  ")}`
-  );
-  const text = "Nouvelle(s) proposition(s) : au moins " + MIN_TRADERS + " traders sur le même camp, " + fmtUSD(MIN_STAKE) + "+ engagés.\n\n" + lines.join("\n\n");
+  const lines = alerts.map((a) => {
+    const traderLines = a.traders.map((t) => `    - ${t.trader} : ${fmtUSD(t.stake)}`).join("\n");
+    const oppLine = a.opposingSides.length ? `\n  Camp d'en face : ${a.opposingSides.join(", ")}` : "";
+    return `• ${a.question}\n  Camp : ${a.side} (${a.traders.length} traders)\n${traderLines}${oppLine}\n  Mise combinée : ${fmtUSD(a.stake)}\n  ${a.urls.filter(Boolean).join("\n  ")}`;
+  });
+  const text = "Nouvelle(s) proposition(s) : au moins " + MIN_TRADERS + " traders sur le même camp (chacun " + fmtUSD(MIN_STAKE) +
+    "+), au moins " + MIN_RATIO + "x plus nombreux que le camp d'en face.\n\n" + lines.join("\n\n");
   await withRetry(() => transporter.sendMail({ from: GMAIL_USER, to: NOTIFY_TO, subject, text }), { attempts: 3, delayMs: 2000 });
 }
 

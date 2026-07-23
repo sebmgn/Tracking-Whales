@@ -162,6 +162,26 @@
     padding: 16px 20px 18px;
     box-shadow: 0 1px 4px rgba(51,43,30,.08);
   }
+  /* Value trade cards render as <details> — header + gauges stay visible as
+     the always-shown <summary>, the trader-by-trader breakdown is collapsed
+     behind a click so the list reads compact by default. */
+  details.value-trade-item { padding: 0; cursor: default; }
+  details.value-trade-item > .vt-summary { cursor: pointer; list-style: none; padding: 16px 20px 18px; }
+  details.value-trade-item > .vt-summary::-webkit-details-marker { display: none; }
+  details.value-trade-item[open] > .vt-summary { padding-bottom: 10px; }
+  .vt-summary { display: block; }
+  .vt-summary::after {
+    content: "▾ voir le détail des traders";
+    display: block;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  details.value-trade-item[open] .vt-summary::after { content: "▴ masquer le détail"; }
+  .vt-detail { padding: 0 20px 18px; }
+  /* Explicit rather than relying solely on the browser's native <details>
+     hiding — belt-and-suspenders so this can never render open by default. */
+  details.value-trade-item:not([open]) > .vt-detail { display: none; }
   .vt-top {
     display: flex;
     justify-content: space-between;
@@ -189,6 +209,20 @@
     font-weight: 700;
   }
   .vt-badge { color: var(--gold); font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .vt-badge-group { display: flex; align-items: center; gap: 10px; }
+  .vt-snap-btn {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    color: var(--gold);
+    padding: 4px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .vt-snap-btn:hover { border-color: var(--gold); }
+  .vt-snap-btn:disabled { opacity: .6; cursor: default; }
   .vt-traders { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
   .vt-trader-row {
     position: relative;
@@ -241,52 +275,6 @@
   .vt-linked-note .link-icon { font-size: 12.5px; cursor: help; }
   .vt-linked-note a { color: var(--text-dim); text-decoration: none; }
   .vt-linked-note a:hover { text-decoration: underline; color: var(--accent); }
-  /* Propositions: collapsed by default (native <details>) — the summary IS
-     the proposition; opening it reveals the trader-by-trader "why". */
-  .prop-item { padding: 0; cursor: default; }
-  .prop-item > .prop-summary { cursor: pointer; list-style: none; padding: 16px 20px 18px; }
-  .prop-item > .prop-summary::-webkit-details-marker { display: none; }
-  .prop-item[open] > .prop-summary { padding-bottom: 10px; }
-  .prop-summary {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 10px;
-  }
-  .prop-summary::after {
-    content: "▾ voir la répartition";
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--text-dim);
-    white-space: nowrap;
-  }
-  .prop-item[open] .prop-summary::after { content: "▴ masquer"; }
-  .prop-rank { font-weight: 800; color: var(--text-dim); font-size: 12.5px; }
-  .prop-question { font-weight: 700; font-size: 14.5px; }
-  .prop-why {
-    font-size: 11.5px;
-    font-weight: 700;
-    color: var(--gold);
-    background: color-mix(in srgb, var(--gold) 14%, transparent);
-    border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
-    border-radius: 999px;
-    padding: 2px 10px;
-  }
-  .prop-misc { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .prop-odds { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
-  /* ROI is the number that actually says whether a proposition is worth
-     taking — it gets the boldest, highest-contrast treatment on the card. */
-  .prop-roi-badge {
-    font-size: 14px;
-    font-weight: 800;
-    color: #fff;
-    background: var(--green);
-    border-radius: 999px;
-    padding: 3px 12px;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-  .prop-detail { padding: 0 20px 18px; }
   .vt-trader-row-right { color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .vt-trader-row-right b { color: var(--text); }
   .vt-book-pct { font-size: 9.5px; opacity: .75; margin-left: 6px; }
@@ -424,7 +412,16 @@
     color: var(--gold);
     font-weight: 700;
     margin-bottom: 9px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
   }
+  .match-section-title::after { content: "▾"; font-size: 11px; opacity: .75; }
+  .match-section.collapsed .match-section-title { margin-bottom: 0; }
+  .match-section.collapsed .match-section-title::after { content: "▸"; }
+  .match-section.collapsed .match-filters { display: none; }
   .match-filters { display: flex; flex-wrap: wrap; gap: 8px; }
   .match-chip {
     background: var(--panel);
@@ -564,7 +561,7 @@
   .pnl-sub { font-size: 11.5px; opacity: .85; font-weight: 400; }
   .rank-cell { color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
-  .copy-btn {
+  .copy-btn, .peer-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     color: var(--accent);
@@ -575,10 +572,40 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  .copy-btn:hover { border-color: var(--accent); }
-  .copy-btn.is-open { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .copy-btn:hover, .peer-btn:hover { border-color: var(--accent); }
+  .copy-btn.is-open, .peer-btn.is-open { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* --- Mes Snapshots --- */
+  .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .snap-toolbar .dim { flex: 1; }
+  .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+  .snap-side-btn, .snap-delete-btn {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    padding: 5px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .snap-side-btn:hover, .snap-delete-btn:hover { border-color: var(--accent); }
+  .snap-side-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .snap-delete-btn { color: var(--red); }
+  .snap-stats-wrap { margin-bottom: 16px; }
+  /* Per-trader verdict line under the toolbar, above the frozen card — the
+     card's own trader rows are a static snapshot, so this is the only place
+     the win/loss/nuancé read can live once a winning side is marked. */
+  .snap-trader-results { display: flex; flex-wrap: wrap; gap: 6px 10px; padding: 0 20px 12px; }
+  .snap-trader-result-item { font-size: 11.5px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; }
+  .snap-trader-badge { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+  .snap-badge-win { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+  .snap-badge-loss { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
+  .snap-badge-gain-nuance { color: #2c4f24; background: color-mix(in srgb, #2c4f24 14%, transparent); }
+  .snap-badge-perte-nuance { color: #96481f; background: color-mix(in srgb, #96481f 14%, transparent); }
 
   tr.copy-row.collapsed { display: none; }
+  .peer-panel { padding: 4px 0; }
   .copy-panel {
     background: #f2ece0;
     border: 1px solid var(--panel-border);
@@ -768,6 +795,7 @@
     <button class="tab-btn" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn" data-tab="stats-profiles" type="button">Statistiques profils</button>
     <button class="tab-btn" data-tab="mon-historique" type="button">Mon historique</button>
+    <button class="tab-btn" data-tab="snapshots" type="button">Mes Snapshots</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
@@ -782,11 +810,21 @@
     </div>
     <div class="vt-filters" id="playerFilters">
       <button data-trader="" class="active" type="button">Tous les joueurs</button>
-      <button data-trader="swisstony" type="button">swisstony</button>
       <button data-trader="JJJJ" type="button">JJJJ</button>
       <button data-trader="WsCz" type="button">WsCz</button>
-      <button data-trader="VeryLucky888" type="button">VeryLucky888</button>
       <button data-trader="predict847" type="button">predict847</button>
+      <button data-trader="swisstony" type="button">swisstony</button>
+      <button data-trader="RN1" type="button">RN1</button>
+      <button data-trader="zaizoibele" type="button">zaizoibele</button>
+      <button data-trader="VeryLucky888" type="button">VeryLucky888</button>
+    </div>
+    <div class="vt-filters" id="vtReliableFilters">
+      <button data-min="0" class="active" type="button">Peu importe (fiables)</button>
+      <button data-min="2" type="button">&gt; 2 fiables</button>
+      <button data-min="3" type="button">&gt; 3 fiables</button>
+      <button data-min="4" type="button">&gt; 4 fiables</button>
+      <button data-min="5" type="button">&gt; 5 fiables</button>
+      <button data-min="6" type="button">&gt; 6 fiables</button>
     </div>
     <div class="vt-filters" id="vtStakeFilters">
       <button data-min="0" class="active" type="button">Toutes les mises</button>
@@ -799,15 +837,15 @@
       <button data-sport="football" class="active" type="button">⚽ Football</button>
       <button data-sport="other" type="button">Autres</button>
     </div>
-    <div class="match-section" id="matchSection" style="display:none;">
+    <div class="match-section collapsed" id="matchSection" style="display:none;">
       <div class="match-section-title">Confrontations avec value bets</div>
       <div class="match-filters" id="matchFilters"></div>
     </div>
-    <div class="match-section type-section" id="typeSection" style="display:none;">
+    <div class="match-section type-section collapsed" id="typeSection" style="display:none;">
       <div class="match-section-title">Type de pari</div>
       <div class="match-filters" id="typeFilters"></div>
     </div>
-    <div class="match-section title-section" id="titleSection" style="display:none;">
+    <div class="match-section title-section collapsed" id="titleSection" style="display:none;">
       <div class="match-section-title">Filtrer un pari précis</div>
       <div class="match-filters" id="titleFilters"></div>
     </div>
@@ -818,7 +856,20 @@
 
   <div class="tab-panel" id="tab-propositions">
     <h2 class="section-title">Propositions <span class="count-pill" id="propCount">—</span></h2>
-    <div class="empty-note" style="padding:8px 4px 18px;">Classées selon la conviction des traders suivis : leur accord entre eux (%), leur note de qualité moyenne, et la mise engagée sur le camp qu'ils privilégient. Respecte le filtre sport sélectionné dans l'onglet Value Trades.</div>
+    <div class="empty-note" style="padding:8px 4px 18px;">Le top 5 selon la conviction des traders suivis : leur accord entre eux (%), leur note de qualité moyenne, et la mise engagée sur le camp qu'ils privilégient. Mêmes cartes que Value Trades — clique dessus pour voir le détail des traders. Respecte le filtre sport sélectionné dans l'onglet Value Trades.</div>
+    <div class="vt-filters" id="propStakeFilters">
+      <button data-min="0" class="active" type="button">Toutes les mises</button>
+      <button data-min="1000" type="button">&gt; 1 000 $</button>
+      <button data-min="5000" type="button">&gt; 5 000 $</button>
+      <button data-min="10000" type="button">&gt; 10 000 $</button>
+    </div>
+    <div class="vt-filters" id="propAgreeFilters">
+      <button data-agree="0" class="active" type="button">Tous les accords</button>
+      <button data-agree="2" type="button">2 traders</button>
+      <button data-agree="3" type="button">3 traders</button>
+      <button data-agree="4" type="button">4 traders</button>
+      <button data-agree="5" type="button">&gt; 4 traders</button>
+    </div>
     <div id="propositionsContent" class="value-trades-box">
       <div class="loading-state">Analyse des meilleures positions…</div>
     </div>
@@ -863,6 +914,16 @@
     </div>
   </div>
 
+  <div class="tab-panel" id="tab-snapshots">
+    <h2 class="section-title">Mes Snapshots <span class="count-pill" id="snapCount">—</span></h2>
+    <div class="empty-note" style="padding:8px 4px 18px;">Value trades sauvegardés (bouton 📌 Snapshot sur une carte Value Trades) au moment où tu as misé. Marque le résultat une fois le marché réglé pour repérer les traders qui reviennent le plus souvent dans tes snapshots gagnants. Stocké uniquement dans ce navigateur.</div>
+    <div id="snapDashboard"></div>
+    <div id="snapStatsContent"></div>
+    <div id="snapshotsContent" class="value-trades-box">
+      <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
+    </div>
+  </div>
+
   <footer>Page générée le <span id="genTime"></span> — données live via les API Predict.fun & Polymarket (refresh auto 10s)</footer>
 
 </div>
@@ -895,7 +956,11 @@
     { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c", weight: 7.5 },
     { name: "8a7sh2", platform: "polymarket", address: "0xbdb0e406400033ada6ffe03f8915b5e23873f8ba", weight: 7.5 },
     { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563", weight: 6 },
-    { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 8 }
+    { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 8 },
+    { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", weight: 9 },
+    { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8", weight: 8.5 },
+    { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 7.5 },
+    { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", weight: 9 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -938,6 +1003,10 @@
   var valueTradesContent = document.getElementById("valueTradesContent");
   var vtCountEl = document.getElementById("vtCount");
   var propositionsContent = document.getElementById("propositionsContent");
+  var snapshotsContent = document.getElementById("snapshotsContent");
+  var snapCountEl = document.getElementById("snapCount");
+  var snapStatsContent = document.getElementById("snapStatsContent");
+  var snapDashboard = document.getElementById("snapDashboard");
   var propCountEl = document.getElementById("propCount");
   var tradersContent = document.getElementById("tradersContent");
   var recentTradesContent = document.getElementById("recentTradesContent");
@@ -981,10 +1050,11 @@
   var tradersData = {};      // name -> array of open positions
   var recentMatches = {};    // name -> array of recent match events
   var positionIndex = {};    // key -> { position, trader }
-  var panelState = {};       // key -> { open, stake }
+  var panelState = {};       // key -> { open, stake, peerOpen }
+  var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
   var portfolioValueByName = {}; // trader name -> sum of valueUsd across their tracked open positions
-  var expandedProposals = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list
+  var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades, Propositions, and the peer-panel cards all share this — same card, same key)
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   var vtMinTraders = 5;
@@ -993,7 +1063,14 @@
   var vtSelectedType = null; // bet-type label or null (= all types)
   var vtSelectedTitle = null; // unit key (primary group's key) or null (= all bets)
   var vtSelectedPlayers = []; // trader names currently toggled on (empty = all players)
+  // Independent of vtSelectedPlayers (that one narrows WHICH players must be
+  // in the unit; this one counts how many of the reliable list are, no
+  // matter which) — ">2" etc. means strictly more than that many.
+  var RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "zaizoibele", "VeryLucky888"];
+  var vtMinReliableCount = 0; // 0 = no filter; else the unit needs strictly more than this many reliable-list traders
   var sportFilter = "football"; // "all" | "football" | "other" — shared between Value Trades and Propositions
+  var propMinStake = 0; // 0 = no floor; else the unit's totalStake (both sides combined) needs to be at least this
+  var propMinAgree = 0; // 0 = no filter; else the leading side needs exactly this many traders (5 means "5+", i.e. >4)
 
   // ---------- helpers ----------
   function amountToFloat(amountStr, decimals) {
@@ -1544,7 +1621,7 @@
   // never blended with the other platform's, since live prices legitimately
   // differ between them). showPlatformTag is only turned on for linked units
   // so single-platform cards stay uncluttered.
-  function renderSideBlock(s, g, color, showPlatformTag) {
+  function renderSideBlock(s, g, color, showPlatformTag, maxStakeInUnit) {
     var roi = s.price > 0 ? ((1 - s.price) / s.price * 100) : 0;
     var avgEntry = weightedAvgEntry(s.entries);
     var entryDiffPct = (avgEntry && avgEntry > 0 && s.price > 0) ? ((s.price - avgEntry) / avgEntry * 100) : null;
@@ -1559,9 +1636,14 @@
     var sortedEntries = s.entries.slice().sort(function (a, b) {
       return (WEIGHT_BY_NAME[b.trader] || 0) - (WEIGHT_BY_NAME[a.trader] || 0) || b.stake - a.stake;
     });
-    var maxStake = sortedEntries.length ? sortedEntries[0].stake : 0;
+    // Bar width reads as "how big is this bet vs. the single biggest bettor
+    // on this whole proposition" — scaled against maxStakeInUnit (passed in
+    // from computeUnitCardParts, the true max across every side/outcome),
+    // NOT sortedEntries[0] (that's sorted by rating, not by stake, so the
+    // top-rated trader here can easily be a small bettor — using their stake
+    // as the "max" used to make unrelated small bets render as fully filled).
     var rows = sortedEntries.map(function (e) {
-      var barPct = maxStake > 0 ? (e.stake / maxStake * 100) : 0;
+      var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
       // % of this trader's own tracked book committed to this one position —
       // a quick read on how much conviction/risk they're taking here.
       var pv = portfolioValueByName[e.trader];
@@ -1626,6 +1708,11 @@
       });
     });
   }
+  // How many of the RELIABLE_TRADERS list are in this unit, on any side —
+  // independent of which players (if any) are selected in "tous les joueurs".
+  function reliableTraderCountInUnit(u) {
+    return RELIABLE_TRADERS.reduce(function (n, name) { return n + (unitHasTrader(u, name) ? 1 : 0); }, 0);
+  }
   // A single trader's own stake within a unit, summed across their entries
   // (they can appear on both sides, or on both linked platforms).
   function traderStakeInUnit(u, name) {
@@ -1653,6 +1740,16 @@
 
     var totalTradersAll = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
     var totalStakeAll = mergedSides.reduce(function (s, m) { return s + m.stake; }, 0);
+    // The single largest individual stake across EVERY side of this
+    // proposition (Yes+No, over+under, ...) — the per-trader-row gauges in
+    // each side-block are scaled against this one shared number, so "fully
+    // filled" always means "the biggest bettor on this whole bet", not just
+    // the biggest within their own side.
+    var maxStakeInUnit = mergedSides.reduce(function (max, m) {
+      return m.items.reduce(function (mx, it) {
+        return it.s.entries.reduce(function (mx2, e) { return e.stake > mx2 ? e.stake : mx2; }, mx);
+      }, max);
+    }, 0);
 
     // The gauges use a plain leading=green / rest=red reading regardless of
     // outcome name — with 4 possible "other" colors the two segments could
@@ -1679,7 +1776,7 @@
 
     var sideGroupsHtml = mergedSides.map(function (m) {
       var color = sideColorFor(m.name);
-      var blocksHtml = m.items.map(function (it) { return renderSideBlock(it.s, it.g, color, linked); }).join("");
+      var blocksHtml = m.items.map(function (it) { return renderSideBlock(it.s, it.g, color, linked, maxStakeInUnit); }).join("");
       var paired = m.items.length > 1;
       return '<div class="vt-outcome-group' + (paired ? ' paired' : '') + '">' + blocksHtml + '</div>';
     }).join("");
@@ -1708,30 +1805,234 @@
         (secondary.question !== primary.question ? ' — <a href="' + secondary.marketUrl + '" target="_blank" rel="noopener">voir le libellé ' + esc(PLATFORMS[secondary.platform].label) + '</a>' : '') +
       '</div>' : "";
 
+    var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌 Snapshot</button>';
     var headerHtml =
       '<div class="vt-top">' +
         '<span><span class="vt-question">' + esc(primary.question) + '</span>' + platformBadge(primary.platform) + (linked ? platformBadge(secondary.platform) : '') + leaderBadge + '</span>' +
-        '<span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' +
+        '<span class="vt-badge-group"><span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + '</span>' +
       '</div>' +
       linkedNote;
-    var bodyHtml =
+    // Kept separate (not just one bodyHtml) so renderUnitCard can put the
+    // gauges in the always-visible summary and the trader-by-trader
+    // breakdown behind a click, while Propositions/Snapshots — which don't
+    // want that split — keep using the combined bodyHtml unchanged.
+    var balanceHtml =
       '<div class="balance-group">' +
         '<div class="balance-row"><span class="balance-label">Traders</span><div class="balance-bar bar-traders">' + traderSegments + '</div></div>' +
         '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
-      '</div>' +
-      '<div class="vt-side-grid">' + sideGroupsHtml + '</div>';
+      '</div>';
+    var sideGridHtml = '<div class="vt-side-grid">' + sideGroupsHtml + '</div>';
+    var bodyHtml = balanceHtml + sideGridHtml;
 
     return {
       primary: primary, secondary: secondary, linked: linked,
       leaderColor: leaderColor, leaderName: leaderName,
       leaderPriceText: leaderPriceText, leaderRoi: leaderRoi,
-      headerHtml: headerHtml, bodyHtml: bodyHtml
+      headerHtml: headerHtml, bodyHtml: bodyHtml,
+      balanceHtml: balanceHtml, sideGridHtml: sideGridHtml
     };
   }
 
+  // Collapsed by default (only header + gauges show) — clicking the card
+  // reveals the trader-by-trader breakdown. Shared by Value Trades,
+  // Propositions (top 5) and the "Autres traders" peer panel.
   function renderUnitCard(u) {
     var parts = computeUnitCardParts(u);
-    return '<div class="value-trade-item" style="border-left-color:' + parts.leaderColor + '">' + parts.headerHtml + parts.bodyHtml + '</div>';
+    var key = u.members[0].key;
+    return '<details class="value-trade-item" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
+      ' style="border-left-color:' + parts.leaderColor + '">' +
+      '<summary class="vt-summary">' + parts.headerHtml + parts.balanceHtml + '</summary>' +
+      '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
+    '</details>';
+  }
+
+  // ---------- Mes Snapshots (localStorage, this browser only) ----------
+  // Lets the user pin a Value Trade at the moment they bet on it — the card
+  // is frozen as-is (cardHtml) so it stays reviewable after the market
+  // resolves or a trader closes out and it drops out of the live feed. The
+  // point is spotting which traders' presence correlates with wins, so each
+  // snapshot also keeps a plain trader list (traderNames) for the stats table.
+  var SNAPSHOTS_KEY = "vtSnapshots";
+  function loadSnapshots() {
+    try { return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveSnapshotsToStorage(list) {
+    try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
+  }
+  function buildSnapshotFromUnit(u) {
+    var parts = computeUnitCardParts(u);
+    var mergedSides = mergeUnitSides(u);
+    var sidesData = mergedSides.map(function (m) {
+      var traders = [];
+      m.items.forEach(function (it) {
+        it.s.entries.forEach(function (e) { traders.push({ trader: e.trader, stake: e.stake, avgPrice: e.avgPrice }); });
+      });
+      traders.sort(function (a, b) { return b.stake - a.stake; });
+      return { name: m.name, traderCount: m.traderCount, stake: m.stake, traders: traders };
+    });
+    var traderNames = [];
+    sidesData.forEach(function (s) {
+      s.traders.forEach(function (t) { if (traderNames.indexOf(t.trader) === -1) traderNames.push(t.trader); });
+    });
+    return {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      savedAt: new Date().toISOString(),
+      question: u.members[0].question,
+      leaderName: parts.leaderName,
+      traderCount: u.traderCount,
+      totalStake: u.totalStake,
+      sides: sidesData,
+      traderNames: traderNames,
+      // Strip the live 📌 button out of the frozen copy — re-clicking it from
+      // inside Mes Snapshots would just re-save the same trade (or silently
+      // no-op once the market's gone from the live feed), neither useful here.
+      cardHtml: (parts.headerHtml + parts.bodyHtml).replace(/<button[^>]*class="vt-snap-btn"[\s\S]*?<\/button>/, ""),
+      winningSide: null // side name (e.g. "No") once marked, or null = result not known yet
+    };
+  }
+  function saveSnapshot(u) {
+    var list = loadSnapshots();
+    list.unshift(buildSnapshotFromUnit(u));
+    saveSnapshotsToStorage(list);
+    renderSnapshots();
+  }
+  // A trader's stake + estimated profit on ONE side, summed across every
+  // entry they have there (they can show up more than once — e.g. linked
+  // across both platforms — each at its own avgPrice). Profit assumes a
+  // winning share settles at $1: payout = stake/avgPrice, profit = payout - stake.
+  function traderStakeAndProfitOnSide(side, traderName) {
+    var stake = 0, profit = 0;
+    side.traders.forEach(function (t) {
+      if (t.trader !== traderName) return;
+      stake += t.stake;
+      if (t.avgPrice > 0) profit += t.stake * (1 / t.avgPrice - 1);
+    });
+    return { stake: stake, profit: profit };
+  }
+  // Per-trader verdict for one snapshot, once its winning side is marked:
+  // "win"/"loss" if they were only on one side, "gain_nuance"/"perte_nuance"
+  // if they hedged both sides and the net of (profit on the winning side)
+  // minus (stake lost on the other side(s)) comes out positive or negative.
+  function classifyTraderInSnapshot(snap, traderName) {
+    if (!snap.winningSide) return "pending";
+    var net = 0, onWin = false, onLose = false;
+    snap.sides.forEach(function (side) {
+      var r = traderStakeAndProfitOnSide(side, traderName);
+      if (r.stake <= 0) return;
+      if (side.name === snap.winningSide) { onWin = true; net += r.profit; }
+      else { onLose = true; net -= r.stake; }
+    });
+    if (!onWin && !onLose) return "pending";
+    if (onWin && onLose) return net >= 0 ? "gain_nuance" : "perte_nuance";
+    return onWin ? "win" : "loss";
+  }
+  function traderResultBadge(cls) {
+    if (cls === "win") return '<span class="snap-trader-badge snap-badge-win">✅ Gagné</span>';
+    if (cls === "loss") return '<span class="snap-trader-badge snap-badge-loss">❌ Perdu</span>';
+    if (cls === "gain_nuance") return '<span class="snap-trader-badge snap-badge-gain-nuance">➕ Gain nuancé</span>';
+    if (cls === "perte_nuance") return '<span class="snap-trader-badge snap-badge-perte-nuance">➖ Perte nuancée</span>';
+    return "";
+  }
+  // Overall results dashboard — same stat-tile look as Mon historique.
+  // Marking a snapshot's winning side (renderSnapshots below) feeds straight
+  // into this, and into the per-trader table (renderSnapStats) — both just
+  // aggregate classifyTraderInSnapshot across every trader in every snapshot.
+  function renderSnapDashboard(list) {
+    if (!list.length) { snapDashboard.innerHTML = ""; return; }
+    var decided = list.filter(function (s) { return !!s.winningSide; }).length;
+    var pending = list.length - decided;
+    var win = 0, loss = 0, gainNuance = 0, perteNuance = 0;
+    list.forEach(function (snap) {
+      (snap.traderNames || []).forEach(function (name) {
+        var cls = classifyTraderInSnapshot(snap, name);
+        if (cls === "win") win++;
+        else if (cls === "loss") loss++;
+        else if (cls === "gain_nuance") gainNuance++;
+        else if (cls === "perte_nuance") perteNuance++;
+      });
+    });
+    var totalDecided = win + loss + gainNuance + perteNuance;
+    var winRate = totalDecided > 0 ? ((win + gainNuance) / totalDecided * 100) : null;
+    var tiles = [
+      { label: "Snapshots", value: String(list.length) },
+      { label: "Résultat connu / En attente", value: decided + " / " + pending },
+      { label: "Gagné / Perdu", value: win + " / " + loss, cls: win >= loss ? "pos" : "neg" },
+      { label: "Gain nuancé / Perte nuancée", value: gainNuance + " / " + perteNuance, cls: gainNuance >= perteNuance ? "pos" : "neg" },
+      { label: "Taux de réussite global", value: winRate == null ? "—" : winRate.toFixed(0) + "%", cls: winRate == null ? "" : (winRate >= 50 ? "pos" : "neg") }
+    ];
+    snapDashboard.innerHTML = '<div class="stat-grid">' + tiles.map(function (t) {
+      return '<div class="stat-tile"><div class="stat-label">' + esc(t.label) + '</div>' +
+        '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div></div>';
+    }).join("") + '</div>';
+  }
+  // Per-trader appearance count + win/loss/nuancé breakdown across all
+  // snapshots — the "swisstony est dans mes snapshots gagnants" pattern the
+  // user wants to spot is just this table sorted by how often a name shows up.
+  function renderSnapStats(list) {
+    var byTrader = {};
+    list.forEach(function (snap) {
+      (snap.traderNames || []).forEach(function (name) {
+        if (!byTrader[name]) byTrader[name] = { total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0 };
+        byTrader[name].total++;
+        var cls = classifyTraderInSnapshot(snap, name);
+        if (cls === "win") byTrader[name].win++;
+        else if (cls === "loss") byTrader[name].loss++;
+        else if (cls === "gain_nuance") byTrader[name].gainNuance++;
+        else if (cls === "perte_nuance") byTrader[name].perteNuance++;
+      });
+    });
+    var names = Object.keys(byTrader).sort(function (a, b) { return byTrader[b].total - byTrader[a].total; });
+    if (!names.length) { snapStatsContent.innerHTML = ""; return; }
+    var rows = names.map(function (n) {
+      var st = byTrader[n];
+      var decided = st.win + st.loss + st.gainNuance + st.perteNuance;
+      var wr = decided > 0 ? ((st.win + st.gainNuance) / decided * 100) : null;
+      return '<tr><td>' + esc(n) + platformBadge(PLATFORM_BY_NAME[n]) + weightBadge(WEIGHT_BY_NAME[n]) + '</td>' +
+        '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
+        '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
+        '<td class="num">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</td></tr>';
+    }).join("");
+    snapStatsContent.innerHTML = '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' +
+      '<th>Trader</th><th class="num">Snapshots</th><th class="num">Gagnés</th><th class="num">Perdus</th>' +
+      '<th class="num">Gain nuancé</th><th class="num">Perte nuancée</th><th class="num">% réussite</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+  function renderSnapshots() {
+    var list = loadSnapshots();
+    snapCountEl.textContent = list.length + ' snapshot' + (list.length > 1 ? 's' : '');
+    renderSnapDashboard(list);
+    renderSnapStats(list);
+    if (!list.length) {
+      snapshotsContent.innerHTML = '<div class="empty-note">Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.</div>';
+      return;
+    }
+    snapshotsContent.innerHTML = list.map(function (snap) {
+      var d = new Date(snap.savedAt);
+      var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      // Border stays tied to which side was leading when saved (not to the
+      // later result) — a snapshot can hold traders on both sides, so there
+      // is no single win/loss color for the card as a whole anymore.
+      var borderColor = snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)";
+      var sideButtonsHtml = (snap.sides || []).map(function (side) {
+        var isWinner = snap.winningSide === side.name;
+        return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
+      }).join("");
+      var resultsHtml = snap.winningSide ? '<div class="snap-trader-results">' +
+        (snap.traderNames || []).map(function (name) {
+          return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
+        }).join("") +
+      '</div>' : '';
+      return '<div class="value-trade-item snap-item" style="border-left-color:' + borderColor + '">' +
+        '<div class="snap-toolbar">' +
+          '<span class="dim">Sauvegardé le ' + esc(dateLabel) + '</span>' +
+          '<span class="snap-side-label">Camp gagnant :</span>' +
+          sideButtonsHtml +
+          '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '">🗑 Supprimer</button>' +
+        '</div>' +
+        resultsHtml +
+        snap.cardHtml +
+      '</div>';
+    }).join("");
   }
 
   function renderValueTrades() {
@@ -1741,6 +2042,7 @@
     var traderFiltered = allUnits.filter(function (u) {
       if (u.traderCount < vtMinTraders) return false;
       if (vtSelectedPlayers.length && !vtSelectedPlayers.every(function (name) { return unitHasTrader(u, name); })) return false;
+      if (vtMinReliableCount > 0 && reliableTraderCountInUnit(u) <= vtMinReliableCount) return false;
       if (vtMinStake > 0) {
         if (vtSelectedPlayers.length) {
           if (!vtSelectedPlayers.every(function (name) { return traderStakeInUnit(u, name) >= vtMinStake; })) return false;
@@ -1856,6 +2158,7 @@
     var selectedLabel = vtSelectedMatch ? matches.filter(function (m) { return m.key === vtSelectedMatch; })[0] : null;
     vtCountEl.textContent = finalUnits.length + " marché" + (finalUnits.length > 1 ? "s" : "") +
       " avec ≥" + vtMinTraders + " traders (sur " + allUnits.length + " au total)" +
+      (vtMinReliableCount > 0 ? " · > " + vtMinReliableCount + " traders fiables" : "") +
       (vtMinStake > 0 ? " · mise " + (vtSelectedPlayers.length ? "de chaque joueur sélectionné " : "") + "≥ " + fmtUSD(vtMinStake) : "") +
       (selectedLabel ? " — " + selectedLabel.label : "");
     if (!finalUnits.length) {
@@ -1882,12 +2185,18 @@
         if (sportFilter === "football" && !football) return false;
         if (sportFilter === "other" && football) return false;
       }
+      if (u.totalStake < propMinStake) return false;
       return true;
     });
     var scored = eligible.map(function (u) {
       var mergedSides = mergeUnitSides(u);
       var leader = mergedSides[0];
       if (!leader) return null;
+      // "traders en accord" = how many traders sit on the leading/consensus
+      // side of THIS bet — propMinAgree of 5 means the ">4" bucket (5+).
+      if (propMinAgree > 0) {
+        if (propMinAgree >= 5 ? leader.traderCount < 5 : leader.traderCount !== propMinAgree) return null;
+      }
       var traderSet = {};
       leader.items.forEach(function (it) { it.s.entries.forEach(function (e) { traderSet[e.trader] = true; }); });
       var names = Object.keys(traderSet);
@@ -1897,57 +2206,18 @@
       return { u: u, score: score, consensus: consensus, avgWeight: avgWeight, leaderName: leader.name, leaderStake: leader.stake };
     }).filter(Boolean);
     scored.sort(function (a, b) { return b.score - a.score; });
-    var top = scored.slice(0, 20);
-    propCountEl.textContent = top.length + " proposition" + (top.length > 1 ? "s" : "");
+    // Top 5 only — Propositions is "the strongest correlations", not a full
+    // catalog like Value Trades. Cards render exactly like Value Trades
+    // (renderUnitCard: header + gauge visible, trader breakdown collapsed).
+    var top = scored.slice(0, 5);
+    propCountEl.textContent = top.length + " proposition" + (top.length > 1 ? "s" : "") +
+      (propMinStake > 0 ? " · mise totale ≥ " + fmtUSD(propMinStake) : "") +
+      (propMinAgree > 0 ? " · " + (propMinAgree >= 5 ? "> 4" : propMinAgree) + " traders en accord" : "");
     if (!top.length) {
       propositionsContent.innerHTML = '<div class="empty-note">Aucune proposition ne correspond à ce filtre pour le moment.</div>';
       return;
     }
-    propositionsContent.innerHTML = top.map(function (item, i) {
-      var parts = computeUnitCardParts(item.u);
-      var why = proposalWhy(item);
-      var key = item.u.members[0].key;
-      // ROI gets its own bold, high-contrast badge — the odds ("Cote") stay
-      // small/secondary next to it since ROI is the number that actually
-      // answers "is this worth taking".
-      var oddsHtml = parts.leaderPriceText ? '<span class="prop-odds">Cote ' + parts.leaderPriceText + '</span>' : '';
-      var roiHtml = parts.leaderRoi != null ? '<span class="prop-roi-badge">ROI ' + fmtPct(parts.leaderRoi) + '</span>' : '';
-      var summary =
-        '<summary class="prop-summary">' +
-          '<span class="prop-rank">#' + (i + 1) + '</span>' +
-          '<span class="prop-question">' + esc(parts.primary.question) + '</span>' +
-          platformBadge(parts.primary.platform) + (parts.linked ? platformBadge(parts.secondary.platform) : '') +
-          '<span class="vt-leader" style="background:' + parts.leaderColor + '">→ ' + esc(parts.leaderName) + '</span>' +
-          oddsHtml + roiHtml +
-          '<span class="prop-why">' + esc(why) + '</span>' +
-          '<span class="prop-misc">' + item.u.traderCount + ' traders · ' + fmtUSD(item.u.totalStake) + '</span>' +
-        '</summary>';
-      // expandedProposals survives the auto-refresh rebuilding this HTML every
-      // 10s — otherwise a card the user just opened would silently re-collapse.
-      return '<details class="value-trade-item prop-item" data-key="' + esc(key) + '"' + (expandedProposals[key] ? " open" : "") +
-        ' style="border-left-color:' + parts.leaderColor + '">' +
-        summary +
-        '<div class="prop-detail">' + parts.bodyHtml + '</div>' +
-      '</details>';
-    }).join("");
-  }
-  // A 2-4 word gut-check on WHY this scored well. Consensus isn't part of
-  // this — every proposition here already has strong consensus by
-  // definition (that's how they made the list), so calling it out on every
-  // single card said nothing. This picks whichever OTHER signal (track
-  // record or size of the bet) is most extreme instead.
-  function proposalWhy(item) {
-    var bigStake = item.leaderStake >= 500000;
-    var midStake = item.leaderStake >= 100000;
-    var topWeight = item.avgWeight >= 8.5;
-    var goodWeight = item.avgWeight >= 7;
-    if (bigStake && topWeight) return "Grosse mise, traders très fiables";
-    if (bigStake) return "Mise énorme engagée";
-    if (topWeight) return "Traders très fiables";
-    if (midStake && goodWeight) return "Bonne mise, traders fiables";
-    if (midStake) return "Grosse mise engagée";
-    if (goodWeight) return "Traders fiables";
-    return "Bon compromis global";
+    propositionsContent.innerHTML = top.map(function (item) { return renderUnitCard(item.u); }).join("");
   }
 
   // ---------- recent trades ----------
@@ -2041,6 +2311,14 @@
       var side = p.outcomeName;
       var isOpen = panelState[key].open;
       var sid = safeId(key);
+      // "Autres traders" — same cross-trader unit Value Trades computes
+      // (see unitByMarketKey, built once per refresh cycle in renderAll),
+      // so one trader's own position row can reveal who else among the
+      // tracked traders is on this exact market, with the same gauges.
+      var unit = unitByMarketKey[p.marketKey];
+      var peerOpen = !!panelState[key].peerOpen;
+      var peerCount = unit ? unit.traderCount : 1;
+      var peerBtnLabel = peerOpen ? "Fermer" : ("Autres traders" + (peerCount > 1 ? " (" + peerCount + ")" : ""));
 
       var mainRow =
         '<tr class="data-row">' +
@@ -2050,7 +2328,10 @@
           '<td class="num col-avg">' + fmtCents(avgPrice) + ' <span class="price-arrow">→</span> ' + fmtCents(curPrice) + '</td>' +
           '<td class="num">' + fmtUSD(value) + '</td>' +
           '<td class="num ' + pnlClass + '">' + fmtUSD(pnl) + '<div class="pnl-sub">' + fmtPct(pnlPct) + '</div></td>' +
-          '<td class="num"><button type="button" class="copy-btn' + (isOpen ? ' is-open' : '') + '" data-key="' + esc(key) + '">' + (isOpen ? 'Fermer' : 'Copier') + '</button></td>' +
+          '<td class="num">' +
+            '<button type="button" class="copy-btn' + (isOpen ? ' is-open' : '') + '" data-key="' + esc(key) + '">' + (isOpen ? 'Fermer' : 'Copier') + '</button> ' +
+            '<button type="button" class="peer-btn' + (peerOpen ? ' is-open' : '') + '" data-key="' + esc(key) + '">' + peerBtnLabel + '</button>' +
+          '</td>' +
         '</tr>';
 
       var calc = calcTrade(panelState[key].stake, curPrice, p.feeRateBps);
@@ -2076,7 +2357,14 @@
           '</td>' +
         '</tr>';
 
-      return mainRow + panelRow;
+      var peerPanelHtml = peerOpen ?
+        (unit ? renderUnitCard(unit) : '<div class="empty-state">Marché introuvable parmi les positions suivies actuellement.</div>') : '';
+      var peerRow =
+        '<tr class="copy-row peer-row' + (peerOpen ? '' : ' collapsed') + '" data-peer-key="' + esc(key) + '">' +
+          '<td colspan="7"><div class="peer-panel">' + peerPanelHtml + '</div></td>' +
+        '</tr>';
+
+      return mainRow + panelRow + peerRow;
     }).join("");
 
     var table = document.createElement("table");
@@ -2126,6 +2414,19 @@
         if (row) row.classList.toggle("collapsed", !panelState[key].open);
         btn.classList.toggle("is-open", panelState[key].open);
         btn.textContent = panelState[key].open ? "Fermer" : "Copier";
+      });
+    });
+    // Unlike .copy-btn's panel (always rendered, just hidden via CSS), the
+    // peer-panel's card HTML is only baked in when open — rendering a full
+    // Value-Trades-style card for every single position row regardless of
+    // open state would bloat the DOM for no reason — so toggling needs a
+    // real re-render to compute and inject that HTML, not just a CSS flip.
+    tradersContent.querySelectorAll(".peer-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var key = btn.getAttribute("data-key");
+        if (!panelState[key]) panelState[key] = { open: false, stake: 100 };
+        panelState[key].peerOpen = !panelState[key].peerOpen;
+        renderTraderSections();
       });
     });
     tradersContent.querySelectorAll(".stake-input").forEach(function (inp) {
@@ -2183,16 +2484,30 @@
     TRADERS.forEach(function (t) {
       portfolioValueByName[t.name] = (tradersData[t.name] || []).reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
     });
+    // Same grouping Value Trades uses, keyed by market so a single position
+    // in "Trades par profils" can look up "who else is on this market" —
+    // see the "Autres traders" toggle in renderTraderSection.
+    var groupsForPeers = computeMarketGroups();
+    linkAcrossPlatforms(groupsForPeers);
+    var unitsForPeers = buildRenderUnits(groupsForPeers);
+    unitByMarketKey = {};
+    unitsForPeers.forEach(function (u) {
+      u.members.forEach(function (m) { unitByMarketKey[m.key] = u; });
+    });
     renderValueTrades();
     renderPropositions();
     renderRecentTrades();
+    renderTraderSections();
+    renderStatsProfiles();
+  }
+
+  function renderTraderSections() {
     tradersContent.innerHTML = "";
     positionIndex = {};
     TRADERS_BY_WEIGHT.forEach(function (t) {
       tradersContent.appendChild(renderTraderSection(t));
     });
     wireInteractions();
-    renderStatsProfiles();
   }
 
   // ---------- Mon historique (single wallet, own trade history + PnL chart) ----------
@@ -2569,6 +2884,15 @@
       renderValueTrades();
     });
   });
+  var vtReliableFiltersEl = document.getElementById("vtReliableFilters");
+  vtReliableFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      vtReliableFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      vtMinReliableCount = parseFloat(btn.getAttribute("data-min")) || 0;
+      renderValueTrades();
+    });
+  });
   var vtStakeFiltersEl = document.getElementById("vtStakeFilters");
   vtStakeFiltersEl.querySelectorAll("button").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -2606,6 +2930,24 @@
       sportFilter = btn.getAttribute("data-sport") || "all";
       renderValueTrades();
       renderPropositions(); // shared filter — keep both tabs in sync
+    });
+  });
+  var propStakeFiltersEl = document.getElementById("propStakeFilters");
+  propStakeFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      propStakeFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      propMinStake = parseFloat(btn.getAttribute("data-min")) || 0;
+      renderPropositions();
+    });
+  });
+  var propAgreeFiltersEl = document.getElementById("propAgreeFilters");
+  propAgreeFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      propAgreeFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      propMinAgree = parseFloat(btn.getAttribute("data-agree")) || 0;
+      renderPropositions();
     });
   });
   // Top-5-by-weight player filter for "Trades récents" — multi-select (OR):
@@ -2706,13 +3048,27 @@
   });
   refreshBtn.addEventListener("click", function () { refresh(true); });
   // "toggle" doesn't bubble, but capturing phase still sees it on an
-  // ancestor — one listener here survives every innerHTML rebuild of
-  // propositionsContent, unlike a listener attached to the <details> itself.
-  propositionsContent.addEventListener("toggle", function (e) {
-    if (e.target && e.target.classList.contains("prop-item")) {
-      expandedProposals[e.target.getAttribute("data-key")] = e.target.open;
+  // ancestor — one listener per container survives every innerHTML rebuild,
+  // unlike a listener attached to the <details> itself. All three containers
+  // can render the same value-trade-item card (Value Trades, Propositions'
+  // top 5, and the "Autres traders" peer panel), so they share one tracker.
+  function trackValueTradeToggle(e) {
+    if (e.target && e.target.classList.contains("value-trade-item")) {
+      expandedValueTrades[e.target.getAttribute("data-key")] = e.target.open;
     }
-  }, true);
+  }
+  valueTradesContent.addEventListener("toggle", trackValueTradeToggle, true);
+  propositionsContent.addEventListener("toggle", trackValueTradeToggle, true);
+  tradersContent.addEventListener("toggle", trackValueTradeToggle, true);
+  // Confrontations / Type de pari / Filtrer un pari précis start collapsed
+  // (see the "collapsed" class in the HTML) — these title bars are static
+  // (only their chip content inside gets rebuilt each cycle), so one listener
+  // bound here keeps working across every refresh.
+  document.querySelectorAll(".match-section-title").forEach(function (title) {
+    title.addEventListener("click", function () {
+      title.closest(".match-section").classList.toggle("collapsed");
+    });
+  });
   collapseAllBtn.addEventListener("click", function () {
     var anyExpanded = TRADERS.some(function (t) { return !traderCollapsed[t.name]; });
     TRADERS.forEach(function (t) { traderCollapsed[t.name] = anyExpanded; });
@@ -2720,6 +3076,46 @@
     renderAll();
   });
 
+  // Delegated on the document (not a specific container) because the 📌
+  // Snapshot button is rendered wherever a value-trade-item card appears —
+  // Value Trades, and the "Autres traders" peer panel in Trades par profils —
+  // and both get their innerHTML fully rebuilt every refresh cycle.
+  document.addEventListener("click", function (e) {
+    var snapBtn = e.target.closest ? e.target.closest(".vt-snap-btn") : null;
+    if (snapBtn) {
+      // In Propositions the button sits inside a <summary> — without this,
+      // the click's default action would also toggle the parent <details>.
+      e.preventDefault();
+      e.stopPropagation();
+      var unitKey = snapBtn.getAttribute("data-snap-key");
+      var unit = unitByMarketKey[unitKey];
+      if (unit) {
+        saveSnapshot(unit);
+        snapBtn.textContent = "✅ Sauvegardé";
+        snapBtn.disabled = true;
+      }
+      return;
+    }
+    var sideBtn = e.target.closest ? e.target.closest(".snap-side-btn") : null;
+    if (sideBtn) {
+      var sid = sideBtn.getAttribute("data-snap-id");
+      var side = sideBtn.getAttribute("data-side");
+      var slist = loadSnapshots();
+      slist.forEach(function (s) { if (s.id === sid) s.winningSide = (s.winningSide === side ? null : side); });
+      saveSnapshotsToStorage(slist);
+      renderSnapshots();
+      return;
+    }
+    var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
+    if (delBtn) {
+      var did = delBtn.getAttribute("data-snap-id");
+      saveSnapshotsToStorage(loadSnapshots().filter(function (s) { return s.id !== did; }));
+      renderSnapshots();
+      return;
+    }
+  });
+
+  renderSnapshots();
   refresh(true);
   setInterval(tick, 1000);
 })();
