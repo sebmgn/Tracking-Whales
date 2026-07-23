@@ -1,14 +1,4 @@
 {
-  "polymarket|0x61fc3b479c8f00a79da7ab93c45f3ef9d5d7bec59c6692548e928704541a15b5+predict|817580|san diego padres": {
-    "firstSeen": "2026-07-23T17:23:43.754Z",
-    "question": "San Diego Padres vs. Atlanta Braves",
-    "side": "San Diego Padres"
-  },
-  "polymarket|0xd2bce75002f048c0eaec11d15303ee8cbfbe34888d9450ed31cb34e2131664f3+predict|831147|no": {
-    "firstSeen": "2026-07-23T15:56:41.487Z",
-    "question": "Will Hibernian FC win on 2026-07-23?",
-    "side": "No"
-  },
   "polymarket|0xd6df30720280e963b4294c71f0ab72b85c1426bfdacdc3223d2a64002308efca+predict|831032|no": {
     "firstSeen": "2026-07-23T17:23:43.754Z",
     "question": "Will Zirə FK win on 2026-07-23?",
