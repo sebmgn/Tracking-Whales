@@ -1,17 +1,1 @@
-{
-  "polymarket|0x924a2a21d342c670f6deb0eff655355af3a9f36e5258d0a9fdd23b279ff0c5c0+predict|831293|no": {
-    "firstSeen": "2026-07-23T20:11:40.555Z",
-    "question": "Will Nõmme Kalju FC win on 2026-07-23?",
-    "side": "No"
-  },
-  "polymarket|0x3d80f84c21882b4725aa252beb5dc66ff19c8e3bebcebc2884166af2bafb40d6+predict|847213|no": {
-    "firstSeen": "2026-07-23T20:11:40.555Z",
-    "question": "Will Derry City FC win on 2026-07-23?",
-    "side": "No"
-  },
-  "polymarket|0x31c613582e535ef46b0d90fe73edc3811ec516012a175f325c0c1fe703d6b582+predict|831153|yes": {
-    "firstSeen": "2026-07-23T20:11:40.555Z",
-    "question": "Will FC Koper win on 2026-07-23?",
-    "side": "Yes"
-  }
-}
+{}
