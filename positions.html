@@ -604,6 +604,57 @@
   .snap-badge-gain-nuance { color: #2c4f24; background: color-mix(in srgb, #2c4f24 14%, transparent); }
   .snap-badge-perte-nuance { color: #96481f; background: color-mix(in srgb, #96481f 14%, transparent); }
 
+  .snap-sync-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 4px 14px; }
+  .snap-sync-status { font-size: 12px; font-weight: 700; color: var(--text-dim); }
+  .snap-sync-status.snap-sync-synced { color: var(--green); }
+  .snap-sync-status.snap-sync-error { color: var(--red); }
+  .snap-sync-status.snap-sync-syncing { color: var(--accent); }
+  .snap-sync-link {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0;
+  }
+  .snap-sync-link:hover { text-decoration: underline; }
+  .snap-sync-setup {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin: 0 4px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .snap-sync-setup input[type="password"] {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 7px 9px;
+    border-radius: 6px;
+    font-size: 13px;
+    flex: 1 1 320px;
+    min-width: 220px;
+  }
+  .snap-sync-setup input[type="password"]:focus { outline: none; border-color: var(--accent); }
+  .snap-sync-setup button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .snap-sync-setup #snapSyncTokenClear { background: var(--panel-border); color: var(--text); }
+  .snap-sync-setup .empty-note { flex: 1 1 100%; }
+
   tr.copy-row.collapsed { display: none; }
   .peer-panel { padding: 4px 0; }
   .copy-panel {
@@ -916,7 +967,18 @@
 
   <div class="tab-panel" id="tab-snapshots">
     <h2 class="section-title">Mes Snapshots <span class="count-pill" id="snapCount">—</span></h2>
-    <div class="empty-note" style="padding:8px 4px 18px;">Value trades sauvegardés (bouton 📌 Snapshot sur une carte Value Trades) au moment où tu as misé. Marque le résultat une fois le marché réglé pour repérer les traders qui reviennent le plus souvent dans tes snapshots gagnants. Stocké uniquement dans ce navigateur.</div>
+    <div class="empty-note" style="padding:8px 4px 10px;">Value trades sauvegardés (bouton 📌 Snapshot sur une carte Value Trades) au moment où tu as misé. Marque le résultat une fois le marché réglé pour repérer les traders qui reviennent le plus souvent dans tes snapshots gagnants.</div>
+    <div class="snap-sync-bar">
+      <span id="snapSyncStatus" class="snap-sync-status">—</span>
+      <button type="button" id="snapSyncRefreshBtn" class="snap-sync-link" title="Resynchroniser maintenant">🔄 Resynchro</button>
+      <button type="button" id="snapSyncConfigBtn" class="snap-sync-link">⚙️ Config. synchro</button>
+    </div>
+    <div id="snapSyncSetup" class="snap-sync-setup" style="display:none;">
+      <input type="password" id="snapSyncTokenInput" placeholder="Token GitHub (fine-grained, repo Tracking-Whales, permission Contents: Read and write)" autocomplete="off" />
+      <button type="button" id="snapSyncTokenSave">Enregistrer</button>
+      <button type="button" id="snapSyncTokenClear">Déconnecter</button>
+      <div class="empty-note" style="padding:6px 0 0;">Crée un <em>fine-grained personal access token</em> sur github.com → Settings → Developer settings, limité au repo <code>Tracking-Whales</code>, avec uniquement la permission <strong>Contents: Read and write</strong>. À faire une fois par appareil/navigateur. Le token reste stocké localement dans ce navigateur — jamais écrit dans le code de la page, jamais envoyé ailleurs qu'à l'API GitHub. Connecte d'abord l'appareil qui a la liste de snapshots à jour (il servira de point de départ) ; les autres appareils s'aligneront dessus au premier lien.</div>
+    </div>
     <div id="snapDashboard"></div>
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
@@ -986,6 +1048,14 @@
     return '<span class="plat-badge" style="color:' + info.color + ';background:' + info.color + '22;border-color:' + info.color + '55" title="' + info.label + '">' + info.short + '</span>';
   }
   var API_KEY = "364ab494-f7cc-4d69-872b-8a2f991abd86";
+  // Snapshots are synced to this repo (via the GitHub Contents API) so they
+  // survive across devices/browsers instead of living only in localStorage —
+  // see the sync engine near "Mes Snapshots" below.
+  var GH_OWNER = "sebmgn";
+  var GH_REPO = "Tracking-Whales";
+  var GH_BRANCH = "main";
+  var GH_SNAPSHOTS_PATH = "snapshots.json";
+  var GH_TOKEN_KEY = "ghSyncToken";
   var PREDICT_POSITIONS_BASE = "https://api.predict.fun/v1/positions/";
   var PREDICT_MATCHES_BASE = "https://api.predict.fun/v1/orders/matches";
   var POLY_POSITIONS_BASE = "https://data-api.polymarket.com/positions";
@@ -1007,6 +1077,13 @@
   var snapCountEl = document.getElementById("snapCount");
   var snapStatsContent = document.getElementById("snapStatsContent");
   var snapDashboard = document.getElementById("snapDashboard");
+  var snapSyncStatusEl = document.getElementById("snapSyncStatus");
+  var snapSyncSetup = document.getElementById("snapSyncSetup");
+  var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
+  var snapSyncTokenSave = document.getElementById("snapSyncTokenSave");
+  var snapSyncTokenClear = document.getElementById("snapSyncTokenClear");
+  var snapSyncConfigBtn = document.getElementById("snapSyncConfigBtn");
+  var snapSyncRefreshBtn = document.getElementById("snapSyncRefreshBtn");
   var propCountEl = document.getElementById("propCount");
   var tradersContent = document.getElementById("tradersContent");
   var recentTradesContent = document.getElementById("recentTradesContent");
@@ -1846,18 +1923,176 @@
     '</details>';
   }
 
-  // ---------- Mes Snapshots (localStorage, this browser only) ----------
+  // ---------- Mes Snapshots (synced to GitHub, cached locally) ----------
   // Lets the user pin a Value Trade at the moment they bet on it — the card
   // is frozen as-is (cardHtml) so it stays reviewable after the market
   // resolves or a trader closes out and it drops out of the live feed. The
   // point is spotting which traders' presence correlates with wins, so each
   // snapshot also keeps a plain trader list (traderNames) for the stats table.
+  //
+  // Sync design: localStorage is only a fast/offline *cache* now. The real
+  // list of record is notify's sibling file snapshots.json, committed to
+  // the GitHub repo via the Contents API — same repo both phone and desktop
+  // point at, so there is exactly one source of truth instead of one
+  // localStorage per browser (that mismatch — deleting a snapshot on one
+  // device left it alive on another — was the original bug this fixes).
+  //
+  // Every add/toggle-result/delete is recorded as a small op (not a raw
+  // list snapshot) and queued. syncNow() replays the queue on top of
+  // whatever the *latest* remote list is (re-fetched right before writing),
+  // retrying on a 409 (someone else wrote first) by re-fetching and
+  // reapplying — a compare-and-swap loop, so two devices saving around the
+  // same time merge instead of one clobbering the other.
   var SNAPSHOTS_KEY = "vtSnapshots";
+  var SNAPSHOTS_QUEUE_KEY = "vtSnapshotsQueue";
+  var SNAPSHOTS_SHA_KEY = "vtSnapshotsSha";
+  var SNAPSHOTS_MIGRATED_KEY = "vtSnapshotsMigrated";
+  var SYNC_MAX_RETRIES = 4;
+  var syncInFlight = false;
+
   function loadSnapshots() {
     try { return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
   }
   function saveSnapshotsToStorage(list) {
     try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
+  }
+  function loadSyncQueue() {
+    try { return JSON.parse(localStorage.getItem(SNAPSHOTS_QUEUE_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveSyncQueue(q) {
+    try { localStorage.setItem(SNAPSHOTS_QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* queue just won't persist this time */ }
+  }
+  function getGhToken() {
+    try { return localStorage.getItem(GH_TOKEN_KEY) || ""; } catch (e) { return ""; }
+  }
+  function setGhToken(t) {
+    try { if (t) localStorage.setItem(GH_TOKEN_KEY, t); else localStorage.removeItem(GH_TOKEN_KEY); } catch (e) { /* ignore */ }
+  }
+  // Applies one queued op to a list — pure function, so it can be replayed
+  // against whatever the freshest remote list turns out to be, not just the
+  // list it was originally queued against.
+  function applyOpToList(list, op) {
+    if (op.type === "add") return [op.snapshot].concat(list);
+    if (op.type === "delete") return list.filter(function (s) { return s.id !== op.id; });
+    if (op.type === "toggleSide") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        var copy = Object.assign({}, s);
+        copy.winningSide = (s.winningSide === op.side ? null : op.side);
+        return copy;
+      });
+    }
+    if (op.type === "seed") return op.list; // one-time: this device's pre-sync local list becomes the initial remote copy
+    return list;
+  }
+  function b64EncodeUtf8(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function b64DecodeUtf8(str) { return decodeURIComponent(escape(atob(str))); }
+  function ghHeaders() {
+    var h = { "Accept": "application/vnd.github+json" };
+    var t = getGhToken();
+    if (t) h["Authorization"] = "Bearer " + t;
+    return h;
+  }
+  function ghContentsUrl() {
+    return "https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + "/contents/" + GH_SNAPSHOTS_PATH;
+  }
+  async function ghFetchSnapshots() {
+    var res = await fetch(ghContentsUrl() + "?ref=" + GH_BRANCH, { headers: ghHeaders() });
+    if (res.status === 404) return { list: [], sha: null }; // snapshots.json not created yet — first sync will create it
+    if (!res.ok) throw new Error("GitHub GET " + res.status);
+    var data = await res.json();
+    var list;
+    try { list = JSON.parse(b64DecodeUtf8((data.content || "").replace(/\n/g, ""))); } catch (e) { list = []; }
+    return { list: Array.isArray(list) ? list : [], sha: data.sha };
+  }
+  async function ghPutSnapshots(list, sha) {
+    var body = {
+      message: "snapshots: sync (" + list.length + ")",
+      content: b64EncodeUtf8(JSON.stringify(list, null, 2)),
+      branch: GH_BRANCH
+    };
+    if (sha) body.sha = sha;
+    var res = await fetch(ghContentsUrl(), {
+      method: "PUT",
+      headers: Object.assign({ "Content-Type": "application/json" }, ghHeaders()),
+      body: JSON.stringify(body)
+    });
+    if (res.status === 409 || res.status === 422) { var conflictErr = new Error("conflict"); conflictErr.conflict = true; throw conflictErr; }
+    if (!res.ok) throw new Error("GitHub PUT " + res.status);
+    var data = await res.json();
+    return data.content.sha;
+  }
+  function updateSyncStatus(state) {
+    if (!snapSyncStatusEl) return;
+    var now = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    var labels = {
+      "no-token": "🔑 Synchro non configurée — snapshots locaux à cet appareil seulement",
+      "syncing": "🔄 Synchronisation…",
+      "synced": "✅ Synchronisé à " + now,
+      "error": "⚠️ Erreur de synchro — sauvegardé localement, nouvelle tentative automatique"
+    };
+    snapSyncStatusEl.textContent = labels[state] || "—";
+    snapSyncStatusEl.className = "snap-sync-status snap-sync-" + state;
+  }
+  // Compare-and-swap sync: fetch the freshest remote list, replay the local
+  // pending queue on top of it, push. On a 409 (remote moved under us)
+  // re-fetch and retry instead of overwriting the other device's write.
+  async function syncNow() {
+    if (syncInFlight) return;
+    if (!getGhToken()) { updateSyncStatus("no-token"); return; }
+    syncInFlight = true;
+    updateSyncStatus("syncing");
+    try {
+      for (var attempt = 0; attempt < SYNC_MAX_RETRIES; attempt++) {
+        var remote = await ghFetchSnapshots();
+        var queue = loadSyncQueue();
+        // First-ever connect from a device, remote file doesn't exist yet,
+        // and there's nothing already queued: seed the shared file from
+        // this device's current local list instead of silently adopting an
+        // empty remote and wiping local history.
+        var bootstrapping = remote.sha === null && !queue.length && localStorage.getItem(SNAPSHOTS_MIGRATED_KEY) !== "1" && loadSnapshots().length > 0;
+        if (bootstrapping) queue = [{ type: "seed", list: loadSnapshots() }];
+
+        if (!queue.length) {
+          saveSnapshotsToStorage(remote.list);
+          localStorage.setItem(SNAPSHOTS_SHA_KEY, remote.sha || "");
+          localStorage.setItem(SNAPSHOTS_MIGRATED_KEY, "1");
+          updateSyncStatus("synced");
+          renderSnapshots();
+          return;
+        }
+        var merged = queue.reduce(applyOpToList, remote.list);
+        try {
+          var newSha = await ghPutSnapshots(merged, remote.sha);
+          saveSnapshotsToStorage(merged);
+          saveSyncQueue([]);
+          localStorage.setItem(SNAPSHOTS_SHA_KEY, newSha);
+          localStorage.setItem(SNAPSHOTS_MIGRATED_KEY, "1");
+          updateSyncStatus("synced");
+          renderSnapshots();
+          return;
+        } catch (e) {
+          if (e && e.conflict) continue; // someone else wrote first — retry against fresh state
+          throw e;
+        }
+      }
+      throw new Error("Trop de conflits de synchro, réessaie plus tard.");
+    } catch (e) {
+      console.error("Snapshot sync error", e);
+      updateSyncStatus("error");
+    } finally {
+      syncInFlight = false;
+    }
+  }
+  // Applies an op immediately to the local cache (instant UI, works
+  // offline), queues it, then kicks off a sync attempt in the background.
+  function enqueueSnapshotOp(op) {
+    saveSnapshotsToStorage(applyOpToList(loadSnapshots(), op));
+    var q = loadSyncQueue();
+    q.push(op);
+    saveSyncQueue(q);
+    renderSnapshots();
+    syncNow();
   }
   function buildSnapshotFromUnit(u) {
     var parts = computeUnitCardParts(u);
@@ -1891,10 +2126,7 @@
     };
   }
   function saveSnapshot(u) {
-    var list = loadSnapshots();
-    list.unshift(buildSnapshotFromUnit(u));
-    saveSnapshotsToStorage(list);
-    renderSnapshots();
+    enqueueSnapshotOp({ type: "add", snapshot: buildSnapshotFromUnit(u) });
   }
   // A trader's stake + estimated profit on ONE side, summed across every
   // entry they have there (they can show up more than once — e.g. linked
@@ -3100,22 +3332,40 @@
     if (sideBtn) {
       var sid = sideBtn.getAttribute("data-snap-id");
       var side = sideBtn.getAttribute("data-side");
-      var slist = loadSnapshots();
-      slist.forEach(function (s) { if (s.id === sid) s.winningSide = (s.winningSide === side ? null : side); });
-      saveSnapshotsToStorage(slist);
-      renderSnapshots();
+      enqueueSnapshotOp({ type: "toggleSide", id: sid, side: side });
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
     if (delBtn) {
       var did = delBtn.getAttribute("data-snap-id");
-      saveSnapshotsToStorage(loadSnapshots().filter(function (s) { return s.id !== did; }));
-      renderSnapshots();
+      enqueueSnapshotOp({ type: "delete", id: did });
       return;
     }
   });
 
+  snapSyncConfigBtn.addEventListener("click", function () {
+    snapSyncSetup.style.display = snapSyncSetup.style.display === "none" ? "flex" : "none";
+    snapSyncTokenInput.value = "";
+  });
+  snapSyncRefreshBtn.addEventListener("click", function () { syncNow(); });
+  snapSyncTokenSave.addEventListener("click", function () {
+    var v = snapSyncTokenInput.value.trim();
+    if (!v) return;
+    setGhToken(v);
+    snapSyncTokenInput.value = "";
+    snapSyncSetup.style.display = "none";
+    syncNow();
+  });
+  snapSyncTokenClear.addEventListener("click", function () {
+    setGhToken("");
+    saveSyncQueue([]);
+    updateSyncStatus("no-token");
+  });
+
   renderSnapshots();
+  updateSyncStatus(getGhToken() ? "syncing" : "no-token");
+  syncNow();
+  setInterval(syncNow, 60000); // periodic pull so a change made on the other device shows up without a manual refresh
   refresh(true);
   setInterval(tick, 1000);
 })();
