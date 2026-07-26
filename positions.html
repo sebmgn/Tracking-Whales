@@ -1132,6 +1132,7 @@
   var traderCollapsed = {};  // trader name -> bool
   var portfolioValueByName = {}; // trader name -> sum of valueUsd across their tracked open positions
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades, Propositions, and the peer-panel cards all share this — same card, same key)
+  var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   var vtMinTraders = 5;
@@ -2272,16 +2273,28 @@
           return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
         }).join("") +
       '</div>' : '';
-      return '<div class="value-trade-item snap-item" style="border-left-color:' + borderColor + '">' +
-        '<div class="snap-toolbar">' +
-          '<span class="dim">Sauvegardé le ' + esc(dateLabel) + '</span>' +
-          '<span class="snap-side-label">Camp gagnant :</span>' +
-          sideButtonsHtml +
-          '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '">🗑 Supprimer</button>' +
-        '</div>' +
-        resultsHtml +
-        snap.cardHtml +
-      '</div>';
+      // cardHtml is a frozen headerHtml+balanceHtml+sideGridHtml blob (see
+      // buildSnapshotFromUnit) — split it at the same "<div class=vt-side-grid>"
+      // marker Value Trades/Propositions collapse at, so the trader-by-trader
+      // breakdown hides behind the same click-to-expand affordance instead of
+      // always being shown.
+      var splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
+      var cardHeadHtml = splitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, splitIdx);
+      var cardDetailHtml = splitIdx === -1 ? "" : snap.cardHtml.slice(splitIdx);
+      return '<details class="value-trade-item snap-item" data-key="' + esc(snap.id) + '"' + (expandedSnapshots[snap.id] ? " open" : "") +
+        ' style="border-left-color:' + borderColor + '">' +
+        '<summary class="vt-summary">' +
+          '<div class="snap-toolbar">' +
+            '<span class="dim">Sauvegardé le ' + esc(dateLabel) + '</span>' +
+            '<span class="snap-side-label">Camp gagnant :</span>' +
+            sideButtonsHtml +
+            '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '">🗑 Supprimer</button>' +
+          '</div>' +
+          resultsHtml +
+          cardHeadHtml +
+        '</summary>' +
+        '<div class="vt-detail">' + cardDetailHtml + '</div>' +
+      '</details>';
     }).join("");
   }
 
@@ -3310,6 +3323,12 @@
   valueTradesContent.addEventListener("toggle", trackValueTradeToggle, true);
   propositionsContent.addEventListener("toggle", trackValueTradeToggle, true);
   tradersContent.addEventListener("toggle", trackValueTradeToggle, true);
+  function trackSnapshotToggle(e) {
+    if (e.target && e.target.classList.contains("value-trade-item")) {
+      expandedSnapshots[e.target.getAttribute("data-key")] = e.target.open;
+    }
+  }
+  snapshotsContent.addEventListener("toggle", trackSnapshotToggle, true);
   // Confrontations / Type de pari / Filtrer un pari précis start collapsed
   // (see the "collapsed" class in the HTML) — these title bars are static
   // (only their chip content inside gets rebuilt each cycle), so one listener
@@ -3348,6 +3367,11 @@
     }
     var sideBtn = e.target.closest ? e.target.closest(".snap-side-btn") : null;
     if (sideBtn) {
+      // Sits inside a <summary> now (snapshot cards collapse like Value
+      // Trades/Propositions) — without this the click would also toggle the
+      // parent <details> open/closed.
+      e.preventDefault();
+      e.stopPropagation();
       var sid = sideBtn.getAttribute("data-snap-id");
       var side = sideBtn.getAttribute("data-side");
       enqueueSnapshotOp({ type: "toggleSide", id: sid, side: side });
@@ -3355,6 +3379,8 @@
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
     if (delBtn) {
+      e.preventDefault();
+      e.stopPropagation();
       var did = delBtn.getAttribute("data-snap-id");
       enqueueSnapshotOp({ type: "delete", id: did });
       return;
