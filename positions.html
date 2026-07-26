@@ -2173,6 +2173,19 @@
     if (!list.length) { snapDashboard.innerHTML = ""; return; }
     var decided = list.filter(function (s) { return !!s.winningSide; }).length;
     var pending = list.length - decided;
+    // Bet-level verdict: one win/loss per snapshot (was the side the whales
+    // were leaning towards when saved — leaderName, the "→" badge on the
+    // frozen card — the side that actually won), not one per trader. A
+    // snapshot with 8 traders spread across both sides is still just one
+    // bet you tracked.
+    var betWin = 0, betLoss = 0;
+    list.forEach(function (snap) {
+      if (!snap.winningSide) return;
+      if (snap.leaderName === snap.winningSide) betWin++;
+      else betLoss++;
+    });
+    // Per-trader verdicts feed the table below (renderSnapStats) — the
+    // trader-level tiles here aggregate the exact same classification.
     var win = 0, loss = 0, gainNuance = 0, perteNuance = 0;
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
@@ -2185,17 +2198,22 @@
     });
     var totalDecided = win + loss + gainNuance + perteNuance;
     var winRate = totalDecided > 0 ? ((win + gainNuance) / totalDecided * 100) : null;
-    var tiles = [
+    var globalTiles = [
       { label: "Snapshots", value: String(list.length) },
       { label: "Résultat connu / En attente", value: decided + " / " + pending },
-      { label: "Gagné / Perdu", value: win + " / " + loss, cls: win >= loss ? "pos" : "neg" },
-      { label: "Gain nuancé / Perte nuancée", value: gainNuance + " / " + perteNuance, cls: gainNuance >= perteNuance ? "pos" : "neg" },
-      { label: "Taux de réussite global", value: winRate == null ? "—" : winRate.toFixed(0) + "%", cls: winRate == null ? "" : (winRate >= 50 ? "pos" : "neg") }
+      { label: "Gagné / Perdu", value: betWin + " / " + betLoss, cls: betWin >= betLoss ? "pos" : "neg" }
     ];
-    snapDashboard.innerHTML = '<div class="stat-grid">' + tiles.map(function (t) {
-      return '<div class="stat-tile"><div class="stat-label">' + esc(t.label) + '</div>' +
-        '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div></div>';
-    }).join("") + '</div>';
+    var traderTiles = [
+      { label: "Gain nuancé / Perte nuancée (traders)", value: gainNuance + " / " + perteNuance, cls: gainNuance >= perteNuance ? "pos" : "neg" },
+      { label: "Taux de réussite global (traders)", value: winRate == null ? "—" : winRate.toFixed(0) + "%", cls: winRate == null ? "" : (winRate >= 50 ? "pos" : "neg") }
+    ];
+    function tilesHtml(tiles) {
+      return '<div class="stat-grid">' + tiles.map(function (t) {
+        return '<div class="stat-tile"><div class="stat-label">' + esc(t.label) + '</div>' +
+          '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div></div>';
+      }).join("") + '</div>';
+    }
+    snapDashboard.innerHTML = tilesHtml(globalTiles) + tilesHtml(traderTiles);
   }
   // Per-trader appearance count + win/loss/nuancé breakdown across all
   // snapshots — the "swisstony est dans mes snapshots gagnants" pattern the
