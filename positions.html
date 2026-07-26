@@ -579,7 +579,7 @@
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .snap-side-btn, .snap-delete-btn {
+  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     padding: 5px 12px;
@@ -589,7 +589,7 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .snap-side-btn:hover, .snap-delete-btn:hover { border-color: var(--accent); }
+  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover { border-color: var(--accent); }
   .snap-side-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
   .snap-delete-btn { color: var(--red); }
   .snap-stats-wrap { margin-bottom: 16px; }
@@ -1001,7 +1001,11 @@
     { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", weight: 9 },
     { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8", weight: 8.5 },
     { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 7.5 },
-    { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", weight: 9 }
+    { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", weight: 9 },
+    { name: "newbie", platform: "polymarket", address: "0x43011bc04df353c8092662d13b4aaacb4b62ac39", weight: 7 },
+    { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74", weight: 7 },
+    { name: "NM-P", platform: "polymarket", address: "0xcf7379b4b891c06d88807f6f70efa75378120215", weight: 7 },
+    { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6", weight: 7 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -1926,6 +1930,10 @@
   var SNAPSHOTS_MIGRATED_KEY = "vtSnapshotsMigrated";
   var SYNC_MAX_RETRIES = 4;
   var syncInFlight = false;
+  // Conviction tags a snapshot can be marked with at bet time, so backtests
+  // can later check whether winrate actually correlates with confidence.
+  var CONFIDENCE_TIERS = ["S", "A+", "A", "B"];
+  var CONFIDENCE_COLORS = { "S": "var(--gold)", "A+": "var(--green)", "A": "var(--accent)", "B": "#6b6b6b" };
 
   function loadSnapshots() {
     try { return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
@@ -1956,6 +1964,14 @@
         if (s.id !== op.id) return s;
         var copy = Object.assign({}, s);
         copy.winningSide = (s.winningSide === op.side ? null : op.side);
+        return copy;
+      });
+    }
+    if (op.type === "setConfidence") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        var copy = Object.assign({}, s);
+        copy.confidence = (s.confidence === op.tier ? null : op.tier);
         return copy;
       });
     }
@@ -2099,7 +2115,8 @@
       // inside Mes Snapshots would just re-save the same trade (or silently
       // no-op once the market's gone from the live feed), neither useful here.
       cardHtml: (parts.headerHtml + parts.bodyHtml).replace(/<button[^>]*class="vt-snap-btn"[\s\S]*?<\/button>/, ""),
-      winningSide: null // side name (e.g. "No") once marked, or null = result not known yet
+      winningSide: null, // side name (e.g. "No") once marked, or null = result not known yet
+      confidence: null // "S" | "A+" | "A" | "B" conviction tag, set once the bet is placed — lets backtests correlate tier with winrate
     };
   }
   function saveSnapshot(u) {
@@ -2118,12 +2135,13 @@
     });
     return { stake: stake, profit: profit };
   }
-  // Per-trader verdict for one snapshot, once its winning side is marked:
-  // "win"/"loss" if they were only on one side, "gain_nuance"/"perte_nuance"
-  // if they hedged both sides and the net of (profit on the winning side)
-  // minus (stake lost on the other side(s)) comes out positive or negative.
-  function classifyTraderInSnapshot(snap, traderName) {
-    if (!snap.winningSide) return "pending";
+  // Net $ PNL for one trader in one decided snapshot: profit on the winning
+  // side minus stake lost on any other side they also held (a snapshot can
+  // hold a trader on both sides). Returns null if the snapshot isn't decided
+  // yet or this trader isn't in it at all — used both for classification
+  // below and for the PNL column in the recap table (renderSnapStats).
+  function traderNetPnlInSnapshot(snap, traderName) {
+    if (!snap.winningSide) return null;
     var net = 0, onWin = false, onLose = false;
     snap.sides.forEach(function (side) {
       var r = traderStakeAndProfitOnSide(side, traderName);
@@ -2131,9 +2149,17 @@
       if (side.name === snap.winningSide) { onWin = true; net += r.profit; }
       else { onLose = true; net -= r.stake; }
     });
-    if (!onWin && !onLose) return "pending";
-    if (onWin && onLose) return net >= 0 ? "gain_nuance" : "perte_nuance";
-    return onWin ? "win" : "loss";
+    if (!onWin && !onLose) return null;
+    return { net: net, onWin: onWin, onLose: onLose };
+  }
+  // Per-trader verdict for one snapshot: "win"/"loss" if they were only on
+  // one side, "gain_nuance"/"perte_nuance" if they hedged both sides and the
+  // net PNL comes out positive or negative, "pending" if not decided yet.
+  function classifyTraderInSnapshot(snap, traderName) {
+    var r = traderNetPnlInSnapshot(snap, traderName);
+    if (!r) return "pending";
+    if (r.onWin && r.onLose) return r.net >= 0 ? "gain_nuance" : "perte_nuance";
+    return r.onWin ? "win" : "loss";
   }
   function traderResultBadge(cls) {
     if (cls === "win") return '<span class="snap-trader-badge snap-badge-win">✅ Gagné</span>';
@@ -2200,8 +2226,10 @@
     var byTrader = {};
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
-        if (!byTrader[name]) byTrader[name] = { total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0 };
+        if (!byTrader[name]) byTrader[name] = { total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0 };
         byTrader[name].total++;
+        var pnlResult = traderNetPnlInSnapshot(snap, name);
+        if (pnlResult) byTrader[name].pnl += pnlResult.net;
         var cls = classifyTraderInSnapshot(snap, name);
         if (cls === "win") byTrader[name].win++;
         else if (cls === "loss") byTrader[name].loss++;
@@ -2215,7 +2243,9 @@
       var st = byTrader[n];
       var decided = st.win + st.loss + st.gainNuance + st.perteNuance;
       var wr = decided > 0 ? ((st.win + st.gainNuance) / decided * 100) : null;
+      var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
       return '<tr><td>' + esc(n) + platformBadge(PLATFORM_BY_NAME[n]) + weightBadge(WEIGHT_BY_NAME[n]) + '</td>' +
+        '<td class="num ' + pnlClass + '">' + (decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
         '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
         '<td class="num">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</td></tr>';
@@ -2223,7 +2253,7 @@
     snapStatsContent.innerHTML =
       '<button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapStatsCollapsed ? "▸ Afficher le récap par trader" : "▾ Réduire le récap par trader") + '</button>' +
       '<div class="snap-stats-wrap table-scroll' + (snapStatsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
-      '<th>Trader</th><th class="num">Snapshots</th><th class="num">Gagnés</th><th class="num">Perdus</th>' +
+      '<th>Trader</th><th class="num">PNL</th><th class="num">Snapshots</th><th class="num">Gagnés</th><th class="num">Perdus</th>' +
       '<th class="num">Gain nuancé</th><th class="num">Perte nuancée</th><th class="num">% réussite</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
@@ -2247,6 +2277,12 @@
         var isWinner = snap.winningSide === side.name;
         return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
       }).join("");
+      var confidenceButtonsHtml = CONFIDENCE_TIERS.map(function (tier) {
+        var isActive = snap.confidence === tier;
+        var color = CONFIDENCE_COLORS[tier];
+        var style = isActive ? "background:" + color + ";border-color:" + color + ";color:#fff" : "color:" + color + ";border-color:" + color;
+        return '<button type="button" class="snap-confidence-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-tier="' + esc(tier) + '" style="' + style + '">' + esc(tier) + '</button>';
+      }).join("");
       var resultsHtml = snap.winningSide ? '<div class="snap-trader-results">' +
         (snap.traderNames || []).map(function (name) {
           return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
@@ -2267,6 +2303,8 @@
             '<span class="dim">Sauvegardé le ' + esc(dateLabel) + '</span>' +
             '<span class="snap-side-label">Camp gagnant :</span>' +
             sideButtonsHtml +
+            '<span class="snap-side-label">Confiance :</span>' +
+            confidenceButtonsHtml +
             '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '">🗑 Supprimer</button>' +
           '</div>' +
           resultsHtml +
@@ -3282,6 +3320,15 @@
       var sid = sideBtn.getAttribute("data-snap-id");
       var side = sideBtn.getAttribute("data-side");
       enqueueSnapshotOp({ type: "toggleSide", id: sid, side: side });
+      return;
+    }
+    var confBtn = e.target.closest ? e.target.closest(".snap-confidence-btn") : null;
+    if (confBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var cid = confBtn.getAttribute("data-snap-id");
+      var tier = confBtn.getAttribute("data-tier");
+      enqueueSnapshotOp({ type: "setConfidence", id: cid, tier: tier });
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
