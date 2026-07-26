@@ -1,0 +1,98 @@
+[
+  {
+    "id": "ms0y8i3ij68ade",
+    "savedAt": "2026-07-25T22:36:59.166Z",
+    "question": "Will Inter Miami CF win on 2026-07-25?",
+    "leaderName": "No",
+    "traderCount": 8,
+    "totalStake": 50409.99611926658,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 8,
+        "stake": 41827.97116138511,
+        "traders": [
+          {
+            "trader": "GC-P",
+            "stake": 15002.049017669999,
+            "avgPrice": 0.5447
+          },
+          {
+            "trader": "JJJJ",
+            "stake": 8573.19176673673,
+            "avgPrice": 0.5303
+          },
+          {
+            "trader": "swisstony",
+            "stake": 7129.456739220001,
+            "avgPrice": 0.5501
+          },
+          {
+            "trader": "VeryLucky888",
+            "stake": 5580.077670000001,
+            "avgPrice": 0.555
+          },
+          {
+            "trader": "Anon",
+            "stake": 4731.470979999999,
+            "avgPrice": 0.5506
+          },
+          {
+            "trader": "wapol",
+            "stake": 560.5376,
+            "avgPrice": 0.5474
+          },
+          {
+            "trader": "juanitooo12358",
+            "stake": 250.51628807999998,
+            "avgPrice": 0.5508
+          },
+          {
+            "trader": "deliveries_0nly",
+            "stake": 0.6710996783838385,
+            "avgPrice": 0.56
+          }
+        ]
+      },
+      {
+        "name": "Yes",
+        "traderCount": 4,
+        "stake": 8582.024957881458,
+        "traders": [
+          {
+            "trader": "GC-P",
+            "stake": 7497.20508698,
+            "avgPrice": 0.4487
+          },
+          {
+            "trader": "deliveries_0nly",
+            "stake": 1071.620147351459,
+            "avgPrice": 0.4509
+          },
+          {
+            "trader": "Anon",
+            "stake": 11.94843096,
+            "avgPrice": 0.5112
+          },
+          {
+            "trader": "juanitooo12358",
+            "stake": 1.25129259,
+            "avgPrice": 0.4509
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "GC-P",
+      "JJJJ",
+      "swisstony",
+      "VeryLucky888",
+      "Anon",
+      "wapol",
+      "juanitooo12358",
+      "deliveries_0nly"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span><span class=\"vt-question\">Will Inter Miami CF win on 2026-07-25?</span><span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\">@ 54.3¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">8 traders · 50 410,00 $</span></span></div><div class=\"vt-linked-note\"><span class=\"link-icon\" title=\"Marché équivalent détecté sur l'autre plateforme (formulation parfois différente)\">🔗</span>Même prédiction sur <span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span> et <span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:66.67%;background:var(--green)\"><div class=\"bal-tooltip\">No — 8/12 traders (67%) · mise 41 827,97 $</div></div><div class=\"bal-seg\" style=\"width:33.33%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — 4/12 traders (33%) · mise 8 582,02 $</div></div><div class=\"bal-tick\" style=\"left:66.67%\"></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:82.98%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 41 827,97 $ / 50 410,00 $ (83%)</div></div><div class=\"bal-seg\" style=\"width:17.02%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — mise 8 582,02 $ / 50 410,00 $ (17%)</div></div><div class=\"bal-tick\" style=\"left:82.98%\"></div></div></div></div><div class=\"vt-side-grid\"><div class=\"vt-outcome-group paired\"><div class=\"vt-side-block\" style=\"border-left-color:#a13030\"><div class=\"vt-side-head\"><span><span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"vt-outcome\" style=\"background:#a1303022;color:#a13030\">No</span></span><span class=\"dim\">6 traders · mise totale <b>33 254,11 $</b></span></div><div class=\"vt-side-metrics\"><span class=\"vt-odds\">Cote actuelle : <b>54.5¢</b></span><span class=\"vt-entry-diff pnl-pos\">0.64% moins cher que l'entrée moy. (54.8¢)</span><span class=\"vt-roi\">ROI si gagné : <b>+83.49%</b></span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:47.5%;background:#a13030\"></div><span class=\"vt-trader-row-name\">swisstony<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(129,45%,36%);background:hsla(129,45%,36%,.14);border-color:hsla(129,45%,36%,.4)\" title=\"Note qualite : 9.5/10\">9.5</span></span><span class=\"vt-trader-row-right\">mise <b>7 129,46 $</b> <span class=\"dim\">@ 55.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">1.9% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:37.2%;background:#a13030\"></div><span class=\"vt-trader-row-name\">VeryLucky888<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(98,45%,36%);background:hsla(98,45%,36%,.14);border-color:hsla(98,45%,36%,.4)\" title=\"Note qualite : 8/10\">8</span></span><span class=\"vt-trader-row-right\">mise <b>5 580,08 $</b> <span class=\"dim\">@ 55.5¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">2.8% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:100.0%;background:#a13030\"></div><span class=\"vt-trader-row-name\">GC-P<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(87,45%,36%);background:hsla(87,45%,36%,.14);border-color:hsla(87,45%,36%,.4)\" title=\"Note qualite : 7.5/10\">7.5</span></span><span class=\"vt-trader-row-right\">mise <b>15 002,05 $</b> <span class=\"dim\">@ 54.5¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">7.9% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:3.7%;background:#a13030\"></div><span class=\"vt-trader-row-name\">wapol<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(87,45%,36%);background:hsla(87,45%,36%,.14);border-color:hsla(87,45%,36%,.4)\" title=\"Note qualite : 7.5/10\">7.5</span></span><span class=\"vt-trader-row-right\">mise <b>560,54 $</b> <span class=\"dim\">@ 54.7¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">1.4% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:1.7%;background:#a13030\"></div><span class=\"vt-trader-row-name\">juanitooo12358<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(56,45%,36%);background:hsla(56,45%,36%,.14);border-color:hsla(56,45%,36%,.4)\" title=\"Note qualite : 6/10\">6</span></span><span class=\"vt-trader-row-right\">mise <b>250,52 $</b> <span class=\"dim\">@ 55.1¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">3.1% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:31.5%;background:#a13030\"></div><span class=\"vt-trader-row-name\">Anon<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(45,45%,36%);background:hsla(45,45%,36%,.14);border-color:hsla(45,45%,36%,.4)\" title=\"Note qualite : 5.5/10\">5.5</span></span><span class=\"vt-trader-row-right\">mise <b>4 731,47 $</b> <span class=\"dim\">@ 55.1¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">4.5% de son book</span></span></div></div></div><div class=\"vt-side-block\" style=\"border-left-color:#a13030\"><div class=\"vt-side-head\"><span><span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"vt-outcome\" style=\"background:#a1303022;color:#a13030\">No</span></span><span class=\"dim\">2 traders · mise totale <b>8 573,86 $</b></span></div><div class=\"vt-side-metrics\"><span class=\"vt-odds\">Cote actuelle : <b>54.0¢</b></span><span class=\"vt-entry-diff pnl-neg\">1.83% plus cher que l'entrée moy. (53.0¢)</span><span class=\"vt-roi\">ROI si gagné : <b>+85.19%</b></span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:57.1%;background:#a13030\"></div><span class=\"vt-trader-row-name\">JJJJ<span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"w-badge\" style=\"color:hsl(119,45%,36%);background:hsla(119,45%,36%,.14);border-color:hsla(119,45%,36%,.4)\" title=\"Note qualite : 9/10\">9</span></span><span class=\"vt-trader-row-right\">mise <b>8 573,19 $</b> <span class=\"dim\">@ 53.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">6.5% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:0.0%;background:#a13030\"></div><span class=\"vt-trader-row-name\">deliveries_0nly<span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"w-badge\" style=\"color:hsl(98,45%,36%);background:hsla(98,45%,36%,.14);border-color:hsla(98,45%,36%,.4)\" title=\"Note qualite : 8/10\">8</span></span><span class=\"vt-trader-row-right\">mise <b>0,67 $</b> <span class=\"dim\">@ 56.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">0.0% de son book</span></span></div></div></div></div><div class=\"vt-outcome-group paired\"><div class=\"vt-side-block\" style=\"border-left-color:#2e6b45\"><div class=\"vt-side-head\"><span><span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"vt-outcome\" style=\"background:#2e6b4522;color:#2e6b45\">Yes</span></span><span class=\"dim\">3 traders · mise totale <b>7 510,40 $</b></span></div><div class=\"vt-side-metrics\"><span class=\"vt-odds\">Cote actuelle : <b>45.5¢</b></span><span class=\"vt-entry-diff pnl-neg\">1.38% plus cher que l'entrée moy. (44.9¢)</span><span class=\"vt-roi\">ROI si gagné : <b>+119.78%</b></span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:50.0%;background:#2e6b45\"></div><span class=\"vt-trader-row-name\">GC-P<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(87,45%,36%);background:hsla(87,45%,36%,.14);border-color:hsla(87,45%,36%,.4)\" title=\"Note qualite : 7.5/10\">7.5</span></span><span class=\"vt-trader-row-right\">mise <b>7 497,21 $</b> <span class=\"dim\">@ 44.9¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">3.9% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:0.0%;background:#2e6b45\"></div><span class=\"vt-trader-row-name\">juanitooo12358<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(56,45%,36%);background:hsla(56,45%,36%,.14);border-color:hsla(56,45%,36%,.4)\" title=\"Note qualite : 6/10\">6</span></span><span class=\"vt-trader-row-right\">mise <b>1,25 $</b> <span class=\"dim\">@ 45.1¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">0.0% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:0.1%;background:#2e6b45\"></div><span class=\"vt-trader-row-name\">Anon<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(45,45%,36%);background:hsla(45,45%,36%,.14);border-color:hsla(45,45%,36%,.4)\" title=\"Note qualite : 5.5/10\">5.5</span></span><span class=\"vt-trader-row-right\">mise <b>11,95 $</b> <span class=\"dim\">@ 51.1¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">0.0% de son book</span></span></div></div></div><div class=\"vt-side-block\" style=\"border-left-color:#2e6b45\"><div class=\"vt-side-head\"><span><span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"vt-outcome\" style=\"background:#2e6b4522;color:#2e6b45\">Yes</span></span><span class=\"dim\">1 trader · mise totale <b>1 071,62 $</b></span></div><div class=\"vt-side-metrics\"><span class=\"vt-odds\">Cote actuelle : <b>47.0¢</b></span><span class=\"vt-entry-diff pnl-neg\">4.24% plus cher que l'entrée moy. (45.1¢)</span><span class=\"vt-roi\">ROI si gagné : <b>+112.77%</b></span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:7.1%;background:#2e6b45\"></div><span class=\"vt-trader-row-name\">deliveries_0nly<span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"w-badge\" style=\"color:hsl(98,45%,36%);background:hsla(98,45%,36%,.14);border-color:hsla(98,45%,36%,.4)\" title=\"Note qualite : 8/10\">8</span></span><span class=\"vt-trader-row-right\">mise <b>1 071,62 $</b> <span class=\"dim\">@ 45.1¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">2.0% de son book</span></span></div></div></div></div></div>",
+    "winningSide": "Yes"
+  }
+]
