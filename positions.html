@@ -1043,7 +1043,13 @@
   var PREDICT_MATCHES_BASE = "https://api.predict.fun/v1/orders/matches";
   var POLY_POSITIONS_BASE = "https://data-api.polymarket.com/positions";
   var POLY_TRADES_BASE = "https://data-api.polymarket.com/trades";
-  var REFRESH_MS = 10000;
+  // 20 traders x (positions + recent trades), with several traders paginating
+  // across 2-3 pages each, adds up to ~90-100 throttled requests per cycle;
+  // at the safe ~3.85 req/s ceiling below that's ~25-30s minimum, so 10s no
+  // longer leaves room for a cycle to actually finish before the next one
+  // is due (verified: cycles used to overlap-avoid indefinitely with 20
+  // traders, appearing to never finish refreshing).
+  var REFRESH_MS = 30000;
 
   var statusDot = document.getElementById("statusDot");
   var statusText = document.getElementById("statusText");
@@ -1199,17 +1205,38 @@
 
   // ---------- global throttle: keep total request rate safely under the
   // API's 240 req/60s limit even when many paginated fetches run at once ----------
-  // Spaces out request STARTS (not full completions) so multiple requests can be
-  // in flight concurrently — otherwise network latency (~400-500ms/call) would
-  // serialize everything and make large paginated loads take minutes.
+  // Requests are released in small batches rather than one at a time. The
+  // aggregate rate is the same ~3.85 req/s ceiling either way, but with one
+  // chained setTimeout per REQUEST (as this used to be), 20 traders' worth
+  // of fetches (~50-55 requests/cycle) means ~50-55 sequential waits on the
+  // critical path — and browsers can arbitrarily delay a tab's timers
+  // (visibility/power throttling), so each delayed wait stacks onto the
+  // next and a refresh could stall for minutes with nothing obviously
+  // wrong. Batching cuts that chain to ~1/BATCH_SIZE as many waits. A
+  // per-request timeout is the other half of the fix: one hung request can
+  // no longer block the whole cycle forever — it's treated like any other
+  // fetch failure by the existing per-trader .catch (keeps last known data).
+  var __RQ_BATCH_SIZE = 4;
+  var __RQ_BATCH_INTERVAL_MS = 260 * __RQ_BATCH_SIZE; // ~3.85 req/s aggregate, same ceiling as before
+  var __RQ_TIMEOUT_MS = 15000;
   var __rqGate = Promise.resolve();
-  var __rqIntervalMs = 260; // ~3.8 req/s ceiling on new request starts
+  var __rqBatchGate = __rqGate;
+  var __rqBatchCount = 0;
   function throttledFetch(url, options) {
-    var myTurn = __rqGate.then(function () {
-      return new Promise(function (resolve) { setTimeout(resolve, __rqIntervalMs); });
+    if (__rqBatchCount === 0) {
+      __rqBatchGate = __rqGate.then(function () {
+        return new Promise(function (resolve) { setTimeout(resolve, __RQ_BATCH_INTERVAL_MS); });
+      });
+      __rqGate = __rqBatchGate;
+    }
+    __rqBatchCount = (__rqBatchCount + 1) % __RQ_BATCH_SIZE;
+    var myGate = __rqBatchGate;
+    return myGate.then(function () {
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, __RQ_TIMEOUT_MS);
+      var opts = Object.assign({}, options, { signal: controller.signal });
+      return fetch(url, opts).finally(function () { clearTimeout(timer); });
     });
-    __rqGate = myTurn;
-    return myTurn.then(function () { return fetch(url, options); });
   }
 
   // ---------- fetch + normalize: positions (Predict.fun & Polymarket) ----------
