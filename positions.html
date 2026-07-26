@@ -610,6 +610,8 @@
   .snap-sync-status.snap-sync-synced { color: var(--green); }
   .snap-sync-status.snap-sync-error { color: var(--red); }
   .snap-sync-status.snap-sync-syncing { color: var(--accent); }
+  .snap-sync-status.snap-sync-readonly { color: var(--gold); }
+  .snap-sync-status.snap-sync-pending-token { color: var(--gold); }
   .snap-sync-link {
     background: none;
     border: none;
@@ -2041,9 +2043,10 @@
     if (!snapSyncStatusEl) return;
     var now = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     var labels = {
-      "no-token": "🔑 Synchro non configurée — snapshots locaux à cet appareil seulement",
       "syncing": "🔄 Synchronisation…",
       "synced": "✅ Synchronisé à " + now,
+      "readonly": "📖 Lecture seule à " + now + " — connecte un token pour ajouter/modifier",
+      "pending-token": "🔒 Modifications en attente — connecte un token pour les envoyer",
       "error": "⚠️ Erreur de synchro — sauvegardé localement, nouvelle tentative automatique"
     };
     snapSyncStatusEl.textContent = labels[state] || "—";
@@ -2052,10 +2055,16 @@
   // Compare-and-swap sync: fetch the freshest remote list, replay the local
   // pending queue on top of it, push. On a 409 (remote moved under us)
   // re-fetch and retry instead of overwriting the other device's write.
+  // Reading snapshots.json needs no token at all — Tracking-Whales is a
+  // public repo, so GET works unauthenticated. Only pushing a change (add/
+  // delete/toggle/confidence) needs one. This means a device that never
+  // configured a token, or lost it (browser data cleared, private window,
+  // etc.), still sees the real shared list instead of an empty one — it
+  // just can't edit until a token is connected.
   async function syncNow() {
     if (syncInFlight) return;
-    if (!getGhToken()) { updateSyncStatus("no-token"); return; }
     syncInFlight = true;
+    var hasToken = !!getGhToken();
     updateSyncStatus("syncing");
     try {
       for (var attempt = 0; attempt < SYNC_MAX_RETRIES; attempt++) {
@@ -2065,15 +2074,24 @@
         // and there's nothing already queued: seed the shared file from
         // this device's current local list instead of silently adopting an
         // empty remote and wiping local history.
-        var bootstrapping = remote.sha === null && !queue.length && localStorage.getItem(SNAPSHOTS_MIGRATED_KEY) !== "1" && loadSnapshots().length > 0;
+        var bootstrapping = hasToken && remote.sha === null && !queue.length && localStorage.getItem(SNAPSHOTS_MIGRATED_KEY) !== "1" && loadSnapshots().length > 0;
         if (bootstrapping) queue = [{ type: "seed", list: loadSnapshots() }];
 
         if (!queue.length) {
           saveSnapshotsToStorage(remote.list);
           localStorage.setItem(SNAPSHOTS_SHA_KEY, remote.sha || "");
           localStorage.setItem(SNAPSHOTS_MIGRATED_KEY, "1");
-          updateSyncStatus("synced");
+          updateSyncStatus(hasToken ? "synced" : "readonly");
           renderSnapshots();
+          return;
+        }
+        if (!hasToken) {
+          // There are local pending edits (made before a token existed, or
+          // after one was lost) but nothing to push them with. Leave both
+          // the queue and the local cache untouched — don't overwrite the
+          // user's pending changes with the plain remote list — they'll
+          // flush automatically the next time a token is connected.
+          updateSyncStatus("pending-token");
           return;
         }
         var merged = queue.reduce(applyOpToList, remote.list);
@@ -3389,9 +3407,12 @@
   });
 
   renderSnapshots();
-  updateSyncStatus(getGhToken() ? "syncing" : "no-token");
+  updateSyncStatus("syncing");
   syncNow();
-  setInterval(syncNow, 60000); // periodic pull so a change made on the other device shows up without a manual refresh
+  // Every 2 min, not 1 — reads now happen even without a token (public repo,
+  // unauthenticated GET), and GitHub's unauthenticated rate limit is a flat
+  // 60 req/hour per IP, so this leaves headroom for manual resyncs too.
+  setInterval(syncNow, 120000);
   refresh(true);
   setInterval(tick, 1000);
 })();
