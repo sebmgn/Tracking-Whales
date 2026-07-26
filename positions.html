@@ -841,7 +841,6 @@
 
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="value-trades" type="button">Value Trades</button>
-    <button class="tab-btn" data-tab="propositions" type="button">Propositions</button>
     <button class="tab-btn" data-tab="recent-trades" type="button">Trades récents</button>
     <button class="tab-btn" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn" data-tab="stats-profiles" type="button">Statistiques profils</button>
@@ -902,27 +901,6 @@
     </div>
     <div id="valueTradesContent" class="value-trades-box">
       <div class="loading-state">Analyse des positions communes…</div>
-    </div>
-  </div>
-
-  <div class="tab-panel" id="tab-propositions">
-    <h2 class="section-title">Propositions <span class="count-pill" id="propCount">—</span></h2>
-    <div class="empty-note" style="padding:8px 4px 18px;">Le top 5 selon la conviction des traders suivis : leur accord entre eux (%), leur note de qualité moyenne, et la mise engagée sur le camp qu'ils privilégient. Mêmes cartes que Value Trades — clique dessus pour voir le détail des traders. Respecte le filtre sport sélectionné dans l'onglet Value Trades.</div>
-    <div class="vt-filters" id="propStakeFilters">
-      <button data-min="0" class="active" type="button">Toutes les mises</button>
-      <button data-min="1000" type="button">&gt; 1 000 $</button>
-      <button data-min="5000" type="button">&gt; 5 000 $</button>
-      <button data-min="10000" type="button">&gt; 10 000 $</button>
-    </div>
-    <div class="vt-filters" id="propAgreeFilters">
-      <button data-agree="0" class="active" type="button">Tous les accords</button>
-      <button data-agree="2" type="button">2 traders</button>
-      <button data-agree="3" type="button">3 traders</button>
-      <button data-agree="4" type="button">4 traders</button>
-      <button data-agree="5" type="button">&gt; 4 traders</button>
-    </div>
-    <div id="propositionsContent" class="value-trades-box">
-      <div class="loading-state">Analyse des meilleures positions…</div>
     </div>
   </div>
 
@@ -1072,7 +1050,6 @@
   var collapseAllBtn = document.getElementById("collapseAllBtn");
   var valueTradesContent = document.getElementById("valueTradesContent");
   var vtCountEl = document.getElementById("vtCount");
-  var propositionsContent = document.getElementById("propositionsContent");
   var snapshotsContent = document.getElementById("snapshotsContent");
   var snapCountEl = document.getElementById("snapCount");
   var snapStatsContent = document.getElementById("snapStatsContent");
@@ -1084,7 +1061,6 @@
   var snapSyncTokenClear = document.getElementById("snapSyncTokenClear");
   var snapSyncConfigBtn = document.getElementById("snapSyncConfigBtn");
   var snapSyncRefreshBtn = document.getElementById("snapSyncRefreshBtn");
-  var propCountEl = document.getElementById("propCount");
   var tradersContent = document.getElementById("tradersContent");
   var recentTradesContent = document.getElementById("recentTradesContent");
   var rtCountEl = document.getElementById("rtCount");
@@ -1131,7 +1107,7 @@
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
   var portfolioValueByName = {}; // trader name -> sum of valueUsd across their tracked open positions
-  var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades, Propositions, and the peer-panel cards all share this — same card, same key)
+  var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
@@ -1146,9 +1122,7 @@
   // matter which) — ">2" etc. means strictly more than that many.
   var RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "zaizoibele", "VeryLucky888"];
   var vtMinReliableCount = 0; // 0 = no filter; else the unit needs strictly more than this many reliable-list traders
-  var sportFilter = "football"; // "all" | "football" | "other" — shared between Value Trades and Propositions
-  var propMinStake = 0; // 0 = no floor; else the unit's totalStake (both sides combined) needs to be at least this
-  var propMinAgree = 0; // 0 = no filter; else the leading side needs exactly this many traders (5 means "5+", i.e. >4)
+  var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
 
   // ---------- helpers ----------
   function amountToFloat(amountStr, decimals) {
@@ -1806,8 +1780,8 @@
   }
 
   // Computes everything renderUnitCard needs, split into header (question +
-  // leader badge) and body (balance bars + trader breakdown) so Propositions
-  // can show its own compact summary and reveal just the body on expand,
+  // leader badge) and body (balance bars + trader breakdown) so the header
+  // can stay in the always-visible summary and just the body collapses,
   // instead of repeating the header inside the expanded detail.
   function computeUnitCardParts(u) {
     var members = u.members;
@@ -1892,8 +1866,8 @@
       linkedNote;
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
-    // breakdown behind a click, while Propositions/Snapshots — which don't
-    // want that split — keep using the combined bodyHtml unchanged.
+    // breakdown behind a click, while Snapshots — which doesn't want that
+    // split — keeps using the combined bodyHtml unchanged.
     var balanceHtml =
       '<div class="balance-group">' +
         '<div class="balance-row"><span class="balance-label">Traders</span><div class="balance-bar bar-traders">' + traderSegments + '</div></div>' +
@@ -1912,8 +1886,8 @@
   }
 
   // Collapsed by default (only header + gauges show) — clicking the card
-  // reveals the trader-by-trader breakdown. Shared by Value Trades,
-  // Propositions (top 5) and the "Autres traders" peer panel.
+  // reveals the trader-by-trader breakdown. Shared by Value Trades and the
+  // "Autres traders" peer panel.
   function renderUnitCard(u) {
     var parts = computeUnitCardParts(u);
     var key = u.members[0].key;
@@ -2199,10 +2173,11 @@
     });
     var totalDecided = win + loss + gainNuance + perteNuance;
     var winRate = totalDecided > 0 ? ((win + gainNuance) / totalDecided * 100) : null;
+    var betWinRate = (betWin + betLoss) > 0 ? (betWin / (betWin + betLoss) * 100) : null;
     var globalTiles = [
-      { label: "Snapshots", value: String(list.length) },
-      { label: "Résultat connu / En attente", value: decided + " / " + pending },
-      { label: "Gagné / Perdu", value: betWin + " / " + betLoss, cls: betWin >= betLoss ? "pos" : "neg" }
+      { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
+      { label: "Gagné / Perdu", value: betWin + " / " + betLoss, cls: betWin >= betLoss ? "pos" : "neg" },
+      { label: "Résultat connu / En attente", value: decided + " / " + pending }
     ];
     var traderTiles = [
       { label: "Gain nuancé / Perte nuancée (traders)", value: gainNuance + " / " + perteNuance, cls: gainNuance >= perteNuance ? "pos" : "neg" },
@@ -2275,7 +2250,7 @@
       '</div>' : '';
       // cardHtml is a frozen headerHtml+balanceHtml+sideGridHtml blob (see
       // buildSnapshotFromUnit) — split it at the same "<div class=vt-side-grid>"
-      // marker Value Trades/Propositions collapse at, so the trader-by-trader
+      // marker Value Trades collapses at, so the trader-by-trader
       // breakdown hides behind the same click-to-expand affordance instead of
       // always being shown.
       var splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
@@ -2429,58 +2404,6 @@
       return;
     }
     valueTradesContent.innerHTML = finalUnits.map(renderUnitCard).join("");
-  }
-
-  // ---------- propositions: rank bets by trader conviction ----------
-  // score = consensus (share of traders agreeing) x average quality rating
-  // of the traders on the leading side x a log-dampened stake factor (so a
-  // single huge whale position can't dominate purely on size). Combines the
-  // three signals the user asked for: correlation between big traders,
-  // their notation, and their mises — nothing else (no odds/ROI weighting).
-  function renderPropositions() {
-    var allGroups = computeMarketGroups();
-    linkAcrossPlatforms(allGroups);
-    var allUnits = buildRenderUnits(allGroups);
-    var eligible = allUnits.filter(function (u) {
-      if (u.traderCount < 2) return false;
-      if (sportFilter !== "all") {
-        var football = isFootball(u.members[0].question, u.members[0].slug);
-        if (sportFilter === "football" && !football) return false;
-        if (sportFilter === "other" && football) return false;
-      }
-      if (u.totalStake < propMinStake) return false;
-      return true;
-    });
-    var scored = eligible.map(function (u) {
-      var mergedSides = mergeUnitSides(u);
-      var leader = mergedSides[0];
-      if (!leader) return null;
-      // "traders en accord" = how many traders sit on the leading/consensus
-      // side of THIS bet — propMinAgree of 5 means the ">4" bucket (5+).
-      if (propMinAgree > 0) {
-        if (propMinAgree >= 5 ? leader.traderCount < 5 : leader.traderCount !== propMinAgree) return null;
-      }
-      var traderSet = {};
-      leader.items.forEach(function (it) { it.s.entries.forEach(function (e) { traderSet[e.trader] = true; }); });
-      var names = Object.keys(traderSet);
-      var avgWeight = names.length ? names.reduce(function (s, n) { return s + (WEIGHT_BY_NAME[n] || 0); }, 0) / names.length : 0;
-      var consensus = u.traderCount > 0 ? leader.traderCount / u.traderCount : 0;
-      var score = consensus * (avgWeight / 10) * Math.log10(leader.stake + 10);
-      return { u: u, score: score, consensus: consensus, avgWeight: avgWeight, leaderName: leader.name, leaderStake: leader.stake };
-    }).filter(Boolean);
-    scored.sort(function (a, b) { return b.score - a.score; });
-    // Top 5 only — Propositions is "the strongest correlations", not a full
-    // catalog like Value Trades. Cards render exactly like Value Trades
-    // (renderUnitCard: header + gauge visible, trader breakdown collapsed).
-    var top = scored.slice(0, 5);
-    propCountEl.textContent = top.length + " proposition" + (top.length > 1 ? "s" : "") +
-      (propMinStake > 0 ? " · mise totale ≥ " + fmtUSD(propMinStake) : "") +
-      (propMinAgree > 0 ? " · " + (propMinAgree >= 5 ? "> 4" : propMinAgree) + " traders en accord" : "");
-    if (!top.length) {
-      propositionsContent.innerHTML = '<div class="empty-note">Aucune proposition ne correspond à ce filtre pour le moment.</div>';
-      return;
-    }
-    propositionsContent.innerHTML = top.map(function (item) { return renderUnitCard(item.u); }).join("");
   }
 
   // ---------- recent trades ----------
@@ -2758,7 +2681,6 @@
       u.members.forEach(function (m) { unitByMarketKey[m.key] = u; });
     });
     renderValueTrades();
-    renderPropositions();
     renderRecentTrades();
     renderTraderSections();
     renderStatsProfiles();
@@ -3192,25 +3114,6 @@
       btn.classList.add("active");
       sportFilter = btn.getAttribute("data-sport") || "all";
       renderValueTrades();
-      renderPropositions(); // shared filter — keep both tabs in sync
-    });
-  });
-  var propStakeFiltersEl = document.getElementById("propStakeFilters");
-  propStakeFiltersEl.querySelectorAll("button").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      propStakeFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      propMinStake = parseFloat(btn.getAttribute("data-min")) || 0;
-      renderPropositions();
-    });
-  });
-  var propAgreeFiltersEl = document.getElementById("propAgreeFilters");
-  propAgreeFiltersEl.querySelectorAll("button").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      propAgreeFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      propMinAgree = parseFloat(btn.getAttribute("data-agree")) || 0;
-      renderPropositions();
     });
   });
   // Top-5-by-weight player filter for "Trades récents" — multi-select (OR):
@@ -3312,16 +3215,15 @@
   refreshBtn.addEventListener("click", function () { refresh(true); });
   // "toggle" doesn't bubble, but capturing phase still sees it on an
   // ancestor — one listener per container survives every innerHTML rebuild,
-  // unlike a listener attached to the <details> itself. All three containers
-  // can render the same value-trade-item card (Value Trades, Propositions'
-  // top 5, and the "Autres traders" peer panel), so they share one tracker.
+  // unlike a listener attached to the <details> itself. Both containers can
+  // render the same value-trade-item card (Value Trades and the "Autres
+  // traders" peer panel), so they share one tracker.
   function trackValueTradeToggle(e) {
     if (e.target && e.target.classList.contains("value-trade-item")) {
       expandedValueTrades[e.target.getAttribute("data-key")] = e.target.open;
     }
   }
   valueTradesContent.addEventListener("toggle", trackValueTradeToggle, true);
-  propositionsContent.addEventListener("toggle", trackValueTradeToggle, true);
   tradersContent.addEventListener("toggle", trackValueTradeToggle, true);
   function trackSnapshotToggle(e) {
     if (e.target && e.target.classList.contains("value-trade-item")) {
@@ -3352,8 +3254,9 @@
   document.addEventListener("click", function (e) {
     var snapBtn = e.target.closest ? e.target.closest(".vt-snap-btn") : null;
     if (snapBtn) {
-      // In Propositions the button sits inside a <summary> — without this,
-      // the click's default action would also toggle the parent <details>.
+      // The button sits inside a <summary> (Value Trades cards collapse) —
+      // without this, the click's default action would also toggle the
+      // parent <details>.
       e.preventDefault();
       e.stopPropagation();
       var unitKey = snapBtn.getAttribute("data-snap-key");
@@ -3368,8 +3271,8 @@
     var sideBtn = e.target.closest ? e.target.closest(".snap-side-btn") : null;
     if (sideBtn) {
       // Sits inside a <summary> now (snapshot cards collapse like Value
-      // Trades/Propositions) — without this the click would also toggle the
-      // parent <details> open/closed.
+      // Trades) — without this the click would also toggle the parent
+      // <details> open/closed.
       e.preventDefault();
       e.stopPropagation();
       var sid = sideBtn.getAttribute("data-snap-id");
