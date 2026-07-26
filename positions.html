@@ -593,6 +593,7 @@
   .snap-side-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
   .snap-delete-btn { color: var(--red); }
   .snap-stats-wrap { margin-bottom: 16px; }
+  .snap-stats-toggle-btn { display: block; margin-bottom: 8px; }
   /* Per-trader verdict line under the toolbar, above the frozen card — the
      card's own trader rows are a static snapshot, so this is the only place
      the win/loss/nuancé read can live once a winning side is marked. */
@@ -1109,6 +1110,7 @@
   var portfolioValueByName = {}; // trader name -> sum of valueUsd across their tracked open positions
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
+  var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   var vtMinTraders = 5;
@@ -2218,7 +2220,9 @@
         '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
         '<td class="num">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</td></tr>';
     }).join("");
-    snapStatsContent.innerHTML = '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' +
+    snapStatsContent.innerHTML =
+      '<button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapStatsCollapsed ? "▸ Afficher le récap par trader" : "▾ Réduire le récap par trader") + '</button>' +
+      '<div class="snap-stats-wrap table-scroll' + (snapStatsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
       '<th>Trader</th><th class="num">Snapshots</th><th class="num">Gagnés</th><th class="num">Perdus</th>' +
       '<th class="num">Gain nuancé</th><th class="num">Perte nuancée</th><th class="num">% réussite</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
@@ -3286,6 +3290,12 @@
       e.stopPropagation();
       var did = delBtn.getAttribute("data-snap-id");
       enqueueSnapshotOp({ type: "delete", id: did });
+      return;
+    }
+    var statsToggleBtn = e.target.closest ? e.target.closest("#snapStatsToggleBtn") : null;
+    if (statsToggleBtn) {
+      snapStatsCollapsed = !snapStatsCollapsed;
+      renderSnapStats(loadSnapshots());
       return;
     }
   });
