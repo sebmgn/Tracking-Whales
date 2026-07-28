@@ -1,5 +1,81 @@
 [
   {
+    "id": "ms4so525rq5302",
+    "savedAt": "2026-07-28T15:12:15.773Z",
+    "question": "Cleveland Guardians vs. Cincinnati Reds",
+    "leaderName": "Cincinnati Reds",
+    "traderCount": 7,
+    "totalStake": 25751.850879932692,
+    "sides": [
+      {
+        "name": "Cincinnati Reds",
+        "traderCount": 6,
+        "stake": 23776.523457699357,
+        "traders": [
+          {
+            "trader": "0x2c33",
+            "stake": 7283.673841,
+            "avgPrice": 0.59
+          },
+          {
+            "trader": "deliveries_0nly",
+            "stake": 6791.360155919357,
+            "avgPrice": 0.59
+          },
+          {
+            "trader": "RN1",
+            "stake": 6603.98946078,
+            "avgPrice": 0.5799
+          },
+          {
+            "trader": "VeryLucky888",
+            "stake": 2360,
+            "avgPrice": 0.59
+          },
+          {
+            "trader": "wapol",
+            "stake": 604.16,
+            "avgPrice": 0.59
+          },
+          {
+            "trader": "snakeball",
+            "stake": 133.34,
+            "avgPrice": 0.59
+          }
+        ]
+      },
+      {
+        "name": "Cleveland Guardians",
+        "traderCount": 2,
+        "stake": 1975.3274222333334,
+        "traders": [
+          {
+            "trader": "RN1",
+            "stake": 1769.9540889,
+            "avgPrice": 0.4065
+          },
+          {
+            "trader": "JJJJ",
+            "stake": 205.37333333333333,
+            "avgPrice": 0.4
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "0x2c33",
+      "deliveries_0nly",
+      "RN1",
+      "VeryLucky888",
+      "wapol",
+      "snakeball",
+      "JJJJ"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span><span class=\"vt-question\">Cleveland Guardians vs. Cincinnati Reds</span><span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"vt-leader\" style=\"background:#2f6672\">→ Cincinnati Reds <span class=\"vt-leader-price\">@ 59.3¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">7 traders · 25 751,85 $</span></span></div><div class=\"vt-linked-note\"><span class=\"link-icon\" title=\"Marché équivalent détecté sur l'autre plateforme (formulation parfois différente)\">🔗</span>Même prédiction sur <span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span> et <span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:75.00%;background:var(--green)\"><div class=\"bal-tooltip\">Cincinnati Reds — 6/8 traders (75%) · mise 23 776,52 $</div></div><div class=\"bal-seg\" style=\"width:25.00%;background:var(--red)\"><div class=\"bal-tooltip\">Cleveland Guardians — 2/8 traders (25%) · mise 1 975,33 $</div></div><div class=\"bal-tick\" style=\"left:75.00%\"></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:92.33%;background:var(--green)\"><div class=\"bal-tooltip\">Cincinnati Reds — mise 23 776,52 $ / 25 751,85 $ (92%)</div></div><div class=\"bal-seg\" style=\"width:7.67%;background:var(--red)\"><div class=\"bal-tooltip\">Cleveland Guardians — mise 1 975,33 $ / 25 751,85 $ (8%)</div></div><div class=\"bal-tick\" style=\"left:92.33%\"></div></div></div></div><div class=\"vt-side-grid\"><div class=\"vt-outcome-group paired\"><div class=\"vt-side-block\" style=\"border-left-color:#2f6672\"><div class=\"vt-side-head\"><span><span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"vt-outcome\" style=\"background:#2f667222;color:#2f6672\">Cincinnati Reds</span></span><span class=\"dim\">5 traders · mise totale <b>16 985,16 $</b></span></div><div class=\"vt-side-metrics\"><span class=\"vt-odds\">Cote actuelle : <b>59.5¢</b></span><span class=\"vt-entry-diff pnl-neg\">1.53% plus cher que l'entrée moy. (58.6¢)</span><span class=\"vt-roi\">ROI si gagné : <b>+68.07%</b></span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:90.7%;background:#2f6672\"></div><span class=\"vt-trader-row-name\">RN1<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(119,45%,36%);background:hsla(119,45%,36%,.14);border-color:hsla(119,45%,36%,.4)\" title=\"Note qualite : 9/10\">9</span></span><span class=\"vt-trader-row-right\">mise <b>6 603,99 $</b> <span class=\"dim\">@ 58.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">1.6% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:32.4%;background:#2f6672\"></div><span class=\"vt-trader-row-name\">VeryLucky888<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(98,45%,36%);background:hsla(98,45%,36%,.14);border-color:hsla(98,45%,36%,.4)\" title=\"Note qualite : 8/10\">8</span></span><span class=\"vt-trader-row-right\">mise <b>2 360,00 $</b> <span class=\"dim\">@ 59.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">2.2% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:8.3%;background:#2f6672\"></div><span class=\"vt-trader-row-name\">wapol<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(87,45%,36%);background:hsla(87,45%,36%,.14);border-color:hsla(87,45%,36%,.4)\" title=\"Note qualite : 7.5/10\">7.5</span></span><span class=\"vt-trader-row-right\">mise <b>604,16 $</b> <span class=\"dim\">@ 59.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">4.0% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:1.8%;background:#2f6672\"></div><span class=\"vt-trader-row-name\">snakeball<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(77,45%,36%);background:hsla(77,45%,36%,.14);border-color:hsla(77,45%,36%,.4)\" title=\"Note qualite : 7/10\">7</span></span><span class=\"vt-trader-row-right\">mise <b>133,34 $</b> <span class=\"dim\">@ 59.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">0.5% de son book</span></span></div><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:100.0%;background:#2f6672\"></div><span class=\"vt-trader-row-name\">0x2c33<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(56,45%,36%);background:hsla(56,45%,36%,.14);border-color:hsla(56,45%,36%,.4)\" title=\"Note qualite : 6/10\">6</span></span><span class=\"vt-trader-row-right\">mise <b>7 283,67 $</b> <span class=\"dim\">@ 59.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">0.1% de son book</span></span></div></div></div><div class=\"vt-side-block\" style=\"border-left-color:#2f6672\"><div class=\"vt-side-head\"><span><span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"vt-outcome\" style=\"background:#2f667222;color:#2f6672\">Cincinnati Reds</span></span><span class=\"dim\">1 trader · mise totale <b>6 791,36 $</b></span></div><div class=\"vt-side-metrics\"><span class=\"vt-odds\">Cote actuelle : <b>59.0¢</b></span><span class=\"vt-entry-diff pnl-pos\">0.00% moins cher que l'entrée moy. (59.0¢)</span><span class=\"vt-roi\">ROI si gagné : <b>+69.49%</b></span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:93.2%;background:#2f6672\"></div><span class=\"vt-trader-row-name\">deliveries_0nly<span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"w-badge\" style=\"color:hsl(98,45%,36%);background:hsla(98,45%,36%,.14);border-color:hsla(98,45%,36%,.4)\" title=\"Note qualite : 8/10\">8</span></span><span class=\"vt-trader-row-right\">mise <b>6 791,36 $</b> <span class=\"dim\">@ 59.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">41.9% de son book</span></span></div></div></div></div><div class=\"vt-outcome-group paired\"><div class=\"vt-side-block\" style=\"border-left-color:#96742c\"><div class=\"vt-side-head\"><span><span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"vt-outcome\" style=\"background:#96742c22;color:#96742c\">Cleveland Guardians</span></span><span class=\"dim\">1 trader · mise totale <b>1 769,95 $</b></span></div><div class=\"vt-side-metrics\"><span class=\"vt-odds\">Cote actuelle : <b>40.5¢</b></span><span class=\"vt-entry-diff pnl-pos\">0.37% moins cher que l'entrée moy. (40.6¢)</span><span class=\"vt-roi\">ROI si gagné : <b>+146.91%</b></span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:24.3%;background:#96742c\"></div><span class=\"vt-trader-row-name\">RN1<span class=\"plat-badge\" style=\"color:#1f3f66;background:#1f3f6622;border-color:#1f3f6655\" title=\"Polymarket\">Poly</span><span class=\"w-badge\" style=\"color:hsl(119,45%,36%);background:hsla(119,45%,36%,.14);border-color:hsla(119,45%,36%,.4)\" title=\"Note qualite : 9/10\">9</span></span><span class=\"vt-trader-row-right\">mise <b>1 769,95 $</b> <span class=\"dim\">@ 40.6¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">0.4% de son book</span></span></div></div></div><div class=\"vt-side-block\" style=\"border-left-color:#96742c\"><div class=\"vt-side-head\"><span><span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"vt-outcome\" style=\"background:#96742c22;color:#96742c\">Cleveland Guardians</span></span><span class=\"dim\">1 trader · mise totale <b>205,37 $</b></span></div><div class=\"vt-side-metrics\"><span class=\"vt-odds\">Cote actuelle : <b>42.0¢</b></span><span class=\"vt-entry-diff pnl-neg\">5.00% plus cher que l'entrée moy. (40.0¢)</span><span class=\"vt-roi\">ROI si gagné : <b>+138.10%</b></span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><div class=\"vt-trader-row-bar\" style=\"width:2.8%;background:#96742c\"></div><span class=\"vt-trader-row-name\">JJJJ<span class=\"plat-badge\" style=\"color:#6f4e97;background:#6f4e9722;border-color:#6f4e9755\" title=\"Predict.fun\">Predict</span><span class=\"w-badge\" style=\"color:hsl(119,45%,36%);background:hsla(119,45%,36%,.14);border-color:hsla(119,45%,36%,.4)\" title=\"Note qualite : 9/10\">9</span></span><span class=\"vt-trader-row-right\">mise <b>205,37 $</b> <span class=\"dim\">@ 40.0¢</span><span class=\"vt-book-pct\" title=\"Part de son book suivi engagée sur cette position\">0.2% de son book</span></span></div></div></div></div></div>",
+    "winningSide": null,
+    "confidence": null
+  },
+  {
     "id": "ms3j4p7jv6jfe4",
     "savedAt": "2026-07-27T17:57:26.047Z",
     "question": "Will AIK win on 2026-07-27?",
