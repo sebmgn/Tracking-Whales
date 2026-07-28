@@ -612,16 +612,24 @@
      row per tier, reusing CONFIDENCE_COLORS so a tier reads the same color
      here as on the confidence buttons of each snapshot card. */
   .tier-wr-box { margin-bottom: 16px; }
-  .tier-wr-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 600; margin-bottom: 14px; }
+  .tier-wr-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 600; margin-bottom: 4px; }
+  .tier-wr-subtitle { font-style: italic; font-size: 11px; color: var(--text-dim); margin-bottom: 14px; }
   .tier-wr-row { display: flex; align-items: center; gap: 12px; margin: 0 -8px 12px; padding: 4px 8px; border-radius: 8px; cursor: pointer; transition: background-color .15s ease; }
   .tier-wr-row:last-child { margin-bottom: 0; }
   .tier-wr-row:hover { background: var(--row-hover); }
+  /* Net-winning tiers wash green, net-losing ones red — an at-a-glance
+     outcome read that's independent of the tier's own S/A+/A/B color. */
+  .tier-wr-row.tier-win { background: color-mix(in srgb, var(--green) 14%, transparent); }
+  .tier-wr-row.tier-lose { background: color-mix(in srgb, var(--red) 14%, transparent); }
+  .tier-wr-row.tier-win:hover { background: color-mix(in srgb, var(--green) 22%, transparent); }
+  .tier-wr-row.tier-lose:hover { background: color-mix(in srgb, var(--red) 22%, transparent); }
   .tier-wr-badge { flex: 0 0 36px; text-align: center; font-size: 12.5px; font-weight: 700; padding: 3px 0; border-radius: 6px; border: 1px solid; font-family: inherit; cursor: pointer; }
   .tier-wr-badge:hover { filter: brightness(0.94); }
   .tier-wr-track { flex: 1; height: 12px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
   .tier-wr-fill { height: 100%; border-radius: 999px; transition: width .6s ease; min-width: 2px; }
   .tier-wr-value { flex: 0 0 40px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
   .tier-wr-count { flex: 0 0 auto; min-width: 78px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
+  .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
 
   .snap-sync-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 4px 14px; }
@@ -2291,13 +2299,42 @@
   // at bet time (CONFIDENCE_TIERS) — the whole point of tagging S/A+/A/B is
   // to later check whether high-conviction bets actually win more, so this
   // is one gauge row per tier rather than a per-trader breakdown.
+  function sideByName(sides, name) {
+    for (var i = 0; i < (sides || []).length; i++) { if (sides[i].name === name) return sides[i]; }
+    return null;
+  }
+  // Stake-weighted average entry price across every tracked trader on a
+  // side — the "if I'd bought in at the blended price" number a flat-stake
+  // simulation needs, since a snapshot's leading side is usually several
+  // traders in at slightly different prices, not one single price.
+  function weightedAvgPriceForSide(side) {
+    var totalStake = 0, totalShares = 0;
+    (side && side.traders || []).forEach(function (t) {
+      if (t.avgPrice > 0) { totalStake += t.stake; totalShares += t.stake / t.avgPrice; }
+    });
+    return totalShares > 0 ? (totalStake / totalShares) : null;
+  }
+  // What a flat $1000 bet on the leading side would have returned, using
+  // that side's blended entry price — a simple "same stake every time"
+  // backtest so a tier's PnL isn't just whatever the traders' own (very
+  // uneven) stakes happened to add up to.
+  var HYPOTHETICAL_FLAT_STAKE = 1000;
+  function hypotheticalFlatPnl(snap, flatStake) {
+    if (!snap.winningSide || !snap.leaderName) return null;
+    var leaderSide = sideByName(snap.sides, snap.leaderName);
+    var avgPrice = weightedAvgPriceForSide(leaderSide);
+    if (!avgPrice || avgPrice <= 0) return null;
+    return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
+  }
   function computeTierWinrates(list) {
     var byTier = {};
-    CONFIDENCE_TIERS.forEach(function (t) { byTier[t] = { decided: 0, win: 0 }; });
+    CONFIDENCE_TIERS.forEach(function (t) { byTier[t] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
     list.forEach(function (snap) {
       if (!snap.winningSide || !snap.confidence || !byTier[snap.confidence]) return;
       byTier[snap.confidence].decided++;
       if (snap.leaderName === snap.winningSide) byTier[snap.confidence].win++;
+      var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+      if (hyp != null) { byTier[snap.confidence].flatPnl += hyp; byTier[snap.confidence].flatPnlCount++; }
     });
     return byTier;
   }
@@ -2320,15 +2357,23 @@
       var badgeStyle = isActive
         ? "background:" + color + ";color:#fff;border-color:" + color
         : "color:" + color + ";border-color:" + color + ";background:color-mix(in srgb, " + color + " 14%, transparent)";
+      // Row background reads win/lose at a glance, independent of the
+      // tier's own badge color: net-winning tiers (wr >= 50) get a green
+      // wash, net-losing ones red — "aucun résultat" stays neutral.
+      var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
+      var hyp = st.flatPnlCount > 0 ? st.flatPnl : null;
+      var hypHtml = hyp == null ? "" :
+        '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) + '</span>';
       // data-tier lives on the whole row, not just the 36px badge — the
       // badge alone was too small a target to hit reliably, so the click
       // handler below matches ".tier-wr-row" and the row gets a hover fill
       // to make the bigger hit area visible.
-      return '<div class="tier-wr-row' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" title="Filtrer les snapshots sur ' + esc(tier) + '">' +
+      return '<div class="tier-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" title="Filtrer les snapshots sur ' + esc(tier) + '">' +
         '<button type="button" class="tier-wr-badge' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" style="' + badgeStyle + '">' + esc(tier) + '</button>' +
         '<div class="tier-wr-track" title="' + esc(tier + " : " + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
+        hypHtml +
       '</div>';
     }).join("");
     var noteHtml = untagged > 0
@@ -2337,7 +2382,9 @@
     var filterNoteHtml = tierCardFilter.length
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
-    tierWinrateContent.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' + rows + noteHtml + filterNoteHtml + '</div>';
+    tierWinrateContent.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
+      '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' (au prix moyen d\'entrée du camp suivi)</div>' +
+      rows + noteHtml + filterNoteHtml + '</div>';
   }
   // Per-trader appearance count + win/loss/nuancé breakdown across all
   // snapshots — the "swisstony est dans mes snapshots gagnants" pattern the
