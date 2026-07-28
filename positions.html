@@ -615,7 +615,8 @@
   .tier-wr-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 600; margin-bottom: 14px; }
   .tier-wr-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .tier-wr-row:last-child { margin-bottom: 0; }
-  .tier-wr-badge { flex: 0 0 36px; text-align: center; font-size: 12.5px; font-weight: 700; padding: 3px 0; border-radius: 6px; border: 1px solid; }
+  .tier-wr-badge { flex: 0 0 36px; text-align: center; font-size: 12.5px; font-weight: 700; padding: 3px 0; border-radius: 6px; border: 1px solid; font-family: inherit; cursor: pointer; }
+  .tier-wr-badge:hover { filter: brightness(0.94); }
   .tier-wr-track { flex: 1; height: 12px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
   .tier-wr-fill { height: 100%; border-radius: 999px; transition: width .6s ease; min-width: 2px; }
   .tier-wr-value { flex: 0 0 40px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -1140,6 +1141,13 @@
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   var vtMinTraders = 5;
+  // Noise floor for trader COUNTING only (the "Traders" gauge and the "X
+  // traders" badge) — a position staking less than this doesn't make its
+  // trader count as present in computeMarketGroups' side/group tallies. Their
+  // dollars still count fully everywhere (totalStake, the Mises gauge, ROI) —
+  // only the headcount ignores them, so a handful of $10 dust positions can't
+  // inflate "7 traders" into looking like stronger consensus than it is.
+  var MIN_TRADER_STAKE = 300;
   var vtMinStake = 0; // 0 = no floor; else each selected player individually needs this much staked (or the unit's total, if none selected)
   var vtSelectedMatch = null; // matchKey or null (= all matches)
   var vtSelectedType = null; // bet-type label or null (= all types)
@@ -1509,7 +1517,8 @@
           };
         }
         var g = groups[mid];
-        g.traderSet[t.name] = true;
+        var stake = p.avgPrice * p.shares; // amount actually risked (cost basis), not current mark-to-market value
+        if (stake >= MIN_TRADER_STAKE) g.traderSet[t.name] = true;
         var sk = p.outcomeKey;
         if (!g.bySide[sk]) {
           g.bySide[sk] = { name: p.outcomeName, price: p.curPrice, entries: [] };
@@ -1519,7 +1528,7 @@
           valueUsd: p.valueUsd,
           avgPrice: p.avgPrice,
           shares: p.shares,
-          stake: p.avgPrice * p.shares // amount actually risked (cost basis), not current mark-to-market value
+          stake: stake
         });
       });
     });
@@ -1532,7 +1541,7 @@
         var s = g.bySide[sk];
         s.totalStake = s.entries.reduce(function (sum, e) { return sum + e.stake; }, 0);
         var uniq = {};
-        s.entries.forEach(function (e) { uniq[e.trader] = true; });
+        s.entries.forEach(function (e) { if (e.stake >= MIN_TRADER_STAKE) uniq[e.trader] = true; });
         s.traderCount = Object.keys(uniq).length;
         return s;
       });
@@ -2292,6 +2301,10 @@
     });
     return byTier;
   }
+  // Tiers currently toggled on to filter the snapshot cards below (click a
+  // badge in the winrate gauge to isolate that tier, click again to drop it;
+  // several can be active at once). Empty = show every snapshot, the default.
+  var tierCardFilter = [];
   function renderTierWinrate(list) {
     if (!tierWinrateContent) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
@@ -2303,8 +2316,12 @@
       var wr = st.decided > 0 ? (st.win / st.decided * 100) : null;
       var color = CONFIDENCE_COLORS[tier];
       var countLabel = st.decided > 0 ? (st.win + " / " + st.decided) : "aucun résultat";
+      var isActive = tierCardFilter.indexOf(tier) !== -1;
+      var badgeStyle = isActive
+        ? "background:" + color + ";color:#fff;border-color:" + color
+        : "color:" + color + ";border-color:" + color + ";background:color-mix(in srgb, " + color + " 14%, transparent)";
       return '<div class="tier-wr-row">' +
-        '<span class="tier-wr-badge" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">' + esc(tier) + '</span>' +
+        '<button type="button" class="tier-wr-badge' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" style="' + badgeStyle + '" title="Filtrer les snapshots sur ' + esc(tier) + '">' + esc(tier) + '</button>' +
         '<div class="tier-wr-track" title="' + esc(tier + " : " + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
@@ -2313,7 +2330,10 @@
     var noteHtml = untagged > 0
       ? '<div class="tier-wr-note">' + untagged + (untagged > 1 ? ' snapshots résolus ne sont pas classés' : ' snapshot résolu n\'est pas classé') + ' — tague-le avec Confiance sur la carte ci-dessous pour l\'inclure ici.</div>'
       : '';
-    tierWinrateContent.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' + rows + noteHtml + '</div>';
+    var filterNoteHtml = tierCardFilter.length
+      ? '<div class="tier-wr-note">Filtré sur <b>' + esc(tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
+      : '';
+    tierWinrateContent.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' + rows + noteHtml + filterNoteHtml + '</div>';
   }
   // Per-trader appearance count + win/loss/nuancé breakdown across all
   // snapshots — the "swisstony est dans mes snapshots gagnants" pattern the
@@ -2395,15 +2415,23 @@
   }
   function renderSnapshots() {
     var list = loadSnapshots();
-    snapCountEl.textContent = list.length + ' snapshot' + (list.length > 1 ? 's' : '');
+    // Dashboard/tier-gauge/recap table always reflect every snapshot — only
+    // the card list below is narrowed by tierCardFilter, otherwise clicking a
+    // tier badge would make its own gauge trivially collapse to 100%.
+    var cardsList = tierCardFilter.length ? list.filter(function (s) { return tierCardFilter.indexOf(s.confidence) !== -1; }) : list;
+    snapCountEl.textContent = tierCardFilter.length
+      ? cardsList.length + ' / ' + list.length + ' snapshots (filtré ' + tierCardFilter.join(", ") + ')'
+      : list.length + ' snapshot' + (list.length > 1 ? 's' : '');
     renderSnapDashboard(list);
     renderTierWinrate(list);
     renderSnapStats(list);
-    if (!list.length) {
-      snapshotsContent.innerHTML = '<div class="empty-note">Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.</div>';
+    if (!cardsList.length) {
+      snapshotsContent.innerHTML = '<div class="empty-note">' + (tierCardFilter.length
+        ? "Aucun snapshot dans " + (tierCardFilter.length > 1 ? "ces catégories" : "cette catégorie") + "."
+        : "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.") + '</div>';
       return;
     }
-    snapshotsContent.innerHTML = list.map(function (snap) {
+    snapshotsContent.innerHTML = cardsList.map(function (snap) {
       var d = new Date(snap.savedAt);
       var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
       // Border stays tied to which side was leading when saved (not to the
@@ -3492,6 +3520,14 @@
         snapStatsSort.dir = sortKey === "name" ? "asc" : "desc";
       }
       renderSnapStats(loadSnapshots());
+      return;
+    }
+    var tierBadge = e.target.closest ? e.target.closest(".tier-wr-badge") : null;
+    if (tierBadge) {
+      var badgeTier = tierBadge.getAttribute("data-tier");
+      var tierIdx = tierCardFilter.indexOf(badgeTier);
+      if (tierIdx === -1) tierCardFilter.push(badgeTier); else tierCardFilter.splice(tierIdx, 1);
+      renderSnapshots();
       return;
     }
   });
