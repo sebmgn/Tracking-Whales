@@ -613,8 +613,9 @@
      here as on the confidence buttons of each snapshot card. */
   .tier-wr-box { margin-bottom: 16px; }
   .tier-wr-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 600; margin-bottom: 14px; }
-  .tier-wr-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .tier-wr-row { display: flex; align-items: center; gap: 12px; margin: 0 -8px 12px; padding: 4px 8px; border-radius: 8px; cursor: pointer; transition: background-color .15s ease; }
   .tier-wr-row:last-child { margin-bottom: 0; }
+  .tier-wr-row:hover { background: var(--row-hover); }
   .tier-wr-badge { flex: 0 0 36px; text-align: center; font-size: 12.5px; font-weight: 700; padding: 3px 0; border-radius: 6px; border: 1px solid; font-family: inherit; cursor: pointer; }
   .tier-wr-badge:hover { filter: brightness(0.94); }
   .tier-wr-track { flex: 1; height: 12px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
@@ -2320,8 +2321,12 @@
       var badgeStyle = isActive
         ? "background:" + color + ";color:#fff;border-color:" + color
         : "color:" + color + ";border-color:" + color + ";background:color-mix(in srgb, " + color + " 14%, transparent)";
-      return '<div class="tier-wr-row">' +
-        '<button type="button" class="tier-wr-badge' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" style="' + badgeStyle + '" title="Filtrer les snapshots sur ' + esc(tier) + '">' + esc(tier) + '</button>' +
+      // data-tier lives on the whole row, not just the 36px badge — the
+      // badge alone was too small a target to hit reliably, so the click
+      // handler below matches ".tier-wr-row" and the row gets a hover fill
+      // to make the bigger hit area visible.
+      return '<div class="tier-wr-row' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" title="Filtrer les snapshots sur ' + esc(tier) + '">' +
+        '<button type="button" class="tier-wr-badge' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" style="' + badgeStyle + '">' + esc(tier) + '</button>' +
         '<div class="tier-wr-track" title="' + esc(tier + " : " + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
@@ -3522,11 +3527,11 @@
       renderSnapStats(loadSnapshots());
       return;
     }
-    var tierBadge = e.target.closest ? e.target.closest(".tier-wr-badge") : null;
-    if (tierBadge) {
-      var badgeTier = tierBadge.getAttribute("data-tier");
-      var tierIdx = tierCardFilter.indexOf(badgeTier);
-      if (tierIdx === -1) tierCardFilter.push(badgeTier); else tierCardFilter.splice(tierIdx, 1);
+    var tierRow = e.target.closest ? e.target.closest(".tier-wr-row") : null;
+    if (tierRow) {
+      var rowTier = tierRow.getAttribute("data-tier");
+      var tierIdx = tierCardFilter.indexOf(rowTier);
+      if (tierIdx === -1) tierCardFilter.push(rowTier); else tierCardFilter.splice(tierIdx, 1);
       renderSnapshots();
       return;
     }
