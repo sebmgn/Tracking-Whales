@@ -954,23 +954,13 @@
   </div>
 
   <div class="tab-panel" id="tab-mon-historique">
-    <h2 class="section-title">Mon historique — Predict.fun <a id="histWalletLinkPredict" href="#" target="_blank" rel="noopener" class="trader-wallet" style="margin-left:10px;"></a></h2>
+    <h2 class="section-title">Mon historique <a id="histWalletLink" href="#" target="_blank" rel="noopener" class="trader-wallet" style="margin-left:10px;"></a></h2>
     <div class="status-bar" style="margin-top:0;">
-      <span id="histStatusTextPredict">—</span>
-      <button id="histRefreshBtnPredict" type="button">Rafraîchir</button>
-      <span class="error-msg" id="histErrorMsgPredict"></span>
+      <span id="histStatusText">—</span>
+      <button id="histRefreshBtn" type="button">Rafraîchir</button>
+      <span class="error-msg" id="histErrorMsg"></span>
     </div>
-    <div id="histContentPredict">
-      <div class="loading-state">Ouvre cet onglet pour charger l'historique…</div>
-    </div>
-
-    <h2 class="section-title" style="margin-top:32px;">Mon historique — Polymarket <a id="histWalletLinkPoly" href="#" target="_blank" rel="noopener" class="trader-wallet" style="margin-left:10px;"></a></h2>
-    <div class="status-bar" style="margin-top:0;">
-      <span id="histStatusTextPoly">—</span>
-      <button id="histRefreshBtnPoly" type="button">Rafraîchir</button>
-      <span class="error-msg" id="histErrorMsgPoly"></span>
-    </div>
-    <div id="histContentPoly">
+    <div id="histContent">
       <div class="loading-state">Ouvre cet onglet pour charger l'historique…</div>
     </div>
   </div>
@@ -2916,10 +2906,16 @@
     wireInteractions();
   }
 
-  // ---------- Mon historique (own trade history + PnL chart, one section per platform) ----------
-  var HIST_PREDICT_WALLET = "0x60BA5423e4BFaBBA93C5dA112413363D193fC78C";
-  var HIST_POLY_WALLET = "0x5d66d32ccd7863aecbef9cc3bb27aa00f0dc8350"; // resolved from the @sebtrading21 handle via polymarket.com/api/profile/userData
-  var HIST_POLY_HANDLE = "sebtrading21";
+  // ---------- Mon historique (single wallet, own trade history + PnL chart) ----------
+  var HIST_WALLET = "0x60BA5423e4BFaBBA93C5dA112413363D193fC78C";
+  var histLoaded = false;
+  var histStatusText = document.getElementById("histStatusText");
+  var histErrorMsg = document.getElementById("histErrorMsg");
+  var histRefreshBtn = document.getElementById("histRefreshBtn");
+  var histContent = document.getElementById("histContent");
+  var histWalletLink = document.getElementById("histWalletLink");
+  histWalletLink.href = "https://predict.fun/portfolio/" + HIST_WALLET;
+  histWalletLink.textContent = HIST_WALLET.slice(0, 6) + "…" + HIST_WALLET.slice(-4);
 
   function fmtUSDSigned(n) { return (n >= 0 ? "+" : "") + fmtUSD(n); }
   function fmtDateShort(d) { return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }); }
@@ -2948,8 +2944,8 @@
     return all;
   }
 
-  function normalizeHistoryMatch(match, address) {
-    var leg = matchLegForTrader(match, address);
+  function normalizeHistoryMatch(match) {
+    var leg = matchLegForTrader(match, HIST_WALLET);
     if (!leg) return null;
     var market = match.market || {};
     var outcome = leg.outcome || {};
@@ -2963,84 +2959,6 @@
       categorySlug: market.categorySlug,
       sideName: outcome.name || "—",
       status: outcome.status,
-      isBuy: isBuy,
-      price: price,
-      shares: shares,
-      amount: shares * price,
-      cashFlow: isBuy ? -(shares * price) : (shares * price)
-    };
-  }
-
-  // ---------- Polymarket equivalents for Mon historique ----------
-  // Unlike Predict.fun's matches (which embed each outcome's live WON/LOST
-  // status directly on every trade record, even old ones), Polymarket's
-  // /trades has no resolution field at all — status has to come from a
-  // separate /positions lookup: any position with redeemable=true has
-  // settled at curPrice 1 (won) or 0 (lost). Built once per load into a
-  // "conditionId|outcomeIndex" -> WON/LOST map and threaded into
-  // normalizeHistoryTradePoly, so the platform-agnostic buildHistoryPnl
-  // below can redeem leftover shares exactly like it does for Predict.fun.
-  // CAVEAT: a market fully sold out of before it resolved leaves no
-  // position row at all (Polymarket drops anything under sizeThreshold), so
-  // it has no status here and won't appear in "Marchés clôturés" — a gap
-  // Predict.fun doesn't have. Noted in the caveat box in the UI.
-  async function fetchAllPolyTradesForWallet(address) {
-    var all = [];
-    var offset = 0, pageSize = 500;
-    for (var i = 0; i < 40; i++) {
-      var url = POLY_TRADES_BASE + "?user=" + encodeURIComponent(address) + "&limit=" + pageSize + "&offset=" + offset;
-      var res = await throttledFetch(url);
-      if (!res.ok) {
-        var body = "";
-        try { body = await res.text(); } catch (e) {}
-        throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
-      }
-      var page = await res.json();
-      all = all.concat(page || []);
-      if (!page || page.length < pageSize) break;
-      offset += pageSize;
-    }
-    return all;
-  }
-  async function fetchAllPolyPositionsRaw(address) {
-    var all = [];
-    var offset = 0, pageSize = 500;
-    for (var i = 0; i < 10; i++) {
-      var url = POLY_POSITIONS_BASE + "?user=" + encodeURIComponent(address) +
-        "&limit=" + pageSize + "&offset=" + offset + "&sizeThreshold=0";
-      var res = await throttledFetch(url);
-      if (!res.ok) {
-        var body = "";
-        try { body = await res.text(); } catch (e) {}
-        throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
-      }
-      var page = await res.json();
-      all = all.concat(page || []);
-      if (!page || page.length < pageSize) break;
-      offset += pageSize;
-    }
-    return all;
-  }
-  function buildPolyResolutionMap(positions) {
-    var map = {};
-    positions.forEach(function (p) {
-      if (!p.redeemable) return;
-      map[p.conditionId + "|" + p.outcomeIndex] = p.curPrice >= 0.5 ? "WON" : "LOST";
-    });
-    return map;
-  }
-  function normalizeHistoryTradePoly(trade, statusMap) {
-    var outcomeKey = trade.conditionId + "|" + trade.outcomeIndex;
-    var shares = trade.size || 0;
-    var price = trade.price || 0;
-    var isBuy = trade.side === "BUY";
-    return {
-      time: new Date((trade.timestamp || 0) * 1000),
-      outcomeKey: outcomeKey,
-      question: trade.title || "—",
-      categorySlug: trade.eventSlug || trade.slug,
-      sideName: trade.outcome || "—",
-      status: statusMap[outcomeKey] || null,
       isBuy: isBuy,
       price: price,
       shares: shares,
@@ -3266,12 +3184,12 @@
     return '<div class="detail-timeline">' + lines + resLine + '</div>';
   }
 
-  function renderHistoryClosedTable(closedMarkets, marketUrlFn, idPrefix) {
+  function renderHistoryClosedTable(closedMarkets) {
     if (!closedMarkets.length) return '<div class="empty-state">Aucun marché clôturé pour le moment.</div>';
     var rows = closedMarkets.map(function (m, i) {
-      var url = marketUrlFn(m.categorySlug);
+      var url = m.categorySlug ? "https://predict.fun/market/" + m.categorySlug : "https://predict.fun";
       var roi = m.buyTotal > 0 ? (m.pnl / m.buyTotal * 100) : 0;
-      var rid = idPrefix + "_hcm_" + i + "_" + safeId(m.question).slice(0, 24);
+      var rid = "hcm_" + i + "_" + safeId(m.question).slice(0, 24);
       return '<tr class="market-row" data-target="' + rid + '">' +
         '<td class="rt-time">' + esc(fmtDateTime(m.lastTime)) + '</td>' +
         '<td class="market-title"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(m.question) + '</a></td>' +
@@ -3291,22 +3209,22 @@
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
-  function renderHistory(pnl, openPositions, contentEl, marketUrlFn, idPrefix, caveatSuffix) {
+  function renderHistory(pnl, openPositions) {
     var chartSvg = buildHistoryChartSvg(pnl.series);
     var html =
       renderHistoryStats(pnl, openPositions) +
       '<h2 class="section-title">Évolution du PnL</h2>' +
-      '<div class="caveat-box"><b>Reconstruction locale, non officielle.</b> Un achat n\'est jamais compté comme une perte : le PnL n\'est réalisé qu\'à la revente ou à la résolution du marché (WON/LOST), par rapport au prix d\'achat moyen — une position encore ouverte reste neutre sur la courbe. Hors frais de plateforme. Peut différer légèrement du chiffre affiché sur le profil officiel.' + (caveatSuffix || "") + '</div>' +
+      '<div class="caveat-box"><b>Reconstruction locale, non officielle.</b> Un achat n\'est jamais compté comme une perte : le PnL n\'est réalisé qu\'à la revente ou à la résolution du marché (WON/LOST), par rapport au prix d\'achat moyen — une position encore ouverte reste neutre sur la courbe. Hors frais de plateforme. Peut différer légèrement du chiffre affiché sur le profil predict.fun.</div>' +
       '<div class="evolution-row">' +
-        '<div class="chart-box hist-chart-box">' + (chartSvg || '<div class="empty-state">Pas assez de données pour tracer une courbe.</div>') + '</div>' +
+        '<div class="chart-box" id="histChartBox">' + (chartSvg || '<div class="empty-state">Pas assez de données pour tracer une courbe.</div>') + '</div>' +
         renderHistoryDailyList(pnl.dailyDeltas) +
       '</div>' +
       '<h2 class="section-title">Marchés clôturés <span class="count-pill">' + pnl.closedMarkets.length + '</span></h2>' +
-      renderHistoryClosedTable(pnl.closedMarkets, marketUrlFn, idPrefix);
-    contentEl.innerHTML = html;
-    var chartBox = contentEl.querySelector(".hist-chart-box");
+      renderHistoryClosedTable(pnl.closedMarkets);
+    histContent.innerHTML = html;
+    var chartBox = document.getElementById("histChartBox");
     if (chartBox) wireHistoryChartTooltip(chartBox);
-    contentEl.querySelectorAll(".detail-toggle").forEach(function (btn) {
+    histContent.querySelectorAll(".detail-toggle").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var row = document.getElementById(btn.getAttribute("data-target"));
         if (row) row.classList.toggle("collapsed");
@@ -3314,67 +3232,26 @@
     });
   }
 
-  async function loadHistoriquePlatform(cfg) {
-    cfg.statusEl.textContent = "Chargement…";
-    cfg.errorEl.textContent = "";
-    cfg.refreshBtn.disabled = true;
+  async function loadHistorique() {
+    histStatusText.textContent = "Chargement…";
+    histErrorMsg.textContent = "";
+    histRefreshBtn.disabled = true;
     try {
-      var results = await Promise.all([cfg.fetchTrades(), cfg.fetchOpenPositions()]);
-      var pnl = buildHistoryPnl(results[0]);
-      renderHistory(pnl, results[1], cfg.contentEl, cfg.marketUrlFn, cfg.idPrefix, cfg.caveatSuffix);
-      cfg.statusEl.textContent = "À jour — " + new Date().toLocaleTimeString("fr-FR");
-      cfg.loaded = true;
+      var results = await Promise.all([fetchAllMatchesForWallet(HIST_WALLET), fetchAllPredictPositions(HIST_WALLET)]);
+      var trades = results[0].map(normalizeHistoryMatch).filter(Boolean);
+      var openPositions = results[1];
+      var pnl = buildHistoryPnl(trades);
+      renderHistory(pnl, openPositions);
+      histStatusText.textContent = "À jour — " + new Date().toLocaleTimeString("fr-FR");
+      histLoaded = true;
     } catch (err) {
-      cfg.statusEl.textContent = "Erreur";
-      cfg.errorEl.textContent = "Échec du chargement : " + err.message;
+      histStatusText.textContent = "Erreur";
+      histErrorMsg.textContent = "Échec du chargement : " + err.message;
       console.error(err);
     }
-    cfg.refreshBtn.disabled = false;
+    histRefreshBtn.disabled = false;
   }
-
-  var histPredictCfg = {
-    loaded: false,
-    statusEl: document.getElementById("histStatusTextPredict"),
-    errorEl: document.getElementById("histErrorMsgPredict"),
-    refreshBtn: document.getElementById("histRefreshBtnPredict"),
-    contentEl: document.getElementById("histContentPredict"),
-    idPrefix: "predict",
-    marketUrlFn: function (slug) { return slug ? "https://predict.fun/market/" + slug : "https://predict.fun"; },
-    fetchTrades: function () {
-      return fetchAllMatchesForWallet(HIST_PREDICT_WALLET).then(function (matches) {
-        return matches.map(function (m) { return normalizeHistoryMatch(m, HIST_PREDICT_WALLET); }).filter(Boolean);
-      });
-    },
-    fetchOpenPositions: function () { return fetchAllPredictPositions(HIST_PREDICT_WALLET); }
-  };
-  var histPolyCfg = {
-    loaded: false,
-    statusEl: document.getElementById("histStatusTextPoly"),
-    errorEl: document.getElementById("histErrorMsgPoly"),
-    refreshBtn: document.getElementById("histRefreshBtnPoly"),
-    contentEl: document.getElementById("histContentPoly"),
-    idPrefix: "poly",
-    marketUrlFn: function (slug) { return slug ? "https://polymarket.com/fr/event/" + slug : "https://polymarket.com/fr"; },
-    caveatSuffix: " Un marché entièrement revendu avant sa résolution n'a plus de trace exploitable côté Polymarket et n'apparaît donc pas dans les marchés clôturés ci-dessous (limite propre à cette plateforme, absente côté Predict.fun).",
-    fetchTrades: function () {
-      return Promise.all([fetchAllPolyTradesForWallet(HIST_POLY_WALLET), fetchAllPolyPositionsRaw(HIST_POLY_WALLET)])
-        .then(function (r) {
-          var statusMap = buildPolyResolutionMap(r[1]);
-          return r[0].map(function (t) { return normalizeHistoryTradePoly(t, statusMap); });
-        });
-    },
-    fetchOpenPositions: function () { return fetchAllPolyPositions(HIST_POLY_WALLET); }
-  };
-
-  var histWalletLinkPredict = document.getElementById("histWalletLinkPredict");
-  histWalletLinkPredict.href = "https://predict.fun/portfolio/" + HIST_PREDICT_WALLET;
-  histWalletLinkPredict.textContent = HIST_PREDICT_WALLET.slice(0, 6) + "…" + HIST_PREDICT_WALLET.slice(-4);
-  var histWalletLinkPoly = document.getElementById("histWalletLinkPoly");
-  histWalletLinkPoly.href = "https://polymarket.com/fr/@" + HIST_POLY_HANDLE;
-  histWalletLinkPoly.textContent = "@" + HIST_POLY_HANDLE;
-
-  histPredictCfg.refreshBtn.addEventListener("click", function () { loadHistoriquePlatform(histPredictCfg); });
-  histPolyCfg.refreshBtn.addEventListener("click", function () { loadHistoriquePlatform(histPolyCfg); });
+  histRefreshBtn.addEventListener("click", loadHistorique);
 
   // ---------- tabs ----------
   document.querySelectorAll(".tab-btn").forEach(function (btn) {
@@ -3383,10 +3260,7 @@
       document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
       btn.classList.add("active");
       document.getElementById("tab-" + btn.getAttribute("data-tab")).classList.add("active");
-      if (btn.getAttribute("data-tab") === "mon-historique") {
-        if (!histPredictCfg.loaded) loadHistoriquePlatform(histPredictCfg);
-        if (!histPolyCfg.loaded) loadHistoriquePlatform(histPolyCfg);
-      }
+      if (btn.getAttribute("data-tab") === "mon-historique" && !histLoaded) loadHistorique();
     });
   });
   rtFilters.querySelectorAll("button").forEach(function (btn) {
