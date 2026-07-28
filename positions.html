@@ -541,6 +541,9 @@
   thead th.num { text-align: right; }
   thead th.sortable { cursor: pointer; user-select: none; }
   thead th.sortable:hover { color: var(--text); }
+  thead th.sortable.sorted { color: var(--text); }
+  thead th.sortable .sort-arrow { margin-left: 3px; font-size: 9px; color: var(--text-dim); }
+  thead th.sortable.sorted .sort-arrow { color: var(--accent); }
   tbody td { padding: 11px 12px; border-bottom: 1px solid var(--panel-border); vertical-align: middle; }
   tbody tr.data-row:hover, tbody tr:hover { background: var(--row-hover); }
   tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -604,6 +607,20 @@
   .snap-badge-loss { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
   .snap-badge-gain-nuance { color: #2c4f24; background: color-mix(in srgb, #2c4f24 14%, transparent); }
   .snap-badge-perte-nuance { color: #96481f; background: color-mix(in srgb, #96481f 14%, transparent); }
+
+  /* Winrate par catégorie de conviction (S / A+ / A / B) — one thin gauge
+     row per tier, reusing CONFIDENCE_COLORS so a tier reads the same color
+     here as on the confidence buttons of each snapshot card. */
+  .tier-wr-box { margin-bottom: 16px; }
+  .tier-wr-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 600; margin-bottom: 14px; }
+  .tier-wr-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .tier-wr-row:last-child { margin-bottom: 0; }
+  .tier-wr-badge { flex: 0 0 36px; text-align: center; font-size: 12.5px; font-weight: 700; padding: 3px 0; border-radius: 6px; border: 1px solid; }
+  .tier-wr-track { flex: 1; height: 12px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
+  .tier-wr-fill { height: 100%; border-radius: 999px; transition: width .6s ease; min-width: 2px; }
+  .tier-wr-value { flex: 0 0 40px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tier-wr-count { flex: 0 0 auto; min-width: 78px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
+  .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
 
   .snap-sync-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 4px 14px; }
   .snap-sync-status { font-size: 12px; font-weight: 700; color: var(--text-dim); }
@@ -961,6 +978,7 @@
       <div class="empty-note" style="padding:6px 0 0;">Crée un <em>fine-grained personal access token</em> sur github.com → Settings → Developer settings, limité au repo <code>Tracking-Whales</code>, avec uniquement la permission <strong>Contents: Read and write</strong>. À faire une fois par appareil/navigateur. Le token reste stocké localement dans ce navigateur — jamais écrit dans le code de la page, jamais envoyé ailleurs qu'à l'API GitHub. Connecte d'abord l'appareil qui a la liste de snapshots à jour (il servira de point de départ) ; les autres appareils s'aligneront dessus au premier lien.</div>
     </div>
     <div id="snapDashboard"></div>
+    <div id="tierWinrateContent"></div>
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
@@ -1062,6 +1080,7 @@
   var snapCountEl = document.getElementById("snapCount");
   var snapStatsContent = document.getElementById("snapStatsContent");
   var snapDashboard = document.getElementById("snapDashboard");
+  var tierWinrateContent = document.getElementById("tierWinrateContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -2259,14 +2278,78 @@
     }
     snapDashboard.innerHTML = tilesHtml(globalTiles) + tilesHtml(traderTiles);
   }
+  // Bet-level winrate broken down by the confidence tag set on the snapshot
+  // at bet time (CONFIDENCE_TIERS) — the whole point of tagging S/A+/A/B is
+  // to later check whether high-conviction bets actually win more, so this
+  // is one gauge row per tier rather than a per-trader breakdown.
+  function computeTierWinrates(list) {
+    var byTier = {};
+    CONFIDENCE_TIERS.forEach(function (t) { byTier[t] = { decided: 0, win: 0 }; });
+    list.forEach(function (snap) {
+      if (!snap.winningSide || !snap.confidence || !byTier[snap.confidence]) return;
+      byTier[snap.confidence].decided++;
+      if (snap.leaderName === snap.winningSide) byTier[snap.confidence].win++;
+    });
+    return byTier;
+  }
+  function renderTierWinrate(list) {
+    if (!tierWinrateContent) return;
+    var decidedAll = list.filter(function (s) { return !!s.winningSide; });
+    if (!decidedAll.length) { tierWinrateContent.innerHTML = ""; return; }
+    var byTier = computeTierWinrates(list);
+    var untagged = decidedAll.filter(function (s) { return !s.confidence; }).length;
+    var rows = CONFIDENCE_TIERS.map(function (tier) {
+      var st = byTier[tier];
+      var wr = st.decided > 0 ? (st.win / st.decided * 100) : null;
+      var color = CONFIDENCE_COLORS[tier];
+      var countLabel = st.decided > 0 ? (st.win + " / " + st.decided) : "aucun résultat";
+      return '<div class="tier-wr-row">' +
+        '<span class="tier-wr-badge" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">' + esc(tier) + '</span>' +
+        '<div class="tier-wr-track" title="' + esc(tier + " : " + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
+        '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
+        '<span class="tier-wr-count">' + countLabel + '</span>' +
+      '</div>';
+    }).join("");
+    var noteHtml = untagged > 0
+      ? '<div class="tier-wr-note">' + untagged + (untagged > 1 ? ' snapshots résolus ne sont pas classés' : ' snapshot résolu n\'est pas classé') + ' — tague-le avec Confiance sur la carte ci-dessous pour l\'inclure ici.</div>'
+      : '';
+    tierWinrateContent.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' + rows + noteHtml + '</div>';
+  }
   // Per-trader appearance count + win/loss/nuancé breakdown across all
   // snapshots — the "swisstony est dans mes snapshots gagnants" pattern the
   // user wants to spot is just this table sorted by how often a name shows up.
+  // Sortable on every column (click a header to sort by it, click again to
+  // flip direction) — snapStatsSort persists across re-renders so toggling a
+  // snapshot's result/confidence doesn't reset the sort the user picked.
+  var SNAP_STATS_COLUMNS = [
+    { key: "name", label: "Trader" },
+    { key: "pnl", label: "PNL", numeric: true },
+    { key: "total", label: "Snapshots", numeric: true },
+    { key: "win", label: "Gagnés", numeric: true },
+    { key: "loss", label: "Perdus", numeric: true },
+    { key: "gainNuance", label: "Gain nuancé", numeric: true },
+    { key: "perteNuance", label: "Perte nuancée", numeric: true },
+    { key: "wr", label: "% réussite", numeric: true }
+  ];
+  var snapStatsSort = { key: "total", dir: "desc" };
+  // Rows with a null sort value (no decided snapshot yet, so PNL/% réussite
+  // show "—") always sink to the bottom regardless of direction — they
+  // aren't meaningfully comparable, so flipping the sort shouldn't surface
+  // them first.
+  function compareSnapStatsRows(a, b, key, dir) {
+    var va = a[key], vb = b[key];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    var mul = dir === "asc" ? 1 : -1;
+    if (typeof va === "string") return mul * va.localeCompare(vb);
+    return mul * (va - vb);
+  }
   function renderSnapStats(list) {
     var byTrader = {};
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
-        if (!byTrader[name]) byTrader[name] = { total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0 };
+        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0 };
         byTrader[name].total++;
         var pnlResult = traderNetPnlInSnapshot(snap, name);
         if (pnlResult) byTrader[name].pnl += pnlResult.net;
@@ -2277,30 +2360,44 @@
         else if (cls === "perte_nuance") byTrader[name].perteNuance++;
       });
     });
-    var names = Object.keys(byTrader).sort(function (a, b) { return byTrader[b].total - byTrader[a].total; });
-    if (!names.length) { snapStatsContent.innerHTML = ""; return; }
-    var rows = names.map(function (n) {
+    var rowsData = Object.keys(byTrader).map(function (n) {
       var st = byTrader[n];
       var decided = st.win + st.loss + st.gainNuance + st.perteNuance;
-      var wr = decided > 0 ? ((st.win + st.gainNuance) / decided * 100) : null;
+      st.decided = decided;
+      st.wr = decided > 0 ? ((st.win + st.gainNuance) / decided * 100) : null;
+      // Raw st.pnl stays a number (0 when nothing decided yet) for display;
+      // this separate field is what sorting uses so "—" rows sink to the
+      // bottom instead of racing 0-PNL traders for last place.
+      st.pnlForSort = decided > 0 ? st.pnl : null;
+      return st;
+    });
+    if (!rowsData.length) { snapStatsContent.innerHTML = ""; return; }
+    var sortField = snapStatsSort.key === "pnl" ? "pnlForSort" : snapStatsSort.key;
+    rowsData.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, snapStatsSort.dir); });
+    var rows = rowsData.map(function (st) {
       var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
-      return '<tr><td>' + esc(n) + platformBadge(PLATFORM_BY_NAME[n]) + weightBadge(WEIGHT_BY_NAME[n]) + '</td>' +
-        '<td class="num ' + pnlClass + '">' + (decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
+      return '<tr><td>' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
+        '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
         '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
-        '<td class="num">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</td></tr>';
+        '<td class="num">' + (st.wr == null ? '—' : st.wr.toFixed(0) + '%') + '</td></tr>';
+    }).join("");
+    var headCells = SNAP_STATS_COLUMNS.map(function (col) {
+      var isActive = snapStatsSort.key === col.key;
+      var arrow = isActive ? '<span class="sort-arrow">' + (snapStatsSort.dir === "asc" ? "▲" : "▼") + '</span>' : "";
+      return '<th class="sortable' + (col.numeric ? " num" : "") + (isActive ? " sorted" : "") + '" data-sort-key="' + col.key + '">' + esc(col.label) + arrow + '</th>';
     }).join("");
     snapStatsContent.innerHTML =
       '<button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapStatsCollapsed ? "▸ Afficher le récap par trader" : "▾ Réduire le récap par trader") + '</button>' +
       '<div class="snap-stats-wrap table-scroll' + (snapStatsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
-      '<th>Trader</th><th class="num">PNL</th><th class="num">Snapshots</th><th class="num">Gagnés</th><th class="num">Perdus</th>' +
-      '<th class="num">Gain nuancé</th><th class="num">Perte nuancée</th><th class="num">% réussite</th>' +
+      headCells +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   function renderSnapshots() {
     var list = loadSnapshots();
     snapCountEl.textContent = list.length + ' snapshot' + (list.length > 1 ? 's' : '');
     renderSnapDashboard(list);
+    renderTierWinrate(list);
     renderSnapStats(list);
     if (!list.length) {
       snapshotsContent.innerHTML = '<div class="empty-note">Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.</div>';
@@ -3382,6 +3479,18 @@
     var statsToggleBtn = e.target.closest ? e.target.closest("#snapStatsToggleBtn") : null;
     if (statsToggleBtn) {
       snapStatsCollapsed = !snapStatsCollapsed;
+      renderSnapStats(loadSnapshots());
+      return;
+    }
+    var sortTh = e.target.closest ? e.target.closest("#snapStatsContent th.sortable") : null;
+    if (sortTh) {
+      var sortKey = sortTh.getAttribute("data-sort-key");
+      if (snapStatsSort.key === sortKey) {
+        snapStatsSort.dir = snapStatsSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        snapStatsSort.key = sortKey;
+        snapStatsSort.dir = sortKey === "name" ? "asc" : "desc";
+      }
       renderSnapStats(loadSnapshots());
       return;
     }
