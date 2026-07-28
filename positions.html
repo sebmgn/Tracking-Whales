@@ -619,10 +619,10 @@
   .tier-wr-row:hover { background: var(--row-hover); }
   /* Net-winning tiers wash green, net-losing ones red — an at-a-glance
      outcome read that's independent of the tier's own S/A+/A/B color. */
-  .tier-wr-row.tier-win { background: color-mix(in srgb, var(--green) 14%, transparent); }
-  .tier-wr-row.tier-lose { background: color-mix(in srgb, var(--red) 14%, transparent); }
-  .tier-wr-row.tier-win:hover { background: color-mix(in srgb, var(--green) 22%, transparent); }
-  .tier-wr-row.tier-lose:hover { background: color-mix(in srgb, var(--red) 22%, transparent); }
+  .tier-wr-row.tier-win { background: color-mix(in srgb, var(--green) 38%, transparent); border: 1px solid color-mix(in srgb, var(--green) 55%, transparent); }
+  .tier-wr-row.tier-lose { background: color-mix(in srgb, var(--red) 38%, transparent); border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); }
+  .tier-wr-row.tier-win:hover { background: color-mix(in srgb, var(--green) 48%, transparent); }
+  .tier-wr-row.tier-lose:hover { background: color-mix(in srgb, var(--red) 48%, transparent); }
   .tier-wr-badge { flex: 0 0 36px; text-align: center; font-size: 12.5px; font-weight: 700; padding: 3px 0; border-radius: 6px; border: 1px solid; font-family: inherit; cursor: pointer; }
   .tier-wr-badge:hover { filter: brightness(0.94); }
   .tier-wr-track { flex: 1; height: 12px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
@@ -630,6 +630,7 @@
   .tier-wr-value { flex: 0 0 40px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
   .tier-wr-count { flex: 0 0 auto; min-width: 78px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+  .tier-wr-roi { font-style: italic; font-size: 10.5px; font-weight: 400; color: var(--text-dim); }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
 
   .snap-sync-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 4px 14px; }
@@ -2362,8 +2363,10 @@
       // wash, net-losing ones red — "aucun résultat" stays neutral.
       var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
       var hyp = st.flatPnlCount > 0 ? st.flatPnl : null;
+      var roi = st.flatPnlCount > 0 ? (st.flatPnl / (st.flatPnlCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
       var hypHtml = hyp == null ? "" :
-        '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) + '</span>';
+        '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
+        ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
       // data-tier lives on the whole row, not just the 36px badge — the
       // badge alone was too small a target to hit reliably, so the click
       // handler below matches ".tier-wr-row" and the row gets a hover fill
