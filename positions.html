@@ -189,6 +189,7 @@
     gap: 12px;
     flex-wrap: wrap;
   }
+  .vt-top-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .vt-question { font-weight: 700; font-size: 15px; }
   .vt-sport-emoji { font-size: 26px; line-height: 1; flex: none; }
   .vt-leader {
@@ -264,18 +265,6 @@
     text-transform: uppercase;
     letter-spacing: .02em;
   }
-  .vt-linked-note {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-top: 4px;
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  .vt-linked-note .link-icon { font-size: 12.5px; cursor: help; }
-  .vt-linked-note a { color: var(--text-dim); text-decoration: none; }
-  .vt-linked-note a:hover { text-decoration: underline; color: var(--accent); }
   .vt-trader-row-right { color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .vt-trader-row-right b { color: var(--text); }
   .vt-book-pct { font-size: 9.5px; opacity: .75; margin-left: 6px; }
@@ -2070,21 +2059,19 @@
     var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
       (leaderPriceText ? ' <span class="vt-leader-price">@ ' + leaderPriceText + '</span>' : '') + '</span>' : "";
 
-    var linkedNote = linked ?
-      '<div class="vt-linked-note"><span class="link-icon" title="Marché équivalent détecté sur l\'autre plateforme (formulation parfois différente)">🔗</span>Même prédiction sur ' +
-        platformBadge(primary.platform) + ' et ' + platformBadge(secondary.platform) +
-        (secondary.question !== primary.question ? ' — <a href="' + secondary.marketUrl + '" target="_blank" rel="noopener">voir le libellé ' + esc(PLATFORMS[secondary.platform].label) + '</a>' : '') +
-      '</div>' : "";
-
     var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌 Snapshot</button>';
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
+    // Emoji + question live in ONE flex item (.vt-top-left), not two
+    // siblings of .vt-top — .vt-top uses justify-content:space-between,
+    // and with 3 direct children instead of 2 the middle one (the
+    // question) was getting centered in the leftover space instead of
+    // sitting flush against the emoji, so titles landed at a different x
+    // on every card depending on how wide its own badge-group happened to be.
     var headerHtml =
       '<div class="vt-top">' +
-        '<span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span>' +
-        '<span><span class="vt-question">' + esc(primary.question) + '</span>' + platformBadge(primary.platform) + (linked ? platformBadge(secondary.platform) : '') + leaderBadge + '</span>' +
+        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + platformBadge(primary.platform) + (linked ? platformBadge(secondary.platform) : '') + leaderBadge + '</span>' +
         '<span class="vt-badge-group"><span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + '</span>' +
-      '</div>' +
-      linkedNote;
+      '</div>';
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
     // breakdown behind a click, while Snapshots — which doesn't want that
