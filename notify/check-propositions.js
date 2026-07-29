@@ -2,12 +2,12 @@
 // email when at least MIN_TRADERS of the 4 watched traders hold the same
 // side of the same real-world bet (matched across Predict.fun and
 // Polymarket the same way positions.html links them), each staking at
-// least MIN_STAKE individually on that side, AND that side outnumbers the
-// opposing side(s) by at least MIN_RATIO to 1 (e.g. 3 vs 1 qualifies, 4 vs 2
-// doesn't — same absolute gap, but a weaker majority). State is persisted
-// to state.json (committed back to the repo each run) so an already-notified
-// bet doesn't re-trigger every 15 minutes — only new qualifying bets send an
-// email.
+// least MIN_STAKE individually on that side — no majority/ratio requirement
+// against the opposing side anymore (there used to be one; it was filtering
+// out trades worth seeing, so it's gone — this is the whole rule now).
+// State is persisted to state.json (committed back to the repo each run) so
+// an already-notified bet doesn't re-trigger every 15 minutes — only new
+// qualifying bets send an email.
 "use strict";
 
 const fs = require("fs");
@@ -19,9 +19,8 @@ const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 const NOTIFY_TO = process.env.NOTIFY_TO || GMAIL_USER;
 
-const MIN_TRADERS = 3;
+const MIN_TRADERS = 4;
 const MIN_STAKE = 1000; // per trader, not combined
-const MIN_RATIO = 3; // qualifying side must have >= 3x as many traders as the opposing side(s) combined
 const STATE_FILE = path.join(__dirname, "state.json");
 
 const WATCHED = [
@@ -236,15 +235,10 @@ function findAlerts(positions) {
         .sort((a, b) => b.stake - a.stake);
       return { name: side.name, qualifying };
     });
-    const totalQualifying = sides.reduce((n, s) => n + s.qualifying.length, 0);
 
     sides.forEach((side) => {
       const traderCount = side.qualifying.length;
       if (traderCount < MIN_TRADERS) return;
-      const opposingCount = totalQualifying - traderCount;
-      // No opposition at all = infinite ratio, always passes; otherwise the
-      // qualifying side must outnumber the rest combined by MIN_RATIO to 1.
-      if (opposingCount > 0 && traderCount / opposingCount < MIN_RATIO) return;
       const opposingSides = sides.filter((s) => s !== side && s.qualifying.length > 0);
       const key = members.map((m) => m.key).sort().join("+") + "|" + side.name.trim().toLowerCase();
       alerts.push({
@@ -286,7 +280,7 @@ async function sendEmail(alerts) {
     return `• ${a.question}\n  Camp : ${a.side} (${a.traders.length} traders)\n${traderLines}${oppLine}\n  Mise combinée : ${fmtUSD(a.stake)}\n  ${a.urls.filter(Boolean).join("\n  ")}`;
   });
   const text = "Nouvelle(s) proposition(s) : au moins " + MIN_TRADERS + " traders sur le même camp (chacun " + fmtUSD(MIN_STAKE) +
-    "+), au moins " + MIN_RATIO + "x plus nombreux que le camp d'en face.\n\n" + lines.join("\n\n");
+    "+, Predict.fun ou Polymarket).\n\n" + lines.join("\n\n");
   await withRetry(() => transporter.sendMail({ from: GMAIL_USER, to: NOTIFY_TO, subject, text }), { attempts: 3, delayMs: 2000 });
 }
 
