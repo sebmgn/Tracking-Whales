@@ -596,6 +596,11 @@
   }
   .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover { border-color: var(--accent); }
   .snap-side-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+  /* Generic fallback when no tracked trader ever held the other side, so
+     its real name is unknown — dashed + italic marks it as "not a real
+     side name" at a glance, distinct from the named buttons next to it. */
+  .snap-side-btn.snap-side-other { border-style: dashed; font-style: italic; font-weight: 600; color: var(--text-dim); }
+  .snap-side-btn.snap-side-other.active { background: var(--red); color: #fff; border-color: var(--red); border-style: dashed; font-style: normal; }
   .snap-delete-btn { color: var(--red); }
   .snap-stats-wrap { margin-bottom: 16px; }
   .snap-stats-toggle-btn { display: block; margin-bottom: 8px; }
@@ -1506,8 +1511,25 @@
   // prefixes and keywords actually observed across both platforms' data —
   // it correctly covers everything currently tracked, but an obscure league
   // this hasn't seen yet could slip through as "Other". Not a guarantee.
-  var FOOTBALL_SLUG_PREFIXES = { fifwc: 1, ucl: 1, uel: 1, mls: 1, chi: 1, kor: 1, swe: 1, rou1: 1, epl: 1, laliga: 1, bundesliga: 1, seriea: 1, ligue1: 1, eredivisie: 1, brasileirao: 1, concacaf: 1, copa: 1 };
-  var NON_FOOTBALL_HINTS = /\bmlb\b|\bnba\b|\bwnba\b|\batp\b|\bwta\b|\bnpb\b|\bkbo\b|\blol\b|\bdota ?2\b|grand prix|\bf1\b|drivers.? champion|open championship|\bgolf\b|world series|nba finals|nhl\b|nfl\b/i;
+  // AUDITED 2026-07-29: several entries below (laliga, bundesliga, seriea,
+  // ligue1, eredivisie, brasileirao) turned out to never match anything —
+  // the platforms actually emit short codes (lal, bun, sea, fl1, ere, bra),
+  // not the spelled-out names. That's what let River Plate (arg) and
+  // Flamengo (bra) both fall through to the generic 🎲. Kept the old
+  // (harmless, just unused) keys and added the real codes plus every other
+  // country-league prefix a full scan of the tracked wallets' live
+  // positions turned up, so this isn't just a two-club patch.
+  var FOOTBALL_SLUG_PREFIXES = {
+    fifwc: 1, ucl: 1, uel: 1, mls: 1, chi: 1, kor: 1, swe: 1, rou1: 1, epl: 1,
+    laliga: 1, bundesliga: 1, seriea: 1, ligue1: 1, eredivisie: 1, brasileirao: 1,
+    concacaf: 1, copa: 1,
+    acn: 1, arg: 1, atc: 1, auc: 1, bl2: 1, bra: 1, bra2: 1, bul: 1, bun: 1,
+    cde: 1, clf: 1, col: 1, col1: 1, cze1: 1, den: 1, ecu1: 1, efa: 1, egy1: 1,
+    elc: 1, ere: 1, es2: 1, fif: 1, fl1: 1, lal: 1, lib: 1, mex: 1, nor: 1,
+    per1: 1, por: 1, sclc: 1, scop: 1, sea: 1, spl: 1, srb: 1, sud: 1, tur: 1,
+    uzb1: 1
+  };
+  var NON_FOOTBALL_HINTS = /\bmlb\b|\bnba\b|\bwnba\b|\batp\b|\bwta\b|\bitf\b|\bnpb\b|\bkbo\b|\blol\b|\bdota ?2\b|\bcs2\b|valorant|\bufc\b|\bmma\b|grand prix|\bf1\b|\bnascar\b|drivers.? champion|open championship|\bgolf\b|world series|nba finals|nhl\b|nfl\b|\bcricket\b/i;
   var FOOTBALL_KEYWORDS = /\bfc\b|fifa world cup|world cup golden|world cup winner|champions league|europa league|premier league|\bla liga\b|bundesliga|\bserie a\b|ligue 1|copa america|\buefa\b|\bmls\b/i;
   function isFootball(question, slug) {
     var q = (question || "").toLowerCase();
@@ -1525,19 +1547,22 @@
   // match wins. Falls back to a plain die for anything unclassified
   // (crypto-price markets, odd one-offs) rather than guessing.
   var SPORT_EMOJI_RULES = [
-    { emoji: "🎾", test: /\batp\b|\bwta\b|\btennis\b/i },
+    { emoji: "🎾", test: /\batp\b|\bwta\b|\bitf\b|\btennis\b/i },
     { emoji: "🏀", test: /\bnba\b|\bwnba\b|nba finals|\bbasketball\b/i },
     { emoji: "⚾", test: /\bmlb\b|\bnpb\b|\bkbo\b|world series|\bbaseball\b/i },
     { emoji: "🏈", test: /\bnfl\b|american football/i },
     { emoji: "🏒", test: /\bnhl\b|\bhockey\b/i },
     { emoji: "🏎️", test: /\bf1\b|grand prix|drivers.? champion/i },
+    { emoji: "🏁", test: /\bnascar\b/i },
     { emoji: "⛳", test: /\bgolf\b|open championship/i },
+    { emoji: "🥊", test: /\bufc\b|\bmma\b|\bboxing\b/i },
     { emoji: "🎮", test: /\blol\b|\bdota ?2\b|\besports\b|valorant|\bcs2\b/i }
   ];
   function sportEmojiFor(question, slug) {
     if (isFootball(question, slug)) return "⚽";
     var q = (question || "").toLowerCase();
     var s = (slug || "").toLowerCase();
+    if (s.indexOf("cric") === 0) return "🏏"; // cricket slugs (cricecsch, crict20blast, ...) never carry the word "cricket" in the question itself
     for (var i = 0; i < SPORT_EMOJI_RULES.length; i++) {
       if (SPORT_EMOJI_RULES[i].test.test(q) || SPORT_EMOJI_RULES[i].test.test(s)) return SPORT_EMOJI_RULES[i].emoji;
     }
@@ -2136,6 +2161,16 @@
   // can later check whether winrate actually correlates with confidence.
   var CONFIDENCE_TIERS = ["S", "A+", "A", "B"];
   var CONFIDENCE_COLORS = { "S": "var(--gold)", "A+": "var(--green)", "A": "var(--accent)", "B": "#6b6b6b" };
+  // Some snapshots only ever have ONE named side — not a dust-trade gap
+  // this time (that one's already handled upstream in computeMarketGroups),
+  // but a genuine absence: not one of the ~20 tracked wallets ever held the
+  // other outcome, so this app never learned its real name (e.g. "Atlanta
+  // Braves vs. New York Mets" moneyline — every tracked position on that
+  // exact market was on Atlanta Braves; Mets only showed up on separate
+  // spread/total sub-markets). Guaranteed to never equal a real side name,
+  // so leaderName === winningSide still comes out false — a clean "loss"
+  // for whichever side WAS tracked, without needing to know who actually won.
+  var OTHER_SIDE_SENTINEL = "__OTHER_SIDE__";
 
   function loadSnapshots() {
     try { return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
@@ -2650,6 +2685,12 @@
         var isWinner = snap.winningSide === side.name;
         return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
       }).join("");
+      if ((snap.sides || []).length < 2) {
+        var isOtherWinner = snap.winningSide === OTHER_SIDE_SENTINEL;
+        sideButtonsHtml += '<button type="button" class="snap-side-btn snap-side-other' + (isOtherWinner ? ' active' : '') +
+          '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(OTHER_SIDE_SENTINEL) +
+          '" title="Aucun trader suivi n\'a pris l\'autre camp sur ce marché précis — son nom exact n\'est pas connu, mais ça suffit pour enregistrer que ce camp a gagné.">Camp adverse</button>';
+      }
       var confidenceButtonsHtml = CONFIDENCE_TIERS.map(function (tier) {
         var isActive = snap.confidence === tier;
         var color = CONFIDENCE_COLORS[tier];
