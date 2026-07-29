@@ -1135,10 +1135,15 @@
   document.getElementById("genTime").textContent = new Date().toLocaleString("fr-FR");
 
   // ---------- daily Monet (top-right) ----------
-  // 8 public-domain reproductions, each verified to load from Wikimedia
-  // Commons and cross-checked (title/year) against the holding museum
-  // (NGA, Courtauld, Musée d'Orsay, Met). Picked deterministically from the
-  // day of year, so it's stable all day and changes tomorrow — no randomness.
+  // 18 public-domain reproductions, each verified to load from Wikimedia
+  // Commons (HTTP HEAD checked) and cross-checked (title/year) against the
+  // holding museum (NGA, Courtauld, Musée d'Orsay, Met, Art Institute of
+  // Chicago, Musée Marmottan, National Museum Cardiff). Skews toward
+  // Monet's best-known works so the rotation reads as "famous paintings",
+  // not just whatever was easiest to find. Picked deterministically from
+  // the day of year, so it's stable all day and changes tomorrow — no
+  // randomness, and with 18 entries the repeat cycle is long enough that it
+  // stops feeling like the same handful on loop.
   var MONET_PAINTINGS = [
     { title: "Impression, soleil levant", year: 1872, file: "Monet - Impression, Sunrise.jpg" },
     { title: "Coquelicots (Poppy Field)", year: 1873, file: "Claude Monet - Poppy Field - Google Art Project.jpg" },
@@ -1147,7 +1152,17 @@
     { title: "La Cathédrale de Rouen, façade ouest, soleil", year: 1894, file: "Claude Monet - Rouen Cathedral, West Facade, Sunlight.jpg" },
     { title: "Antibes", year: 1888, file: "Claude Monet - Antibes.jpg" },
     { title: "Le Pont japonais", year: 1899, file: "Claude Monet - The Japanese Footbridge.jpg" },
-    { title: "Le Parlement de Londres, effet de soleil", year: 1903, file: "Claude Monet - The Houses of Parliament, Sunset.jpg" }
+    { title: "Le Parlement de Londres, effet de soleil", year: 1903, file: "Claude Monet - The Houses of Parliament, Sunset.jpg" },
+    { title: "Femme à l'ombrelle — Madame Monet et son fils", year: 1875, file: "Claude Monet - Woman with a Parasol - Madame Monet and Her Son - Google Art Project.jpg" },
+    { title: "La Pie (The Magpie)", year: 1869, file: "Claude Monet - The Magpie - Google Art Project.jpg" },
+    { title: "Nymphéas (Water Lilies)", year: 1919, file: "Water Lilies by Claude Monet, 1919 at Metropolitan Museum of Art.jpg" },
+    { title: "Le Pont sur le bassin aux nymphéas", year: 1899, file: "Bridge Over a Pond of Water Lilies, Claude Monet 1899.jpg" },
+    { title: "La Falaise à Pourville", year: 1882, file: "Claude Monet - Cliff Walk at Pourville - Google Art Project.jpg" },
+    { title: "Jardin à Sainte-Adresse", year: 1867, file: "Claude Monet - 1867 - Garden at Sainte-Adresse.jpg" },
+    { title: "Glycines (Wisteria)", year: 1920, file: "Wisteria by Claude Monet, Musée Marmottan Monet 5124.JPG" },
+    { title: "Saint-Georges Majeur au crépuscule", year: 1908, file: "Claude Monet, Saint-Georges majeur au crépuscule.jpg" },
+    { title: "Le Déjeuner sur l'herbe", year: 1866, file: "Claude Monet - Le dejeuner sur l’herbe.JPG" },
+    { title: "Meules, fin de l'été (Wheatstacks)", year: 1891, file: "Monet - wheatstacks-end-of-summer-1891.jpg" }
   ];
   (function initDailyMonet() {
     var now = new Date();
