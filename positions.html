@@ -609,6 +609,21 @@
   .snap-delete-btn { color: var(--red); }
   .snap-stats-wrap { margin-bottom: 16px; }
   .snap-stats-toggle-btn { display: block; margin-bottom: 8px; }
+  /* Flat-$1000-per-bet simulation, one bold pill per snapshot — a solid
+     fill (not just tinted text) so it stands out even against the card's
+     own green/red wash. */
+  .snap-hyp-pnl {
+    display: inline-block;
+    margin: 0 20px 12px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .snap-hyp-pnl.pnl-pos { background: var(--green); }
+  .snap-hyp-pnl.pnl-neg { background: var(--red); }
+  .snap-hyp-pnl .tier-wr-roi { color: #fff; opacity: .85; }
   /* Per-trader verdict line under the toolbar, above the frozen card — the
      card's own trader rows are a static snapshot, so this is the only place
      the win/loss/nuancé read can live once a winning side is marked. */
@@ -1528,17 +1543,24 @@
     TRADERS.forEach(function (t) {
       var positions = tradersData[t.name] || [];
       positions.forEach(function (p) {
-        var stake = p.avgPrice * p.shares; // amount actually risked (cost basis), not current mark-to-market value
-        if (stake < MIN_TRADER_STAKE) return; // dust trade — dropped entirely (not just uncounted) so it makes no noise anywhere: not in the trader count, not in the Traders/Mises gauges, not in totalStake
         var mid = p.marketKey;
         if (!groups[mid]) {
           groups[mid] = {
             key: mid, platform: p.platform, question: p.question, slug: p.slug, marketUrl: p.marketUrl,
             bySide: {},
-            traderSet: {}
+            traderSet: {},
+            allSideNames: {}
           };
         }
         var g = groups[mid];
+        // Recorded regardless of stake size, BEFORE the dust cutoff below —
+        // otherwise an outcome held only in dust amounts (or held by zero
+        // tracked traders above the floor) vanishes from `sides` entirely,
+        // and "Camp gagnant" in Mes Snapshots is left with just one button
+        // to mark a result with, no matter which side actually won.
+        g.allSideNames[p.outcomeKey] = p.outcomeName;
+        var stake = p.avgPrice * p.shares; // amount actually risked (cost basis), not current mark-to-market value
+        if (stake < MIN_TRADER_STAKE) return; // dust trade — dropped from counts/gauges/totalStake (not from allSideNames above)
         g.traderSet[t.name] = true;
         var sk = p.outcomeKey;
         if (!g.bySide[sk]) {
@@ -1565,6 +1587,14 @@
         s.entries.forEach(function (e) { uniq[e.trader] = true; });
         s.traderCount = Object.keys(uniq).length;
         return s;
+      });
+      // Outcomes that only ever showed up as dust are added back here as an
+      // empty (zero trader/stake) side — invisible in the gauges and
+      // totals, but present so it can still be picked as the winning camp.
+      Object.keys(g.allSideNames).forEach(function (sk) {
+        if (!g.bySide[sk]) {
+          sides.push({ name: g.allSideNames[sk], price: null, entries: [], totalStake: 0, traderCount: 0 });
+        }
       });
       sides.sort(function (a, b) { return b.traderCount - a.traderCount || b.totalStake - a.totalStake; });
       var totalStake = sides.reduce(function (s, side) { return s + side.totalStake; }, 0);
@@ -2510,6 +2540,13 @@
       // dashboard tiles use — so it's an unambiguous win/lose regardless of
       // whether individual traders hedged both sides underneath.
       var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
+      // Same flat-$1000-per-bet simulation as the tier winrate chart, but
+      // per snapshot here — a bold standalone pill (not just colored text)
+      // so the number is impossible to miss scanning down the list.
+      var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+      var hypCardHtml = hyp == null ? "" :
+        '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '/pari : ' + esc(fmtUSDSigned(hyp)) +
+        ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / HYPOTHETICAL_FLAT_STAKE * 100).toFixed(0) + '% ROI)</span></div>';
       var sideButtonsHtml = (snap.sides || []).map(function (side) {
         var isWinner = snap.winningSide === side.name;
         return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
@@ -2544,6 +2581,7 @@
             confidenceButtonsHtml +
             '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '">🗑 Supprimer</button>' +
           '</div>' +
+          hypCardHtml +
           resultsHtml +
           cardHeadHtml +
         '</summary>' +
