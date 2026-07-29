@@ -945,6 +945,11 @@
       <button data-sport="football" class="active" type="button">⚽ Football</button>
       <button data-sport="other" type="button">Autres</button>
     </div>
+    <div class="vt-filters" id="timingFilters">
+      <button data-timing="all" class="active" type="button">Tous</button>
+      <button data-timing="live" type="button">🔴 En cours</button>
+      <button data-timing="upcoming" type="button">📅 À venir</button>
+    </div>
     <div class="match-section collapsed" id="matchSection" style="display:none;">
       <div class="match-section-title">Confrontations avec value bets</div>
       <div class="match-filters" id="matchFilters"></div>
@@ -1209,6 +1214,7 @@
   var RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "zaizoibele", "VeryLucky888"];
   var vtMinReliableCount = 0; // 0 = no filter; else the unit needs strictly more than this many reliable-list traders
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
+  var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
 
   // ---------- helpers ----------
   function amountToFloat(amountStr, decimals) {
@@ -1521,6 +1527,31 @@
     if (FOOTBALL_SLUG_PREFIXES[prefix]) return true;
     if (FOOTBALL_KEYWORDS.test(q) || FOOTBALL_KEYWORDS.test(s)) return true;
     return false;
+  }
+
+  // ---------- match timing (heuristic, date-in-slug/question based) ----------
+  // Neither API exposes kickoff time either — this reads the "-YYYY-MM-DD"
+  // date already embedded in most slugs (the same substring matchKeyFromSlug
+  // below extracts for cross-platform linking) or, failing that, an "on
+  // YYYY-MM-DD" in the question text. Day-level only, so a match later
+  // today already reads as "live" a few hours early — an accepted
+  // simplification given neither source has real kickoff times. A market
+  // with no extractable date at all (outright/futures, e.g. "Will Spain win
+  // the World Cup?") defaults to "live": those are for a competition
+  // already underway, not a single future date.
+  var MATCH_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
+  function extractMatchDate(question, matchKey) {
+    var m = (matchKey || "").match(MATCH_DATE_RE) || (question || "").match(MATCH_DATE_RE);
+    if (!m) return null;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function unitTimingStatus(u) {
+    var d = extractMatchDate(u.members[0].question, u.matchKey);
+    if (!d) return "live";
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return d.getTime() <= today.getTime() ? "live" : "upcoming";
   }
 
   // ---------- bet-type classification (heuristic, question-text based) ----------
@@ -2625,6 +2656,7 @@
         if (sportFilter === "football" && !football) return false;
         if (sportFilter === "other" && football) return false;
       }
+      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
       return true;
     });
 
@@ -3445,6 +3477,15 @@
       sportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       sportFilter = btn.getAttribute("data-sport") || "all";
+      renderValueTrades();
+    });
+  });
+  var timingFiltersEl = document.getElementById("timingFilters");
+  timingFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      timingFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      vtTimingFilter = btn.getAttribute("data-timing") || "all";
       renderValueTrades();
     });
   });
