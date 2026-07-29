@@ -1530,15 +1530,23 @@
   }
 
   // ---------- match timing (heuristic, date-in-slug/question based) ----------
-  // Neither API exposes kickoff time either — this reads the "-YYYY-MM-DD"
-  // date already embedded in most slugs (the same substring matchKeyFromSlug
-  // below extracts for cross-platform linking) or, failing that, an "on
-  // YYYY-MM-DD" in the question text. Day-level only, so a match later
-  // today already reads as "live" a few hours early — an accepted
-  // simplification given neither source has real kickoff times. A market
-  // with no extractable date at all (outright/futures, e.g. "Will Spain win
-  // the World Cup?") defaults to "live": those are for a competition
-  // already underway, not a single future date.
+  // Neither API exposes kickoff time — checked both Predict.fun's market
+  // object (nothing beyond a free-text "scheduled for July 29, 2026" in the
+  // description) and Polymarket's gamma-api event lookup (its "startDate" is
+  // actually the market's creation time, not the game's; "endDate" is
+  // roughly resolution time, not usable to back into kickoff without
+  // guessing a game-length buffer) — so this only ever has a day, never a
+  // time of day. Given that, a match dated TODAY is kept as "upcoming"
+  // rather than assumed "live": we have no evidence it has actually kicked
+  // off yet, so calling it "live" anyway (the previous behavior) was the
+  // wrong default — it's what made an unstarted River Plate game show as
+  // "en cours". The residual trade-off is the opposite case (a same-day
+  // match that HAS already kicked off still reads as "upcoming" until
+  // tomorrow) — unavoidable without a real kickoff timestamp. Only a date
+  // strictly before today counts as "live". A market with no extractable
+  // date at all (outright/futures, e.g. "Will Spain win the World Cup?")
+  // defaults to "live": those are for a competition already underway, not a
+  // single future date.
   var MATCH_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
   function extractMatchDate(question, matchKey) {
     var m = (matchKey || "").match(MATCH_DATE_RE) || (question || "").match(MATCH_DATE_RE);
@@ -1551,7 +1559,7 @@
     if (!d) return "live";
     var today = new Date();
     today.setHours(0, 0, 0, 0);
-    return d.getTime() <= today.getTime() ? "live" : "upcoming";
+    return d.getTime() < today.getTime() ? "live" : "upcoming";
   }
 
   // ---------- bet-type classification (heuristic, question-text based) ----------
