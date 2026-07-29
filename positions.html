@@ -190,6 +190,7 @@
     flex-wrap: wrap;
   }
   .vt-question { font-weight: 700; font-size: 15px; }
+  .vt-sport-emoji { font-size: 26px; line-height: 1; flex: none; }
   .vt-leader {
     display: inline-block;
     margin-left: 10px;
@@ -1528,25 +1529,75 @@
     if (FOOTBALL_KEYWORDS.test(q) || FOOTBALL_KEYWORDS.test(s)) return true;
     return false;
   }
+  // A big one-glance sport icon on every Value Trades card — same
+  // heuristic basis as isFootball (no explicit "sport" field from either
+  // API), just split into more specific buckets instead of a single
+  // football/other binary. Order matters: checked top to bottom, first
+  // match wins. Falls back to a plain die for anything unclassified
+  // (crypto-price markets, odd one-offs) rather than guessing.
+  var SPORT_EMOJI_RULES = [
+    { emoji: "🎾", test: /\batp\b|\bwta\b|\btennis\b/i },
+    { emoji: "🏀", test: /\bnba\b|\bwnba\b|nba finals|\bbasketball\b/i },
+    { emoji: "⚾", test: /\bmlb\b|\bnpb\b|\bkbo\b|world series|\bbaseball\b/i },
+    { emoji: "🏈", test: /\bnfl\b|american football/i },
+    { emoji: "🏒", test: /\bnhl\b|\bhockey\b/i },
+    { emoji: "🏎️", test: /\bf1\b|grand prix|drivers.? champion/i },
+    { emoji: "⛳", test: /\bgolf\b|open championship/i },
+    { emoji: "🎮", test: /\blol\b|\bdota ?2\b|\besports\b|valorant|\bcs2\b/i }
+  ];
+  function sportEmojiFor(question, slug) {
+    if (isFootball(question, slug)) return "⚽";
+    var q = (question || "").toLowerCase();
+    var s = (slug || "").toLowerCase();
+    for (var i = 0; i < SPORT_EMOJI_RULES.length; i++) {
+      if (SPORT_EMOJI_RULES[i].test.test(q) || SPORT_EMOJI_RULES[i].test.test(s)) return SPORT_EMOJI_RULES[i].emoji;
+    }
+    return "🎲";
+  }
 
-  // ---------- match timing (heuristic, date-in-slug/question based) ----------
-  // Neither API exposes kickoff time — checked both Predict.fun's market
-  // object (nothing beyond a free-text "scheduled for July 29, 2026" in the
-  // description) and Polymarket's gamma-api event lookup (its "startDate" is
-  // actually the market's creation time, not the game's; "endDate" is
-  // roughly resolution time, not usable to back into kickoff without
-  // guessing a game-length buffer) — so this only ever has a day, never a
-  // time of day. Given that, a match dated TODAY is kept as "upcoming"
-  // rather than assumed "live": we have no evidence it has actually kicked
-  // off yet, so calling it "live" anyway (the previous behavior) was the
-  // wrong default — it's what made an unstarted River Plate game show as
-  // "en cours". The residual trade-off is the opposite case (a same-day
-  // match that HAS already kicked off still reads as "upcoming" until
-  // tomorrow) — unavoidable without a real kickoff timestamp. Only a date
-  // strictly before today counts as "live". A market with no extractable
-  // date at all (outright/futures, e.g. "Will Spain win the World Cup?")
-  // defaults to "live": those are for a competition already underway, not a
-  // single future date.
+  // ---------- match timing ----------
+  // Predict.fun's market object has no kickoff field at all (just free-text
+  // "scheduled for July 29" in the description) — but Polymarket's gamma-api
+  // DOES carry a real one, buried past what a shallow look at the response
+  // finds: event.startTime / market.gameStartTime (e.g.
+  // "2026-07-29T18:30:00Z"), not event.startDate (that one is the event's
+  // *creation* time, a red herring). u.matchKey — already computed for
+  // cross-platform linking — is exactly the event slug gamma-api's
+  // /events?slug= expects, so no new date-extraction is needed, just a
+  // lookup. Fetched lazily per matchKey, cached for MATCH_TIMING_TTL_MS
+  // (kickoff times don't change once scheduled), and re-renders Value
+  // Trades once a lookup lands so the classification upgrades from the
+  // day-level fallback to the real thing without the user doing anything.
+  // The fallback (used before the fetch resolves, if it fails, or if
+  // gamma-api has no matching event — e.g. a Predict.fun-only market) stays
+  // date-only: a same-day match reads as "upcoming" absent better evidence,
+  // and a market with no extractable date at all (outright/futures, e.g.
+  // "Will Spain win the World Cup?") defaults to "live" — that's for a
+  // competition already underway, not a single future date.
+  var GAMMA_EVENTS_BASE = "https://gamma-api.polymarket.com/events";
+  var MATCH_TIMING_TTL_MS = 6 * 60 * 60 * 1000;
+  var matchTimingCache = {}; // matchKey -> { kickoff: Date|null, fetchedAt: number }
+  var matchTimingFetchInFlight = {};
+  function scheduleMatchTimingFetch(matchKey) {
+    if (!matchKey || matchTimingFetchInFlight[matchKey]) return;
+    var cached = matchTimingCache[matchKey];
+    if (cached && (Date.now() - cached.fetchedAt) < MATCH_TIMING_TTL_MS) return;
+    matchTimingFetchInFlight[matchKey] = true;
+    throttledFetch(GAMMA_EVENTS_BASE + "?slug=" + encodeURIComponent(matchKey))
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (events) {
+        var ev = events && events[0];
+        var market0 = ev && ev.markets && ev.markets[0];
+        var raw = (ev && ev.startTime) || (market0 && market0.gameStartTime);
+        var kickoff = raw ? new Date(raw) : null;
+        matchTimingCache[matchKey] = { kickoff: (kickoff && !isNaN(kickoff.getTime())) ? kickoff : null, fetchedAt: Date.now() };
+        renderValueTrades(); // upgrade from the day-level fallback now that a precise kickoff is known
+      })
+      .catch(function () {
+        matchTimingCache[matchKey] = { kickoff: null, fetchedAt: Date.now() }; // give up gracefully — day heuristic keeps handling this one
+      })
+      .finally(function () { matchTimingFetchInFlight[matchKey] = false; });
+  }
   var MATCH_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
   function extractMatchDate(question, matchKey) {
     var m = (matchKey || "").match(MATCH_DATE_RE) || (question || "").match(MATCH_DATE_RE);
@@ -1555,6 +1606,11 @@
     return isNaN(d.getTime()) ? null : d;
   }
   function unitTimingStatus(u) {
+    if (u.matchKey) {
+      var cached = matchTimingCache[u.matchKey];
+      if (cached && cached.kickoff) return Date.now() >= cached.kickoff.getTime() ? "live" : "upcoming";
+      scheduleMatchTimingFetch(u.matchKey);
+    }
     var d = extractMatchDate(u.members[0].question, u.matchKey);
     if (!d) return "live";
     var today = new Date();
@@ -2021,8 +2077,10 @@
       '</div>' : "";
 
     var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌 Snapshot</button>';
+    var sportEmoji = sportEmojiFor(primary.question, primary.slug);
     var headerHtml =
       '<div class="vt-top">' +
+        '<span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span>' +
         '<span><span class="vt-question">' + esc(primary.question) + '</span>' + platformBadge(primary.platform) + (linked ? platformBadge(secondary.platform) : '') + leaderBadge + '</span>' +
         '<span class="vt-badge-group"><span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + '</span>' +
       '</div>' +
