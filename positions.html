@@ -225,11 +225,18 @@
   }
   .vt-snap-btn:hover { border-color: var(--gold); }
   .vt-snap-btn:disabled { opacity: .6; cursor: default; }
-  .vt-traders { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .vt-unit-detail { margin-top: 4px; }
+  /* Compact per-camp summary replacing the old side-by-side blocks' own
+     headers — ● leading camp, ▲ every other camp, same marker the merged
+     rows and the scatter below reuse. */
+  .vt-sides-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; margin-bottom: 10px; }
+  .vt-sides-legend-item b { color: var(--text); }
+  .vt-row-marker { flex: none; font-size: 9px; display: inline-block; }
+  .vt-traders { display: flex; flex-direction: column; gap: 6px; }
   /* Fixed-width name column so the track that follows starts at the exact
-     same x on every row (both side-blocks, every trader) — that's what
-     makes fill length/color an honest comparison instead of one skewed by
-     how long each name happens to be. */
+     same x on every row (every trader, every camp pooled together) — that's
+     what makes fill length/color an honest comparison instead of one skewed
+     by how long each name happens to be. */
   .vt-trader-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
   .vt-trader-row-name { flex: 0 0 108px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .vt-trader-row-track {
@@ -242,11 +249,12 @@
     font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .vt-trader-name, .vt-trader-row-name { font-weight: 700; }
-  .vt-unit-scatter { margin-top: 14px; }
+  .vt-unit-scatter { margin-top: 14px; position: relative; }
   .vt-scatter-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-dim); margin-bottom: 4px; }
   .vt-scatter-legend-yes { color: var(--green); text-transform: none; letter-spacing: 0; }
   .vt-scatter-legend-no { color: var(--red); text-transform: none; letter-spacing: 0; }
   .vt-unit-scatter svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .vt-scatter-pt { cursor: pointer; }
   .w-badge {
     display: inline-block;
     margin-left: 7px;
@@ -325,6 +333,10 @@
     box-shadow: 0 4px 14px rgba(51,43,30,.25);
   }
   .bal-seg:hover .bal-tooltip { opacity: 1; visibility: visible; }
+  /* Legacy — no longer produced by computeUnitCardParts (replaced by
+     .vt-unit-detail's merged, single-column trader list), kept only so
+     snapshots frozen before that change still render their side-by-side
+     layout correctly instead of unstyled. */
   .vt-side-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -1907,41 +1919,48 @@
     }).sort(function (a, b) { return b.marketCount - a.marketCount || b.totalStake - a.totalStake; });
   }
 
-  // Renders ONE platform's side-block (odds/ROI/entries stay per-platform —
-  // never blended with the other platform's, since live prices legitimately
-  // differ between them). showPlatformTag is only turned on for linked units
-  // so single-platform cards stay uncluttered.
-  function renderSideBlock(s, color, maxStakeInUnit) {
-    var roi = s.price > 0 ? ((1 - s.price) / s.price * 100) : 0;
-    var avgEntry = weightedAvgEntry(s.entries);
-    var entryDiffPct = (avgEntry && avgEntry > 0 && s.price > 0) ? ((s.price - avgEntry) / avgEntry * 100) : null;
-    // Lower current price than the traders' average entry = cheaper/better
-    // opportunity for someone copying now (higher potential ROI) -> green.
-    // Higher current price = pricier than what they got -> red.
-    var entryDiffHtml = entryDiffPct == null ? "" :
-      '<span class="vt-entry-diff ' + (entryDiffPct <= 0 ? "pnl-pos" : "pnl-neg") + '">' +
-      Math.abs(entryDiffPct).toFixed(2) + '% ' + (entryDiffPct <= 0 ? "moins cher" : "plus cher") +
-      ' que l\'entrée moy. (' + fmtCents(avgEntry) + ')</span>';
-    // Best-rated traders surface first within a side, stake breaks ties.
-    var sortedEntries = s.entries.slice().sort(function (a, b) {
-      return (WEIGHT_BY_NAME[b.trader] || 0) - (WEIGHT_BY_NAME[a.trader] || 0) || b.stake - a.stake;
+  // mise/price averaged across every linked platform item for one merged
+  // side — used both for the leader badge and every row of the legend
+  // below, so there's exactly one place this average gets computed.
+  function mergedSideAvgPrice(m) {
+    return m.items.length ? m.items.reduce(function (sum, it) { return sum + it.s.price; }, 0) / m.items.length : null;
+  }
+  // Compact per-camp summary (name, trader count, stake, odds, ROI) —
+  // replaces the old side-by-side blocks' headers now that there's no
+  // per-camp block left to put them in. ● marks the leading side, ▲ every
+  // other one — the same marker each trader row and the scatter below use,
+  // so all three pieces read as one consistent visual language.
+  function renderSidesLegend(mergedSides) {
+    return '<div class="vt-sides-legend">' + mergedSides.map(function (m, i) {
+      var color = sideColorFor(m.name);
+      var avgPrice = mergedSideAvgPrice(m);
+      var roi = avgPrice != null && avgPrice > 0 ? (1 - avgPrice) / avgPrice * 100 : null;
+      return '<span class="vt-sides-legend-item" style="color:' + color + '">' +
+        '<span class="vt-row-marker">' + (i === 0 ? "●" : "▲") + '</span> <b>' + esc(m.name) + '</b>' +
+        ' — ' + m.traderCount + ' trader' + (m.traderCount > 1 ? "s" : "") + ' · ' + fmtUSD(m.stake) +
+        (avgPrice != null ? ' · cote ' + fmtCents(avgPrice) : '') +
+        (roi != null ? ' · ROI ' + fmtPct(roi) : '') +
+      '</span>';
+    }).join("") + '</div>';
+  }
+  // Every trader across every camp (and every linked platform — no more
+  // Predict/Poly split either) pooled into ONE list sorted by stake, instead
+  // of two side-by-side columns. Every bar now shares the same x-origin and
+  // width scale regardless of camp, so fill length/color is an honest,
+  // direct comparison — "is the single biggest bettor on Yes or No" reads
+  // immediately instead of needing to compare two separate columns.
+  function renderMergedTraderRows(mergedSides, maxStakeInUnit) {
+    var rows = [];
+    mergedSides.forEach(function (m, sideIdx) {
+      var color = sideColorFor(m.name);
+      m.items.forEach(function (it) {
+        it.s.entries.forEach(function (e) {
+          rows.push({ trader: e.trader, stake: e.stake, avgPrice: e.avgPrice, color: color, isLeader: sideIdx === 0 });
+        });
+      });
     });
-    // Bar width reads as "how big is this bet vs. the single biggest bettor
-    // on this whole proposition" — scaled against maxStakeInUnit (passed in
-    // from computeUnitCardParts, the true max across every side/outcome),
-    // NOT sortedEntries[0] (that's sorted by rating, not by stake, so the
-    // top-rated trader here can easily be a small bettor — using their stake
-    // as the "max" used to make unrelated small bets render as fully filled).
-    // Track+fill bar, fixed-width name column so every bar in the card —
-    // both sides, every row — starts at the exact same x: that's what makes
-    // the fill lengths/colors actually comparable at a glance instead of
-    // each row's bar starting wherever that trader's name happened to end.
-    // The stake now lives INSIDE the track (always at its right edge, never
-    // shifting with fill width) instead of a separate trailing text block —
-    // one less column to keep aligned, and it's what freed the space for a
-    // fixed name column in the first place. No platform badge per trader
-    // anymore (dropped along with the card-level ones).
-    var rows = sortedEntries.map(function (e) {
+    rows.sort(function (a, b) { return b.stake - a.stake; });
+    return '<div class="vt-traders">' + rows.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
       var pv = portfolioValueByName[e.trader];
       var bookPct = pv > 0 ? (e.stake / pv * 100) : null;
@@ -1949,26 +1968,15 @@
         '<span class="vt-book-pct" title="Part de son book suivi engagée sur cette position">' + bookPct.toFixed(1) + '% de son book</span>';
       var valueColor = barPct >= 55 ? "#fff" : "var(--text)";
       return '<div class="vt-trader-row">' +
+        '<span class="vt-row-marker" style="color:' + e.color + '">' + (e.isLeader ? "●" : "▲") + '</span>' +
         '<span class="vt-trader-row-name">' + esc(e.trader) + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track">' +
-          '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + color + '"></div>' +
+          '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
           '<span class="vt-trader-row-value" style="color:' + valueColor + '">' + fmtUSD(e.stake) + '</span>' +
         '</div>' +
         '<span class="vt-trader-row-right">@ ' + fmtCents(e.avgPrice) + bookPctHtml + '</span>' +
       '</div>';
-    }).join("");
-    return '<div class="vt-side-block" style="border-left-color:' + color + '">' +
-      '<div class="vt-side-head">' +
-        '<span><span class="vt-outcome" style="background:' + color + '22;color:' + color + '">' + esc(s.name) + '</span></span>' +
-        '<span class="dim">' + s.traderCount + ' trader' + (s.traderCount > 1 ? "s" : "") + ' · mise totale <b>' + fmtUSD(s.totalStake) + '</b></span>' +
-      '</div>' +
-      '<div class="vt-side-metrics">' +
-        '<span class="vt-odds">Cote actuelle : <b>' + fmtCents(s.price) + '</b></span>' +
-        entryDiffHtml +
-        '<span class="vt-roi">ROI si gagné : <b>' + fmtPct(roi) + '</b></span>' +
-      '</div>' +
-      '<div class="vt-traders">' + rows + '</div>' +
-    '</div>';
+    }).join("") + '</div>';
   }
   // Mise × fiabilité, ONE chart for the whole unit (not one per side-block)
   // spanning the full card width — the leading side's entries as green
@@ -1991,20 +1999,24 @@
     var innerW = W - padL - padR, innerH = H - padT - padB;
     function x(stake) { return padL + (maxStakeInUnit > 0 ? (stake / maxStakeInUnit) * innerW : 0); }
     function y(w) { return padT + innerH - (Math.max(0, Math.min(10, w || 0)) / 10) * innerH; }
+    // data-label (not a native <title>) — a native SVG tooltip is slow to
+    // appear and inconsistently styled across browsers; wireScatterTooltips
+    // below reads this attribute to drive the same floating tooltip style
+    // already used for the PnL history chart, hovering any mark.
     function mark(e) {
       var w = WEIGHT_BY_NAME[e.trader] || 0;
-      var title = '<title>' + esc(e.trader) + ' — ' + esc(fmtUSD(e.stake)) + ' — note ' + (w || "?") + '/10</title>';
+      var label = esc(e.trader) + " — " + esc(fmtUSD(e.stake)) + " — note " + (w || "?") + "/10";
       var cx = x(e.stake), cy = y(w);
-      return { cx: cx, cy: cy, title: title };
+      return { cx: cx, cy: cy, label: label };
     }
     var dots = leaderEntries.map(function (e) {
       var m = mark(e);
-      return '<circle cx="' + m.cx.toFixed(1) + '" cy="' + m.cy.toFixed(1) + '" r="5.5" fill="var(--green)" opacity="0.82" stroke="var(--panel)" stroke-width="1.2">' + m.title + '</circle>';
+      return '<circle class="vt-scatter-pt" data-label="' + m.label + '" cx="' + m.cx.toFixed(1) + '" cy="' + m.cy.toFixed(1) + '" r="5.5" fill="var(--green)" opacity="0.82" stroke="var(--panel)" stroke-width="1.2"/>';
     }).join("") + otherEntries.map(function (e) {
       var m = mark(e), r = 6.5;
       var pts = [[m.cx, m.cy - r], [m.cx - r * 0.87, m.cy + r * 0.6], [m.cx + r * 0.87, m.cy + r * 0.6]]
         .map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
-      return '<polygon points="' + pts + '" fill="var(--red)" opacity="0.82" stroke="var(--panel)" stroke-width="1.2">' + m.title + '</polygon>';
+      return '<polygon class="vt-scatter-pt" data-label="' + m.label + '" points="' + pts + '" fill="var(--red)" opacity="0.82" stroke="var(--panel)" stroke-width="1.2"/>';
     }).join("");
     return '<div class="vt-unit-scatter">' +
       '<div class="vt-scatter-title">Mise × fiabilité — <span class="vt-scatter-legend-yes">● ' + esc(mergedSides[0].name) + '</span>' +
@@ -2123,13 +2135,6 @@
       return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeColor(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
     }).join("") + gaugeTick(dollarLeadPct);
 
-    var sideGroupsHtml = mergedSides.map(function (m) {
-      var color = sideColorFor(m.name);
-      var blocksHtml = m.items.map(function (it) { return renderSideBlock(it.s, color, maxStakeInUnit); }).join("");
-      var paired = m.items.length > 1;
-      return '<div class="vt-outcome-group' + (paired ? ' paired' : '') + '">' + blocksHtml + '</div>';
-    }).join("");
-
     var leaderGroup = mergedSides.length ? mergedSides[0] : null;
     var leaderName = leaderGroup ? leaderGroup.name : null;
     // The leader badge takes the leading outcome's own semantic color — green
@@ -2140,9 +2145,9 @@
     // Show the current odds right on the leader badge — that's the number
     // that tells you what a bet on the leading side would actually pay out.
     // When linked across platforms, show one averaged price rather than
-    // both platforms' figures side by side.
-    var leaderAvgPrice = leaderGroup ?
-      leaderGroup.items.reduce(function (sum, it) { return sum + it.s.price; }, 0) / leaderGroup.items.length : null;
+    // both platforms' figures side by side. Shared with the legend below so
+    // there's exactly one place this average gets computed.
+    var leaderAvgPrice = leaderGroup ? mergedSideAvgPrice(leaderGroup) : null;
     var leaderPriceText = leaderAvgPrice != null ? fmtCents(leaderAvgPrice) : '';
     var leaderRoi = leaderAvgPrice != null && leaderAvgPrice > 0 ? (1 - leaderAvgPrice) / leaderAvgPrice * 100 : null;
     var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
@@ -2170,7 +2175,7 @@
         '<div class="balance-row"><span class="balance-label">Traders</span><div class="balance-bar bar-traders">' + traderSegments + '</div></div>' +
         '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
       '</div>';
-    var sideGridHtml = '<div class="vt-side-grid">' + sideGroupsHtml + '</div>' + renderUnitScatter(mergedSides, maxStakeInUnit);
+    var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides) + renderMergedTraderRows(mergedSides, maxStakeInUnit) + '</div>' + renderUnitScatter(mergedSides, maxStakeInUnit);
     var bodyHtml = balanceHtml + sideGridHtml;
 
     return {
@@ -2767,11 +2772,14 @@
         }).join("") +
       '</div>' : '';
       // cardHtml is a frozen headerHtml+balanceHtml+sideGridHtml blob (see
-      // buildSnapshotFromUnit) — split it at the same "<div class=vt-side-grid>"
-      // marker Value Trades collapses at, so the trader-by-trader
-      // breakdown hides behind the same click-to-expand affordance instead of
-      // always being shown.
-      var splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
+      // buildSnapshotFromUnit) — split it at the same detail-section marker
+      // Value Trades collapses at, so the trader-by-trader breakdown hides
+      // behind the same click-to-expand affordance instead of always being
+      // shown. Checks both the current marker and the pre-merge one so
+      // snapshots frozen before the side-by-side layout was replaced keep
+      // collapsing correctly too.
+      var splitIdx = snap.cardHtml.indexOf('<div class="vt-unit-detail">');
+      if (splitIdx === -1) splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
       var cardHeadHtml = splitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, splitIdx);
       var cardDetailHtml = splitIdx === -1 ? "" : snap.cardHtml.slice(splitIdx);
       return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (expandedSnapshots[snap.id] ? " open" : "") +
@@ -3184,7 +3192,7 @@
   function renderAll() {
     // Recomputed fresh each cycle: sum of valueUsd across each trader's own
     // tracked open positions — used as the denominator for the "% of book"
-    // note on each trader row (see renderSideBlock). This is NOT their real
+    // note on each trader row (see renderMergedTraderRows). This is NOT their real
     // wallet/cash balance (neither API exposes that) — it's the total of
     // their positions this dashboard actually tracks, which is the closest
     // available proxy for "how concentrated is this bet in their book".
@@ -3444,6 +3452,41 @@
       pt.addEventListener("mouseleave", function () { tip.classList.remove("show"); });
     });
   }
+  // Value Trades cards rebuild via innerHTML every refresh cycle, so
+  // per-render wiring (like wireHistoryChartTooltip above) would need
+  // re-attaching constantly — delegated on document instead, using
+  // mouseover/mouseout (they bubble; mouseenter/mouseleave don't), so one
+  // listener set survives every rebuild. Reuses the same floating-tooltip
+  // look as the PnL history chart.
+  var vtScatterTooltip = null;
+  document.addEventListener("mouseover", function (e) {
+    var pt = e.target.closest ? e.target.closest(".vt-scatter-pt") : null;
+    if (!pt) return;
+    var box = pt.closest(".vt-unit-scatter");
+    if (!box) return;
+    vtScatterTooltip = box.querySelector(".chart-tooltip");
+    if (!vtScatterTooltip) {
+      vtScatterTooltip = document.createElement("div");
+      vtScatterTooltip.className = "chart-tooltip";
+      box.appendChild(vtScatterTooltip);
+    }
+    vtScatterTooltip.textContent = pt.getAttribute("data-label") || "";
+    vtScatterTooltip.classList.add("show");
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (!vtScatterTooltip || !vtScatterTooltip.classList.contains("show")) return;
+    var pt = e.target.closest ? e.target.closest(".vt-scatter-pt") : null;
+    var box = pt ? pt.closest(".vt-unit-scatter") : null;
+    if (!box) return;
+    var r = box.getBoundingClientRect();
+    vtScatterTooltip.style.left = (e.clientX - r.left) + "px";
+    vtScatterTooltip.style.top = (e.clientY - r.top - 10) + "px";
+  });
+  document.addEventListener("mouseout", function (e) {
+    var pt = e.target.closest ? e.target.closest(".vt-scatter-pt") : null;
+    if (!pt || !vtScatterTooltip) return;
+    vtScatterTooltip.classList.remove("show");
+  });
 
   function renderHistoryStats(pnl, openPositions) {
     var won = pnl.closedMarkets.filter(function (m) { return m.won; }).length;
