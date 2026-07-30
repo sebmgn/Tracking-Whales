@@ -225,15 +225,28 @@
   }
   .vt-snap-btn:hover { border-color: var(--gold); }
   .vt-snap-btn:disabled { opacity: .6; cursor: default; }
-  .vt-traders { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .vt-trader-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
-  .vt-trader-row-name { flex: 0 1 auto; white-space: nowrap; }
-  .vt-trader-row-track { flex: 1 1 60px; height: 8px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
-  .vt-trader-row-fill { height: 100%; min-width: 3px; border-radius: 999px; }
+  .vt-traders { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  /* Fixed-width name column so the track that follows starts at the exact
+     same x on every row (both side-blocks, every trader) — that's what
+     makes fill length/color an honest comparison instead of one skewed by
+     how long each name happens to be. */
+  .vt-trader-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .vt-trader-row-name { flex: 0 0 108px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vt-trader-row-track {
+    position: relative; flex: 1 1 auto; height: 19px; border-radius: 999px;
+    background: var(--panel-border); overflow: hidden; display: flex; align-items: center;
+  }
+  .vt-trader-row-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+  .vt-trader-row-value {
+    position: relative; margin-left: auto; padding-right: 8px;
+    font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
   .vt-trader-name, .vt-trader-row-name { font-weight: 700; }
-  .vt-scatter { margin-top: 12px; }
+  .vt-unit-scatter { margin-top: 14px; }
   .vt-scatter-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-dim); margin-bottom: 4px; }
-  .vt-scatter svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .vt-scatter-legend-yes { color: var(--green); text-transform: none; letter-spacing: 0; }
+  .vt-scatter-legend-no { color: var(--red); text-transform: none; letter-spacing: 0; }
+  .vt-unit-scatter svg { display: block; width: 100%; height: auto; overflow: visible; }
   .w-badge {
     display: inline-block;
     margin-left: 7px;
@@ -1898,7 +1911,7 @@
   // never blended with the other platform's, since live prices legitimately
   // differ between them). showPlatformTag is only turned on for linked units
   // so single-platform cards stay uncluttered.
-  function renderSideBlock(s, g, color, showPlatformTag, maxStakeInUnit) {
+  function renderSideBlock(s, color, maxStakeInUnit) {
     var roi = s.price > 0 ? ((1 - s.price) / s.price * 100) : 0;
     var avgEntry = weightedAvgEntry(s.entries);
     var entryDiffPct = (avgEntry && avgEntry > 0 && s.price > 0) ? ((s.price - avgEntry) / avgEntry * 100) : null;
@@ -1919,26 +1932,34 @@
     // NOT sortedEntries[0] (that's sorted by rating, not by stake, so the
     // top-rated trader here can easily be a small bettor — using their stake
     // as the "max" used to make unrelated small bets render as fully filled).
-    // Track+fill bar (thin, rounded, neutral track behind a solid-color
-    // fill) instead of the old full-row translucent overlay — name and
-    // value stay in plain text next to it instead of sitting on top of it.
+    // Track+fill bar, fixed-width name column so every bar in the card —
+    // both sides, every row — starts at the exact same x: that's what makes
+    // the fill lengths/colors actually comparable at a glance instead of
+    // each row's bar starting wherever that trader's name happened to end.
+    // The stake now lives INSIDE the track (always at its right edge, never
+    // shifting with fill width) instead of a separate trailing text block —
+    // one less column to keep aligned, and it's what freed the space for a
+    // fixed name column in the first place. No platform badge per trader
+    // anymore (dropped along with the card-level ones).
     var rows = sortedEntries.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
-      // % of this trader's own tracked book committed to this one position —
-      // a quick read on how much conviction/risk they're taking here.
       var pv = portfolioValueByName[e.trader];
       var bookPct = pv > 0 ? (e.stake / pv * 100) : null;
       var bookPctHtml = bookPct == null ? "" :
         '<span class="vt-book-pct" title="Part de son book suivi engagée sur cette position">' + bookPct.toFixed(1) + '% de son book</span>';
+      var valueColor = barPct >= 55 ? "#fff" : "var(--text)";
       return '<div class="vt-trader-row">' +
-        '<span class="vt-trader-row-name">' + esc(e.trader) + platformBadge(PLATFORM_BY_NAME[e.trader]) + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
-        '<div class="vt-trader-row-track" title="' + esc(e.trader + " : " + fmtUSD(e.stake)) + '"><div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + color + '"></div></div>' +
-        '<span class="vt-trader-row-right">mise <b>' + fmtUSD(e.stake) + '</b> <span class="dim">@ ' + fmtCents(e.avgPrice) + '</span>' + bookPctHtml + '</span>' +
+        '<span class="vt-trader-row-name">' + esc(e.trader) + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<div class="vt-trader-row-track">' +
+          '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + color + '"></div>' +
+          '<span class="vt-trader-row-value" style="color:' + valueColor + '">' + fmtUSD(e.stake) + '</span>' +
+        '</div>' +
+        '<span class="vt-trader-row-right">@ ' + fmtCents(e.avgPrice) + bookPctHtml + '</span>' +
       '</div>';
     }).join("");
     return '<div class="vt-side-block" style="border-left-color:' + color + '">' +
       '<div class="vt-side-head">' +
-        '<span>' + (showPlatformTag ? platformBadge(g.platform) : '') + '<span class="vt-outcome" style="background:' + color + '22;color:' + color + '">' + esc(s.name) + '</span></span>' +
+        '<span><span class="vt-outcome" style="background:' + color + '22;color:' + color + '">' + esc(s.name) + '</span></span>' +
         '<span class="dim">' + s.traderCount + ' trader' + (s.traderCount > 1 ? "s" : "") + ' · mise totale <b>' + fmtUSD(s.totalStake) + '</b></span>' +
       '</div>' +
       '<div class="vt-side-metrics">' +
@@ -1947,34 +1968,52 @@
         '<span class="vt-roi">ROI si gagné : <b>' + fmtPct(roi) + '</b></span>' +
       '</div>' +
       '<div class="vt-traders">' + rows + '</div>' +
-      renderTraderScatter(sortedEntries, maxStakeInUnit, color) +
     '</div>';
   }
-  // Mise × fiabilité: one dot per trader, x = their stake here (scaled
-  // against the same maxStakeInUnit the bars above use, so the two side
-  // blocks of a unit stay directly comparable), y = their tracked quality
-  // rating (0-10, same scale as weightBadge). Answers "is the big money
-  // here coming from a well-rated trader or a random one" at a glance,
-  // underneath the plain stake ranking the bars already give.
-  function renderTraderScatter(entries, maxStakeInUnit, color) {
-    if (!entries.length) return "";
-    var W = 300, H = 92, padL = 22, padR = 8, padT = 8, padB = 18;
+  // Mise × fiabilité, ONE chart for the whole unit (not one per side-block)
+  // spanning the full card width — the leading side's entries as green
+  // circles, everything else pooled as red triangles (same leading/rest
+  // convention the Traders/Mises gauges already use, so a 3+-way market
+  // doesn't need a color per outcome here either). Shape doubles the color
+  // coding so camp identity doesn't rely on color alone.
+  function entriesOfMergedSide(m) {
+    var all = [];
+    m.items.forEach(function (it) { all = all.concat(it.s.entries); });
+    return all;
+  }
+  function renderUnitScatter(mergedSides, maxStakeInUnit) {
+    if (!mergedSides.length) return "";
+    var leaderEntries = entriesOfMergedSide(mergedSides[0]);
+    var otherEntries = [];
+    mergedSides.slice(1).forEach(function (m) { otherEntries = otherEntries.concat(entriesOfMergedSide(m)); });
+    if (!leaderEntries.length && !otherEntries.length) return "";
+    var W = 600, H = 130, padL = 30, padR = 12, padT = 10, padB = 22;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     function x(stake) { return padL + (maxStakeInUnit > 0 ? (stake / maxStakeInUnit) * innerW : 0); }
     function y(w) { return padT + innerH - (Math.max(0, Math.min(10, w || 0)) / 10) * innerH; }
-    var dots = entries.map(function (e) {
+    function mark(e) {
       var w = WEIGHT_BY_NAME[e.trader] || 0;
-      return '<circle cx="' + x(e.stake).toFixed(1) + '" cy="' + y(w).toFixed(1) + '" r="4" fill="' + color + '" opacity="0.8" stroke="var(--panel)" stroke-width="1">' +
-        '<title>' + esc(e.trader) + ' — ' + esc(fmtUSD(e.stake)) + ' — note ' + (w || "?") + '/10</title>' +
-      '</circle>';
+      var title = '<title>' + esc(e.trader) + ' — ' + esc(fmtUSD(e.stake)) + ' — note ' + (w || "?") + '/10</title>';
+      var cx = x(e.stake), cy = y(w);
+      return { cx: cx, cy: cy, title: title };
+    }
+    var dots = leaderEntries.map(function (e) {
+      var m = mark(e);
+      return '<circle cx="' + m.cx.toFixed(1) + '" cy="' + m.cy.toFixed(1) + '" r="5.5" fill="var(--green)" opacity="0.82" stroke="var(--panel)" stroke-width="1.2">' + m.title + '</circle>';
+    }).join("") + otherEntries.map(function (e) {
+      var m = mark(e), r = 6.5;
+      var pts = [[m.cx, m.cy - r], [m.cx - r * 0.87, m.cy + r * 0.6], [m.cx + r * 0.87, m.cy + r * 0.6]]
+        .map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+      return '<polygon points="' + pts + '" fill="var(--red)" opacity="0.82" stroke="var(--panel)" stroke-width="1.2">' + m.title + '</polygon>';
     }).join("");
-    return '<div class="vt-scatter">' +
-      '<div class="vt-scatter-title">Mise × fiabilité</div>' +
+    return '<div class="vt-unit-scatter">' +
+      '<div class="vt-scatter-title">Mise × fiabilité — <span class="vt-scatter-legend-yes">● ' + esc(mergedSides[0].name) + '</span>' +
+        (mergedSides.length > 1 ? ' <span class="vt-scatter-legend-no">▲ autres camps</span>' : '') + '</div>' +
       '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '" stroke="var(--panel-border)"/>' +
         '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)"/>' +
-        '<text x="' + padL + '" y="' + (padT - 1) + '" font-size="7" fill="var(--text-dim)">fiable</text>' +
-        '<text x="' + (W - padR) + '" y="' + (H - 4) + '" font-size="7" fill="var(--text-dim)" text-anchor="end">mise →</text>' +
+        '<text x="' + padL + '" y="' + (padT - 2) + '" font-size="10" fill="var(--text-dim)">fiable</text>' +
+        '<text x="' + (W - padR) + '" y="' + (H - 6) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">mise →</text>' +
         dots +
       '</svg>' +
     '</div>';
@@ -2086,7 +2125,7 @@
 
     var sideGroupsHtml = mergedSides.map(function (m) {
       var color = sideColorFor(m.name);
-      var blocksHtml = m.items.map(function (it) { return renderSideBlock(it.s, it.g, color, linked, maxStakeInUnit); }).join("");
+      var blocksHtml = m.items.map(function (it) { return renderSideBlock(it.s, color, maxStakeInUnit); }).join("");
       var paired = m.items.length > 1;
       return '<div class="vt-outcome-group' + (paired ? ' paired' : '') + '">' + blocksHtml + '</div>';
     }).join("");
@@ -2131,7 +2170,7 @@
         '<div class="balance-row"><span class="balance-label">Traders</span><div class="balance-bar bar-traders">' + traderSegments + '</div></div>' +
         '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
       '</div>';
-    var sideGridHtml = '<div class="vt-side-grid">' + sideGroupsHtml + '</div>';
+    var sideGridHtml = '<div class="vt-side-grid">' + sideGroupsHtml + '</div>' + renderUnitScatter(mergedSides, maxStakeInUnit);
     var bodyHtml = balanceHtml + sideGridHtml;
 
     return {
