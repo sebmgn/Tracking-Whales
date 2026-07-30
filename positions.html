@@ -244,6 +244,9 @@
     background: var(--panel-border); overflow: hidden; display: flex; align-items: center;
   }
   .vt-trader-row-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+  /* Legacy — the stake amount now renders in .vt-trader-row-right instead of
+     inside the bar, kept only so snapshots frozen before that change still
+     render correctly. */
   .vt-trader-row-value {
     position: relative; margin-left: auto; padding-right: 8px;
     font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap;
@@ -251,6 +254,9 @@
   .vt-trader-name, .vt-trader-row-name { font-weight: 700; }
   .vt-unit-scatter { margin-top: 14px; position: relative; }
   .vt-scatter-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-dim); margin-bottom: 4px; }
+  /* Legacy — the scatter legend now colors each span inline via
+     sideColorFor() so it matches the real outcome (e.g. "No" is red) instead
+     of a fixed leader=green/other=red pair; kept only for old snapshots. */
   .vt-scatter-legend-yes { color: var(--green); text-transform: none; letter-spacing: 0; }
   .vt-scatter-legend-no { color: var(--red); text-transform: none; letter-spacing: 0; }
   .vt-unit-scatter svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -280,6 +286,8 @@
   }
   .vt-trader-row-right { color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .vt-trader-row-right b { color: var(--text); }
+  /* Legacy — the "% de son book" note was dropped from the trader row; kept
+     only so snapshots frozen before that change still render correctly. */
   .vt-book-pct { font-size: 9.5px; opacity: .75; margin-left: 6px; }
   .empty-note { color: var(--text-dim); padding: 16px 18px; font-size: 13px; }
 
@@ -1203,7 +1211,6 @@
   var panelState = {};       // key -> { open, stake, peerOpen }
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
-  var portfolioValueByName = {}; // trader name -> sum of valueUsd across their tracked open positions
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
   var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
@@ -1962,28 +1969,22 @@
     rows.sort(function (a, b) { return b.stake - a.stake; });
     return '<div class="vt-traders">' + rows.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
-      var pv = portfolioValueByName[e.trader];
-      var bookPct = pv > 0 ? (e.stake / pv * 100) : null;
-      var bookPctHtml = bookPct == null ? "" :
-        '<span class="vt-book-pct" title="Part de son book suivi engagée sur cette position">' + bookPct.toFixed(1) + '% de son book</span>';
-      var valueColor = barPct >= 55 ? "#fff" : "var(--text)";
       return '<div class="vt-trader-row">' +
         '<span class="vt-row-marker" style="color:' + e.color + '">' + (e.isLeader ? "●" : "▲") + '</span>' +
         '<span class="vt-trader-row-name">' + esc(e.trader) + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track">' +
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
-          '<span class="vt-trader-row-value" style="color:' + valueColor + '">' + fmtUSD(e.stake) + '</span>' +
         '</div>' +
-        '<span class="vt-trader-row-right">@ ' + fmtCents(e.avgPrice) + bookPctHtml + '</span>' +
+        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b> @ ' + fmtCents(e.avgPrice) + '</span>' +
       '</div>';
     }).join("") + '</div>';
   }
   // Mise × fiabilité, ONE chart for the whole unit (not one per side-block)
-  // spanning the full card width — the leading side's entries as green
-  // circles, everything else pooled as red triangles (same leading/rest
-  // convention the Traders/Mises gauges already use, so a 3+-way market
-  // doesn't need a color per outcome here either). Shape doubles the color
-  // coding so camp identity doesn't rely on color alone.
+  // spanning the full card width — each side's entries colored by its real
+  // outcome color (sideColorFor), same as the legend and trader rows above,
+  // so a red "No" bet never shows up as green dots just because it happens
+  // to be the leading camp. Leading side = circle, every other side =
+  // triangle, so camp identity doesn't rely on color alone.
   function entriesOfMergedSide(m) {
     var all = [];
     m.items.forEach(function (it) { all = all.concat(it.s.entries); });
@@ -1991,10 +1992,6 @@
   }
   function renderUnitScatter(mergedSides, maxStakeInUnit) {
     if (!mergedSides.length) return "";
-    var leaderEntries = entriesOfMergedSide(mergedSides[0]);
-    var otherEntries = [];
-    mergedSides.slice(1).forEach(function (m) { otherEntries = otherEntries.concat(entriesOfMergedSide(m)); });
-    if (!leaderEntries.length && !otherEntries.length) return "";
     var W = 600, H = 130, padL = 30, padR = 12, padT = 10, padB = 22;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     function x(stake) { return padL + (maxStakeInUnit > 0 ? (stake / maxStakeInUnit) * innerW : 0); }
@@ -2006,21 +2003,33 @@
     function mark(e) {
       var w = WEIGHT_BY_NAME[e.trader] || 0;
       var label = esc(e.trader) + " — " + esc(fmtUSD(e.stake)) + " — note " + (w || "?") + "/10";
-      var cx = x(e.stake), cy = y(w);
-      return { cx: cx, cy: cy, label: label };
+      return { cx: x(e.stake), cy: y(w), label: label };
     }
-    var dots = leaderEntries.map(function (e) {
-      var m = mark(e);
-      return '<circle class="vt-scatter-pt" data-label="' + m.label + '" cx="' + m.cx.toFixed(1) + '" cy="' + m.cy.toFixed(1) + '" r="5.5" fill="var(--green)" opacity="0.82" stroke="var(--panel)" stroke-width="1.2"/>';
-    }).join("") + otherEntries.map(function (e) {
-      var m = mark(e), r = 6.5;
-      var pts = [[m.cx, m.cy - r], [m.cx - r * 0.87, m.cy + r * 0.6], [m.cx + r * 0.87, m.cy + r * 0.6]]
-        .map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
-      return '<polygon class="vt-scatter-pt" data-label="' + m.label + '" points="' + pts + '" fill="var(--red)" opacity="0.82" stroke="var(--panel)" stroke-width="1.2"/>';
+    var anyEntries = false;
+    var dots = mergedSides.map(function (m, sideIdx) {
+      var color = sideColorFor(m.name);
+      var entries = entriesOfMergedSide(m);
+      if (!entries.length) return "";
+      anyEntries = true;
+      if (sideIdx === 0) {
+        return entries.map(function (e) {
+          var pt = mark(e);
+          return '<circle class="vt-scatter-pt" data-label="' + pt.label + '" cx="' + pt.cx.toFixed(1) + '" cy="' + pt.cy.toFixed(1) + '" r="5.5" fill="' + color + '" opacity="0.82" stroke="var(--panel)" stroke-width="1.2"/>';
+        }).join("");
+      }
+      return entries.map(function (e) {
+        var pt = mark(e), r = 6.5;
+        var pts = [[pt.cx, pt.cy - r], [pt.cx - r * 0.87, pt.cy + r * 0.6], [pt.cx + r * 0.87, pt.cy + r * 0.6]]
+          .map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+        return '<polygon class="vt-scatter-pt" data-label="' + pt.label + '" points="' + pts + '" fill="' + color + '" opacity="0.82" stroke="var(--panel)" stroke-width="1.2"/>';
+      }).join("");
     }).join("");
+    if (!anyEntries) return "";
+    var leaderColor = sideColorFor(mergedSides[0].name);
+    var otherColor = mergedSides.length > 1 ? sideColorFor(mergedSides[1].name) : null;
     return '<div class="vt-unit-scatter">' +
-      '<div class="vt-scatter-title">Mise × fiabilité — <span class="vt-scatter-legend-yes">● ' + esc(mergedSides[0].name) + '</span>' +
-        (mergedSides.length > 1 ? ' <span class="vt-scatter-legend-no">▲ autres camps</span>' : '') + '</div>' +
+      '<div class="vt-scatter-title">Mise × fiabilité — <span style="color:' + leaderColor + '">● ' + esc(mergedSides[0].name) + '</span>' +
+        (otherColor ? ' <span style="color:' + otherColor + '">▲ autres camps</span>' : '') + '</div>' +
       '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '" stroke="var(--panel-border)"/>' +
         '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)"/>' +
@@ -3190,16 +3199,6 @@
   }
 
   function renderAll() {
-    // Recomputed fresh each cycle: sum of valueUsd across each trader's own
-    // tracked open positions — used as the denominator for the "% of book"
-    // note on each trader row (see renderMergedTraderRows). This is NOT their real
-    // wallet/cash balance (neither API exposes that) — it's the total of
-    // their positions this dashboard actually tracks, which is the closest
-    // available proxy for "how concentrated is this bet in their book".
-    portfolioValueByName = {};
-    TRADERS.forEach(function (t) {
-      portfolioValueByName[t.name] = (tradersData[t.name] || []).reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
-    });
     // Same grouping Value Trades uses, keyed by market so a single position
     // in "Trades par profils" can look up "who else is on this market" —
     // see the "Autres traders" toggle in renderTraderSection.
