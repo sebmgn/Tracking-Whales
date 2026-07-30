@@ -238,7 +238,13 @@
      what makes fill length/color an honest comparison instead of one skewed
      by how long each name happens to be. */
   .vt-trader-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
-  .vt-trader-row-name { flex: 0 0 108px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* The rating badge sits inside this fixed-width column too — as a flex
+     child of its own, not just trailing text, so it lands at the exact same
+     x on every row regardless of name length. The name text truncates first
+     (its own title attribute carries the full pseudo, shown on hover). */
+  .vt-trader-row-name { flex: 0 0 108px; display: flex; align-items: center; overflow: hidden; }
+  .vt-trader-row-name-text { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vt-trader-row-name .w-badge { flex: none; }
   .vt-trader-row-track {
     position: relative; flex: 1 1 auto; height: 19px; border-radius: 999px;
     background: var(--panel-border); overflow: hidden; display: flex; align-items: center;
@@ -1976,7 +1982,7 @@
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
       return '<div class="vt-trader-row">' +
         '<span class="vt-row-marker" style="color:' + e.color + '">' + (e.isLeader ? "●" : "▲") + '</span>' +
-        '<span class="vt-trader-row-name">' + esc(e.trader) + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<span class="vt-trader-row-name"><span class="vt-trader-row-name-text" title="' + esc(e.trader) + '">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track">' +
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
         '</div>' +
