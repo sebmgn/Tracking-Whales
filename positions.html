@@ -247,7 +247,9 @@
   .vt-trader-row-name .w-badge { flex: none; }
   .vt-trader-row-track {
     position: relative; flex: 1 1 auto; height: 19px; border-radius: 999px;
-    background: var(--panel-border); overflow: hidden; display: flex; align-items: center;
+    background: color-mix(in srgb, var(--panel-border) 16%, var(--panel));
+    border: 1px solid var(--panel-border);
+    overflow: hidden; display: flex; align-items: center;
   }
   .vt-trader-row-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
   /* Legacy — the stake amount now renders in .vt-trader-row-right instead of
@@ -258,11 +260,10 @@
     font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .vt-trader-name, .vt-trader-row-name { font-weight: 700; }
+  /* Legacy — the mise×fiabilité chart (scatter, then a ring) was dropped
+     entirely; kept only so snapshots frozen before that still render. */
   .vt-unit-scatter { margin-top: 14px; position: relative; }
   .vt-scatter-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-dim); margin-bottom: 4px; }
-  /* Legacy — the scatter legend now colors each span inline via
-     sideColorFor() so it matches the real outcome (e.g. "No" is red) instead
-     of a fixed leader=green/other=red pair; kept only for old snapshots. */
   .vt-scatter-legend-yes { color: var(--green); text-transform: none; letter-spacing: 0; }
   .vt-scatter-legend-no { color: var(--red); text-transform: none; letter-spacing: 0; }
   .vt-unit-scatter svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -1990,65 +1991,6 @@
       '</div>';
     }).join("") + '</div>';
   }
-  function entriesOfMergedSide(m) {
-    var all = [];
-    m.items.forEach(function (it) { all = all.concat(it.s.entries); });
-    return all;
-  }
-  function polarPt(cx, cy, r, a) { return [cx + Math.cos(a) * Math.max(0, r), cy + Math.sin(a) * Math.max(0, r)]; }
-  function ringArcPath(cx, cy, rInner, rOuter, a0, a1) {
-    rOuter = Math.max(0.6, rOuter);
-    rInner = Math.max(0, rInner);
-    var large = (a1 - a0) > Math.PI ? 1 : 0;
-    var p0 = polarPt(cx, cy, rOuter, a0), p1 = polarPt(cx, cy, rOuter, a1);
-    var p2 = polarPt(cx, cy, rInner, a1), p3 = polarPt(cx, cy, rInner, a0);
-    return "M" + p0[0].toFixed(1) + "," + p0[1].toFixed(1) +
-      " A" + rOuter.toFixed(1) + "," + rOuter.toFixed(1) + " 0 " + large + " 1 " + p1[0].toFixed(1) + "," + p1[1].toFixed(1) +
-      " L" + p2[0].toFixed(1) + "," + p2[1].toFixed(1) +
-      " A" + rInner.toFixed(1) + "," + rInner.toFixed(1) + " 0 " + large + " 0 " + p3[0].toFixed(1) + "," + p3[1].toFixed(1) + " Z";
-  }
-  // Mise × fiabilité as one ring: every trader gets the same angular slice
-  // (position carries no meaning) so the only thing being compared is how
-  // far each band reaches out — that's their mise relative to the biggest
-  // bettor on this unit. Color is the entry's own real camp (sideColorFor),
-  // and a short notch near the outer edge encodes fiabilité so the ring
-  // keeps the same two-variable story the old scatter told. Reuses
-  // .vt-scatter-pt/.vt-unit-scatter so the delegated tooltip wiring below
-  // (data-label driven) needs no changes.
-  function renderUnitScatter(mergedSides, maxStakeInUnit) {
-    var entries = [];
-    mergedSides.forEach(function (m) {
-      var color = sideColorFor(m.name);
-      entriesOfMergedSide(m).forEach(function (e) { entries.push({ trader: e.trader, stake: e.stake, color: color }); });
-    });
-    if (!entries.length) return "";
-    entries.sort(function (a, b) { return b.stake - a.stake; });
-    var W = 260, H = 234, cx = W / 2, cy = 116, Rbase = 34, Rout = 104;
-    var n = entries.length, step = (Math.PI * 2) / n;
-    var start = -Math.PI / 2;
-    var arcs = entries.map(function (e, i) {
-      var a0 = start + i * step + step * 0.06, a1 = a0 + step * 0.88;
-      var band = Rbase + Math.max(6, (Rout - Rbase) * (maxStakeInUnit > 0 ? e.stake / maxStakeInUnit : 0));
-      var w = WEIGHT_BY_NAME[e.trader] || 0;
-      var label = esc(e.trader) + " — " + esc(fmtUSD(e.stake)) + " — note " + (w || "?") + "/10";
-      var s = '<path class="vt-scatter-pt" data-label="' + label + '" d="' + ringArcPath(cx, cy, Rbase, band, a0, a1) + '" fill="' + e.color + '" opacity="0.88"/>';
-      var tickLen = Math.max(0, Math.min(10, w) / 10 * (band - Rbase - 5));
-      if (tickLen > 1) {
-        var mid = (a0 + a1) / 2;
-        var p0 = polarPt(cx, cy, band - 2, mid), p1 = polarPt(cx, cy, band - 2 - tickLen, mid);
-        s += '<line x1="' + p0[0].toFixed(1) + '" y1="' + p0[1].toFixed(1) + '" x2="' + p1[0].toFixed(1) + '" y2="' + p1[1].toFixed(1) + '" stroke="var(--panel)" stroke-width="2" stroke-linecap="round" opacity="0.9" pointer-events="none"/>';
-      }
-      return s;
-    }).join("");
-    return '<div class="vt-unit-scatter">' +
-      '<div class="vt-scatter-title">Mise × fiabilité — épaisseur = mise, encoche = fiabilité</div>' +
-      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" style="max-width:' + W + 'px;margin:0 auto;">' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + Rbase + '" fill="none" stroke="var(--panel-border)" stroke-dasharray="2,3"/>' +
-        arcs +
-      '</svg>' +
-    '</div>';
-  }
-
   // Merges sides across a unit's members by normalized outcome name, so a
   // linked pair (e.g. "Argentina" on Predict.fun + "Argentina" on Polymarket)
   // is treated as one outcome with a combined trader count — used both to
@@ -2193,7 +2135,7 @@
         '<div class="balance-row"><span class="balance-label">Traders</span><div class="balance-bar bar-traders">' + traderSegments + '</div></div>' +
         '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
       '</div>';
-    var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides) + renderMergedTraderRows(mergedSides, maxStakeInUnit) + '</div>' + renderUnitScatter(mergedSides, maxStakeInUnit);
+    var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides) + renderMergedTraderRows(mergedSides, maxStakeInUnit) + '</div>';
     var bodyHtml = balanceHtml + sideGridHtml;
 
     return {
@@ -3460,12 +3402,12 @@
       pt.addEventListener("mouseleave", function () { tip.classList.remove("show"); });
     });
   }
-  // Value Trades cards rebuild via innerHTML every refresh cycle, so
-  // per-render wiring (like wireHistoryChartTooltip above) would need
-  // re-attaching constantly — delegated on document instead, using
-  // mouseover/mouseout (they bubble; mouseenter/mouseleave don't), so one
-  // listener set survives every rebuild. Reuses the same floating-tooltip
-  // look as the PnL history chart.
+  // Legacy — the mise×fiabilité chart itself is gone, but old snapshots
+  // frozen while it still existed have .vt-scatter-pt marks baked into their
+  // static cardHtml, so this delegated wiring (document-level, since Value
+  // Trades cards rebuild via innerHTML every refresh cycle and per-render
+  // wiring would need re-attaching constantly) stays to keep their tooltips
+  // working. Reuses the same floating-tooltip look as the PnL history chart.
   var vtScatterTooltip = null;
   document.addEventListener("mouseover", function (e) {
     var pt = e.target.closest ? e.target.closest(".vt-scatter-pt") : null;
