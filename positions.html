@@ -225,23 +225,15 @@
   }
   .vt-snap-btn:hover { border-color: var(--gold); }
   .vt-snap-btn:disabled { opacity: .6; cursor: default; }
-  .vt-traders { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
-  .vt-trader-row {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 7px 12px;
-    border-radius: 7px;
-    background: #332b1e0d;
-    border: 1px solid var(--panel-border);
-    overflow: hidden;
-    font-size: 12.5px;
-  }
-  .vt-trader-row-bar { position: absolute; left: 0; top: 0; bottom: 0; opacity: .18; z-index: 0; }
-  .vt-trader-row-name, .vt-trader-row-right { position: relative; z-index: 1; }
+  .vt-traders { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .vt-trader-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+  .vt-trader-row-name { flex: 0 1 auto; white-space: nowrap; }
+  .vt-trader-row-track { flex: 1 1 60px; height: 8px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
+  .vt-trader-row-fill { height: 100%; min-width: 3px; border-radius: 999px; }
   .vt-trader-name, .vt-trader-row-name { font-weight: 700; }
+  .vt-scatter { margin-top: 12px; }
+  .vt-scatter-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-dim); margin-bottom: 4px; }
+  .vt-scatter svg { display: block; width: 100%; height: auto; overflow: visible; }
   .w-badge {
     display: inline-block;
     margin-left: 7px;
@@ -1927,6 +1919,9 @@
     // NOT sortedEntries[0] (that's sorted by rating, not by stake, so the
     // top-rated trader here can easily be a small bettor — using their stake
     // as the "max" used to make unrelated small bets render as fully filled).
+    // Track+fill bar (thin, rounded, neutral track behind a solid-color
+    // fill) instead of the old full-row translucent overlay — name and
+    // value stay in plain text next to it instead of sitting on top of it.
     var rows = sortedEntries.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
       // % of this trader's own tracked book committed to this one position —
@@ -1936,8 +1931,8 @@
       var bookPctHtml = bookPct == null ? "" :
         '<span class="vt-book-pct" title="Part de son book suivi engagée sur cette position">' + bookPct.toFixed(1) + '% de son book</span>';
       return '<div class="vt-trader-row">' +
-        '<div class="vt-trader-row-bar" style="width:' + barPct.toFixed(1) + '%;background:' + color + '"></div>' +
         '<span class="vt-trader-row-name">' + esc(e.trader) + platformBadge(PLATFORM_BY_NAME[e.trader]) + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<div class="vt-trader-row-track" title="' + esc(e.trader + " : " + fmtUSD(e.stake)) + '"><div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + color + '"></div></div>' +
         '<span class="vt-trader-row-right">mise <b>' + fmtUSD(e.stake) + '</b> <span class="dim">@ ' + fmtCents(e.avgPrice) + '</span>' + bookPctHtml + '</span>' +
       '</div>';
     }).join("");
@@ -1952,6 +1947,36 @@
         '<span class="vt-roi">ROI si gagné : <b>' + fmtPct(roi) + '</b></span>' +
       '</div>' +
       '<div class="vt-traders">' + rows + '</div>' +
+      renderTraderScatter(sortedEntries, maxStakeInUnit, color) +
+    '</div>';
+  }
+  // Mise × fiabilité: one dot per trader, x = their stake here (scaled
+  // against the same maxStakeInUnit the bars above use, so the two side
+  // blocks of a unit stay directly comparable), y = their tracked quality
+  // rating (0-10, same scale as weightBadge). Answers "is the big money
+  // here coming from a well-rated trader or a random one" at a glance,
+  // underneath the plain stake ranking the bars already give.
+  function renderTraderScatter(entries, maxStakeInUnit, color) {
+    if (!entries.length) return "";
+    var W = 300, H = 92, padL = 22, padR = 8, padT = 8, padB = 18;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    function x(stake) { return padL + (maxStakeInUnit > 0 ? (stake / maxStakeInUnit) * innerW : 0); }
+    function y(w) { return padT + innerH - (Math.max(0, Math.min(10, w || 0)) / 10) * innerH; }
+    var dots = entries.map(function (e) {
+      var w = WEIGHT_BY_NAME[e.trader] || 0;
+      return '<circle cx="' + x(e.stake).toFixed(1) + '" cy="' + y(w).toFixed(1) + '" r="4" fill="' + color + '" opacity="0.8" stroke="var(--panel)" stroke-width="1">' +
+        '<title>' + esc(e.trader) + ' — ' + esc(fmtUSD(e.stake)) + ' — note ' + (w || "?") + '/10</title>' +
+      '</circle>';
+    }).join("");
+    return '<div class="vt-scatter">' +
+      '<div class="vt-scatter-title">Mise × fiabilité</div>' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+        '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '" stroke="var(--panel-border)"/>' +
+        '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)"/>' +
+        '<text x="' + padL + '" y="' + (padT - 1) + '" font-size="7" fill="var(--text-dim)">fiable</text>' +
+        '<text x="' + (W - padR) + '" y="' + (H - 4) + '" font-size="7" fill="var(--text-dim)" text-anchor="end">mise →</text>' +
+        dots +
+      '</svg>' +
     '</div>';
   }
 
