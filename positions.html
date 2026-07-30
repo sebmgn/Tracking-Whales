@@ -1990,63 +1990,61 @@
       '</div>';
     }).join("") + '</div>';
   }
-  // Mise × fiabilité, ONE chart for the whole unit (not one per side-block)
-  // spanning the full card width — each side's entries colored by its real
-  // outcome color (sideColorFor), same as the legend and trader rows above,
-  // so a red "No" bet never shows up as green dots just because it happens
-  // to be the leading camp. Leading side = circle, every other side =
-  // triangle, so camp identity doesn't rely on color alone.
   function entriesOfMergedSide(m) {
     var all = [];
     m.items.forEach(function (it) { all = all.concat(it.s.entries); });
     return all;
   }
+  function polarPt(cx, cy, r, a) { return [cx + Math.cos(a) * Math.max(0, r), cy + Math.sin(a) * Math.max(0, r)]; }
+  function ringArcPath(cx, cy, rInner, rOuter, a0, a1) {
+    rOuter = Math.max(0.6, rOuter);
+    rInner = Math.max(0, rInner);
+    var large = (a1 - a0) > Math.PI ? 1 : 0;
+    var p0 = polarPt(cx, cy, rOuter, a0), p1 = polarPt(cx, cy, rOuter, a1);
+    var p2 = polarPt(cx, cy, rInner, a1), p3 = polarPt(cx, cy, rInner, a0);
+    return "M" + p0[0].toFixed(1) + "," + p0[1].toFixed(1) +
+      " A" + rOuter.toFixed(1) + "," + rOuter.toFixed(1) + " 0 " + large + " 1 " + p1[0].toFixed(1) + "," + p1[1].toFixed(1) +
+      " L" + p2[0].toFixed(1) + "," + p2[1].toFixed(1) +
+      " A" + rInner.toFixed(1) + "," + rInner.toFixed(1) + " 0 " + large + " 0 " + p3[0].toFixed(1) + "," + p3[1].toFixed(1) + " Z";
+  }
+  // Mise × fiabilité as one ring: every trader gets the same angular slice
+  // (position carries no meaning) so the only thing being compared is how
+  // far each band reaches out — that's their mise relative to the biggest
+  // bettor on this unit. Color is the entry's own real camp (sideColorFor),
+  // and a short notch near the outer edge encodes fiabilité so the ring
+  // keeps the same two-variable story the old scatter told. Reuses
+  // .vt-scatter-pt/.vt-unit-scatter so the delegated tooltip wiring below
+  // (data-label driven) needs no changes.
   function renderUnitScatter(mergedSides, maxStakeInUnit) {
-    if (!mergedSides.length) return "";
-    var W = 600, H = 130, padL = 30, padR = 12, padT = 10, padB = 22;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    function x(stake) { return padL + (maxStakeInUnit > 0 ? (stake / maxStakeInUnit) * innerW : 0); }
-    function y(w) { return padT + innerH - (Math.max(0, Math.min(10, w || 0)) / 10) * innerH; }
-    // data-label (not a native <title>) — a native SVG tooltip is slow to
-    // appear and inconsistently styled across browsers; wireScatterTooltips
-    // below reads this attribute to drive the same floating tooltip style
-    // already used for the PnL history chart, hovering any mark.
-    function mark(e) {
+    var entries = [];
+    mergedSides.forEach(function (m) {
+      var color = sideColorFor(m.name);
+      entriesOfMergedSide(m).forEach(function (e) { entries.push({ trader: e.trader, stake: e.stake, color: color }); });
+    });
+    if (!entries.length) return "";
+    entries.sort(function (a, b) { return b.stake - a.stake; });
+    var W = 260, H = 234, cx = W / 2, cy = 116, Rbase = 34, Rout = 104;
+    var n = entries.length, step = (Math.PI * 2) / n;
+    var start = -Math.PI / 2;
+    var arcs = entries.map(function (e, i) {
+      var a0 = start + i * step + step * 0.06, a1 = a0 + step * 0.88;
+      var band = Rbase + Math.max(6, (Rout - Rbase) * (maxStakeInUnit > 0 ? e.stake / maxStakeInUnit : 0));
       var w = WEIGHT_BY_NAME[e.trader] || 0;
       var label = esc(e.trader) + " — " + esc(fmtUSD(e.stake)) + " — note " + (w || "?") + "/10";
-      return { cx: x(e.stake), cy: y(w), label: label };
-    }
-    var anyEntries = false;
-    var dots = mergedSides.map(function (m, sideIdx) {
-      var color = sideColorFor(m.name);
-      var entries = entriesOfMergedSide(m);
-      if (!entries.length) return "";
-      anyEntries = true;
-      if (sideIdx === 0) {
-        return entries.map(function (e) {
-          var pt = mark(e);
-          return '<circle class="vt-scatter-pt" data-label="' + pt.label + '" cx="' + pt.cx.toFixed(1) + '" cy="' + pt.cy.toFixed(1) + '" r="5.5" fill="' + color + '" opacity="0.82" stroke="var(--panel)" stroke-width="1.2"/>';
-        }).join("");
+      var s = '<path class="vt-scatter-pt" data-label="' + label + '" d="' + ringArcPath(cx, cy, Rbase, band, a0, a1) + '" fill="' + e.color + '" opacity="0.88"/>';
+      var tickLen = Math.max(0, Math.min(10, w) / 10 * (band - Rbase - 5));
+      if (tickLen > 1) {
+        var mid = (a0 + a1) / 2;
+        var p0 = polarPt(cx, cy, band - 2, mid), p1 = polarPt(cx, cy, band - 2 - tickLen, mid);
+        s += '<line x1="' + p0[0].toFixed(1) + '" y1="' + p0[1].toFixed(1) + '" x2="' + p1[0].toFixed(1) + '" y2="' + p1[1].toFixed(1) + '" stroke="var(--panel)" stroke-width="2" stroke-linecap="round" opacity="0.9" pointer-events="none"/>';
       }
-      return entries.map(function (e) {
-        var pt = mark(e), r = 6.5;
-        var pts = [[pt.cx, pt.cy - r], [pt.cx - r * 0.87, pt.cy + r * 0.6], [pt.cx + r * 0.87, pt.cy + r * 0.6]]
-          .map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
-        return '<polygon class="vt-scatter-pt" data-label="' + pt.label + '" points="' + pts + '" fill="' + color + '" opacity="0.82" stroke="var(--panel)" stroke-width="1.2"/>';
-      }).join("");
+      return s;
     }).join("");
-    if (!anyEntries) return "";
-    var leaderColor = sideColorFor(mergedSides[0].name);
-    var otherColor = mergedSides.length > 1 ? sideColorFor(mergedSides[1].name) : null;
     return '<div class="vt-unit-scatter">' +
-      '<div class="vt-scatter-title">Mise × fiabilité — <span style="color:' + leaderColor + '">● ' + esc(mergedSides[0].name) + '</span>' +
-        (otherColor ? ' <span style="color:' + otherColor + '">▲ autres camps</span>' : '') + '</div>' +
-      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-        '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '" stroke="var(--panel-border)"/>' +
-        '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)"/>' +
-        '<text x="' + padL + '" y="' + (padT - 2) + '" font-size="10" fill="var(--text-dim)">fiable</text>' +
-        '<text x="' + (W - padR) + '" y="' + (H - 6) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">mise →</text>' +
-        dots +
+      '<div class="vt-scatter-title">Mise × fiabilité — épaisseur = mise, encoche = fiabilité</div>' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" style="max-width:' + W + 'px;margin:0 auto;">' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + Rbase + '" fill="none" stroke="var(--panel-border)" stroke-dasharray="2,3"/>' +
+        arcs +
       '</svg>' +
     '</div>';
   }
