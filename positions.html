@@ -284,7 +284,12 @@
     text-transform: uppercase;
     letter-spacing: .02em;
   }
-  .vt-trader-row-right { color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* Fixed width (like .vt-trader-row-name) so .vt-trader-row-track — flex:1
+     in between — is always the exact same length on every row regardless of
+     how many digits this particular amount happens to have; otherwise a
+     short "$" figure here let its track steal a few extra pixels, making bar
+     length a slightly dishonest stake comparison between traders. */
+  .vt-trader-row-right { flex: 0 0 148px; text-align: right; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .vt-trader-row-right b { color: var(--text); }
   /* Legacy — the "% de son book" note was dropped from the trader row; kept
      only so snapshots frozen before that change still render correctly. */
