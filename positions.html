@@ -2094,7 +2094,7 @@
     // on every card depending on how wide its own badge-group happened to be.
     var headerHtml =
       '<div class="vt-top">' +
-        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + platformBadge(primary.platform) + (linked ? platformBadge(secondary.platform) : '') + leaderBadge + '</span>' +
+        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + leaderBadge + '</span>' +
         '<span class="vt-badge-group"><span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + '</span>' +
       '</div>';
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
