@@ -1,5 +1,375 @@
 [
   {
+    "id": "msbiydzodoz4hb",
+    "savedAt": "2026-08-02T08:14:40.980Z",
+    "question": "Will Club Santos Laguna win on 2026-08-02?",
+    "leaderName": "No",
+    "traderCount": 4,
+    "totalStake": 8820.52593481,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 4,
+        "stake": 8820.52593481,
+        "traders": [
+          {
+            "trader": "VeryLucky888",
+            "stake": 3107.86765481,
+            "avgPrice": 0.8633
+          },
+          {
+            "trader": "GC-P",
+            "stake": 2863.65114,
+            "avgPrice": 0.8673
+          },
+          {
+            "trader": "NM-P",
+            "stake": 2342.08014,
+            "avgPrice": 0.8643
+          },
+          {
+            "trader": "snakeball",
+            "stake": 506.927,
+            "avgPrice": 0.86
+          }
+        ]
+      },
+      {
+        "name": "Yes",
+        "traderCount": 0,
+        "stake": 0,
+        "traders": []
+      }
+    ],
+    "traderNames": [
+      "VeryLucky888",
+      "GC-P",
+      "NM-P",
+      "snakeball"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will Club Santos Laguna win on 2026-08-02?</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 86.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">4 traders · 8 820,53 $</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/mex-ame-san-2026-08-02\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — 4/4 traders (100%) · mise 8 820,53 $</div></div><div class=\"bal-seg\" style=\"width:0.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — 0/4 traders (0%) · mise 0,00 $</div></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 8 820,53 $ / 8 820,53 $ (100%)</div></div><div class=\"bal-seg\" style=\"width:0.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — mise 0,00 $ / 8 820,53 $ (0%)</div></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#a13030\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span> <b>No</b> — 4 traders · 8 820,53 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 86.5¢</span> · ROI +15.61%</span><span class=\"vt-sides-legend-item\" style=\"color:#2e6b45\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span> <b>Yes</b> — 0 trader · 0,00 $</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>3 107,87 $</b> @ 86.3¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:92.1%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 863,65 $</b> @ 86.7¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:75.4%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 342,08 $</b> @ 86.4¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"snakeball\">snakeball</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:16.3%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>506,93 $</b> @ 86.0¢</span></div></div></div>",
+    "winningSide": null,
+    "confidence": null
+  },
+  {
+    "id": "msav23witato7n",
+    "savedAt": "2026-08-01T21:05:43.746Z",
+    "question": "Will Alianza FC win on 2026-08-01?",
+    "leaderName": "No",
+    "traderCount": 4,
+    "totalStake": 2742.92368523,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 4,
+        "stake": 2742.92368523,
+        "traders": [
+          {
+            "trader": "VeryLucky888",
+            "stake": 800,
+            "avgPrice": 0.64
+          },
+          {
+            "trader": "swisstony",
+            "stake": 740.2128852300001,
+            "avgPrice": 0.6447
+          },
+          {
+            "trader": "RN1",
+            "stake": 626.8608,
+            "avgPrice": 0.64
+          },
+          {
+            "trader": "snakeball",
+            "stake": 575.85,
+            "avgPrice": 0.66
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "VeryLucky888",
+      "swisstony",
+      "RN1",
+      "snakeball"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will Alianza FC win on 2026-08-01?</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 66.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">4 traders · 2 742,92 $</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/col1-alf-cdt-2026-08-01\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — 4/4 traders (100%) · mise 2 742,92 $</div></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 2 742,92 $ / 2 742,92 $ (100%)</div></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#a13030\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span> <b>No</b> — 4 traders · 2 742,92 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 66.5¢</span> · ROI +50.38%</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>800,00 $</b> @ 64.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:92.5%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>740,21 $</b> @ 64.5¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"RN1\">RN1</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(119,62%,35%);border-color:hsl(119,62%,35%)\" title=\"Note qualite : 9/10\">9</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:78.4%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>626,86 $</b> @ 64.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"snakeball\">snakeball</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:72.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>575,85 $</b> @ 66.0¢</span></div></div></div>",
+    "winningSide": "No",
+    "confidence": null
+  },
+  {
+    "id": "msav1z2dipditn",
+    "savedAt": "2026-08-01T21:05:37.477Z",
+    "question": "Exact Score: Inter Miami CF 2 - 0 Columbus Crew?",
+    "leaderName": "No",
+    "traderCount": 4,
+    "totalStake": 3201.779611,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 4,
+        "stake": 3201.779611,
+        "traders": [
+          {
+            "trader": "GC-P",
+            "stake": 1162.486701,
+            "avgPrice": 0.93
+          },
+          {
+            "trader": "NM-P",
+            "stake": 867.5159040000001,
+            "avgPrice": 0.93
+          },
+          {
+            "trader": "snakeball",
+            "stake": 632.3946060000001,
+            "avgPrice": 0.93
+          },
+          {
+            "trader": "swisstony",
+            "stake": 539.3824,
+            "avgPrice": 0.9236
+          }
+        ]
+      },
+      {
+        "name": "Yes",
+        "traderCount": 0,
+        "stake": 0,
+        "traders": []
+      }
+    ],
+    "traderNames": [
+      "GC-P",
+      "NM-P",
+      "snakeball",
+      "swisstony"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Exact Score: Inter Miami CF 2 - 0 Columbus Crew?</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 93.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">4 traders · 3 201,78 $</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/mls-mia-clb-2026-08-01-exact-score\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — 4/4 traders (100%) · mise 3 201,78 $</div></div><div class=\"bal-seg\" style=\"width:0.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — 0/4 traders (0%) · mise 0,00 $</div></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 3 201,78 $ / 3 201,78 $ (100%)</div></div><div class=\"bal-seg\" style=\"width:0.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — mise 0,00 $ / 3 201,78 $ (0%)</div></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#a13030\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span> <b>No</b> — 4 traders · 3 201,78 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 93.5¢</span> · ROI +6.95%</span><span class=\"vt-sides-legend-item\" style=\"color:#2e6b45\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span> <b>Yes</b> — 0 trader · 0,00 $</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>1 162,49 $</b> @ 93.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:74.6%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>867,52 $</b> @ 93.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"snakeball\">snakeball</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:54.4%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>632,39 $</b> @ 93.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:46.4%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>539,38 $</b> @ 92.4¢</span></div></div></div>",
+    "winningSide": "No",
+    "confidence": null
+  },
+  {
+    "id": "msav1bk3q2uurh",
+    "savedAt": "2026-08-01T21:05:07.011Z",
+    "question": "Will Fluminense FC win on 2026-08-01?",
+    "leaderName": "No",
+    "traderCount": 4,
+    "totalStake": 5010.90910245,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 4,
+        "stake": 3921.9874211700003,
+        "traders": [
+          {
+            "trader": "RN1",
+            "stake": 1386.39689552,
+            "avgPrice": 0.6188
+          },
+          {
+            "trader": "swisstony",
+            "stake": 1008.217716,
+            "avgPrice": 0.615
+          },
+          {
+            "trader": "GC-P",
+            "stake": 909.0217620000001,
+            "avgPrice": 0.5974
+          },
+          {
+            "trader": "NM-P",
+            "stake": 618.35104765,
+            "avgPrice": 0.5965
+          }
+        ]
+      },
+      {
+        "name": "Yes",
+        "traderCount": 1,
+        "stake": 1088.92168128,
+        "traders": [
+          {
+            "trader": "RN1",
+            "stake": 1088.92168128,
+            "avgPrice": 0.3699
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "RN1",
+      "swisstony",
+      "GC-P",
+      "NM-P"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will Fluminense FC win on 2026-08-01?</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 67.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">4 traders · 5 010,91 $</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/brco-vas-flu-2026-08-01\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:80.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — 4/5 traders (80%) · mise 3 921,99 $</div></div><div class=\"bal-seg\" style=\"width:20.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — 1/5 traders (20%) · mise 1 088,92 $</div></div><div class=\"bal-tick\" style=\"left:80.00%\"></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:78.27%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 3 921,99 $ / 5 010,91 $ (78%)</div></div><div class=\"bal-seg\" style=\"width:21.73%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — mise 1 088,92 $ / 5 010,91 $ (22%)</div></div><div class=\"bal-tick\" style=\"left:78.27%\"></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#a13030\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span> <b>No</b> — 4 traders · 3 921,99 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 67.5¢</span> · ROI +48.15%</span><span class=\"vt-sides-legend-item\" style=\"color:#2e6b45\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span> <b>Yes</b> — 1 trader · 1 088,92 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 32.5¢</span> · ROI +207.69%</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"RN1\">RN1</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(119,62%,35%);border-color:hsl(119,62%,35%)\" title=\"Note qualite : 9/10\">9</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>1 386,40 $</b> @ 61.9¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"RN1\">RN1</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(119,62%,35%);border-color:hsl(119,62%,35%)\" title=\"Note qualite : 9/10\">9</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:78.5%;background:#2e6b45\"></div></div><span class=\"vt-trader-row-right\"><b>1 088,92 $</b> @ 37.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:72.7%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>1 008,22 $</b> @ 61.5¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:65.6%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>909,02 $</b> @ 59.7¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:44.6%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>618,35 $</b> @ 59.7¢</span></div></div></div>",
+    "winningSide": "No",
+    "confidence": null
+  },
+  {
+    "id": "msan0uj7uzji1u",
+    "savedAt": "2026-08-01T17:20:48.019Z",
+    "question": "Will Bucheon FC 1995 win on 2026-08-01?",
+    "leaderName": "No",
+    "traderCount": 4,
+    "totalStake": 5040.40395607,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 4,
+        "stake": 5040.40395607,
+        "traders": [
+          {
+            "trader": "NM-P",
+            "stake": 2167.819803,
+            "avgPrice": 0.87
+          },
+          {
+            "trader": "GC-P",
+            "stake": 2026.1604,
+            "avgPrice": 0.87
+          },
+          {
+            "trader": "swisstony",
+            "stake": 534.48334907,
+            "avgPrice": 0.8699
+          },
+          {
+            "trader": "VeryLucky888",
+            "stake": 311.940404,
+            "avgPrice": 0.86
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "NM-P",
+      "GC-P",
+      "swisstony",
+      "VeryLucky888"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will Bucheon FC 1995 win on 2026-08-01?</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 86.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">4 traders · 5 040,40 $</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/kor-gwo-bch-2026-08-01\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — 4/4 traders (100%) · mise 5 040,40 $</div></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 5 040,40 $ / 5 040,40 $ (100%)</div></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#a13030\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span> <b>No</b> — 4 traders · 5 040,40 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 86.5¢</span> · ROI +15.61%</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 167,82 $</b> @ 87.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:93.5%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 026,16 $</b> @ 87.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:24.7%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>534,48 $</b> @ 87.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:14.4%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>311,94 $</b> @ 86.0¢</span></div></div></div>",
+    "winningSide": "__OTHER_SIDE__",
+    "confidence": null
+  },
+  {
+    "id": "msa4swxr3p26a8",
+    "savedAt": "2026-08-01T08:50:44.799Z",
+    "question": "Will Inter Miami CF win on 2026-08-01?",
+    "leaderName": "No",
+    "traderCount": 4,
+    "totalStake": 6328.8295185900015,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 4,
+        "stake": 6001.915621170001,
+        "traders": [
+          {
+            "trader": "VeryLucky888",
+            "stake": 2076.07219715,
+            "avgPrice": 0.4165
+          },
+          {
+            "trader": "GC-P",
+            "stake": 1787.8540982999998,
+            "avgPrice": 0.417
+          },
+          {
+            "trader": "NM-P",
+            "stake": 1753.9705360200003,
+            "avgPrice": 0.4198
+          },
+          {
+            "trader": "swisstony",
+            "stake": 384.0187897,
+            "avgPrice": 0.4045
+          }
+        ]
+      },
+      {
+        "name": "Yes",
+        "traderCount": 1,
+        "stake": 326.91389742000007,
+        "traders": [
+          {
+            "trader": "GC-P",
+            "stake": 326.91389742000007,
+            "avgPrice": 0.5763
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "VeryLucky888",
+      "GC-P",
+      "NM-P",
+      "swisstony"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will Inter Miami CF win on 2026-08-01?</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 39.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">4 traders · 6 328,83 $</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/mls-mia-clb-2026-08-01\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:80.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — 4/5 traders (80%) · mise 6 001,92 $</div></div><div class=\"bal-seg\" style=\"width:20.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — 1/5 traders (20%) · mise 326,91 $</div></div><div class=\"bal-tick\" style=\"left:80.00%\"></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:94.83%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 6 001,92 $ / 6 328,83 $ (95%)</div></div><div class=\"bal-seg\" style=\"width:5.17%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — mise 326,91 $ / 6 328,83 $ (5%)</div></div><div class=\"bal-tick\" style=\"left:94.83%\"></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#a13030\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span> <b>No</b> — 4 traders · 6 001,92 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 39.5¢</span> · ROI +153.16%</span><span class=\"vt-sides-legend-item\" style=\"color:#2e6b45\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span> <b>Yes</b> — 1 trader · 326,91 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 60.5¢</span> · ROI +65.29%</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 076,07 $</b> @ 41.6¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:86.1%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>1 787,85 $</b> @ 41.7¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:84.5%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>1 753,97 $</b> @ 42.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:18.5%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>384,02 $</b> @ 40.5¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:15.7%;background:#2e6b45\"></div></div><span class=\"vt-trader-row-right\"><b>326,91 $</b> @ 57.6¢</span></div></div></div>",
+    "winningSide": "No",
+    "confidence": null
+  },
+  {
+    "id": "msa4senxr1legx",
+    "savedAt": "2026-08-01T08:50:21.117Z",
+    "question": "Will Los Angeles FC win on 2026-08-01?",
+    "leaderName": "No",
+    "traderCount": 4,
+    "totalStake": 10868.87236772,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 4,
+        "stake": 10350.58646378,
+        "traders": [
+          {
+            "trader": "GC-P",
+            "stake": 3828.0225256000003,
+            "avgPrice": 0.728
+          },
+          {
+            "trader": "VeryLucky888",
+            "stake": 3252.0600000000004,
+            "avgPrice": 0.7476
+          },
+          {
+            "trader": "NM-P",
+            "stake": 2832.6112901799997,
+            "avgPrice": 0.7361
+          },
+          {
+            "trader": "swisstony",
+            "stake": 437.892648,
+            "avgPrice": 0.732
+          }
+        ]
+      },
+      {
+        "name": "Yes",
+        "traderCount": 1,
+        "stake": 518.2859039399999,
+        "traders": [
+          {
+            "trader": "GC-P",
+            "stake": 518.2859039399999,
+            "avgPrice": 0.2643
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "GC-P",
+      "VeryLucky888",
+      "NM-P",
+      "swisstony"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will Los Angeles FC win on 2026-08-01?</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 71.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">4 traders · 10 868,87 $</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/mls-vwh-laf-2026-08-01\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:80.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — 4/5 traders (80%) · mise 10 350,59 $</div></div><div class=\"bal-seg\" style=\"width:20.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — 1/5 traders (20%) · mise 518,29 $</div></div><div class=\"bal-tick\" style=\"left:80.00%\"></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:95.23%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 10 350,59 $ / 10 868,87 $ (95%)</div></div><div class=\"bal-seg\" style=\"width:4.77%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — mise 518,29 $ / 10 868,87 $ (5%)</div></div><div class=\"bal-tick\" style=\"left:95.23%\"></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#a13030\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span> <b>No</b> — 4 traders · 10 350,59 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 71.5¢</span> · ROI +39.86%</span><span class=\"vt-sides-legend-item\" style=\"color:#2e6b45\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span> <b>Yes</b> — 1 trader · 518,29 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 28.5¢</span> · ROI +251.00%</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>3 828,02 $</b> @ 72.8¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:85.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>3 252,06 $</b> @ 74.8¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:74.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 832,61 $</b> @ 73.6¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:13.5%;background:#2e6b45\"></div></div><span class=\"vt-trader-row-right\"><b>518,29 $</b> @ 26.4¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:11.4%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>437,89 $</b> @ 73.2¢</span></div></div></div>",
+    "winningSide": "No",
+    "confidence": "B"
+  },
+  {
     "id": "ms8zl4nuferpk3",
     "savedAt": "2026-07-31T13:36:57.306Z",
     "question": "Will Atlético San Luis win on 2026-07-31?",
@@ -54,7 +424,7 @@
       "VeryLucky888"
     ],
     "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will Atlético San Luis win on 2026-07-31?</span><span class=\"vt-leader\" style=\"background:#a13030\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 56.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">5 traders · 10 898,77 $</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/mex-asl-tij-2026-07-31\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — 5/5 traders (100%) · mise 10 898,77 $</div></div><div class=\"bal-seg\" style=\"width:0.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — 0/5 traders (0%) · mise 0,00 $</div></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 10 898,77 $ / 10 898,77 $ (100%)</div></div><div class=\"bal-seg\" style=\"width:0.00%;background:var(--red)\"><div class=\"bal-tooltip\">Yes — mise 0,00 $ / 10 898,77 $ (0%)</div></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#a13030\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span> <b>No</b> — 5 traders · 10 898,77 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 56.5¢</span> · ROI +77.02%</span><span class=\"vt-sides-legend-item\" style=\"color:#2e6b45\"><span class=\"vt-row-marker\" style=\"background:#2e6b45\">Y</span> <b>Yes</b> — 0 trader · 0,00 $</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"RN1\">RN1</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(119,62%,35%);border-color:hsl(119,62%,35%)\" title=\"Note qualite : 9/10\">9</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 849,50 $</b> @ 57.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:84.8%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 415,38 $</b> @ 59.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:76.4%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 177,34 $</b> @ 58.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:72.9%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>2 076,55 $</b> @ 58.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#a13030\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:48.4%;background:#a13030\"></div></div><span class=\"vt-trader-row-right\"><b>1 380,00 $</b> @ 57.5¢</span></div></div></div>",
-    "winningSide": null,
+    "winningSide": "No",
     "confidence": "B"
   },
   {
