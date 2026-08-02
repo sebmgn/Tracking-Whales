@@ -858,6 +858,23 @@
   }
   .chart-tooltip.show { opacity: 1; }
   .chart-pt { cursor: pointer; }
+  .chart-pt-clickable { transition: r .15s ease; }
+  .chart-pt-clickable:hover { r: 5; }
+  .chart-hint { font-size: 10.5px; color: var(--text-dim); text-align: right; margin: 2px 2px 0; }
+  /* Toggled on the snapshot card a chart point was clicked for; clicking
+     that same point again removes it (see wireSnapPnlChartClicks). */
+  .snap-item-highlight {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+    animation: snapHighlightPulse 1.1s ease-in-out 2;
+  }
+  @keyframes snapHighlightPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(178,143,63,.5); }
+    50% { box-shadow: 0 0 0 9px rgba(178,143,63,0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .snap-item-highlight { animation: none; }
+  }
   .daily-pnl-box {
     flex: 1 1 30%;
     max-width: 240px;
@@ -2685,15 +2702,46 @@
       var pnl = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
       if (pnl == null) return;
       cum += pnl;
-      series.push({ date: new Date(snap.savedAt), value: cum });
+      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id });
     });
     if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
     snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
       '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' +
-      buildHistoryChartSvg(series) + '</div>';
+      buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div></div>';
     var box = document.getElementById("snapPnlChartBox");
-    if (box) wireHistoryChartTooltip(box);
+    if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box); }
+  }
+  // Clicking a point jumps to (and highlights) the matching snapshot card
+  // below; clicking that same point again undoes it — removes the
+  // highlight and scrolls back to wherever the page was before the first
+  // jump, instead of leaving the user stranded down in the card list.
+  var snapChartSelectedId = null;
+  var snapChartPrevScrollY = null;
+  function wireSnapPnlChartClicks(box) {
+    box.querySelectorAll(".chart-pt[data-id]").forEach(function (pt) {
+      pt.addEventListener("click", function () {
+        var id = pt.getAttribute("data-id");
+        var card = document.querySelector('.snap-item[data-key="' + id + '"]');
+        if (!card) return;
+        if (snapChartSelectedId === id) {
+          card.classList.remove("snap-item-highlight");
+          snapChartSelectedId = null;
+          if (snapChartPrevScrollY != null) window.scrollTo({ top: snapChartPrevScrollY, behavior: "smooth" });
+          snapChartPrevScrollY = null;
+          return;
+        }
+        if (snapChartSelectedId) {
+          var prevCard = document.querySelector('.snap-item[data-key="' + snapChartSelectedId + '"]');
+          if (prevCard) prevCard.classList.remove("snap-item-highlight");
+        } else {
+          snapChartPrevScrollY = window.scrollY;
+        }
+        snapChartSelectedId = id;
+        card.classList.add("snap-item-highlight");
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    });
   }
   // Per-trader appearance count + win/loss/nuancé breakdown across all
   // snapshots — the "swisstony est dans mes snapshots gagnants" pattern the
@@ -3474,9 +3522,12 @@
       '<text x="' + (padL - 8) + '" y="' + (y(max) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(max) + '</text>' +
       '<text x="' + (padL - 8) + '" y="' + (y(min) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(min) + '</text>';
 
+    // Optional per-point id (only the snapshots PnL chart sets one) makes
+    // that point clickable — see wireSnapPnlChartClicks — without changing
+    // anything for other callers (Mon historique) that don't set it.
     var points = series.map(function (p, i) {
-      return '<circle class="chart-pt" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + lineColor + '" ' +
-        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"></circle>';
+      return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + lineColor + '" ' +
+        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
     }).join("");
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
