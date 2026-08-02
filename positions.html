@@ -2196,7 +2196,7 @@
     return {
       primary: primary, secondary: secondary, linked: linked,
       leaderColor: leaderColor, leaderName: leaderName,
-      leaderPriceText: leaderPriceText, leaderRoi: leaderRoi,
+      leaderAvgPrice: leaderAvgPrice, leaderPriceText: leaderPriceText, leaderRoi: leaderRoi,
       headerHtml: headerHtml, bodyHtml: bodyHtml,
       balanceHtml: balanceHtml, sideGridHtml: sideGridHtml
     };
@@ -2444,6 +2444,15 @@
       savedAt: new Date().toISOString(),
       question: u.members[0].question,
       leaderName: parts.leaderName,
+      // The live market price for the leading side AT THE MOMENT this
+      // snapshot is taken — frozen here so the PnL simulation always
+      // backtests "what a bet placed right now would pay," never the
+      // stakeholders' own (often much earlier, much better) entry price.
+      // Without this, saving a snapshot after a market had already moved in
+      // the tracked side's favor let the simulation quietly use those
+      // traders' earlier, cheaper entries instead of the real price
+      // available at save time.
+      leaderPriceAtSnapshot: parts.leaderAvgPrice,
       traderCount: u.traderCount,
       totalStake: u.totalStake,
       sides: sidesData,
@@ -2575,15 +2584,21 @@
     });
     return totalShares > 0 ? (totalStake / totalShares) : null;
   }
-  // What a flat $1000 bet on the leading side would have returned, using
-  // that side's blended entry price — a simple "same stake every time"
-  // backtest so a tier's PnL isn't just whatever the traders' own (very
-  // uneven) stakes happened to add up to.
+  // What a flat $1000 bet on the leading side would have returned — a
+  // simple "same stake every time" backtest so a tier's PnL isn't just
+  // whatever the traders' own (very uneven) stakes happened to add up to.
+  // Priced at the market's live price when the snapshot was taken
+  // (leaderPriceAtSnapshot — "what a bet placed right now would pay"), NOT
+  // the stakeholders' own blended entry price: those traders could have
+  // bought in well before the snapshot, at a much better price than was
+  // actually available at save time, which would let the simulation credit
+  // a price nobody placing that bet at that moment could actually get.
+  // Snapshots frozen before this field existed fall back to the old
+  // stakeholder-entry-price blend — the only price they have on record.
   var HYPOTHETICAL_FLAT_STAKE = 1000;
   function hypotheticalFlatPnl(snap, flatStake) {
     if (!snap.winningSide || !snap.leaderName) return null;
-    var leaderSide = sideByName(snap.sides, snap.leaderName);
-    var avgPrice = weightedAvgPriceForSide(leaderSide);
+    var avgPrice = snap.leaderPriceAtSnapshot != null ? snap.leaderPriceAtSnapshot : weightedAvgPriceForSide(sideByName(snap.sides, snap.leaderName));
     if (!avgPrice || avgPrice <= 0) return null;
     return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
   }
