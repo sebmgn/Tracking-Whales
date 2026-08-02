@@ -2118,7 +2118,12 @@
   // leader badge) and body (balance bars + trader breakdown) so the header
   // can stay in the always-visible summary and just the body collapses,
   // instead of repeating the header inside the expanded detail.
-  function computeUnitCardParts(u) {
+  // frozenLeader ({name, price}), when passed, pins the leader badge's name
+  // and price instead of taking the unit's own current leading side/price —
+  // used to show a snapshot's trader list and balance gauges tracking the
+  // live market while the pill itself stays "what you'd have gotten the day
+  // you saved it" (see renderSnapshots).
+  function computeUnitCardParts(u, frozenLeader) {
     var members = u.members;
     var primary = members[0];
     var secondary = members[1];
@@ -2162,7 +2167,7 @@
     }).join("") + gaugeTick(dollarLeadPct);
 
     var leaderGroup = mergedSides.length ? mergedSides[0] : null;
-    var leaderName = leaderGroup ? leaderGroup.name : null;
+    var leaderName = frozenLeader ? frozenLeader.name : (leaderGroup ? leaderGroup.name : null);
     // The leader badge takes the leading outcome's own semantic color — green
     // for a literal Yes, red for a literal No, its stable "other" color for a
     // team/multi-way name. --accent (navy) is reserved for interactive
@@ -2172,8 +2177,10 @@
     // that tells you what a bet on the leading side would actually pay out.
     // When linked across platforms, show one averaged price rather than
     // both platforms' figures side by side. Shared with the legend below so
-    // there's exactly one place this average gets computed.
-    var leaderAvgPrice = leaderGroup ? mergedSideAvgPrice(leaderGroup) : null;
+    // there's exactly one place this average gets computed. frozenLeader
+    // overrides this with a price pinned to some earlier moment (a snapshot)
+    // instead of the unit's live price.
+    var leaderAvgPrice = frozenLeader ? frozenLeader.price : (leaderGroup ? mergedSideAvgPrice(leaderGroup) : null);
     var leaderPriceText = leaderAvgPrice != null ? fmtCents(leaderAvgPrice) : '';
     var leaderRoi = leaderAvgPrice != null && leaderAvgPrice > 0 ? (1 - leaderAvgPrice) / leaderAvgPrice * 100 : null;
     var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
@@ -2462,6 +2469,11 @@
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       savedAt: new Date().toISOString(),
       question: u.members[0].question,
+      // Looked up in unitByMarketKey at render time so the trader list and
+      // stakes below can track the live market for as long as it stays in
+      // the tracked feed (see renderSnapshots) — only the leader pill's
+      // name+price stay pinned to this exact moment.
+      marketKey: parts.primary.key,
       leaderName: parts.leaderName,
       // The live market price for the leading side AT THE MOMENT this
       // snapshot is taken — frozen here so the PnL simulation always
@@ -2881,17 +2893,33 @@
           return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
         }).join("") +
       '</div>' : '';
-      // cardHtml is a frozen headerHtml+balanceHtml+sideGridHtml blob (see
-      // buildSnapshotFromUnit) — split it at the same detail-section marker
-      // Value Trades collapses at, so the trader-by-trader breakdown hides
-      // behind the same click-to-expand affordance instead of always being
-      // shown. Checks both the current marker and the pre-merge one so
-      // snapshots frozen before the side-by-side layout was replaced keep
-      // collapsing correctly too.
-      var splitIdx = snap.cardHtml.indexOf('<div class="vt-unit-detail">');
-      if (splitIdx === -1) splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
-      var cardHeadHtml = splitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, splitIdx);
-      var cardDetailHtml = splitIdx === -1 ? "" : snap.cardHtml.slice(splitIdx);
+      // While the market is still in the live feed, track its current
+      // trader list/stakes instead of the frozen snapshot-time ones — only
+      // the leader pill (name+price, via frozenLeader) stays pinned to the
+      // moment this was saved, so "cote actuelle" on the pill really does
+      // mean "the day I saved this," while the traders below show who's
+      // actually in it now. Once the market drops out of the feed (resolved,
+      // or a trader with no dust/other position left), cardHtml — a frozen
+      // headerHtml+balanceHtml+sideGridHtml blob from buildSnapshotFromUnit —
+      // is the only record left, same as before this existed.
+      var liveUnit = snap.marketKey ? unitByMarketKey[snap.marketKey] : null;
+      var cardHeadHtml, cardDetailHtml;
+      if (liveUnit && snap.leaderPriceAtSnapshot != null) {
+        var liveParts = computeUnitCardParts(liveUnit, { name: snap.leaderName, price: snap.leaderPriceAtSnapshot });
+        cardHeadHtml = (liveParts.headerHtml + liveParts.balanceHtml).replace(/<button[^>]*class="vt-snap-btn"[\s\S]*?<\/button>/, "");
+        cardDetailHtml = liveParts.sideGridHtml;
+      } else {
+        // Split at the same detail-section marker Value Trades collapses at,
+        // so the trader-by-trader breakdown hides behind the same
+        // click-to-expand affordance instead of always being shown. Checks
+        // both the current marker and the pre-merge one so snapshots frozen
+        // before the side-by-side layout was replaced keep collapsing
+        // correctly too.
+        var splitIdx = snap.cardHtml.indexOf('<div class="vt-unit-detail">');
+        if (splitIdx === -1) splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
+        cardHeadHtml = splitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, splitIdx);
+        cardDetailHtml = splitIdx === -1 ? "" : snap.cardHtml.slice(splitIdx);
+      }
       return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (expandedSnapshots[snap.id] ? " open" : "") +
         ' style="border-left-color:' + borderColor + '">' +
         '<summary class="vt-summary">' +
@@ -3844,6 +3872,14 @@
         posResults.forEach(function (r) { if (r.positions) tradersData[r.name] = r.positions; });
         matchResults.forEach(function (r) { if (r.matches) recentMatches[r.name] = r.matches; });
         renderAll();
+        // Snapshots aren't part of renderAll (rebuilding that list every
+        // cycle would fight the user's scroll/expand state for no reason
+        // most of the time) — but now that a snapshot can track a live
+        // market's current traders/stakes, it needs to actually keep
+        // refreshing while that tab is the one open, or "live" would only
+        // ever mean "current as of whenever the tab happened to load."
+        var snapTab = document.getElementById("tab-snapshots");
+        if (snapTab && snapTab.classList.contains("active")) renderSnapshots();
         lastUpdateEl.textContent = new Date().toLocaleTimeString("fr-FR");
         statusText.textContent = paused ? "En pause" : "Live";
       }
