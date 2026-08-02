@@ -1255,6 +1255,11 @@
   var positionIndex = {};    // key -> { position, trader }
   var panelState = {};       // key -> { open, stake, peerOpen }
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
+  // question text -> render unit, recomputed alongside unitByMarketKey.
+  // Snapshots saved before marketKey was ever recorded (or one where cross-
+  // platform linking picked a different "primary" platform than at save
+  // time) fall back to matching on question text — see renderSnapshots.
+  var liveUnitByQuestion = {};
   var traderCollapsed = {};  // trader name -> bool
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
@@ -2118,12 +2123,7 @@
   // leader badge) and body (balance bars + trader breakdown) so the header
   // can stay in the always-visible summary and just the body collapses,
   // instead of repeating the header inside the expanded detail.
-  // frozenLeader ({name, price}), when passed, pins the leader badge's name
-  // and price instead of taking the unit's own current leading side/price —
-  // used to show a snapshot's trader list and balance gauges tracking the
-  // live market while the pill itself stays "what you'd have gotten the day
-  // you saved it" (see renderSnapshots).
-  function computeUnitCardParts(u, frozenLeader) {
+  function computeUnitCardParts(u) {
     var members = u.members;
     var primary = members[0];
     var secondary = members[1];
@@ -2167,7 +2167,7 @@
     }).join("") + gaugeTick(dollarLeadPct);
 
     var leaderGroup = mergedSides.length ? mergedSides[0] : null;
-    var leaderName = frozenLeader ? frozenLeader.name : (leaderGroup ? leaderGroup.name : null);
+    var leaderName = leaderGroup ? leaderGroup.name : null;
     // The leader badge takes the leading outcome's own semantic color — green
     // for a literal Yes, red for a literal No, its stable "other" color for a
     // team/multi-way name. --accent (navy) is reserved for interactive
@@ -2177,10 +2177,8 @@
     // that tells you what a bet on the leading side would actually pay out.
     // When linked across platforms, show one averaged price rather than
     // both platforms' figures side by side. Shared with the legend below so
-    // there's exactly one place this average gets computed. frozenLeader
-    // overrides this with a price pinned to some earlier moment (a snapshot)
-    // instead of the unit's live price.
-    var leaderAvgPrice = frozenLeader ? frozenLeader.price : (leaderGroup ? mergedSideAvgPrice(leaderGroup) : null);
+    // there's exactly one place this average gets computed.
+    var leaderAvgPrice = leaderGroup ? mergedSideAvgPrice(leaderGroup) : null;
     var leaderPriceText = leaderAvgPrice != null ? fmtCents(leaderAvgPrice) : '';
     var leaderRoi = leaderAvgPrice != null && leaderAvgPrice > 0 ? (1 - leaderAvgPrice) / leaderAvgPrice * 100 : null;
     var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
@@ -2893,20 +2891,27 @@
           return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
         }).join("") +
       '</div>' : '';
-      // While the market is still in the live feed, track its current
-      // trader list/stakes instead of the frozen snapshot-time ones — only
-      // the leader pill (name+price, via frozenLeader) stays pinned to the
-      // moment this was saved, so "cote actuelle" on the pill really does
-      // mean "the day I saved this," while the traders below show who's
-      // actually in it now. Once the market drops out of the feed (resolved,
-      // or a trader with no dust/other position left), cardHtml — a frozen
-      // headerHtml+balanceHtml+sideGridHtml blob from buildSnapshotFromUnit —
-      // is the only record left, same as before this existed.
-      var liveUnit = snap.marketKey ? unitByMarketKey[snap.marketKey] : null;
+      // The title + leader pill (name/price) is ALWAYS the frozen one from
+      // cardHtml, verbatim — whatever price logic was live the day this was
+      // saved, that's "what I'd have gotten," and it never changes after.
+      // The balance gauges + trader-by-trader detail are a different story:
+      // while the market is still in the live feed, show its CURRENT
+      // traders and stakes there instead of the frozen snapshot-time ones,
+      // so a snapshot from Friday doesn't keep showing Friday's 4 traders
+      // once a 5th has joined. Falls back to the frozen versions of those
+      // too once the market drops out of the feed entirely (resolved, or
+      // nobody left holding it) — nothing live left to track at that point.
+      // marketKey (only present on snapshots saved after it was added) is
+      // tried first; matching on question text is the fallback so older
+      // snapshots — which never recorded a marketKey — can still pick up
+      // live tracking for as long as that same market stays tracked.
+      var liveUnit = (snap.marketKey && unitByMarketKey[snap.marketKey]) || liveUnitByQuestion[snap.question] || null;
+      var balanceSplitIdx = snap.cardHtml.indexOf('<div class="balance-group">');
+      var frozenHeadHtml = balanceSplitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, balanceSplitIdx);
       var cardHeadHtml, cardDetailHtml;
-      if (liveUnit && snap.leaderPriceAtSnapshot != null) {
-        var liveParts = computeUnitCardParts(liveUnit, { name: snap.leaderName, price: snap.leaderPriceAtSnapshot });
-        cardHeadHtml = (liveParts.headerHtml + liveParts.balanceHtml).replace(/<button[^>]*class="vt-snap-btn"[\s\S]*?<\/button>/, "");
+      if (liveUnit) {
+        var liveParts = computeUnitCardParts(liveUnit);
+        cardHeadHtml = frozenHeadHtml + liveParts.balanceHtml;
         cardDetailHtml = liveParts.sideGridHtml;
       } else {
         // Split at the same detail-section marker Value Trades collapses at,
@@ -3335,8 +3340,9 @@
     linkAcrossPlatforms(groupsForPeers);
     var unitsForPeers = buildRenderUnits(groupsForPeers);
     unitByMarketKey = {};
+    liveUnitByQuestion = {};
     unitsForPeers.forEach(function (u) {
-      u.members.forEach(function (m) { unitByMarketKey[m.key] = u; });
+      u.members.forEach(function (m) { unitByMarketKey[m.key] = u; liveUnitByQuestion[m.question] = u; });
     });
     renderValueTrades();
     renderRecentTrades();
