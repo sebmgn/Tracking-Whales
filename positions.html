@@ -1068,6 +1068,7 @@
     </div>
     <div id="snapDashboard"></div>
     <div id="tierWinrateContent"></div>
+    <div id="snapPnlChartContent"></div>
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
@@ -1170,6 +1171,7 @@
   var snapStatsContent = document.getElementById("snapStatsContent");
   var snapDashboard = document.getElementById("snapDashboard");
   var tierWinrateContent = document.getElementById("tierWinrateContent");
+  var snapPnlChartContent = document.getElementById("snapPnlChartContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -2661,8 +2663,37 @@
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
     tierWinrateContent.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
-      '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' (au prix moyen d\'entrée du camp suivi)</div>' +
+      '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
       rows + noteHtml + filterNoteHtml + '</div>';
+  }
+  // Cumulative version of the same flat-$1000-per-pari simulation, in the
+  // order the snapshots were actually saved — reuses buildHistoryChartSvg
+  // (already generic over any {date, value} series) instead of a second
+  // chart builder. Takes whatever list the caller already narrowed by
+  // tierCardFilter (renderSnapshots' cardsList) so clicking a tier badge
+  // isolates this curve to that tier exactly like it does the card list
+  // below, rather than the tier gauge above (which deliberately always
+  // shows every tier so its own bars don't collapse to 100% on click).
+  function renderSnapPnlChart(cardsList) {
+    if (!snapPnlChartContent) return;
+    var decided = cardsList.filter(function (s) { return !!s.winningSide; })
+      .slice()
+      .sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    var cum = 0;
+    var series = [];
+    decided.forEach(function (snap) {
+      var pnl = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+      if (pnl == null) return;
+      cum += pnl;
+      series.push({ date: new Date(snap.savedAt), value: cum });
+    });
+    if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
+    var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
+    snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
+      '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' +
+      buildHistoryChartSvg(series) + '</div>';
+    var box = document.getElementById("snapPnlChartBox");
+    if (box) wireHistoryChartTooltip(box);
   }
   // Per-trader appearance count + win/loss/nuancé breakdown across all
   // snapshots — the "swisstony est dans mes snapshots gagnants" pattern the
@@ -2753,6 +2784,7 @@
       : list.length + ' snapshot' + (list.length > 1 ? 's' : '');
     renderSnapDashboard(list);
     renderTierWinrate(list);
+    renderSnapPnlChart(cardsList);
     renderSnapStats(list);
     if (!cardsList.length) {
       snapshotsContent.innerHTML = '<div class="empty-note">' + (tierCardFilter.length
