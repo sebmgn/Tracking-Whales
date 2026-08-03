@@ -405,31 +405,53 @@
   .vt-roi b { color: var(--green); }
   .vt-entry-diff { font-size: 12px; font-weight: 700; }
 
-  /* Filter chip rows on the left, the tier/note chart on the right — wraps
-     to stacked below the filters on narrow screens instead of squeezing. */
+  /* Filter chip rows on the left, the note chart on the right — wraps to
+     stacked below the filters on narrow screens instead of squeezing. */
   .vt-top-row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
   .vt-filters-col { flex: 1 1 420px; min-width: 0; }
+  /* This box is the first thing that sets the tone on the whole page, so it
+     gets its own treatment: a thin conic red->gold->green ring (the same
+     hues the notes themselves use) plus a soft matching glow — an "LED
+     panel" edge instead of the plain border every other box on the page
+     gets, on purpose, so it reads as the one to look at first. */
   .score-tier-box {
+    position: relative;
     flex: 0 0 270px;
     background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    padding: 12px 14px 10px;
+    border-radius: 14px;
+    padding: 13px 14px 10px;
+    box-shadow: 0 0 20px 1px rgba(178, 143, 63, .38), 0 3px 12px rgba(51, 43, 30, .14);
   }
-  .score-tier-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 700; margin-bottom: 2px; }
-  .score-tier-subtitle { font-size: 10.5px; font-style: italic; color: var(--text-dim); margin-bottom: 10px; }
-  .score-tier-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; padding: 2px 4px; border-radius: 6px; }
+  .score-tier-box::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 2px;
+    background: linear-gradient(135deg, var(--red), var(--gold) 50%, var(--green));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+  }
+  .score-tier-title { font-size: 13.5px; font-weight: 800; color: var(--text); margin-bottom: 9px; letter-spacing: .01em; }
+  .score-tier-row {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    margin-bottom: 7px; padding: 3px 5px; border-radius: 6px;
+    background: none; border: none; font: inherit; color: inherit; text-align: left; cursor: pointer;
+  }
   .score-tier-row:last-child { margin-bottom: 0; }
-  .score-tier-row.active { background: color-mix(in srgb, var(--gold) 16%, transparent); }
-  /* The tier's average note lives HERE — a solid color on the label pill —
-     instead of a separate number off to the right. */
+  .score-tier-row:hover { background: var(--row-hover); }
+  .score-tier-row.active { background: color-mix(in srgb, var(--gold) 24%, transparent); box-shadow: inset 0 0 0 1px var(--gold); }
+  /* Colored straight from its own threshold (scoreColor(min)), never an
+     average of whatever qualifies right now — always drawn, always the
+     same six-step red->gold->green spread, at 0 trades or 40. */
   .score-tier-label {
     flex: 0 0 30px; text-align: center; font-size: 11px; font-weight: 800; color: #fff;
     border-radius: 999px; padding: 2px 0; font-variant-numeric: tabular-nums;
   }
-  .score-tier-label-empty { background: none; color: var(--text-dim); font-weight: 700; }
   .score-tier-track { flex: 1 1 auto; height: 9px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
-  .score-tier-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .5s ease; min-width: 2px; }
+  .score-tier-fill { height: 100%; border-radius: 999px; opacity: .85; transition: width .5s ease; min-width: 2px; }
   .score-tier-count { flex: 0 0 20px; text-align: right; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
   /* The trade's own note — solid fill like weightBadge (a trader's own
      rating) so the two read as the same kind of number, just bigger here
@@ -1320,6 +1342,7 @@
   var vtMinReliableCount = 0; // 0 = no filter; else the unit needs strictly more than this many reliable-list traders
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
+  var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart
 
   // ---------- helpers ----------
   function amountToFloat(amountStr, decimals) {
@@ -2319,7 +2342,7 @@
     var headerHtml =
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + leaderBadge + '</span>' +
-        '<span class="vt-badge-group">' + scoreBadgeHtml(u.score) + '<span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + '</span>' +
+        '<span class="vt-badge-group"><span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + scoreBadgeHtml(u.score) + '</span>' +
       '</div>' + marketLinksHtml;
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
@@ -2565,6 +2588,12 @@
     syncNow();
   }
   function buildSnapshotFromUnit(u) {
+    // u can come from a codepath that never scored it (the peer-panel's
+    // unitByMarketKey, unlike Value Trades' own list, doesn't attach
+    // .score) — compute it fresh here so it's never missing, both for the
+    // badge baked into cardHtml below and for the dedicated field kept on
+    // the snapshot object itself.
+    if (u.score == null) u.score = unitScoreInfo(u).score;
     var parts = computeUnitCardParts(u);
     var mergedSides = mergeUnitSides(u);
     var sidesData = mergedSides.map(function (m) {
@@ -2593,6 +2622,7 @@
       // traders' earlier, cheaper entries instead of the real price
       // available at save time.
       leaderPriceAtSnapshot: parts.leaderAvgPrice,
+      noteAtSnapshot: u.score, // the trade's 1-10 note (unitScoreInfo) the moment this was saved — frozen like everything else here
       traderCount: u.traderCount,
       totalStake: u.totalStake,
       sides: sidesData,
@@ -3061,34 +3091,40 @@
     if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
     return true;
   }
-  // Highest threshold first — those tiers tend to carry the best notes
-  // (more agreeing traders to begin with), so this puts the most
-  // interesting rows at the top instead of the least.
-  var VT_TIER_THRESHOLDS = [9, 8, 7, 6, 5, 4];
+  // One row per NOTE threshold (>=9 down to >=4), not trader count — color
+  // comes straight from the threshold itself (scoreColor(n)), never from an
+  // average of whatever happens to qualify right now, so every row is
+  // always the same color and always drawn even at 0 trades, and the
+  // red->gold->green spread across the six rows is as wide as the palette
+  // gets instead of clustering wherever real averages happen to sit.
+  // Clicking a row filters Value Trades to that note or better; clicking
+  // the active row again clears it (see vtMinScore).
+  var VT_SCORE_THRESHOLDS = [9, 8, 7, 6, 5, 4];
   function renderVtTierChart(unitsForTiers) {
     var chartEl = document.getElementById("vtTierChart");
     if (!chartEl) return;
-    var tiers = VT_TIER_THRESHOLDS.map(function (n) {
-      var inTier = unitsForTiers.filter(function (u) { return u.traderCount >= n; });
-      var avgScore = inTier.length ? inTier.reduce(function (s, u) { return s + u.score; }, 0) / inTier.length : null;
-      return { min: n, count: inTier.length, avgScore: avgScore };
+    var tiers = VT_SCORE_THRESHOLDS.map(function (n) {
+      return { min: n, count: unitsForTiers.filter(function (u) { return u.score >= n; }).length };
     });
     var maxCount = Math.max.apply(null, tiers.map(function (t) { return t.count; }).concat([1]));
     var rows = tiers.map(function (t) {
       var pct = maxCount > 0 ? (t.count / maxCount * 100) : 0;
-      var isActive = vtMinTraders === t.min;
-      // The tier LABEL itself carries the color (that tier's average note)
-      // instead of a separate number off to the side — the exact average
-      // isn't the point, a quick "this tier skews green" read is.
-      var labelStyle = t.avgScore != null ? 'background:' + scoreColor(t.avgScore) : '';
-      return '<div class="score-tier-row' + (isActive ? ' active' : '') + '" title="' + t.count + ' trade' + (t.count > 1 ? 's' : '') + ' avec ≥' + t.min + ' traders' + (t.avgScore != null ? ' — note moyenne ' + t.avgScore.toFixed(1) + '/10' : '') + '">' +
-        '<span class="score-tier-label' + (t.avgScore == null ? ' score-tier-label-empty' : '') + '" style="' + labelStyle + '">≥' + t.min + '</span>' +
-        '<div class="score-tier-track"><div class="score-tier-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+      var isActive = vtMinScore === t.min;
+      var color = scoreColor(t.min);
+      return '<button type="button" class="score-tier-row' + (isActive ? ' active' : '') + '" data-score-min="' + t.min + '" title="' + t.count + ' trade' + (t.count > 1 ? 's' : '') + ' avec une note ≥ ' + t.min + ' — clique pour filtrer, reclique pour enlever">' +
+        '<span class="score-tier-label" style="background:' + color + '">≥' + t.min + '</span>' +
+        '<div class="score-tier-track"><div class="score-tier-fill" style="width:' + pct.toFixed(1) + '%;background:' + color + '"></div></div>' +
         '<span class="score-tier-count">' + t.count + '</span>' +
-      '</div>';
+      '</button>';
     }).join("");
-    chartEl.innerHTML = '<div class="score-tier-title">Value trades par nb de traders</div>' +
-      '<div class="score-tier-subtitle">Barre = nombre de trades · couleur = note du palier</div>' + rows;
+    chartEl.innerHTML = '<div class="score-tier-title">🎯 Notes des trades</div>' + rows;
+    chartEl.querySelectorAll(".score-tier-row").forEach(function (row) {
+      row.addEventListener("click", function () {
+        var n = parseFloat(row.getAttribute("data-score-min"));
+        vtMinScore = (vtMinScore === n) ? null : n;
+        renderValueTrades();
+      });
+    });
   }
   function renderValueTrades() {
     var allGroups = computeMarketGroups();
@@ -3105,6 +3141,7 @@
     });
     var traderFiltered = allUnits.filter(function (u) {
       if (u.traderCount < vtMinTraders) return false;
+      if (vtMinScore != null && u.score < vtMinScore) return false;
       return vtBaseUnitFilter(u);
     });
     renderVtTierChart(allUnits.filter(vtBaseUnitFilter));
@@ -3211,6 +3248,7 @@
       " avec ≥" + vtMinTraders + " traders (sur " + allUnits.length + " au total)" +
       (vtMinReliableCount > 0 ? " · > " + vtMinReliableCount + " traders fiables" : "") +
       (vtMinStake > 0 ? " · mise " + (vtSelectedPlayers.length ? "de chaque joueur sélectionné " : "") + "≥ " + fmtUSD(vtMinStake) : "") +
+      (vtMinScore != null ? " · note ≥ " + vtMinScore : "") +
       (selectedLabel ? " — " + selectedLabel.label : "");
     if (!finalUnits.length) {
       valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ').</div>';
