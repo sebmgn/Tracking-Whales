@@ -496,21 +496,26 @@
   }
 
   /* --- Match / confrontation filters --- */
+  /* Shorter than before (these three are secondary, glance-past filters,
+     not the page's main event) and each gets a faint version of the note
+     chart's LED-edge treatment — a soft glow in its own accent color —
+     echoing that style without competing with it for attention. */
   .match-section {
     background: linear-gradient(180deg, #ecd9a8, #f6ecd2);
     border: 1px solid #c9a55a;
-    border-radius: 10px;
-    padding: 12px 16px 14px;
-    margin: 4px 0 16px;
+    border-radius: 9px;
+    padding: 8px 14px 9px;
+    margin: 4px 0 10px;
+    box-shadow: 0 0 9px 0 rgba(201, 165, 90, .3);
   }
   .match-section-title {
     font-family: "Times New Roman", Times, Georgia, serif;
-    font-size: 12.5px;
+    font-size: 11.5px;
     text-transform: uppercase;
     letter-spacing: .03em;
     color: var(--gold);
     font-weight: 700;
-    margin-bottom: 9px;
+    margin-bottom: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -561,6 +566,7 @@
   .title-section {
     background: linear-gradient(180deg, #c9dbee, #e3edf7);
     border-color: #6f96bd;
+    box-shadow: 0 0 9px 0 rgba(111, 150, 189, .3);
   }
   .title-section .match-section-title { color: #2d456e; }
   .title-section .match-chip:hover { border-color: #2d456e; }
@@ -570,6 +576,7 @@
   .type-section {
     background: linear-gradient(180deg, #cde3c7, #e3f0df);
     border-color: #6f9c62;
+    box-shadow: 0 0 9px 0 rgba(111, 156, 98, .3);
   }
   .type-section .match-section-title { color: #2c4f24; }
   .type-section .match-chip:hover { border-color: #2c4f24; }
@@ -2236,8 +2243,18 @@
   // Solid badge color for a 1-10 score — same red->gold->green hue ramp as
   // weightBadge (a trader's own quality rating), so the two visually read
   // as the same kind of number across the app.
+  // A trade's own scale, not weightHue (a trader's own quality rating) —
+  // that curve deliberately compresses 1-5.5 into a narrow band because
+  // real trader ratings cluster at the top; real trade notes spread much
+  // more evenly across the low-to-mid range, so this one is a straight
+  // line across the full 1-10 span instead, and a touch more saturated so
+  // steps between adjacent notes stay easy to tell apart at a glance.
+  function noteHue(score) {
+    var t = Math.max(0, Math.min(1, ((score || 0) - 1) / 9));
+    return 5 + t * 135; // 5 = red at note 1, 140 = green at note 10
+  }
   function scoreColor(score) {
-    return "hsl(" + weightHue(score).toFixed(0) + ",62%,35%)";
+    return "hsl(" + noteHue(score).toFixed(0) + ",68%,37%)";
   }
   function scoreBadgeHtml(score, extraClass) {
     if (score == null) return "";
@@ -3144,7 +3161,13 @@
       if (vtMinScore != null && u.score < vtMinScore) return false;
       return vtBaseUnitFilter(u);
     });
-    renderVtTierChart(allUnits.filter(vtBaseUnitFilter));
+    // Same pool as traderFiltered minus the note check itself (that's what
+    // this chart is slicing) — NOT allUnits wholesale. allUnits includes
+    // every thin 1-2-trader position too, which this app never treats as a
+    // real "value trade" (>=4 traders is the lowest selectable floor) —
+    // counting those made the chart's own ">=4" row read wildly higher than
+    // the actual visible list ("234" vs the "12" markets really shown).
+    renderVtTierChart(allUnits.filter(function (u) { return u.traderCount >= vtMinTraders && vtBaseUnitFilter(u); }));
 
     var matches = computeMatchBuckets(traderFiltered);
     if (vtSelectedMatch && !matches.some(function (m) { return m.key === vtSelectedMatch; })) {
