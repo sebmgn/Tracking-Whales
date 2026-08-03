@@ -3752,6 +3752,15 @@
       btn.classList.add("active");
       document.getElementById("tab-" + btn.getAttribute("data-tab")).classList.add("active");
       if (btn.getAttribute("data-tab") === "mon-historique" && !histLoaded) loadHistorique();
+      // Switching INTO Mes Snapshots didn't itself re-render anything — the
+      // list shown was whatever the last refresh cycle produced while that
+      // tab happened to already be active (see the snapTab check in
+      // refresh()). So checking Value Trades, seeing a snapshot's market has
+      // grown, then clicking over to Mes Snapshots could show stale,
+      // frozen-looking data for up to one whole refresh cycle even though
+      // the live match was right there the entire time. Render immediately
+      // on the click itself instead of waiting on that.
+      if (btn.getAttribute("data-tab") === "snapshots") renderSnapshots();
     });
   });
   rtFilters.querySelectorAll("button").forEach(function (btn) {
