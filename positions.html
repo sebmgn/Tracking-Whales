@@ -405,6 +405,41 @@
   .vt-roi b { color: var(--green); }
   .vt-entry-diff { font-size: 12px; font-weight: 700; }
 
+  /* Filter chip rows on the left, the tier/note chart on the right — wraps
+     to stacked below the filters on narrow screens instead of squeezing. */
+  .vt-top-row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .vt-filters-col { flex: 1 1 420px; min-width: 0; }
+  .score-tier-box {
+    flex: 0 0 270px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 12px 14px 10px;
+  }
+  .score-tier-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 700; margin-bottom: 2px; }
+  .score-tier-subtitle { font-size: 10.5px; font-style: italic; color: var(--text-dim); margin-bottom: 10px; }
+  .score-tier-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; padding: 2px 4px; border-radius: 6px; }
+  .score-tier-row:last-child { margin-bottom: 0; }
+  .score-tier-row.active { background: color-mix(in srgb, var(--gold) 16%, transparent); }
+  .score-tier-label { flex: 0 0 24px; font-size: 11.5px; font-weight: 700; color: var(--text-dim); }
+  .score-tier-track { flex: 1 1 auto; height: 9px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
+  .score-tier-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .5s ease; min-width: 2px; }
+  .score-tier-count { flex: 0 0 20px; text-align: right; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .score-tier-avg {
+    flex: 0 0 30px; text-align: center; font-size: 11px; font-weight: 800; color: #fff;
+    border-radius: 999px; padding: 2px 0; font-variant-numeric: tabular-nums;
+  }
+  .score-tier-avg-empty { background: none; color: var(--text-dim); font-weight: 400; }
+  /* The trade's own note — solid fill like weightBadge (a trader's own
+     rating) so the two read as the same kind of number, just bigger here
+     since this one drives the whole list's order. */
+  .vt-score-badge {
+    display: inline-flex; align-items: center; gap: 2px;
+    color: #fff; font-size: 12.5px; font-weight: 800;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* --- Recent trades --- */
   .rt-filters, .vt-filters { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
   .rt-filters button, .vt-filters button {
@@ -971,47 +1006,52 @@
 
   <div class="tab-panel active" id="tab-value-trades">
     <h2 class="section-title">Value Trades <span class="count-pill" id="vtCount">—</span></h2>
-    <div class="vt-filters" id="vtFilters">
-      <button data-min="4" type="button">≥ 4 traders</button>
-      <button data-min="5" class="active" type="button">≥ 5 traders</button>
-      <button data-min="6" type="button">≥ 6 traders</button>
-      <button data-min="7" type="button">≥ 7 traders</button>
-      <button data-min="8" type="button">≥ 8 traders</button>
-      <button data-min="9" type="button">≥ 9 traders</button>
-    </div>
-    <div class="vt-filters" id="playerFilters">
-      <button data-trader="" class="active" type="button">Tous les joueurs</button>
-      <button data-trader="JJJJ" type="button">JJJJ</button>
-      <button data-trader="WsCz" type="button">WsCz</button>
-      <button data-trader="predict847" type="button">predict847</button>
-      <button data-trader="swisstony" type="button">swisstony</button>
-      <button data-trader="RN1" type="button">RN1</button>
-      <button data-trader="zaizoibele" type="button">zaizoibele</button>
-      <button data-trader="VeryLucky888" type="button">VeryLucky888</button>
-    </div>
-    <div class="vt-filters" id="vtReliableFilters">
-      <button data-min="0" class="active" type="button">Peu importe (fiables)</button>
-      <button data-min="2" type="button">&gt; 2 fiables</button>
-      <button data-min="3" type="button">&gt; 3 fiables</button>
-      <button data-min="4" type="button">&gt; 4 fiables</button>
-      <button data-min="5" type="button">&gt; 5 fiables</button>
-      <button data-min="6" type="button">&gt; 6 fiables</button>
-    </div>
-    <div class="vt-filters" id="vtStakeFilters">
-      <button data-min="0" class="active" type="button">Toutes les mises</button>
-      <button data-min="1000" type="button">&gt; 1 000 $</button>
-      <button data-min="5000" type="button">&gt; 5 000 $</button>
-      <button data-min="10000" type="button">&gt; 10 000 $</button>
-    </div>
-    <div class="vt-filters" id="sportFilters">
-      <button data-sport="all" type="button">Tous les sports</button>
-      <button data-sport="football" class="active" type="button">⚽ Football</button>
-      <button data-sport="other" type="button">Autres</button>
-    </div>
-    <div class="vt-filters" id="timingFilters">
-      <button data-timing="all" class="active" type="button">Tous</button>
-      <button data-timing="live" type="button">🔴 En cours</button>
-      <button data-timing="upcoming" type="button">📅 À venir</button>
+    <div class="vt-top-row">
+      <div class="vt-filters-col">
+        <div class="vt-filters" id="vtFilters">
+          <button data-min="4" type="button">≥ 4 traders</button>
+          <button data-min="5" class="active" type="button">≥ 5 traders</button>
+          <button data-min="6" type="button">≥ 6 traders</button>
+          <button data-min="7" type="button">≥ 7 traders</button>
+          <button data-min="8" type="button">≥ 8 traders</button>
+          <button data-min="9" type="button">≥ 9 traders</button>
+        </div>
+        <div class="vt-filters" id="playerFilters">
+          <button data-trader="" class="active" type="button">Tous les joueurs</button>
+          <button data-trader="JJJJ" type="button">JJJJ</button>
+          <button data-trader="WsCz" type="button">WsCz</button>
+          <button data-trader="predict847" type="button">predict847</button>
+          <button data-trader="swisstony" type="button">swisstony</button>
+          <button data-trader="RN1" type="button">RN1</button>
+          <button data-trader="zaizoibele" type="button">zaizoibele</button>
+          <button data-trader="VeryLucky888" type="button">VeryLucky888</button>
+        </div>
+        <div class="vt-filters" id="vtReliableFilters">
+          <button data-min="0" class="active" type="button">Peu importe (fiables)</button>
+          <button data-min="2" type="button">&gt; 2 fiables</button>
+          <button data-min="3" type="button">&gt; 3 fiables</button>
+          <button data-min="4" type="button">&gt; 4 fiables</button>
+          <button data-min="5" type="button">&gt; 5 fiables</button>
+          <button data-min="6" type="button">&gt; 6 fiables</button>
+        </div>
+        <div class="vt-filters" id="vtStakeFilters">
+          <button data-min="0" class="active" type="button">Toutes les mises</button>
+          <button data-min="1000" type="button">&gt; 1 000 $</button>
+          <button data-min="5000" type="button">&gt; 5 000 $</button>
+          <button data-min="10000" type="button">&gt; 10 000 $</button>
+        </div>
+        <div class="vt-filters" id="sportFilters">
+          <button data-sport="all" type="button">Tous les sports</button>
+          <button data-sport="football" class="active" type="button">⚽ Football</button>
+          <button data-sport="other" type="button">Autres</button>
+        </div>
+        <div class="vt-filters" id="timingFilters">
+          <button data-timing="all" class="active" type="button">Tous</button>
+          <button data-timing="live" type="button">🔴 En cours</button>
+          <button data-timing="upcoming" type="button">📅 À venir</button>
+        </div>
+      </div>
+      <div class="score-tier-box" id="vtTierChart"></div>
     </div>
     <div class="match-section collapsed" id="matchSection" style="display:none;">
       <div class="match-section-title">Confrontations avec value bets</div>
@@ -2100,6 +2140,76 @@
   function reliableTraderCountInUnit(u) {
     return RELIABLE_TRADERS.reduce(function (n, name) { return n + (unitHasTrader(u, name) ? 1 : 0); }, 0);
   }
+
+  // ---------- value trade "note" (1-10) ----------
+  // A single blended score meant to be retuned often as real results come
+  // in — every knob that matters lives in these two objects, nothing else
+  // needs to change to adjust how a trade gets scored. Each factor is
+  // normalized to 0-1 against its own [low, high] range (values at/below
+  // "low" score ~0 on that factor, at/above "high" score ~1) before being
+  // weighted, so "raise the volume ceiling" or "weight agreement more" is
+  // a one-line change here.
+  var SCORE_WEIGHTS = {
+    volume: 0.20,             // total $ staked across the whole trade
+    traderCount: 0.15,        // how many tracked traders are in it at all
+    agreement: 0.30,          // how many of them are on the SAME (leading) side
+    reliableAgreement: 0.35   // how many of the curated "fiables" traders are among those agreeing
+  };
+  var SCORE_RANGES = {
+    volume: [3000, 50000],                        // $, log scale between the two
+    traderCount: [4, 9],                          // traders, linear
+    agreement: [1, 9],                            // traders on the leading side, linear
+    reliableAgreement: [0, RELIABLE_TRADERS.length] // fiables traders agreeing, linear
+  };
+  function normLinear(value, range) {
+    var lo = range[0], hi = range[1];
+    if (hi <= lo) return 0;
+    return Math.max(0, Math.min(1, (value - lo) / (hi - lo)));
+  }
+  function normLog(value, range) {
+    var lo = Math.max(1, range[0]), hi = Math.max(lo + 1, range[1]);
+    var v = Math.max(1, value);
+    return Math.max(0, Math.min(1, (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo))));
+  }
+  // Returns the leading side's live price alongside the score (both need
+  // mergeUnitSides — computed once here, not twice) so callers can filter
+  // out already-decided trades (leaderPrice ~100¢) using the same pass.
+  function unitScoreInfo(u) {
+    var mergedSides = mergeUnitSides(u);
+    var leaderGroup = mergedSides.length ? mergedSides[0] : null;
+    var leaderCount = leaderGroup ? leaderGroup.traderCount : 0;
+    var leaderNames = {};
+    if (leaderGroup) leaderGroup.items.forEach(function (it) { it.s.entries.forEach(function (e) { leaderNames[e.trader] = true; }); });
+    var reliableAgreeing = RELIABLE_TRADERS.reduce(function (n, name) { return n + (leaderNames[name] ? 1 : 0); }, 0);
+
+    var factors = {
+      volume: normLog(u.totalStake, SCORE_RANGES.volume),
+      traderCount: normLinear(u.traderCount, SCORE_RANGES.traderCount),
+      agreement: normLinear(leaderCount, SCORE_RANGES.agreement),
+      reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement)
+    };
+    var raw = factors.volume * SCORE_WEIGHTS.volume + factors.traderCount * SCORE_WEIGHTS.traderCount +
+      factors.agreement * SCORE_WEIGHTS.agreement + factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
+    var score = Math.round((1 + raw * 9) * 10) / 10;
+    return {
+      score: score,
+      leaderPrice: leaderGroup ? mergedSideAvgPrice(leaderGroup) : null,
+      factors: factors,
+      reliableAgreeing: reliableAgreeing,
+      agreeingCount: leaderCount
+    };
+  }
+  // Solid badge color for a 1-10 score — same red->gold->green hue ramp as
+  // weightBadge (a trader's own quality rating), so the two visually read
+  // as the same kind of number across the app.
+  function scoreColor(score) {
+    return "hsl(" + weightHue(score).toFixed(0) + ",62%,35%)";
+  }
+  function scoreBadgeHtml(score, extraClass) {
+    if (score == null) return "";
+    return '<span class="vt-score-badge' + (extraClass ? " " + extraClass : "") + '" style="background:' + scoreColor(score) +
+      '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables">★ ' + score.toFixed(1) + '</span>';
+  }
   // A single trader's own stake within a unit, summed across their entries
   // (they can appear on both sides, or on both linked platforms).
   function traderStakeInUnit(u, name) {
@@ -2198,7 +2308,7 @@
     var headerHtml =
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + leaderBadge + '</span>' +
-        '<span class="vt-badge-group"><span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + '</span>' +
+        '<span class="vt-badge-group">' + scoreBadgeHtml(u.score) + '<span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + '</span>' +
       '</div>' + marketLinksHtml;
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
@@ -2918,29 +3028,69 @@
     }).join("");
   }
 
+  // Every criterion the Value Trades list applies EXCEPT the min-traders
+  // threshold — shared by the real filter chain below and the tier
+  // distribution chart, which needs "how many pass at each threshold"
+  // under the SAME other filters, not a totally independent count.
+  function vtBaseUnitFilter(u) {
+    if (vtSelectedPlayers.length && !vtSelectedPlayers.every(function (name) { return unitHasTrader(u, name); })) return false;
+    if (vtMinReliableCount > 0 && reliableTraderCountInUnit(u) <= vtMinReliableCount) return false;
+    if (vtMinStake > 0) {
+      if (vtSelectedPlayers.length) {
+        if (!vtSelectedPlayers.every(function (name) { return traderStakeInUnit(u, name) >= vtMinStake; })) return false;
+      } else if (u.totalStake < vtMinStake) {
+        return false;
+      }
+    }
+    if (sportFilter !== "all") {
+      var football = isFootball(u.members[0].question, u.members[0].slug);
+      if (sportFilter === "football" && !football) return false;
+      if (sportFilter === "other" && football) return false;
+    }
+    if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
+    return true;
+  }
+  var VT_TIER_THRESHOLDS = [4, 5, 6, 7, 8, 9];
+  function renderVtTierChart(unitsForTiers) {
+    var chartEl = document.getElementById("vtTierChart");
+    if (!chartEl) return;
+    var tiers = VT_TIER_THRESHOLDS.map(function (n) {
+      var inTier = unitsForTiers.filter(function (u) { return u.traderCount >= n; });
+      var avgScore = inTier.length ? inTier.reduce(function (s, u) { return s + u.score; }, 0) / inTier.length : null;
+      return { min: n, count: inTier.length, avgScore: avgScore };
+    });
+    var maxCount = Math.max.apply(null, tiers.map(function (t) { return t.count; }).concat([1]));
+    var rows = tiers.map(function (t) {
+      var pct = maxCount > 0 ? (t.count / maxCount * 100) : 0;
+      var isActive = vtMinTraders === t.min;
+      return '<div class="score-tier-row' + (isActive ? ' active' : '') + '" title="' + t.count + ' trade' + (t.count > 1 ? 's' : '') + ' avec ≥' + t.min + ' traders' + (t.avgScore != null ? ' — note moyenne ' + t.avgScore.toFixed(1) + '/10' : '') + '">' +
+        '<span class="score-tier-label">≥' + t.min + '</span>' +
+        '<div class="score-tier-track"><div class="score-tier-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+        '<span class="score-tier-count">' + t.count + '</span>' +
+        (t.avgScore != null ? '<span class="score-tier-avg" style="background:' + scoreColor(t.avgScore) + '">' + t.avgScore.toFixed(1) + '</span>' : '<span class="score-tier-avg score-tier-avg-empty">—</span>') +
+      '</div>';
+    }).join("");
+    chartEl.innerHTML = '<div class="score-tier-title">Value trades par nb de traders</div>' +
+      '<div class="score-tier-subtitle">Barre = nombre de trades · pastille = note moyenne</div>' + rows;
+  }
   function renderValueTrades() {
     var allGroups = computeMarketGroups();
     linkAcrossPlatforms(allGroups);
-    var allUnits = buildRenderUnits(allGroups);
+    var allUnitsRaw = buildRenderUnits(allGroups);
+    // A trade priced at (or effectively at) 100¢ has already happened —
+    // there's no more "value" left to catch, so it never belongs in this
+    // list at all, not even under a lenient filter combination.
+    var allUnits = allUnitsRaw.filter(function (u) {
+      var info = unitScoreInfo(u);
+      u.score = info.score;
+      u.leaderPrice = info.leaderPrice;
+      return u.leaderPrice == null || u.leaderPrice < 0.9995;
+    });
     var traderFiltered = allUnits.filter(function (u) {
       if (u.traderCount < vtMinTraders) return false;
-      if (vtSelectedPlayers.length && !vtSelectedPlayers.every(function (name) { return unitHasTrader(u, name); })) return false;
-      if (vtMinReliableCount > 0 && reliableTraderCountInUnit(u) <= vtMinReliableCount) return false;
-      if (vtMinStake > 0) {
-        if (vtSelectedPlayers.length) {
-          if (!vtSelectedPlayers.every(function (name) { return traderStakeInUnit(u, name) >= vtMinStake; })) return false;
-        } else if (u.totalStake < vtMinStake) {
-          return false;
-        }
-      }
-      if (sportFilter !== "all") {
-        var football = isFootball(u.members[0].question, u.members[0].slug);
-        if (sportFilter === "football" && !football) return false;
-        if (sportFilter === "other" && football) return false;
-      }
-      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
-      return true;
+      return vtBaseUnitFilter(u);
     });
+    renderVtTierChart(allUnits.filter(vtBaseUnitFilter));
 
     var matches = computeMatchBuckets(traderFiltered);
     if (vtSelectedMatch && !matches.some(function (m) { return m.key === vtSelectedMatch; })) {
@@ -3049,7 +3199,10 @@
       valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ').</div>';
       return;
     }
-    valueTradesContent.innerHTML = finalUnits.map(renderUnitCard).join("");
+    // Ranked by note (highest first) instead of stake — the note is the
+    // whole point of this list now, not just another number shown on it.
+    var rankedUnits = finalUnits.slice().sort(function (a, b) { return b.score - a.score; });
+    valueTradesContent.innerHTML = rankedUnits.map(renderUnitCard).join("");
   }
 
   // ---------- recent trades ----------
