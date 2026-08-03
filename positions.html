@@ -421,15 +421,16 @@
   .score-tier-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; padding: 2px 4px; border-radius: 6px; }
   .score-tier-row:last-child { margin-bottom: 0; }
   .score-tier-row.active { background: color-mix(in srgb, var(--gold) 16%, transparent); }
-  .score-tier-label { flex: 0 0 24px; font-size: 11.5px; font-weight: 700; color: var(--text-dim); }
-  .score-tier-track { flex: 1 1 auto; height: 9px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
-  .score-tier-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .5s ease; min-width: 2px; }
-  .score-tier-count { flex: 0 0 20px; text-align: right; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
-  .score-tier-avg {
+  /* The tier's average note lives HERE — a solid color on the label pill —
+     instead of a separate number off to the right. */
+  .score-tier-label {
     flex: 0 0 30px; text-align: center; font-size: 11px; font-weight: 800; color: #fff;
     border-radius: 999px; padding: 2px 0; font-variant-numeric: tabular-nums;
   }
-  .score-tier-avg-empty { background: none; color: var(--text-dim); font-weight: 400; }
+  .score-tier-label-empty { background: none; color: var(--text-dim); font-weight: 700; }
+  .score-tier-track { flex: 1 1 auto; height: 9px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
+  .score-tier-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .5s ease; min-width: 2px; }
+  .score-tier-count { flex: 0 0 20px; text-align: right; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
   /* The trade's own note — solid fill like weightBadge (a trader's own
      rating) so the two read as the same kind of number, just bigger here
      since this one drives the whole list's order. */
@@ -2150,15 +2151,17 @@
   // weighted, so "raise the volume ceiling" or "weight agreement more" is
   // a one-line change here.
   var SCORE_WEIGHTS = {
-    volume: 0.20,             // total $ staked across the whole trade
-    traderCount: 0.15,        // how many tracked traders are in it at all
-    agreement: 0.30,          // how many of them are on the SAME (leading) side
-    reliableAgreement: 0.35   // how many of the curated "fiables" traders are among those agreeing
+    volumeConcentration: 0.35, // $ share sitting on the leading side vs the other camp(s)
+    reliableAgreement: 0.25,   // how many of the curated "fiables" traders are on that leading side
+    volume: 0.15,              // total $ staked across the whole trade
+    agreement: 0.15,           // how many traders (not $) are on the SAME (leading) side
+    traderCount: 0.10          // how many tracked traders are in it at all
   };
   var SCORE_RANGES = {
-    volume: [3000, 50000],                        // $, log scale between the two
-    traderCount: [4, 9],                          // traders, linear
-    agreement: [1, 9],                            // traders on the leading side, linear
+    volumeConcentration: [0.5, 1],                 // leaderStake / totalStake — 0.5 = split evenly, 1 = all the money on one side
+    volume: [3000, 50000],                         // $, log scale between the two
+    traderCount: [4, 9],                           // traders, linear
+    agreement: [1, 9],                             // traders on the leading side, linear
     reliableAgreement: [0, RELIABLE_TRADERS.length] // fiables traders agreeing, linear
   };
   function normLinear(value, range) {
@@ -2181,20 +2184,28 @@
     var leaderNames = {};
     if (leaderGroup) leaderGroup.items.forEach(function (it) { it.s.entries.forEach(function (e) { leaderNames[e.trader] = true; }); });
     var reliableAgreeing = RELIABLE_TRADERS.reduce(function (n, name) { return n + (leaderNames[name] ? 1 : 0); }, 0);
+    // Same idea as "agreement" but in $, not traders — one whale on the
+    // leading side and nine small fish on the other still concentrates the
+    // MONEY on one camp even though "agreement" (a trader headcount) would
+    // call that a near-even split.
+    var volumeConcentration = u.totalStake > 0 && leaderGroup ? (leaderGroup.stake / u.totalStake) : 0;
 
     var factors = {
+      volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
       volume: normLog(u.totalStake, SCORE_RANGES.volume),
       traderCount: normLinear(u.traderCount, SCORE_RANGES.traderCount),
       agreement: normLinear(leaderCount, SCORE_RANGES.agreement),
       reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement)
     };
-    var raw = factors.volume * SCORE_WEIGHTS.volume + factors.traderCount * SCORE_WEIGHTS.traderCount +
+    var raw = factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
+      factors.volume * SCORE_WEIGHTS.volume + factors.traderCount * SCORE_WEIGHTS.traderCount +
       factors.agreement * SCORE_WEIGHTS.agreement + factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
     var score = Math.round((1 + raw * 9) * 10) / 10;
     return {
       score: score,
       leaderPrice: leaderGroup ? mergedSideAvgPrice(leaderGroup) : null,
       factors: factors,
+      volumeConcentration: volumeConcentration,
       reliableAgreeing: reliableAgreeing,
       agreeingCount: leaderCount
     };
@@ -3050,7 +3061,10 @@
     if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
     return true;
   }
-  var VT_TIER_THRESHOLDS = [4, 5, 6, 7, 8, 9];
+  // Highest threshold first — those tiers tend to carry the best notes
+  // (more agreeing traders to begin with), so this puts the most
+  // interesting rows at the top instead of the least.
+  var VT_TIER_THRESHOLDS = [9, 8, 7, 6, 5, 4];
   function renderVtTierChart(unitsForTiers) {
     var chartEl = document.getElementById("vtTierChart");
     if (!chartEl) return;
@@ -3063,15 +3077,18 @@
     var rows = tiers.map(function (t) {
       var pct = maxCount > 0 ? (t.count / maxCount * 100) : 0;
       var isActive = vtMinTraders === t.min;
+      // The tier LABEL itself carries the color (that tier's average note)
+      // instead of a separate number off to the side — the exact average
+      // isn't the point, a quick "this tier skews green" read is.
+      var labelStyle = t.avgScore != null ? 'background:' + scoreColor(t.avgScore) : '';
       return '<div class="score-tier-row' + (isActive ? ' active' : '') + '" title="' + t.count + ' trade' + (t.count > 1 ? 's' : '') + ' avec ≥' + t.min + ' traders' + (t.avgScore != null ? ' — note moyenne ' + t.avgScore.toFixed(1) + '/10' : '') + '">' +
-        '<span class="score-tier-label">≥' + t.min + '</span>' +
+        '<span class="score-tier-label' + (t.avgScore == null ? ' score-tier-label-empty' : '') + '" style="' + labelStyle + '">≥' + t.min + '</span>' +
         '<div class="score-tier-track"><div class="score-tier-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' +
         '<span class="score-tier-count">' + t.count + '</span>' +
-        (t.avgScore != null ? '<span class="score-tier-avg" style="background:' + scoreColor(t.avgScore) + '">' + t.avgScore.toFixed(1) + '</span>' : '<span class="score-tier-avg score-tier-avg-empty">—</span>') +
       '</div>';
     }).join("");
     chartEl.innerHTML = '<div class="score-tier-title">Value trades par nb de traders</div>' +
-      '<div class="score-tier-subtitle">Barre = nombre de trades · pastille = note moyenne</div>' + rows;
+      '<div class="score-tier-subtitle">Barre = nombre de trades · couleur = note du palier</div>' + rows;
   }
   function renderValueTrades() {
     var allGroups = computeMarketGroups();
