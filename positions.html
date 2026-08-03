@@ -1255,11 +1255,6 @@
   var positionIndex = {};    // key -> { position, trader }
   var panelState = {};       // key -> { open, stake, peerOpen }
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
-  // question text -> render unit, recomputed alongside unitByMarketKey.
-  // Snapshots saved before marketKey was ever recorded (or one where cross-
-  // platform linking picked a different "primary" platform than at save
-  // time) fall back to matching on question text — see renderSnapshots.
-  var liveUnitByQuestion = {};
   var traderCollapsed = {};  // trader name -> bool
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
@@ -2467,11 +2462,6 @@
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       savedAt: new Date().toISOString(),
       question: u.members[0].question,
-      // Looked up in unitByMarketKey at render time so the trader list and
-      // stakes below can track the live market for as long as it stays in
-      // the tracked feed (see renderSnapshots) — only the leader pill's
-      // name+price stay pinned to this exact moment.
-      marketKey: parts.primary.key,
       leaderName: parts.leaderName,
       // The live market price for the leading side AT THE MOMENT this
       // snapshot is taken — frozen here so the PnL simulation always
@@ -2891,40 +2881,23 @@
           return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
         }).join("") +
       '</div>' : '';
-      // The title + leader pill (name/price) is ALWAYS the frozen one from
-      // cardHtml, verbatim — whatever price logic was live the day this was
-      // saved, that's "what I'd have gotten," and it never changes after.
-      // The balance gauges + trader-by-trader detail are a different story:
-      // while the market is still in the live feed, show its CURRENT
-      // traders and stakes there instead of the frozen snapshot-time ones,
-      // so a snapshot from Friday doesn't keep showing Friday's 4 traders
-      // once a 5th has joined. Falls back to the frozen versions of those
-      // too once the market drops out of the feed entirely (resolved, or
-      // nobody left holding it) — nothing live left to track at that point.
-      // marketKey (only present on snapshots saved after it was added) is
-      // tried first; matching on question text is the fallback so older
-      // snapshots — which never recorded a marketKey — can still pick up
-      // live tracking for as long as that same market stays tracked.
-      var liveUnit = (snap.marketKey && unitByMarketKey[snap.marketKey]) || liveUnitByQuestion[snap.question] || null;
-      var balanceSplitIdx = snap.cardHtml.indexOf('<div class="balance-group">');
-      var frozenHeadHtml = balanceSplitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, balanceSplitIdx);
-      var cardHeadHtml, cardDetailHtml;
-      if (liveUnit) {
-        var liveParts = computeUnitCardParts(liveUnit);
-        cardHeadHtml = frozenHeadHtml + liveParts.balanceHtml;
-        cardDetailHtml = liveParts.sideGridHtml;
-      } else {
-        // Split at the same detail-section marker Value Trades collapses at,
-        // so the trader-by-trader breakdown hides behind the same
-        // click-to-expand affordance instead of always being shown. Checks
-        // both the current marker and the pre-merge one so snapshots frozen
-        // before the side-by-side layout was replaced keep collapsing
-        // correctly too.
-        var splitIdx = snap.cardHtml.indexOf('<div class="vt-unit-detail">');
-        if (splitIdx === -1) splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
-        cardHeadHtml = splitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, splitIdx);
-        cardDetailHtml = splitIdx === -1 ? "" : snap.cardHtml.slice(splitIdx);
-      }
+      // Fully frozen, no exceptions: cardHtml is a snapshot of the card
+      // exactly as it looked the moment this was saved (see
+      // buildSnapshotFromUnit) — title, price, traders, stakes, all of it —
+      // and it must stay that way forever after. A live-tracking version of
+      // this (traders/stakes updating while the price stayed pinned) was
+      // tried and reverted: it read as "the snapshot is changing" even
+      // though only the trader list was ever meant to move, so the whole
+      // idea is out. Split at the same detail-section marker Value Trades
+      // collapses at, so the trader-by-trader breakdown hides behind the
+      // same click-to-expand affordance instead of always being shown.
+      // Checks both the current marker and the pre-merge one so snapshots
+      // frozen before the side-by-side layout was replaced keep collapsing
+      // correctly too.
+      var splitIdx = snap.cardHtml.indexOf('<div class="vt-unit-detail">');
+      if (splitIdx === -1) splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
+      var cardHeadHtml = splitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, splitIdx);
+      var cardDetailHtml = splitIdx === -1 ? "" : snap.cardHtml.slice(splitIdx);
       return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (expandedSnapshots[snap.id] ? " open" : "") +
         ' style="border-left-color:' + borderColor + '">' +
         '<summary class="vt-summary">' +
@@ -3340,9 +3313,8 @@
     linkAcrossPlatforms(groupsForPeers);
     var unitsForPeers = buildRenderUnits(groupsForPeers);
     unitByMarketKey = {};
-    liveUnitByQuestion = {};
     unitsForPeers.forEach(function (u) {
-      u.members.forEach(function (m) { unitByMarketKey[m.key] = u; liveUnitByQuestion[m.question] = u; });
+      u.members.forEach(function (m) { unitByMarketKey[m.key] = u; });
     });
     renderValueTrades();
     renderRecentTrades();
