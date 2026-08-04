@@ -720,6 +720,9 @@
   .snap-delete-btn { color: var(--red); }
   .snap-stats-wrap { margin-bottom: 16px; }
   .snap-stats-toggle-btn { display: block; margin-bottom: 8px; }
+  .snap-dist-wrap { margin-bottom: 16px; max-height: none; }
+  .snap-dist-subtitle { font-size: 11px; font-style: italic; color: var(--text-dim); padding: 10px 12px 0; }
+  .snap-dist-empty { color: var(--text-dim); }
   /* Flat-$1000-per-bet simulation, one bold pill per snapshot — a solid
      fill (not just tinted text) so it stands out even against the card's
      own green/red wash. */
@@ -923,8 +926,12 @@
   }
   .chart-tooltip.show { opacity: 1; }
   .chart-pt { cursor: pointer; }
-  .chart-pt-clickable { transition: r .15s ease; }
-  .chart-pt-clickable:hover { r: 5; }
+  /* A bit bigger than a plain chart-pt at rest, and much bigger on hover —
+     these are the ones you can click through to the underlying trade, so
+     the hit target should be generous, not just the same small dot every
+     other chart uses. */
+  .chart-pt-clickable { transition: r .15s ease; r: 3.5; }
+  .chart-pt-clickable:hover { r: 8; }
   .chart-hint { font-size: 10.5px; color: var(--text-dim); text-align: right; margin: 2px 2px 0; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
@@ -1156,6 +1163,7 @@
     <div id="snapPnlChartContent"></div>
     <div id="snapDashboard"></div>
     <div id="tierWinrateContent"></div>
+    <div id="snapDistContent"></div>
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
@@ -1260,6 +1268,7 @@
   var snapDashboard = document.getElementById("snapDashboard");
   var tierWinrateContent = document.getElementById("tierWinrateContent");
   var snapPnlChartContent = document.getElementById("snapPnlChartContent");
+  var snapDistContent = document.getElementById("snapDistContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -1330,6 +1339,7 @@
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
   var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
+  var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   var vtMinTraders = 5;
@@ -2766,9 +2776,19 @@
   // Snapshots frozen before this field existed fall back to the old
   // stakeholder-entry-price blend — the only price they have on record.
   var HYPOTHETICAL_FLAT_STAKE = 1000;
+  // The leading side's price for this snapshot — frozen at save time
+  // (leaderPriceAtSnapshot) for anything saved after that field existed,
+  // falling back to the stakeholders' own blended entry price for older
+  // snapshots that never recorded it. Shared by the PnL simulation and the
+  // odds-distribution table below so "cote" always means the same number
+  // in both places.
+  function snapLeaderPrice(snap) {
+    if (!snap.leaderName) return null;
+    return snap.leaderPriceAtSnapshot != null ? snap.leaderPriceAtSnapshot : weightedAvgPriceForSide(sideByName(snap.sides, snap.leaderName));
+  }
   function hypotheticalFlatPnl(snap, flatStake) {
     if (!snap.winningSide || !snap.leaderName) return null;
-    var avgPrice = snap.leaderPriceAtSnapshot != null ? snap.leaderPriceAtSnapshot : weightedAvgPriceForSide(sideByName(snap.sides, snap.leaderName));
+    var avgPrice = snapLeaderPrice(snap);
     if (!avgPrice || avgPrice <= 0) return null;
     return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
   }
@@ -2853,7 +2873,10 @@
       var pnl = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
       if (pnl == null) return;
       cum += pnl;
-      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id });
+      // Each dot is colored by ITS OWN outcome (won that bet or not), not
+      // by the cumulative line's overall trend — a losing trade near the
+      // top of an otherwise-winning streak should still read as red.
+      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#2e6b45" : "#a13030" });
     });
     if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
@@ -2924,6 +2947,40 @@
     if (typeof va === "string") return mul * va.localeCompare(vb);
     return mul * (va - vb);
   }
+  // Odds x conviction-tier cross-tab: for each cote bracket, how many
+  // decided snapshots won vs lost, both overall and split by S/A+/A/B —
+  // e.g. does the "B" tier's winrate hold up across every price range, or
+  // is it only carried by the cheap/expensive end? Optional (collapsed by
+  // default) since it's a deeper cut than the tier gauge above, not
+  // something to parse on every visit.
+  var DIST_ODDS_BUCKETS = [[0, 20], [20, 40], [40, 60], [60, 80], [80, 100]];
+  function renderSnapDistribution(list) {
+    if (!snapDistContent) return;
+    var decided = list.filter(function (s) { return !!s.winningSide && s.leaderName; });
+    function cell(items) {
+      if (!items.length) return '<span class="snap-dist-empty">—</span>';
+      var win = items.filter(function (s) { return s.leaderName === s.winningSide; }).length;
+      return '<span class="pnl-pos">' + win + '</span> / <span class="pnl-neg">' + (items.length - win) + '</span>';
+    }
+    var rows = DIST_ODDS_BUCKETS.map(function (b) {
+      var inBucket = decided.filter(function (s) {
+        var p = snapLeaderPrice(s);
+        if (p == null) return false;
+        var cents = p * 100;
+        return cents >= b[0] && (b[1] === 100 ? cents <= b[1] : cents < b[1]);
+      });
+      var tierCells = CONFIDENCE_TIERS.map(function (tier) {
+        return '<td class="num">' + cell(inBucket.filter(function (s) { return s.confidence === tier; })) + '</td>';
+      }).join("");
+      return '<tr><td>' + b[0] + '–' + b[1] + '¢</td><td class="num">' + cell(inBucket) + '</td>' + tierCells + '</tr>';
+    }).join("");
+    var headCells = '<th>Cote</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("");
+    snapDistContent.innerHTML =
+      '<button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapDistCollapsed ? "▸ Afficher l'analyse cote × note" : "▾ Réduire l'analyse cote × note") + '</button>' +
+      '<div class="snap-dist-wrap table-scroll' + (snapDistCollapsed ? " collapsed" : "") + '">' +
+      '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction</div>' +
+      '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
   function renderSnapStats(list) {
     var byTrader = {};
     list.forEach(function (snap) {
@@ -2984,6 +3041,7 @@
     renderSnapDashboard(list);
     renderTierWinrate(list);
     renderSnapPnlChart(cardsList);
+    renderSnapDistribution(list);
     renderSnapStats(list);
     if (!cardsList.length) {
       snapshotsContent.innerHTML = '<div class="empty-note">' + (tierCardFilter.length
@@ -3745,8 +3803,12 @@
     // Optional per-point id (only the snapshots PnL chart sets one) makes
     // that point clickable — see wireSnapPnlChartClicks — without changing
     // anything for other callers (Mon historique) that don't set it.
+    // Optional per-point color (pointColor) lets a caller mark each dot by
+    // its OWN outcome (a snapshot that won vs one that lost) instead of
+    // every dot inheriting the line's one aggregate color; falls back to
+    // lineColor when not set, so Mon historique's chart is unaffected.
     var points = series.map(function (p, i) {
-      return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + lineColor + '" ' +
+      return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + (p.pointColor || lineColor) + '" ' +
         'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
     }).join("");
 
@@ -4215,6 +4277,12 @@
     if (statsToggleBtn) {
       snapStatsCollapsed = !snapStatsCollapsed;
       renderSnapStats(loadSnapshots());
+      return;
+    }
+    var distToggleBtn = e.target.closest ? e.target.closest("#snapDistToggleBtn") : null;
+    if (distToggleBtn) {
+      snapDistCollapsed = !snapDistCollapsed;
+      renderSnapDistribution(loadSnapshots());
       return;
     }
     var sortTh = e.target.closest ? e.target.closest("#snapStatsContent th.sortable") : null;
