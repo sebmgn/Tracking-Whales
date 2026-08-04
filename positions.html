@@ -930,8 +930,8 @@
      these are the ones you can click through to the underlying trade, so
      the hit target should be generous, not just the same small dot every
      other chart uses. */
-  .chart-pt-clickable { transition: r .15s ease; r: 3.5; }
-  .chart-pt-clickable:hover { r: 8; }
+  .chart-pt-clickable { transition: r .15s ease, stroke-width .15s ease; r: 4; }
+  .chart-pt-clickable:hover { r: 11; stroke-width: 2.5; }
   .chart-hint { font-size: 10.5px; color: var(--text-dim); text-align: right; margin: 2px 2px 0; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
@@ -2876,7 +2876,10 @@
       // Each dot is colored by ITS OWN outcome (won that bet or not), not
       // by the cumulative line's overall trend — a losing trade near the
       // top of an otherwise-winning streak should still read as red.
-      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#2e6b45" : "#a13030" });
+      // Deliberately more saturated than --green/--red (those are muted
+      // "sable" text colors) — at dot size the pair needs a bigger hue/
+      // lightness gap to read as clearly different at a glance.
+      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#189c4a" : "#e0342f" });
     });
     if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
@@ -2953,7 +2956,7 @@
   // is it only carried by the cheap/expensive end? Optional (collapsed by
   // default) since it's a deeper cut than the tier gauge above, not
   // something to parse on every visit.
-  var DIST_ODDS_BUCKETS = [[0, 20], [20, 40], [40, 60], [60, 80], [80, 100]];
+  var DIST_ODDS_BUCKETS = [[0, 40], [40, 65], [65, 80], [80, 90], [90, 95], [95, 100]];
   function renderSnapDistribution(list) {
     if (!snapDistContent) return;
     var decided = list.filter(function (s) { return !!s.winningSide && s.leaderName; });
@@ -2961,6 +2964,20 @@
       if (!items.length) return '<span class="snap-dist-empty">—</span>';
       var win = items.filter(function (s) { return s.leaderName === s.winningSide; }).length;
       return '<span class="pnl-pos">' + win + '</span> / <span class="pnl-neg">' + (items.length - win) + '</span>';
+    }
+    // Same flat HYPOTHETICAL_FLAT_STAKE-per-bet simulation as the tier
+    // winrate gauge above, cut by cote bracket instead of by conviction —
+    // lets a bracket with a decent win/loss split still show up as a net
+    // loser (or vice versa) once the stake-weighted payout is accounted for.
+    function roiCell(items) {
+      var flatPnl = 0, flatCount = 0;
+      items.forEach(function (s) {
+        var hyp = hypotheticalFlatPnl(s, HYPOTHETICAL_FLAT_STAKE);
+        if (hyp != null) { flatPnl += hyp; flatCount++; }
+      });
+      if (!flatCount) return '<span class="snap-dist-empty">—</span>';
+      var roi = flatPnl / (flatCount * HYPOTHETICAL_FLAT_STAKE) * 100;
+      return '<span class="' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span>';
     }
     var rows = DIST_ODDS_BUCKETS.map(function (b) {
       var inBucket = decided.filter(function (s) {
@@ -2972,9 +2989,10 @@
       var tierCells = CONFIDENCE_TIERS.map(function (tier) {
         return '<td class="num">' + cell(inBucket.filter(function (s) { return s.confidence === tier; })) + '</td>';
       }).join("");
-      return '<tr><td>' + b[0] + '–' + b[1] + '¢</td><td class="num">' + cell(inBucket) + '</td>' + tierCells + '</tr>';
+      return '<tr><td>' + b[0] + '–' + b[1] + '¢</td><td class="num">' + cell(inBucket) + '</td>' + tierCells + '<td class="num">' + roiCell(inBucket) + '</td></tr>';
     }).join("");
-    var headCells = '<th>Cote</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("");
+    var headCells = '<th>Cote</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("") +
+      '<th class="num" title="Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' misés à plat sur chaque snapshot décidé de la tranche, au prix du camp leader au moment du snapshot">ROI (' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '/pari)</th>';
     snapDistContent.innerHTML =
       '<button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapDistCollapsed ? "▸ Afficher l'analyse cote × note" : "▾ Réduire l'analyse cote × note") + '</button>' +
       '<div class="snap-dist-wrap table-scroll' + (snapDistCollapsed ? " collapsed" : "") + '">' +
@@ -3808,7 +3826,11 @@
     // every dot inheriting the line's one aggregate color; falls back to
     // lineColor when not set, so Mon historique's chart is unaffected.
     var points = series.map(function (p, i) {
-      return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + (p.pointColor || lineColor) + '" ' +
+      // A light halo around each dot keeps the win/loss color legible
+      // against the area fill and connecting line underneath it, and
+      // stays crisp once the dot grows on hover.
+      var strokeAttr = p.pointColor ? ' stroke="var(--panel)" stroke-width="1.5"' : '';
+      return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + (p.pointColor || lineColor) + '"' + strokeAttr + ' ' +
         'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
     }).join("");
 
