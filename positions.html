@@ -15,8 +15,13 @@
     --panel-border: #e3d3b8;
     --text: #332b1e;
     --text-dim: #8c7a5c;
-    --green: #2e6b45;
-    --red: #a13030;
+    /* Kept clearly apart in both hue AND lightness (not just hue) — a
+       same-lightness red/green pair is exactly what's hardest to tell
+       apart at a glance, especially for red-green color vision
+       deficiency. Still dark enough to pass 4.5:1 text contrast against
+       --bg/--panel. */
+    --green: #15803d;
+    --red: #b91c1c;
     --accent: #1b3358;
     --gold: #b28f3f;
     --row-hover: #f3ead6;
@@ -1660,8 +1665,8 @@
     // alpha suffix to these (e.g. color + "22") to get a tinted background —
     // that trick only works on a real hex value. Must match :root's --green/--red.
     var n = (name || "").trim().toLowerCase();
-    if (n === "yes" || n === "oui") return "#2e6b45";
-    if (n === "no" || n === "non") return "#a13030";
+    if (n === "yes" || n === "oui") return "#15803d";
+    if (n === "no" || n === "non") return "#b91c1c";
     return OTHER_SIDE_COLORS[otherColorIndex(name) % OTHER_SIDE_COLORS.length];
   }
   // One-letter marker for a side, shown instead of a generic leader/other
@@ -2732,10 +2737,19 @@
       else betLoss++;
     });
     var betWinRate = (betWin + betLoss) > 0 ? (betWin / (betWin + betLoss) * 100) : null;
+    // Same flat HYPOTHETICAL_FLAT_STAKE-per-bet simulation used everywhere
+    // else on this tab (tier gauge, odds table), rolled up across every
+    // decided snapshot — the headline number for "is this actually profitable".
+    var globalFlatPnl = 0, globalFlatCount = 0;
+    list.forEach(function (snap) {
+      var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+      if (hyp != null) { globalFlatPnl += hyp; globalFlatCount++; }
+    });
+    var globalRoi = globalFlatCount > 0 ? (globalFlatPnl / (globalFlatCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
     var globalTiles = [
       { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
       { label: "Gagné / Perdu", value: betWin + " / " + betLoss, cls: betWin >= betLoss ? "pos" : "neg" },
-      { label: "Résultat connu / En attente", value: decided + " / " + pending }
+      { label: "ROI global (" + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + "/pari)", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + "%", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg") }
     ];
     function tilesHtml(tiles) {
       return '<div class="stat-grid">' + tiles.map(function (t) {
@@ -2876,10 +2890,11 @@
       // Each dot is colored by ITS OWN outcome (won that bet or not), not
       // by the cumulative line's overall trend — a losing trade near the
       // top of an otherwise-winning streak should still read as red.
-      // Deliberately more saturated than --green/--red (those are muted
-      // "sable" text colors) — at dot size the pair needs a bigger hue/
-      // lightness gap to read as clearly different at a glance.
-      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#189c4a" : "#e0342f" });
+      // Win/loss colors are deliberately far apart in BOTH hue and
+      // brightness (light saturated green vs dark red), not just hue —
+      // a same-lightness red/green pair is exactly what's hardest to
+      // tell apart (small dots, red-green color vision deficiency, glare).
+      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#10b981" : "#991b1b" });
     });
     if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
@@ -2992,7 +3007,7 @@
       return '<tr><td>' + b[0] + '–' + b[1] + '¢</td><td class="num">' + cell(inBucket) + '</td>' + tierCells + '<td class="num">' + roiCell(inBucket) + '</td></tr>';
     }).join("");
     var headCells = '<th>Cote</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("") +
-      '<th class="num" title="Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' misés à plat sur chaque snapshot décidé de la tranche, au prix du camp leader au moment du snapshot">ROI (' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '/pari)</th>';
+      '<th class="num" title="Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' misés à plat sur chaque snapshot décidé de la tranche, au prix du camp leader au moment du snapshot">ROI</th>';
     snapDistContent.innerHTML =
       '<button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapDistCollapsed ? "▸ Afficher l'analyse cote × note" : "▾ Réduire l'analyse cote × note") + '</button>' +
       '<div class="snap-dist-wrap table-scroll' + (snapDistCollapsed ? " collapsed" : "") + '">' +
@@ -3798,7 +3813,7 @@
     function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
     function y(v) { return padT + innerH - ((v - min) / range) * innerH; }
     var finalPos = series[n - 1].value >= 0;
-    var lineColor = finalPos ? "#2e6b45" : "#a13030";
+    var lineColor = finalPos ? "#15803d" : "#b91c1c";
 
     var pathD = series.map(function (p, i) { return (i === 0 ? "M" : "L") + x(i).toFixed(2) + "," + y(p.value).toFixed(2); }).join(" ");
     var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + y(0).toFixed(2) + " L" + x(0).toFixed(2) + "," + y(0).toFixed(2) + " Z";
