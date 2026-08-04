@@ -1153,9 +1153,9 @@
       <button type="button" id="snapSyncTokenClear">Déconnecter</button>
       <div class="empty-note" style="padding:6px 0 0;">Crée un <em>fine-grained personal access token</em> sur github.com → Settings → Developer settings, limité au repo <code>Tracking-Whales</code>, avec uniquement la permission <strong>Contents: Read and write</strong>. À faire une fois par appareil/navigateur. Le token reste stocké localement dans ce navigateur — jamais écrit dans le code de la page, jamais envoyé ailleurs qu'à l'API GitHub. Connecte d'abord l'appareil qui a la liste de snapshots à jour (il servira de point de départ) ; les autres appareils s'aligneront dessus au premier lien.</div>
     </div>
+    <div id="snapPnlChartContent"></div>
     <div id="snapDashboard"></div>
     <div id="tierWinrateContent"></div>
-    <div id="snapPnlChartContent"></div>
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
@@ -1178,7 +1178,7 @@
     { name: "WsCz", platform: "predict", address: "0x51925155f83E155592825b96AC5887505Af0aCD8", weight: 9 },
     { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496", weight: 8 },
     { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE", weight: 6 },
-    { name: "VestedForceLeak888", platform: "predict", address: "0xa9Dd6741383d634c7dd938aF32e39027c29f204a", weight: 6 },
+    { name: "meister", platform: "polymarket", address: "0xdc4f58a48ed4467743609fdce11eea483c759804", weight: 6.5 },
     { name: "aaaaaaa9", platform: "predict", address: "0x1faa0851074eCd1Baa4744Dbb43F9b10E2EFd636", weight: 7 },
     { name: "mean-slippage-run", platform: "predict", address: "0x10F75A07837E4Af8B77182383443895cA7520747", weight: 7 },
     { name: "sbimbg", platform: "polymarket", address: "0xf5198df69e13937a40d1c76d6f72d9aa067d906b", weight: 7 },
@@ -1194,10 +1194,11 @@
     { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8", weight: 8.5 },
     { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 7.5 },
     { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", weight: 9 },
-    { name: "newbie", platform: "polymarket", address: "0x43011bc04df353c8092662d13b4aaacb4b62ac39", weight: 7 },
+    { name: "newbie", platform: "polymarket", address: "0x43011bc04df353c8092662d13b4aaacb4b62ac39", weight: 5 },
     { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74", weight: 7 },
     { name: "NM-P", platform: "polymarket", address: "0xcf7379b4b891c06d88807f6f70efa75378120215", weight: 7 },
-    { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6", weight: 7 }
+    { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6", weight: 7 },
+    { name: "newteam", platform: "polymarket", address: "0xc46368a3374e87566eff1ffae7e6ec0163509a2f", weight: 6 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -2720,29 +2721,11 @@
       if (snap.leaderName === snap.winningSide) betWin++;
       else betLoss++;
     });
-    // Per-trader verdicts feed the table below (renderSnapStats) — the
-    // trader-level tiles here aggregate the exact same classification.
-    var win = 0, loss = 0, gainNuance = 0, perteNuance = 0;
-    list.forEach(function (snap) {
-      (snap.traderNames || []).forEach(function (name) {
-        var cls = classifyTraderInSnapshot(snap, name);
-        if (cls === "win") win++;
-        else if (cls === "loss") loss++;
-        else if (cls === "gain_nuance") gainNuance++;
-        else if (cls === "perte_nuance") perteNuance++;
-      });
-    });
-    var totalDecided = win + loss + gainNuance + perteNuance;
-    var winRate = totalDecided > 0 ? ((win + gainNuance) / totalDecided * 100) : null;
     var betWinRate = (betWin + betLoss) > 0 ? (betWin / (betWin + betLoss) * 100) : null;
     var globalTiles = [
       { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
       { label: "Gagné / Perdu", value: betWin + " / " + betLoss, cls: betWin >= betLoss ? "pos" : "neg" },
       { label: "Résultat connu / En attente", value: decided + " / " + pending }
-    ];
-    var traderTiles = [
-      { label: "Gain nuancé / Perte nuancée (traders)", value: gainNuance + " / " + perteNuance, cls: gainNuance >= perteNuance ? "pos" : "neg" },
-      { label: "Taux de réussite global (traders)", value: winRate == null ? "—" : winRate.toFixed(0) + "%", cls: winRate == null ? "" : (winRate >= 50 ? "pos" : "neg") }
     ];
     function tilesHtml(tiles) {
       return '<div class="stat-grid">' + tiles.map(function (t) {
@@ -2750,7 +2733,7 @@
           '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div></div>';
       }).join("") + '</div>';
     }
-    snapDashboard.innerHTML = tilesHtml(globalTiles) + tilesHtml(traderTiles);
+    snapDashboard.innerHTML = tilesHtml(globalTiles);
   }
   // Bet-level winrate broken down by the confidence tag set on the snapshot
   // at bet time (CONFIDENCE_TIERS) — the whole point of tagging S/A+/A/B is
