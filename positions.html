@@ -223,6 +223,7 @@
     border-bottom: 1px dotted var(--panel-border);
   }
   .vt-market-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .vt-kickoff { font-style: italic; font-size: 10.5px; color: var(--text-dim); margin-left: auto; }
   .vt-snap-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -500,92 +501,6 @@
     border-left: 2px solid var(--panel-border);
   }
 
-  /* --- Match / confrontation filters --- */
-  /* Shorter than before (these three are secondary, glance-past filters,
-     not the page's main event) and each gets a faint version of the note
-     chart's LED-edge treatment — a soft glow in its own accent color —
-     echoing that style without competing with it for attention. */
-  .match-section {
-    background: linear-gradient(180deg, #ecd9a8, #f6ecd2);
-    border: 1px solid #c9a55a;
-    border-radius: 9px;
-    padding: 8px 14px 9px;
-    margin: 4px 0 10px;
-    box-shadow: 0 0 9px 0 rgba(201, 165, 90, .3);
-  }
-  .match-section-title {
-    font-family: "Times New Roman", Times, Georgia, serif;
-    font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: .03em;
-    color: var(--gold);
-    font-weight: 700;
-    margin-bottom: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    user-select: none;
-  }
-  .match-section-title::after { content: "▾"; font-size: 11px; opacity: .75; }
-  .match-section.collapsed .match-section-title { margin-bottom: 0; }
-  .match-section.collapsed .match-section-title::after { content: "▸"; }
-  .match-section.collapsed .match-filters { display: none; }
-  .match-filters { display: flex; flex-wrap: wrap; gap: 8px; }
-  .match-chip {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 999px;
-    padding: 7px 14px 7px 16px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--text);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .match-chip:hover { border-color: var(--gold); }
-  .match-chip .chip-count {
-    background: var(--panel-border);
-    border-radius: 999px;
-    padding: 1px 8px;
-    font-size: 11px;
-    color: var(--text-dim);
-    font-weight: 700;
-  }
-  /* The active/selected chip echoes its own capsule's accent color (gold
-     here for the default confrontations capsule; overridden below for the
-     green/blue capsules) rather than one blue used everywhere — the tint
-     ties the "selected" state back to the box it's selected within. */
-  .match-chip.active {
-    background: #8f6f2f;
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 2px 10px rgba(143,111,47,.35);
-  }
-  .match-chip.active .chip-count { background: rgba(0,0,0,.2); color: #fff; }
-  /* Cool-tinted container for the "filter to one specific bet" catalog, so it
-     still reads as a distinct (finer-grained) box from the warm sand-tinted
-     confrontation chips above it — its active chips reuse this same blue. */
-  .title-section {
-    background: linear-gradient(180deg, #c9dbee, #e3edf7);
-    border-color: #6f96bd;
-    box-shadow: 0 0 9px 0 rgba(111, 150, 189, .3);
-  }
-  .title-section .match-section-title { color: #2d456e; }
-  .title-section .match-chip:hover { border-color: #2d456e; }
-  .title-section .match-chip.active { background: #2d456e; box-shadow: 0 2px 10px rgba(45,69,110,.35); }
-  /* Sage-tinted container for the "bet type" grouping — a third, distinct
-     tint between the confrontation (warm) and specific-bet (cool) catalogs. */
-  .type-section {
-    background: linear-gradient(180deg, #cde3c7, #e3f0df);
-    border-color: #6f9c62;
-    box-shadow: 0 0 9px 0 rgba(111, 156, 98, .3);
-  }
-  .type-section .match-section-title { color: #2c4f24; }
-  .type-section .match-chip:hover { border-color: #2c4f24; }
-  .type-section .match-chip.active { background: #2c4f24; box-shadow: 0 2px 10px rgba(44,79,36,.35); }
   .caveat-box {
     background: #221607;
     border: 1px solid #4a2f10;
@@ -758,6 +673,7 @@
      row per tier, reusing CONFIDENCE_COLORS so a tier reads the same color
      here as on the confidence buttons of each snapshot card. */
   .tier-wr-box { margin-bottom: 16px; }
+  .tier-wr-collapse-wrap.collapsed { display: none; }
   .tier-wr-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 600; margin-bottom: 4px; }
   .tier-wr-subtitle { font-style: italic; font-size: 11px; color: var(--text-dim); margin-bottom: 14px; }
   .tier-wr-row { display: flex; align-items: center; gap: 12px; margin: 0 -8px 12px; padding: 4px 8px; border-radius: 8px; cursor: pointer; transition: background-color .15s ease; }
@@ -887,6 +803,10 @@
     gap: 10px;
     margin-bottom: 20px;
   }
+  /* Snapshots tab only: the PnL chart right above these tiles has no
+     margin-bottom of its own, so without this the gap above the tiles
+     reads noticeably tighter than the 20px gap below them. */
+  #snapDashboard { margin-top: 16px; }
   .stat-tile {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -1094,18 +1014,6 @@
         </div>
       </div>
       <div class="score-tier-box" id="vtTierChart"></div>
-    </div>
-    <div class="match-section collapsed" id="matchSection" style="display:none;">
-      <div class="match-section-title">Confrontations avec value bets</div>
-      <div class="match-filters" id="matchFilters"></div>
-    </div>
-    <div class="match-section type-section collapsed" id="typeSection" style="display:none;">
-      <div class="match-section-title">Type de pari</div>
-      <div class="match-filters" id="typeFilters"></div>
-    </div>
-    <div class="match-section title-section collapsed" id="titleSection" style="display:none;">
-      <div class="match-section-title">Filtrer un pari précis</div>
-      <div class="match-filters" id="titleFilters"></div>
     </div>
     <div id="valueTradesContent" class="value-trades-box">
       <div class="loading-state">Analyse des positions communes…</div>
@@ -1345,6 +1253,7 @@
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
   var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
   var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
+  var tierWinrateCollapsed = true; // winrate-by-conviction gauge — same optional/collapsed-by-default pattern
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   var vtMinTraders = 5;
@@ -1354,9 +1263,6 @@
   // traders" or clutter a card with noise nobody cares about.
   var MIN_TRADER_STAKE = 300;
   var vtMinStake = 0; // 0 = no floor; else each selected player individually needs this much staked (or the unit's total, if none selected)
-  var vtSelectedMatch = null; // matchKey or null (= all matches)
-  var vtSelectedType = null; // bet-type label or null (= all types)
-  var vtSelectedTitle = null; // unit key (primary group's key) or null (= all bets)
   var vtSelectedPlayers = []; // trader names currently toggled on (empty = all players)
   // Independent of vtSelectedPlayers (that one narrows WHICH players must be
   // in the unit; this one counts how many of the reliable list are, no
@@ -1382,11 +1288,6 @@
   function fmtUSD(n) {
     var sign = n < 0 ? "-" : "";
     return sign + new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n)) + " $";
-  }
-  // Rounded, no-decimals variant for tight spaces (catalog chips) — same $ unit, just less noisy.
-  function fmtUSDCompact(n) {
-    var sign = n < 0 ? "-" : "";
-    return sign + new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Math.abs(n))) + " $";
   }
   function fmtShares(n) {
     return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(n));
@@ -1805,33 +1706,6 @@
     return d.getTime() < today.getTime() ? "live" : "upcoming";
   }
 
-  // ---------- bet-type classification (heuristic, question-text based) ----------
-  // Groups markets by what kind of bet they are (e.g. every "Exact Score:
-  // X - Y" across every scoreline is one "Score exact" type), independent of
-  // sport or specific line/score. Order matters: more specific patterns are
-  // checked before broader ones (e.g. "Total Corners" before generic O/U).
-  var BET_TYPE_RULES = [
-    { label: "Score exact", test: /exact score/i },
-    { label: "Corners", test: /corner/i },
-    { label: "Spread", test: /^spread:|handicap/i },
-    { label: "Total (O/U)", test: /\bo\/u\b|\btotal\b/i },
-    { label: "Les 2 marquent", test: /both teams to score/i },
-    { label: "Qualification", test: /team to advance/i },
-    { label: "1er but", test: /to score first|first to score/i },
-    { label: "Mi-temps", test: /halftime/i },
-    { label: "2nde période", test: /second half/i },
-    { label: "Match nul", test: /end in a draw/i },
-    { label: "Vainqueur du match", test: /^will .+ win on \d{4}-\d{2}-\d{2}\??$/i },
-    { label: "Vainqueur / Outright", test: /champion|grand prix|world cup|open championship|golden ball|golden glove|top goalscorer|finals?\b|fdv|senate|election|fed rate|rate hike/i }
-  ];
-  function betTypeOf(question) {
-    var q = question || "";
-    for (var i = 0; i < BET_TYPE_RULES.length; i++) {
-      if (BET_TYPE_RULES[i].test.test(q)) return BET_TYPE_RULES[i].label;
-    }
-    return "Autre";
-  }
-
   function computeMarketGroups() {
     // Groups are keyed per platform+market so the same real-world event on
     // two different platforms stays two distinct groups here; linkAcrossPlatforms()
@@ -2037,51 +1911,6 @@
     var m = slug.match(/^(.*?-\d{4}-\d{2}-\d{2})/);
     return m ? m[1] : null;
   }
-  function matchLabelFromGroups(groupsForKey, key) {
-    // The "vs" pairing isn't always before the first colon — e.g. tennis
-    // qualification markets read "Tournament, Round: Player A vs Player B",
-    // where it's the segment AFTER the colon. Check every segment before
-    // falling back to slug parsing, so the confrontation label always reads
-    // as a real match/event name instead of a truncated single name.
-    for (var i = 0; i < groupsForKey.length; i++) {
-      var segments = (groupsForKey[i].question || "").split(":");
-      for (var s = 0; s < segments.length; s++) {
-        var seg = segments[s].trim();
-        if (/\bvs\.?\b/i.test(seg)) return seg;
-      }
-    }
-    var parts = key.split("-");
-    var yearIdx = -1;
-    for (var j = 0; j < parts.length; j++) { if (/^\d{4}$/.test(parts[j])) { yearIdx = j; break; } }
-    var nameParts = yearIdx > 1 ? parts.slice(1, yearIdx) : parts.slice(1);
-    if (!nameParts.length) return key;
-    // Exactly two short tokens (e.g. "esp","arg") reads as a team-code pair;
-    // anything else (single events like a Grand Prix) is just title-cased.
-    if (nameParts.length === 2 && nameParts[0].length <= 4 && nameParts[1].length <= 4) {
-      return nameParts.map(function (p) { return p.toUpperCase(); }).join(" vs ");
-    }
-    return nameParts.map(function (p) { return p.charAt(0).toUpperCase() + p.slice(1); }).join(" ");
-  }
-  function computeMatchBuckets(units) {
-    var buckets = {};
-    units.forEach(function (u) {
-      var key = u.matchKey;
-      if (!key) return;
-      if (!buckets[key]) buckets[key] = [];
-      buckets[key].push(u);
-    });
-    return Object.keys(buckets).map(function (key) {
-      var arr = buckets[key];
-      var groupsForLabel = arr.map(function (u) { return { question: u.members[0].question }; });
-      return {
-        key: key,
-        label: matchLabelFromGroups(groupsForLabel, key),
-        marketCount: arr.length,
-        totalStake: arr.reduce(function (s, u) { return s + u.totalStake; }, 0)
-      };
-    }).sort(function (a, b) { return b.marketCount - a.marketCount || b.totalStake - a.totalStake; });
-  }
-
   // mise/price averaged across every linked platform item for one merged
   // side — used both for the leader badge and every row of the legend
   // below, so there's exactly one place this average gets computed.
@@ -2164,16 +1993,6 @@
     var mergedSides = order.map(function (k) { return byName[k]; });
     mergedSides.sort(function (a, b) { return b.traderCount - a.traderCount || b.stake - a.stake; });
     return mergedSides;
-  }
-  // How strongly the tracked traders agree with each other on this bet: share
-  // of traders sitting on the leading side (1.0 = everyone agrees, ~0.5 =
-  // evenly split). Used to rank the "filtrer un pari précis" catalog so the
-  // most one-sided (highest-conviction) bets surface first.
-  function unitConsensusScore(u) {
-    var mergedSides = mergeUnitSides(u);
-    var total = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
-    if (total <= 0 || !mergedSides.length) return 0;
-    return mergedSides[0].traderCount / total;
   }
   function unitHasTrader(u, name) {
     return u.members.some(function (g) {
@@ -2368,10 +2187,26 @@
     // small and low-contrast on purpose (this is a shortcut for someone who
     // already knows what they're looking at, not another call-to-action
     // competing with the Snapshot button).
+    // Real kickoff date+time (not the day-only heuristic unitTimingStatus
+    // falls back to) — only shown once gamma-api has actually resolved it
+    // for this matchKey, so we never print a fabricated time. Kicks off
+    // the same lazy fetch/cache unitTimingStatus uses; that fetch is
+    // otherwise only triggered when the live/upcoming filter is active, so
+    // trigger it here too or the cache would stay empty on the default
+    // "Tous" filter.
+    var kickoffHtml = "";
+    if (u.matchKey) {
+      var cachedTiming = matchTimingCache[u.matchKey];
+      if (cachedTiming && cachedTiming.kickoff) {
+        kickoffHtml = '<span class="vt-kickoff">' + esc(cachedTiming.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '</span>';
+      } else {
+        scheduleMatchTimingFetch(u.matchKey);
+      }
+    }
     var marketLinksHtml = '<div class="vt-market-links">' + members.map(function (m) {
       var info = PLATFORMS[m.platform] || { label: m.platform, short: m.platform };
       return '<a class="vt-market-link" href="' + esc(m.marketUrl) + '" target="_blank" rel="noopener" title="Ouvrir sur ' + esc(info.label) + '">' + esc(info.short) + ' ↗</a>';
-    }).join("") + '</div>';
+    }).join("") + kickoffHtml + '</div>';
     var headerHtml =
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + leaderBadge + '</span>' +
@@ -2749,11 +2584,17 @@
     var globalTiles = [
       { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
       { label: "Gagné / Perdu", value: betWin + " / " + betLoss, cls: betWin >= betLoss ? "pos" : "neg" },
-      { label: "ROI global (" + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + "/pari)", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + "%", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg") }
+      // "ROI moyen par pari", not "ROI global" — this is the AVERAGE return
+      // of one flat HYPOTHETICAL_FLAT_STAKE bet, not a % of some pooled
+      // total stake. Reads as "20% of $1000 = $200" otherwise, which is
+      // wrong by an order of magnitude once there are 19 bets, not 1 — the
+      // actual cumulative $ total is on the chart above.
+      { label: "ROI moyen par pari", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + "%", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg"),
+        title: "Moyenne du ROI de chaque pari pris isolément (mise à plat de " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " à chaque fois), pas un pourcentage d'un total misé cumulé. Le gain cumulé réel est affiché sur le graphique ci-dessus." }
     ];
     function tilesHtml(tiles) {
       return '<div class="stat-grid">' + tiles.map(function (t) {
-        return '<div class="stat-tile"><div class="stat-label">' + esc(t.label) + '</div>' +
+        return '<div class="stat-tile"' + (t.title ? ' title="' + esc(t.title) + '"' : '') + '><div class="stat-label">' + esc(t.label) + '</div>' +
           '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div></div>';
       }).join("") + '</div>';
     }
@@ -2864,9 +2705,11 @@
     var filterNoteHtml = tierCardFilter.length
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
-    tierWinrateContent.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
+    tierWinrateContent.innerHTML =
+      '<button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (tierWinrateCollapsed ? "▸ Afficher le winrate par conviction" : "▾ Réduire le winrate par conviction") + '</button>' +
+      '<div class="tier-wr-collapse-wrap' + (tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
       '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
-      rows + noteHtml + filterNoteHtml + '</div>';
+      rows + noteHtml + filterNoteHtml + '</div></div>';
   }
   // Cumulative version of the same flat-$1000-per-pari simulation, in the
   // order the snapshots were actually saved — reuses buildHistoryChartSvg
@@ -3243,110 +3086,13 @@
     // the actual visible list ("234" vs the "12" markets really shown).
     renderVtTierChart(allUnits.filter(function (u) { return u.traderCount >= vtMinTraders && vtBaseUnitFilter(u); }));
 
-    var matches = computeMatchBuckets(traderFiltered);
-    if (vtSelectedMatch && !matches.some(function (m) { return m.key === vtSelectedMatch; })) {
-      vtSelectedMatch = null; // selection no longer valid under the current trader-count filter
-    }
-    var matchSection = document.getElementById("matchSection");
-    var matchFiltersEl = document.getElementById("matchFilters");
-    if (!matches.length) {
-      matchSection.style.display = "none";
-    } else {
-      matchSection.style.display = "";
-      var chipsHtml = '<button type="button" class="match-chip' + (!vtSelectedMatch ? " active" : "") + '" data-key="">Tous les matchs</button>';
-      chipsHtml += matches.map(function (m) {
-        return '<button type="button" class="match-chip' + (vtSelectedMatch === m.key ? " active" : "") + '" data-key="' + esc(m.key) + '">' +
-          esc(m.label) + '<span class="chip-count">' + m.marketCount + '</span></button>';
-      }).join("");
-      matchFiltersEl.innerHTML = chipsHtml;
-      matchFiltersEl.querySelectorAll(".match-chip").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          vtSelectedMatch = btn.getAttribute("data-key") || null;
-          renderValueTrades();
-        });
-      });
-    }
+    var finalUnits = traderFiltered;
 
-    var units = vtSelectedMatch ? traderFiltered.filter(function (u) { return u.matchKey === vtSelectedMatch; }) : traderFiltered;
-
-    // Groups the currently visible bets by TYPE (every "Exact Score: X-Y"
-    // regardless of scoreline becomes one "Score exact" chip, etc.) so the
-    // huge specific-bet catalog below can be narrowed before scrolling it.
-    var types = (function computeTypeBuckets() {
-      var buckets = {};
-      units.forEach(function (u) {
-        var type = betTypeOf(u.members[0].question);
-        if (!buckets[type]) buckets[type] = { label: type, marketCount: 0, totalStake: 0 };
-        buckets[type].marketCount++;
-        buckets[type].totalStake += u.totalStake;
-      });
-      return Object.keys(buckets).map(function (k) { return buckets[k]; })
-        .sort(function (a, b) { return b.marketCount - a.marketCount || b.totalStake - a.totalStake; });
-    })();
-    if (vtSelectedType && !types.some(function (t) { return t.label === vtSelectedType; })) {
-      vtSelectedType = null; // selection no longer valid under the current filters
-    }
-    var typeSection = document.getElementById("typeSection");
-    var typeFiltersEl = document.getElementById("typeFilters");
-    if (!types.length) {
-      typeSection.style.display = "none";
-    } else {
-      typeSection.style.display = "";
-      var typeChipsHtml = '<button type="button" class="match-chip' + (!vtSelectedType ? " active" : "") + '" data-type="">Tous les types</button>';
-      typeChipsHtml += types.map(function (t) {
-        return '<button type="button" class="match-chip' + (vtSelectedType === t.label ? " active" : "") + '" data-type="' + esc(t.label) + '">' +
-          esc(t.label) + '<span class="chip-count">' + t.marketCount + '</span></button>';
-      }).join("");
-      typeFiltersEl.innerHTML = typeChipsHtml;
-      typeFiltersEl.querySelectorAll(".match-chip").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          vtSelectedType = btn.getAttribute("data-type") || null;
-          renderValueTrades();
-        });
-      });
-    }
-    units = vtSelectedType ? units.filter(function (u) { return betTypeOf(u.members[0].question) === vtSelectedType; }) : units;
-
-    // Catalog of the individual bets currently in view (respects the
-    // confrontation + min-traders filters above) — click one to isolate it.
-    if (vtSelectedTitle && !units.some(function (u) { return u.members[0].key === vtSelectedTitle; })) {
-      vtSelectedTitle = null; // selection no longer valid under the current filters
-    }
-    var titleSection = document.getElementById("titleSection");
-    var titleFiltersEl = document.getElementById("titleFilters");
-    if (!units.length) {
-      titleSection.style.display = "none";
-    } else {
-      titleSection.style.display = "";
-      // Ordered by trader consensus (most one-sided / highest-conviction bets
-      // first), not by volume — this catalog is a "where do they agree most"
-      // shortcut, independent of the card list's own ordering below.
-      var titleCatalogUnits = units.slice().sort(function (a, b) {
-        return unitConsensusScore(b) - unitConsensusScore(a) || b.totalStake - a.totalStake;
-      });
-      var titleChipsHtml = '<button type="button" class="match-chip' + (!vtSelectedTitle ? " active" : "") + '" data-key="">Tous les paris</button>';
-      titleChipsHtml += titleCatalogUnits.map(function (u) {
-        var k = u.members[0].key;
-        return '<button type="button" class="match-chip' + (vtSelectedTitle === k ? " active" : "") + '" data-key="' + esc(k) + '">' +
-          esc(u.members[0].question) + '<span class="chip-count">' + fmtUSDCompact(u.totalStake) + '</span></button>';
-      }).join("");
-      titleFiltersEl.innerHTML = titleChipsHtml;
-      titleFiltersEl.querySelectorAll(".match-chip").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          vtSelectedTitle = btn.getAttribute("data-key") || null;
-          renderValueTrades();
-        });
-      });
-    }
-    var finalUnits = vtSelectedTitle ? units.filter(function (u) { return u.members[0].key === vtSelectedTitle; }) : units;
-
-    var selectedLabel = vtSelectedMatch ? matches.filter(function (m) { return m.key === vtSelectedMatch; })[0] : null;
     vtCountEl.textContent = finalUnits.length + " marché" + (finalUnits.length > 1 ? "s" : "") +
       " avec ≥" + vtMinTraders + " traders (sur " + allUnits.length + " au total)" +
       (vtMinReliableCount > 0 ? " · > " + vtMinReliableCount + " traders fiables" : "") +
       (vtMinStake > 0 ? " · mise " + (vtSelectedPlayers.length ? "de chaque joueur sélectionné " : "") + "≥ " + fmtUSD(vtMinStake) : "") +
-      (vtMinScore != null ? " · note ≥ " + vtMinScore : "") +
-      (selectedLabel ? " — " + selectedLabel.label : "");
+      (vtMinScore != null ? " · note ≥ " + vtMinScore : "");
     if (!finalUnits.length) {
       valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ').</div>';
       return;
@@ -3800,6 +3546,25 @@
     return { total: running, closedMarkets: closedMarkets, series: series, dailyDeltas: dailyDeltas, trades: trades };
   }
 
+  // Catmull-Rom -> cubic bezier through every real data point (no
+  // approximation of the values themselves, just a softer line between
+  // them) — falls back to plain straight segments under 3 points, where a
+  // curve isn't meaningful anyway.
+  function smoothPathD(pts) {
+    if (pts.length < 3) return pts.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(2) + "," + p.y.toFixed(2); }).join(" ");
+    var d = "M" + pts[0].x.toFixed(2) + "," + pts[0].y.toFixed(2);
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      var c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+      var c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+      d += " C" + c1x.toFixed(2) + "," + c1y.toFixed(2) + " " + c2x.toFixed(2) + "," + c2y.toFixed(2) + " " + p2.x.toFixed(2) + "," + p2.y.toFixed(2);
+    }
+    return d;
+  }
+  // Bumped once per chart render so two history charts open in the DOM at
+  // once (Mon historique + Mes Snapshots, tabs just hide with CSS, they
+  // don't unmount) never collide on the same <linearGradient id>.
+  var historyChartGradSeq = 0;
   function buildHistoryChartSvg(series) {
     if (series.length < 2) return "";
     var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
@@ -3815,7 +3580,8 @@
     var finalPos = series[n - 1].value >= 0;
     var lineColor = finalPos ? "#15803d" : "#b91c1c";
 
-    var pathD = series.map(function (p, i) { return (i === 0 ? "M" : "L") + x(i).toFixed(2) + "," + y(p.value).toFixed(2); }).join(" ");
+    var linePts = series.map(function (p, i) { return { x: x(i), y: y(p.value) }; });
+    var pathD = smoothPathD(linePts);
     var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + y(0).toFixed(2) + " L" + x(0).toFixed(2) + "," + y(0).toFixed(2) + " Z";
 
     var zeroY = y(0);
@@ -3849,10 +3615,22 @@
         'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
     }).join("");
 
+    historyChartGradSeq++;
+    var gradId = "histAreaGrad" + historyChartGradSeq;
+    var lastPt = linePts[linePts.length - 1];
+
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-        '<path d="' + areaD + '" fill="' + lineColor + '" fill-opacity="0.12" stroke="none"/>' +
+        '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.22"/>' +
+          '<stop offset="100%" stop-color="' + lineColor + '" stop-opacity="0"/>' +
+        '</linearGradient></defs>' +
+        '<path d="' + areaD + '" fill="url(#' + gradId + ')" stroke="none"/>' +
         zeroLine +
-        '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2"/>' +
+        '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2" stroke-linecap="round"/>' +
+        // Soft halo behind the final point — the running total as of right
+        // now — so the eye lands there first regardless of how the curve
+        // wanders before it.
+        '<circle cx="' + lastPt.x.toFixed(2) + '" cy="' + lastPt.y.toFixed(2) + '" r="11" fill="' + lineColor + '" opacity="0.16"/>' +
         yLabels + xLabels + points +
       '</svg>';
   }
@@ -4244,15 +4022,6 @@
     }
   }
   snapshotsContent.addEventListener("toggle", trackSnapshotToggle, true);
-  // Confrontations / Type de pari / Filtrer un pari précis start collapsed
-  // (see the "collapsed" class in the HTML) — these title bars are static
-  // (only their chip content inside gets rebuilt each cycle), so one listener
-  // bound here keeps working across every refresh.
-  document.querySelectorAll(".match-section-title").forEach(function (title) {
-    title.addEventListener("click", function () {
-      title.closest(".match-section").classList.toggle("collapsed");
-    });
-  });
   collapseAllBtn.addEventListener("click", function () {
     var anyExpanded = TRADERS.some(function (t) { return !traderCollapsed[t.name]; });
     TRADERS.forEach(function (t) { traderCollapsed[t.name] = anyExpanded; });
@@ -4320,6 +4089,12 @@
     if (distToggleBtn) {
       snapDistCollapsed = !snapDistCollapsed;
       renderSnapDistribution(loadSnapshots());
+      return;
+    }
+    var tierWinrateToggleBtn = e.target.closest ? e.target.closest("#tierWinrateToggleBtn") : null;
+    if (tierWinrateToggleBtn) {
+      tierWinrateCollapsed = !tierWinrateCollapsed;
+      renderTierWinrate(loadSnapshots());
       return;
     }
     var sortTh = e.target.closest ? e.target.closest("#snapStatsContent th.sortable") : null;
