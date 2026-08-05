@@ -151,9 +151,27 @@
     font-weight: 700;
     cursor: pointer;
     border-bottom: 2px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
   }
-  .tab-btn:hover { color: var(--text); }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn-icon { font-size: 13px; }
+  /* A quiet left-to-right fade (bold gold -> faint sand) across the five
+     tabs instead of five equal-weight labels — Value Trades and Mes
+     Snapshots are what this app is actually for, so they win the eye
+     first; the profile/history tabs are reference material, dialed back.
+     One warm hue family throughout (never a second color) so it reads as
+     a gradient, not a status signal — weight/size layers the "primary vs
+     quiet" grouping on top of that gradient. */
+  .tab-bar .tab-btn:nth-child(1) { color: #8a6a26; }
+  .tab-bar .tab-btn:nth-child(2) { color: #a37f34; }
+  .tab-bar .tab-btn:nth-child(3) { color: #8c7a5c; }
+  .tab-bar .tab-btn:nth-child(4) { color: #ab9a78; }
+  .tab-bar .tab-btn:nth-child(5) { color: #c9bb9e; }
+  .tab-btn-primary { font-weight: 800; font-size: 14.5px; }
+  .tab-btn-quiet { font-weight: 500; font-size: 12.5px; }
+  .tab-bar .tab-btn:hover { color: var(--text); }
+  .tab-bar .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
@@ -483,23 +501,7 @@
     font-weight: 700;
     box-shadow: 0 2px 10px rgba(27,51,88,.35);
   }
-  /* The four Value Trades filter rows (traders / players / stake / sport)
-     read as one connected chain of choices, each narrowing the last — a
-     slight step-by-step lightening of the same accent blue makes that
-     top-to-bottom order visible at a glance, without ever leaving "blue". */
-  #vtFilters button.active { background: #1b3358; box-shadow: 0 2px 10px rgba(27,51,88,.35); }
-  #playerFilters button.active { background: #234070; box-shadow: 0 2px 10px rgba(35,64,112,.35); }
-  #vtStakeFilters button.active { background: #2c4d88; box-shadow: 0 2px 10px rgba(44,77,136,.35); }
   #sportFilters button.active { background: #355aa0; box-shadow: 0 2px 10px rgba(53,90,160,.35); }
-  /* The stake row filters within whichever player(s) are picked just above —
-     nesting it tight under #playerFilters (reduced gap, indent, connector
-     line) shows that dependency instead of it reading as a fifth, unrelated
-     row of chips. */
-  #vtStakeFilters {
-    margin: -6px 0 14px 20px;
-    padding-left: 14px;
-    border-left: 2px solid var(--panel-border);
-  }
 
   .caveat-box {
     background: #221607;
@@ -799,7 +801,6 @@
 
   footer { margin-top: 26px; color: var(--text-dim); font-size: 11.5px; text-align: center; }
 
-  /* --- Mon historique --- */
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -858,8 +859,8 @@
      these are the ones you can click through to the underlying trade, so
      the hit target should be generous, not just the same small dot every
      other chart uses. */
-  .chart-pt-clickable { transition: r .15s ease, stroke-width .15s ease; r: 4; }
-  .chart-pt-clickable:hover { r: 11; stroke-width: 2.5; }
+  .chart-pt-clickable { transition: r .15s ease, stroke-width .15s ease; r: 5.5; }
+  .chart-pt-clickable:hover { r: 14; stroke-width: 3; }
   .chart-hint { font-size: 10.5px; color: var(--text-dim); text-align: right; margin: 2px 2px 0; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
@@ -961,50 +962,17 @@
   </div>
 
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="value-trades" type="button">Value Trades</button>
-    <button class="tab-btn" data-tab="recent-trades" type="button">Trades récents</button>
-    <button class="tab-btn" data-tab="trades-profiles" type="button">Trades par profils</button>
-    <button class="tab-btn" data-tab="stats-profiles" type="button">Statistiques profils</button>
-    <button class="tab-btn" data-tab="mon-historique" type="button">Mon historique</button>
-    <button class="tab-btn" data-tab="snapshots" type="button">Mes Snapshots</button>
+    <button class="tab-btn tab-btn-primary active" data-tab="value-trades" type="button"><span class="tab-btn-icon">💎</span>Value Trades</button>
+    <button class="tab-btn tab-btn-primary" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
+    <button class="tab-btn" data-tab="stats-profiles" type="button"><span class="tab-btn-icon">📊</span>Statistiques profils</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button"><span class="tab-btn-icon">👤</span>Trades par profils</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button"><span class="tab-btn-icon">🕓</span>Trades récents</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
     <h2 class="section-title">Value Trades <span class="count-pill" id="vtCount">—</span></h2>
     <div class="vt-top-row">
       <div class="vt-filters-col">
-        <div class="vt-filters" id="vtFilters">
-          <button data-min="4" type="button">≥ 4 traders</button>
-          <button data-min="5" class="active" type="button">≥ 5 traders</button>
-          <button data-min="6" type="button">≥ 6 traders</button>
-          <button data-min="7" type="button">≥ 7 traders</button>
-          <button data-min="8" type="button">≥ 8 traders</button>
-          <button data-min="9" type="button">≥ 9 traders</button>
-        </div>
-        <div class="vt-filters" id="playerFilters">
-          <button data-trader="" class="active" type="button">Tous les joueurs</button>
-          <button data-trader="JJJJ" type="button">JJJJ</button>
-          <button data-trader="WsCz" type="button">WsCz</button>
-          <button data-trader="predict847" type="button">predict847</button>
-          <button data-trader="swisstony" type="button">swisstony</button>
-          <button data-trader="RN1" type="button">RN1</button>
-          <button data-trader="zaizoibele" type="button">zaizoibele</button>
-          <button data-trader="VeryLucky888" type="button">VeryLucky888</button>
-        </div>
-        <div class="vt-filters" id="vtReliableFilters">
-          <button data-min="0" class="active" type="button">Peu importe (fiables)</button>
-          <button data-min="2" type="button">&gt; 2 fiables</button>
-          <button data-min="3" type="button">&gt; 3 fiables</button>
-          <button data-min="4" type="button">&gt; 4 fiables</button>
-          <button data-min="5" type="button">&gt; 5 fiables</button>
-          <button data-min="6" type="button">&gt; 6 fiables</button>
-        </div>
-        <div class="vt-filters" id="vtStakeFilters">
-          <button data-min="0" class="active" type="button">Toutes les mises</button>
-          <button data-min="1000" type="button">&gt; 1 000 $</button>
-          <button data-min="5000" type="button">&gt; 5 000 $</button>
-          <button data-min="10000" type="button">&gt; 10 000 $</button>
-        </div>
         <div class="vt-filters" id="sportFilters">
           <button data-sport="all" type="button">Tous les sports</button>
           <button data-sport="football" class="active" type="button">⚽ Football</button>
@@ -1023,48 +991,8 @@
     </div>
   </div>
 
-  <div class="tab-panel" id="tab-recent-trades">
-    <h2 class="section-title">Trades récents <span class="count-pill" id="rtCount">—</span></h2>
-    <div class="rt-filters" id="rtFilters">
-      <button data-min="0" class="active" type="button">Tous</button>
-      <button data-min="100" type="button">&gt; 100 $</button>
-      <button data-min="1000" type="button">&gt; 1 000 $</button>
-      <button data-min="10000" type="button">&gt; 10 000 $</button>
-    </div>
-    <div class="rt-filters" id="rtPlayerFilters"></div>
-    <div id="recentTradesContent" class="table-scroll">
-      <div class="loading-state">Chargement des trades récents…</div>
-    </div>
-  </div>
-
-  <div class="tab-panel" id="tab-trades-profiles">
-    <h2 class="section-title">Positions par profil</h2>
-    <div id="tradersContent">
-      <div class="loading-state">Chargement des positions…</div>
-    </div>
-  </div>
-
-  <div class="tab-panel" id="tab-stats-profiles">
-    <h2 class="section-title">Statistiques profils</h2>
-    <div class="empty-note" style="padding:8px 4px 18px;">Le PnL et le volume de trading exacts (identiques à ceux affichés sur les profils officiels) ne sont accessibles que via une API réservée à chaque plateforme — pas de calcul approximatif ici. Direction le profil officiel de chacun pour ces chiffres :</div>
-    <div id="statsProfilesContent"></div>
-  </div>
-
-  <div class="tab-panel" id="tab-mon-historique">
-    <h2 class="section-title">Mon historique <a id="histWalletLink" href="#" target="_blank" rel="noopener" class="trader-wallet" style="margin-left:10px;"></a></h2>
-    <div class="status-bar" style="margin-top:0;">
-      <span id="histStatusText">—</span>
-      <button id="histRefreshBtn" type="button">Rafraîchir</button>
-      <span class="error-msg" id="histErrorMsg"></span>
-    </div>
-    <div id="histContent">
-      <div class="loading-state">Ouvre cet onglet pour charger l'historique…</div>
-    </div>
-  </div>
-
   <div class="tab-panel" id="tab-snapshots">
     <h2 class="section-title">Mes Snapshots <span class="count-pill" id="snapCount">—</span></h2>
-    <div class="empty-note" style="padding:8px 4px 10px;">Value trades sauvegardés (bouton 📌 Snapshot sur une carte Value Trades) au moment où tu as misé. Marque le résultat une fois le marché réglé pour repérer les traders qui reviennent le plus souvent dans tes snapshots gagnants.</div>
     <div class="snap-sync-bar">
       <span id="snapSyncStatus" class="snap-sync-status">—</span>
       <button type="button" id="snapSyncRefreshBtn" class="snap-sync-link" title="Resynchroniser maintenant">🔄 Resynchro</button>
@@ -1083,6 +1011,33 @@
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-stats-profiles">
+    <h2 class="section-title">Statistiques profils</h2>
+    <div class="empty-note" style="padding:8px 4px 18px;">Le PnL et le volume de trading exacts (identiques à ceux affichés sur les profils officiels) ne sont accessibles que via une API réservée à chaque plateforme — pas de calcul approximatif ici. Direction le profil officiel de chacun pour ces chiffres :</div>
+    <div id="statsProfilesContent"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-trades-profiles">
+    <h2 class="section-title">Positions par profil</h2>
+    <div id="tradersContent">
+      <div class="loading-state">Chargement des positions…</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-recent-trades">
+    <h2 class="section-title">Trades récents <span class="count-pill" id="rtCount">—</span></h2>
+    <div class="rt-filters" id="rtFilters">
+      <button data-min="0" class="active" type="button">Tous</button>
+      <button data-min="100" type="button">&gt; 100 $</button>
+      <button data-min="1000" type="button">&gt; 1 000 $</button>
+      <button data-min="10000" type="button">&gt; 10 000 $</button>
+    </div>
+    <div class="rt-filters" id="rtPlayerFilters"></div>
+    <div id="recentTradesContent" class="table-scroll">
+      <div class="loading-state">Chargement des trades récents…</div>
     </div>
   </div>
 
@@ -1259,19 +1214,20 @@
   var tierWinrateCollapsed = true; // winrate-by-conviction gauge — same optional/collapsed-by-default pattern
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
+  // Fixed floor now (used to be an adjustable ">= N traders" filter row,
+  // removed from the UI to keep this tab down to just sport + timing) —
+  // 5 was the default it was already left on, so this keeps the same set
+  // of cards showing, just without the control to change it.
   var vtMinTraders = 5;
   // Dust floor for Value Trades: a position staking less than this is
   // dropped entirely in computeMarketGroups — not shown, not counted, not
   // added to totalStake — so a handful of $10 positions can't inflate "7
   // traders" or clutter a card with noise nobody cares about.
   var MIN_TRADER_STAKE = 300;
-  var vtMinStake = 0; // 0 = no floor; else each selected player individually needs this much staked (or the unit's total, if none selected)
-  var vtSelectedPlayers = []; // trader names currently toggled on (empty = all players)
-  // Independent of vtSelectedPlayers (that one narrows WHICH players must be
-  // in the unit; this one counts how many of the reliable list are, no
-  // matter which) — ">2" etc. means strictly more than that many.
+  // Curated "trusted" roster used by the note formula's reliableAgreement
+  // factor (see unitScoreInfo) — used to be also exposed as a "> N fiables"
+  // filter row here; that control is gone, RELIABLE_TRADERS itself stays.
   var RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "zaizoibele", "VeryLucky888"];
-  var vtMinReliableCount = 0; // 0 = no filter; else the unit needs strictly more than this many reliable-list traders
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
   var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart
@@ -1997,19 +1953,6 @@
     mergedSides.sort(function (a, b) { return b.traderCount - a.traderCount || b.stake - a.stake; });
     return mergedSides;
   }
-  function unitHasTrader(u, name) {
-    return u.members.some(function (g) {
-      return g.sides.some(function (s) {
-        return s.entries.some(function (e) { return e.trader === name; });
-      });
-    });
-  }
-  // How many of the RELIABLE_TRADERS list are in this unit, on any side —
-  // independent of which players (if any) are selected in "tous les joueurs".
-  function reliableTraderCountInUnit(u) {
-    return RELIABLE_TRADERS.reduce(function (n, name) { return n + (unitHasTrader(u, name) ? 1 : 0); }, 0);
-  }
-
   // ---------- value trade "note" (1-10) ----------
   // A single blended score meant to be retuned often as real results come
   // in — every knob that matters lives in these two objects, nothing else
@@ -2099,20 +2042,6 @@
     return '<span class="vt-score-badge' + (extraClass ? " " + extraClass : "") + '" style="background:' + scoreColor(score) +
       '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables">★ ' + score.toFixed(1) + '</span>';
   }
-  // A single trader's own stake within a unit, summed across their entries
-  // (they can appear on both sides, or on both linked platforms).
-  function traderStakeInUnit(u, name) {
-    var total = 0;
-    u.members.forEach(function (g) {
-      g.sides.forEach(function (s) {
-        s.entries.forEach(function (e) {
-          if (e.trader === name) total += e.stake;
-        });
-      });
-    });
-    return total;
-  }
-
   // Computes everything renderUnitCard needs, split into header (question +
   // leader badge) and body (balance bars + trader breakdown) so the header
   // can stay in the always-visible summary and just the body collapses,
@@ -2555,7 +2484,7 @@
     if (cls === "perte_nuance") return '<span class="snap-trader-badge snap-badge-perte-nuance">➖ Perte nuancée</span>';
     return "";
   }
-  // Overall results dashboard — same stat-tile look as Mon historique.
+  // Overall results dashboard.
   // Marking a snapshot's winning side (renderSnapshots below) feeds straight
   // into this, and into the per-trader table (renderSnapStats) — both just
   // aggregate classifyTraderInSnapshot across every trader in every snapshot.
@@ -2764,10 +2693,12 @@
       // by the cumulative line's overall trend — a losing trade near the
       // top of an otherwise-winning streak should still read as red.
       // Win/loss colors are deliberately far apart in BOTH hue and
-      // brightness (light saturated green vs dark red), not just hue —
-      // a same-lightness red/green pair is exactly what's hardest to
-      // tell apart (small dots, red-green color vision deficiency, glare).
-      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#10b981" : "#991b1b" });
+      // brightness (vivid green vs vivid red), not just hue — a
+      // same-lightness red/green pair is exactly what's hardest to tell
+      // apart (small dots, red-green color vision deficiency, glare).
+      // Pushed to near-neon (Material A400) on request for a bigger, more
+      // flashy win/loss read at a glance.
+      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#00e676" : "#ff1744" });
     });
     if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
@@ -3051,15 +2982,6 @@
   // distribution chart, which needs "how many pass at each threshold"
   // under the SAME other filters, not a totally independent count.
   function vtBaseUnitFilter(u) {
-    if (vtSelectedPlayers.length && !vtSelectedPlayers.every(function (name) { return unitHasTrader(u, name); })) return false;
-    if (vtMinReliableCount > 0 && reliableTraderCountInUnit(u) <= vtMinReliableCount) return false;
-    if (vtMinStake > 0) {
-      if (vtSelectedPlayers.length) {
-        if (!vtSelectedPlayers.every(function (name) { return traderStakeInUnit(u, name) >= vtMinStake; })) return false;
-      } else if (u.totalStake < vtMinStake) {
-        return false;
-      }
-    }
     if (sportFilter !== "all") {
       var football = isFootball(u.members[0].question, u.members[0].slug);
       if (sportFilter === "football" && !football) return false;
@@ -3133,8 +3055,6 @@
 
     vtCountEl.textContent = finalUnits.length + " marché" + (finalUnits.length > 1 ? "s" : "") +
       " avec ≥" + vtMinTraders + " traders (sur " + allUnits.length + " au total)" +
-      (vtMinReliableCount > 0 ? " · > " + vtMinReliableCount + " traders fiables" : "") +
-      (vtMinStake > 0 ? " · mise " + (vtSelectedPlayers.length ? "de chaque joueur sélectionné " : "") + "≥ " + fmtUSD(vtMinStake) : "") +
       (vtMinScore != null ? " · note ≥ " + vtMinScore : "");
     if (!finalUnits.length) {
       valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ').</div>';
@@ -3425,169 +3345,9 @@
     wireInteractions();
   }
 
-  // ---------- Mon historique (single wallet, own trade history + PnL chart) ----------
-  var HIST_WALLET = "0x60BA5423e4BFaBBA93C5dA112413363D193fC78C";
-  var histLoaded = false;
-  var histStatusText = document.getElementById("histStatusText");
-  var histErrorMsg = document.getElementById("histErrorMsg");
-  var histRefreshBtn = document.getElementById("histRefreshBtn");
-  var histContent = document.getElementById("histContent");
-  var histWalletLink = document.getElementById("histWalletLink");
-  histWalletLink.href = "https://predict.fun/portfolio/" + HIST_WALLET;
-  histWalletLink.textContent = HIST_WALLET.slice(0, 6) + "…" + HIST_WALLET.slice(-4);
-
   function fmtUSDSigned(n) { return (n >= 0 ? "+" : "") + fmtUSD(n); }
   function fmtDateShort(d) { return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }); }
   function fmtDateLong(d) { return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }); }
-  function fmtDateTime(d) { return d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
-  function histDayKey(d) { return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
-
-  async function fetchAllMatchesForWallet(address) {
-    var all = [];
-    var after = null;
-    for (var i = 0; i < 40; i++) {
-      var url = PREDICT_MATCHES_BASE + "?signerAddress=" + encodeURIComponent(address) + "&first=100" +
-        (after ? "&after=" + encodeURIComponent(after) : "");
-      var res = await throttledFetch(url, { headers: { "x-api-key": API_KEY } });
-      if (!res.ok) {
-        var body = "";
-        try { body = await res.text(); } catch (e) {}
-        throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
-      }
-      var json = await res.json();
-      var data = json.data || [];
-      all = all.concat(data);
-      if (!json.cursor || data.length === 0) break;
-      after = json.cursor;
-    }
-    return all;
-  }
-
-  function normalizeHistoryMatch(match) {
-    var leg = matchLegForTrader(match, HIST_WALLET);
-    if (!leg) return null;
-    var market = match.market || {};
-    var outcome = leg.outcome || {};
-    var shares = amountToFloat(leg.amount, 18);
-    var price = amountToFloat(leg.price, 18);
-    var isBuy = leg.quoteType === "Bid";
-    return {
-      time: new Date(match.executedAt),
-      outcomeKey: market.id + "|" + outcome.indexSet,
-      question: market.question || market.title || "—",
-      categorySlug: market.categorySlug,
-      sideName: outcome.name || "—",
-      status: outcome.status,
-      isBuy: isBuy,
-      price: price,
-      shares: shares,
-      amount: shares * price,
-      cashFlow: isBuy ? -(shares * price) : (shares * price)
-    };
-  }
-
-  // A BUY is a cash<->asset swap, not a gain or loss — it must NOT show up
-  // as a dip on the chart. PnL is only realized (a) on a SELL, measured
-  // against the running average cost basis of the shares just sold, or
-  // (b) once at resolution, for whatever shares are still held then
-  // (redemption value vs. their cost basis), using the WON/LOST status
-  // embedded in the outcome. No fee accounting — this is a reconstruction,
-  // not the official ledger (see caveat-box below). Per-market totals are
-  // unaffected by this vs. a naive cash-flow sum (it's the same total,
-  // conservation of cost basis) — only which DAY each dollar is attributed
-  // to changes, which is the whole point: holding an open position must
-  // read as "unrealized, unknown yet", not as an instant loss.
-  function buildHistoryPnl(trades) {
-    trades.sort(function (a, b) { return a.time - b.time; });
-    var EPS = 0.01;
-    var groups = {};
-    var events = []; // realized PnL only: sells (immediate) + final resolution of any leftover
-    trades.forEach(function (t) {
-      var g = groups[t.outcomeKey];
-      if (!g) {
-        g = groups[t.outcomeKey] = {
-          sharesHeld: 0, costBasis: 0, realizedPnl: 0, buyTotal: 0,
-          lastTime: t.time, status: t.status,
-          question: t.question, sideName: t.sideName, categorySlug: t.categorySlug,
-          days: {}
-        };
-      }
-      g.status = t.status;
-      if (t.time > g.lastTime) g.lastTime = t.time;
-      // Per-day buy/sell breakdown — shown in each market's "Détail" panel
-      // as context, independent of how PnL itself gets attributed below.
-      var dk = histDayKey(t.time);
-      var dg = g.days[dk] || (g.days[dk] = { day: new Date(t.time), buy: 0, sell: 0 });
-      if (t.isBuy) {
-        g.sharesHeld += t.shares;
-        g.costBasis += t.amount;
-        g.buyTotal += t.amount;
-        dg.buy += t.amount;
-      } else {
-        var sellShares = Math.min(t.shares, g.sharesHeld);
-        var avgCost = g.sharesHeld > EPS ? (g.costBasis / g.sharesHeld) : 0;
-        var costOfSold = sellShares * avgCost;
-        var realized = t.amount - costOfSold;
-        events.push({ time: t.time, delta: realized });
-        g.realizedPnl += realized;
-        g.sharesHeld -= sellShares;
-        g.costBasis -= costOfSold;
-        dg.sell += t.amount;
-      }
-      groups[t.outcomeKey] = g;
-    });
-
-    var closedMarkets = [];
-    Object.keys(groups).forEach(function (key) {
-      var g = groups[key];
-      var resolved = g.status === "WON" || g.status === "LOST";
-      if (!resolved) return;
-      var redemption = 0;
-      if (g.sharesHeld > EPS) {
-        redemption = g.status === "WON" ? g.sharesHeld : 0;
-        var finalPnl = redemption - g.costBasis;
-        events.push({ time: g.lastTime, delta: finalPnl });
-        g.realizedPnl += finalPnl;
-      }
-      var timeline = Object.keys(g.days).sort().map(function (k) { return g.days[k]; });
-      closedMarkets.push({
-        question: g.question, sideName: g.sideName, categorySlug: g.categorySlug,
-        won: g.status === "WON", lastTime: g.lastTime,
-        buyTotal: g.buyTotal, pnl: g.realizedPnl,
-        timeline: timeline, redemption: redemption
-      });
-    });
-    closedMarkets.sort(function (a, b) { return b.lastTime - a.lastTime; });
-    events.sort(function (a, b) { return a.time - b.time; });
-
-    var running = 0;
-    var daily = {}; // dayKey -> cumulative value at end of that day
-    events.forEach(function (e) {
-      running += e.delta;
-      daily[histDayKey(e.time)] = running;
-    });
-
-    // Forward-fill a continuous daily series from the first event to today,
-    // so the line reaches "now" instead of stopping at the last trade — and
-    // record each day's OWN delta (not cumulative) for the side-by-side list.
-    var series = [];
-    var dailyDeltas = [];
-    if (events.length) {
-      var cursor = new Date(events[0].time); cursor.setHours(0, 0, 0, 0);
-      var end = new Date(); end.setHours(0, 0, 0, 0);
-      var last = 0;
-      while (cursor <= end) {
-        var k = histDayKey(cursor);
-        var prev = last;
-        if (k in daily) last = daily[k];
-        series.push({ date: new Date(cursor), value: last });
-        dailyDeltas.push({ date: new Date(cursor), delta: last - prev });
-        cursor.setDate(cursor.getDate() + 1);
-      }
-    }
-
-    return { total: running, closedMarkets: closedMarkets, series: series, dailyDeltas: dailyDeltas, trades: trades };
-  }
 
   // Catmull-Rom -> cubic bezier through every real data point (no
   // approximation of the values themselves, just a softer line between
@@ -3604,9 +3364,9 @@
     }
     return d;
   }
-  // Bumped once per chart render so two history charts open in the DOM at
-  // once (Mon historique + Mes Snapshots, tabs just hide with CSS, they
-  // don't unmount) never collide on the same <linearGradient id>.
+  // Bumped once per chart render so a re-render never reuses a
+  // <linearGradient id> still referenced by the previous render's markup
+  // during the brief window before innerHTML replaces it.
   var historyChartGradSeq = 0;
   function buildHistoryChartSvg(series) {
     if (series.length < 2) return "";
@@ -3642,13 +3402,10 @@
       '<text x="' + (padL - 8) + '" y="' + (y(max) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(max) + '</text>' +
       '<text x="' + (padL - 8) + '" y="' + (y(min) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(min) + '</text>';
 
-    // Optional per-point id (only the snapshots PnL chart sets one) makes
-    // that point clickable — see wireSnapPnlChartClicks — without changing
-    // anything for other callers (Mon historique) that don't set it.
-    // Optional per-point color (pointColor) lets a caller mark each dot by
-    // its OWN outcome (a snapshot that won vs one that lost) instead of
-    // every dot inheriting the line's one aggregate color; falls back to
-    // lineColor when not set, so Mon historique's chart is unaffected.
+    // Per-point id makes that point clickable — see wireSnapPnlChartClicks.
+    // Per-point color (pointColor) marks each dot by its OWN outcome (a
+    // snapshot that won vs one that lost) instead of every dot inheriting
+    // the line's one aggregate color; falls back to lineColor when unset.
     var points = series.map(function (p, i) {
       // A light halo around each dot keeps the win/loss color legible
       // against the area fill and connecting line underneath it, and
@@ -3731,125 +3488,6 @@
     vtScatterTooltip.classList.remove("show");
   });
 
-  function renderHistoryStats(pnl, openPositions) {
-    var won = pnl.closedMarkets.filter(function (m) { return m.won; }).length;
-    var lost = pnl.closedMarkets.length - won;
-    var winRate = pnl.closedMarkets.length ? (won / pnl.closedMarkets.length * 100) : 0;
-    var volume = pnl.trades.reduce(function (s, t) { return s + t.amount; }, 0);
-    var openValue = openPositions.reduce(function (s, p) { return s + (parseFloat(p.valueUsd) || 0); }, 0);
-    var range = pnl.trades.length ? [pnl.trades[0].time, pnl.trades[pnl.trades.length - 1].time] : null;
-
-    var tiles = [
-      { label: "PnL réalisé", value: fmtUSDSigned(pnl.total), cls: pnl.total >= 0 ? "pos" : "neg" },
-      { label: "Marchés gagnés / perdus", value: won + " / " + lost, sub: winRate.toFixed(0) + "% de réussite" },
-      { label: "Volume tradé", value: fmtUSD(volume) },
-      { label: "Nombre de trades", value: String(pnl.trades.length) }
-    ];
-    if (range) tiles.push({ label: "Période", value: fmtDateShort(range[0]) + " → " + fmtDateShort(range[1]) });
-    if (openPositions.length) tiles.push({ label: "Positions ouvertes", value: openPositions.length + " (" + fmtUSD(openValue) + ")" });
-
-    return '<div class="stat-grid">' + tiles.map(function (t) {
-      return '<div class="stat-tile"><div class="stat-label">' + esc(t.label) + '</div>' +
-        '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div>' +
-        (t.sub ? '<div class="stat-sub">' + esc(t.sub) + '</div>' : "") + '</div>';
-    }).join("") + '</div>';
-  }
-
-  // Day-by-day PnL delta, side-by-side with the chart, so its trend can be
-  // checked line-by-line against the cumulative curve instead of just trusted.
-  function renderHistoryDailyList(dailyDeltas) {
-    if (!dailyDeltas.length) return "";
-    var rows = dailyDeltas.slice().reverse().map(function (d) {
-      var flat = Math.abs(d.delta) < 0.005;
-      var cls = flat ? "flat" : (d.delta >= 0 ? "pnl-pos" : "pnl-neg");
-      return '<div class="daily-pnl-row"><span class="d">' + esc(fmtDateShort(d.date)) + '</span>' +
-        '<span class="v ' + cls + '">' + esc(flat ? "—" : fmtUSDSigned(d.delta)) + '</span></div>';
-    }).join("");
-    return '<div class="daily-pnl-box"><div class="daily-pnl-title">PnL du jour</div>' + rows + '</div>';
-  }
-
-  function renderHistoryTimeline(m) {
-    var lines = m.timeline.map(function (d) {
-      var parts = [];
-      if (d.buy > 0) parts.push('achat <b>' + fmtUSD(d.buy) + '</b>');
-      if (d.sell > 0) parts.push('vente <b>' + fmtUSD(d.sell) + '</b>');
-      return '<div>' + esc(fmtDateShort(d.day)) + ' — ' + parts.join(', ') + '</div>';
-    }).join("");
-    var resLine = m.won
-      ? '<div class="redemption">Résolution : gagné → +' + esc(fmtUSD(m.redemption)) + '</div>'
-      : '<div class="redemption">Résolution : perdu → +0,00 $</div>';
-    return '<div class="detail-timeline">' + lines + resLine + '</div>';
-  }
-
-  function renderHistoryClosedTable(closedMarkets) {
-    if (!closedMarkets.length) return '<div class="empty-state">Aucun marché clôturé pour le moment.</div>';
-    var rows = closedMarkets.map(function (m, i) {
-      var url = m.categorySlug ? "https://predict.fun/market/" + m.categorySlug : "https://predict.fun";
-      var roi = m.buyTotal > 0 ? (m.pnl / m.buyTotal * 100) : 0;
-      var rid = "hcm_" + i + "_" + safeId(m.question).slice(0, 24);
-      return '<tr class="market-row" data-target="' + rid + '">' +
-        '<td class="rt-time">' + esc(fmtDateTime(m.lastTime)) + '</td>' +
-        '<td class="market-title"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(m.question) + '</a></td>' +
-        '<td><span class="side" style="color:' + sideColorFor(m.sideName) + ';background:' + sideColorFor(m.sideName) + '1f">' + esc(m.sideName) + '</span></td>' +
-        '<td><span class="result-badge ' + (m.won ? "won" : "lost") + '" title="Issue finale du marché — le PnL peut différer si tu es sorti avant la résolution">' + (m.won ? "Gagné" : "Perdu") + '</span></td>' +
-        '<td class="num">' + esc(fmtUSD(m.buyTotal)) + '</td>' +
-        '<td class="num ' + (m.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(m.pnl)) + '</td>' +
-        '<td class="num">' + esc((roi >= 0 ? "+" : "") + roi.toFixed(0) + "%") + '</td>' +
-        '<td><button class="detail-toggle" type="button" data-target="' + rid + '">Détail</button></td>' +
-      '</tr>' +
-      '<tr class="detail-row collapsed" id="' + rid + '"><td colspan="8">' + renderHistoryTimeline(m) + '</td></tr>';
-    }).join("");
-    return '<div class="table-scroll"><table>' +
-      '<thead><tr>' +
-        '<th>Clôturé le</th><th>Marché</th><th>Camp</th><th>Résultat</th>' +
-        '<th class="num">Mise</th><th class="num">PnL</th><th class="num">ROI</th><th></th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
-  }
-
-  function renderHistory(pnl, openPositions) {
-    var chartSvg = buildHistoryChartSvg(pnl.series);
-    var html =
-      renderHistoryStats(pnl, openPositions) +
-      '<h2 class="section-title">Évolution du PnL</h2>' +
-      '<div class="caveat-box"><b>Reconstruction locale, non officielle.</b> Un achat n\'est jamais compté comme une perte : le PnL n\'est réalisé qu\'à la revente ou à la résolution du marché (WON/LOST), par rapport au prix d\'achat moyen — une position encore ouverte reste neutre sur la courbe. Hors frais de plateforme. Peut différer légèrement du chiffre affiché sur le profil predict.fun.</div>' +
-      '<div class="evolution-row">' +
-        '<div class="chart-box" id="histChartBox">' + (chartSvg || '<div class="empty-state">Pas assez de données pour tracer une courbe.</div>') + '</div>' +
-        renderHistoryDailyList(pnl.dailyDeltas) +
-      '</div>' +
-      '<h2 class="section-title">Marchés clôturés <span class="count-pill">' + pnl.closedMarkets.length + '</span></h2>' +
-      renderHistoryClosedTable(pnl.closedMarkets);
-    histContent.innerHTML = html;
-    var chartBox = document.getElementById("histChartBox");
-    if (chartBox) wireHistoryChartTooltip(chartBox);
-    histContent.querySelectorAll(".detail-toggle").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var row = document.getElementById(btn.getAttribute("data-target"));
-        if (row) row.classList.toggle("collapsed");
-      });
-    });
-  }
-
-  async function loadHistorique() {
-    histStatusText.textContent = "Chargement…";
-    histErrorMsg.textContent = "";
-    histRefreshBtn.disabled = true;
-    try {
-      var results = await Promise.all([fetchAllMatchesForWallet(HIST_WALLET), fetchAllPredictPositions(HIST_WALLET)]);
-      var trades = results[0].map(normalizeHistoryMatch).filter(Boolean);
-      var openPositions = results[1];
-      var pnl = buildHistoryPnl(trades);
-      renderHistory(pnl, openPositions);
-      histStatusText.textContent = "À jour — " + new Date().toLocaleTimeString("fr-FR");
-      histLoaded = true;
-    } catch (err) {
-      histStatusText.textContent = "Erreur";
-      histErrorMsg.textContent = "Échec du chargement : " + err.message;
-      console.error(err);
-    }
-    histRefreshBtn.disabled = false;
-  }
-  histRefreshBtn.addEventListener("click", loadHistorique);
-
   // ---------- tabs ----------
   document.querySelectorAll(".tab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -3857,7 +3495,6 @@
       document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
       btn.classList.add("active");
       document.getElementById("tab-" + btn.getAttribute("data-tab")).classList.add("active");
-      if (btn.getAttribute("data-tab") === "mon-historique" && !histLoaded) loadHistorique();
       // Switching INTO Mes Snapshots didn't itself re-render anything — the
       // list shown was whatever the last refresh cycle produced while that
       // tab happened to already be active (see the snapTab check in
@@ -3875,53 +3512,6 @@
       btn.classList.add("active");
       rtMinValue = parseFloat(btn.getAttribute("data-min")) || 0;
       renderRecentTrades();
-    });
-  });
-  var vtFilters = document.getElementById("vtFilters");
-  vtFilters.querySelectorAll("button").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      vtFilters.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      vtMinTraders = parseFloat(btn.getAttribute("data-min")) || 5;
-      renderValueTrades();
-    });
-  });
-  var vtReliableFiltersEl = document.getElementById("vtReliableFilters");
-  vtReliableFiltersEl.querySelectorAll("button").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      vtReliableFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      vtMinReliableCount = parseFloat(btn.getAttribute("data-min")) || 0;
-      renderValueTrades();
-    });
-  });
-  var vtStakeFiltersEl = document.getElementById("vtStakeFilters");
-  vtStakeFiltersEl.querySelectorAll("button").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      vtStakeFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      vtMinStake = parseFloat(btn.getAttribute("data-min")) || 0;
-      renderValueTrades();
-    });
-  });
-  var playerFiltersEl = document.getElementById("playerFilters");
-  function syncPlayerFilterButtons() {
-    playerFiltersEl.querySelectorAll("button").forEach(function (b) {
-      var name = b.getAttribute("data-trader");
-      b.classList.toggle("active", name ? vtSelectedPlayers.indexOf(name) !== -1 : vtSelectedPlayers.length === 0);
-    });
-  }
-  playerFiltersEl.querySelectorAll("button").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var name = btn.getAttribute("data-trader");
-      if (!name) {
-        vtSelectedPlayers = []; // "Tous les joueurs" resets the selection
-      } else {
-        var idx = vtSelectedPlayers.indexOf(name);
-        if (idx === -1) vtSelectedPlayers.push(name); else vtSelectedPlayers.splice(idx, 1);
-      }
-      syncPlayerFilterButtons();
-      renderValueTrades();
     });
   });
   var sportFiltersEl = document.getElementById("sportFilters");
