@@ -27,6 +27,16 @@ const NOTE_THRESHOLD = 6; // alert when a trade's note is strictly greater than 
 // counts/totalStake entirely before scoring, mirroring positions.html's
 // own MIN_TRADER_STAKE so a handful of $10 positions can't inflate a note.
 const MIN_TRADER_STAKE = 300;
+// On the site, the note is only ever computed for markets that already
+// cleared the "Value Trade" bar (positions.html's fixed vtMinTraders — see
+// its own comment: ">=4 traders is the lowest selectable floor", default
+// left on 5). Skipping that pre-filter here scored every incidental 1-3
+// trader overlap across the full 26-trader roster too — those get
+// volumeConcentration=1.0 for free (single-sided, no opposing tracked
+// activity, which is the overwhelming common case) and can clear
+// NOTE_THRESHOLD on stake alone, which is how one run turned into a flood
+// of alerts instead of the handful of genuine ones the site itself shows.
+const MIN_UNIT_TRADERS = 5;
 const STATE_FILE = path.join(__dirname, "state.json");
 
 // Same roster as positions.html's TRADERS — the note formula's traderCount/
@@ -324,6 +334,8 @@ function findAlerts(positions) {
     consumed[g.key] = true;
     if (partner) consumed[partner.key] = true;
     const members = partner ? [g, partner] : [g];
+    const traderCount = members.reduce((s, m) => s + m.traderSet.size, 0);
+    if (traderCount < MIN_UNIT_TRADERS) return;
 
     const unit = computeUnit(members);
     if (!unit.leader || unit.note <= NOTE_THRESHOLD) return;

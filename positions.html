@@ -156,20 +156,17 @@
     gap: 5px;
   }
   .tab-btn-icon { font-size: 13px; }
-  /* A quiet left-to-right fade (bold gold -> faint sand) across the five
-     tabs instead of five equal-weight labels — Value Trades and Mes
-     Snapshots are what this app is actually for, so they win the eye
-     first; the profile/history tabs are reference material, dialed back.
-     One warm hue family throughout (never a second color) so it reads as
-     a gradient, not a status signal — weight/size layers the "primary vs
-     quiet" grouping on top of that gradient. */
+  /* Value Trades and Mes Snapshots are what this app is actually for, so
+     they win the eye first (bold gold, identical weight/size on both); the
+     two reference/profile tabs step down together to one flat, deliberate
+     mid-gray (not the pale sand tint that would fade next to everything
+     else) — a clear break from the gold family on purpose, not a third
+     gradient stop, so "these two are secondary" reads as one grouping. */
   .tab-bar .tab-btn:nth-child(1) { color: #8a6a26; }
   .tab-bar .tab-btn:nth-child(2) { color: #a37f34; }
   .tab-bar .tab-btn:nth-child(3) { color: #8c7a5c; }
-  .tab-bar .tab-btn:nth-child(4) { color: #ab9a78; }
-  .tab-bar .tab-btn:nth-child(5) { color: #c9bb9e; }
   .tab-btn-primary { font-weight: 800; font-size: 14.5px; }
-  .tab-btn-quiet { font-weight: 500; font-size: 12.5px; }
+  .tab-bar .tab-btn.tab-btn-quiet { color: #6b6b6b; font-weight: 500; font-size: 12.5px; }
   .tab-bar .tab-btn:hover { color: var(--text); }
   .tab-bar .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-panel { display: none; }
@@ -429,10 +426,11 @@
   .vt-roi b { color: var(--green); }
   .vt-entry-diff { font-size: 12px; font-weight: 700; }
 
-  /* Filter chip rows on the left, the note chart on the right — wraps to
-     stacked below the filters on narrow screens instead of squeezing. */
-  .vt-top-row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
-  .vt-filters-col { flex: 1 1 420px; min-width: 0; }
+  /* Title and note chart share one row (chart vertically centered against
+     the title instead of trailing a full row below it); filter chips move
+     to their own full-width row underneath. Wraps on narrow screens. */
+  .vt-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 22px 0 12px; }
+  .vt-header-row .section-title { margin: 0; flex: 1 1 auto; }
   /* This box is the first thing that sets the tone on the whole page, so it
      gets its own treatment: a thin conic red->gold->green ring (the same
      hues the notes themselves use) plus a soft matching glow — an "LED
@@ -962,29 +960,27 @@
   </div>
 
   <div class="tab-bar">
-    <button class="tab-btn tab-btn-primary active" data-tab="value-trades" type="button"><span class="tab-btn-icon">💎</span>Value Trades</button>
+    <button class="tab-btn tab-btn-primary active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
     <button class="tab-btn" data-tab="stats-profiles" type="button"><span class="tab-btn-icon">📊</span>Statistiques profils</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button"><span class="tab-btn-icon">👤</span>Trades par profils</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button"><span class="tab-btn-icon">🕓</span>Trades récents</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
-    <h2 class="section-title">Value Trades <span class="count-pill" id="vtCount">—</span></h2>
-    <div class="vt-top-row">
-      <div class="vt-filters-col">
-        <div class="vt-filters" id="sportFilters">
-          <button data-sport="all" type="button">Tous les sports</button>
-          <button data-sport="football" class="active" type="button">⚽ Football</button>
-          <button data-sport="other" type="button">Autres</button>
-        </div>
-        <div class="vt-filters" id="timingFilters">
-          <button data-timing="all" class="active" type="button">Tous</button>
-          <button data-timing="live" type="button">🔴 En cours</button>
-          <button data-timing="upcoming" type="button">📅 À venir</button>
-        </div>
-      </div>
+    <div class="vt-header-row">
+      <h2 class="section-title">Value Trades</h2>
       <div class="score-tier-box" id="vtTierChart"></div>
+    </div>
+    <div class="vt-filters" id="sportFilters">
+      <button data-sport="all" type="button">Tous les sports</button>
+      <button data-sport="football" class="active" type="button">⚽ Football</button>
+      <button data-sport="other" type="button">Autres</button>
+    </div>
+    <div class="vt-filters" id="timingFilters">
+      <button data-timing="all" class="active" type="button">Tous</button>
+      <button data-timing="live" type="button">🔴 En cours</button>
+      <button data-timing="upcoming" type="button">📅 À venir</button>
     </div>
     <div id="valueTradesContent" class="value-trades-box">
       <div class="loading-state">Analyse des positions communes…</div>
@@ -1132,7 +1128,6 @@
   var refreshBtn = document.getElementById("refreshBtn");
   var collapseAllBtn = document.getElementById("collapseAllBtn");
   var valueTradesContent = document.getElementById("valueTradesContent");
-  var vtCountEl = document.getElementById("vtCount");
   var snapshotsContent = document.getElementById("snapshotsContent");
   var snapCountEl = document.getElementById("snapCount");
   var snapStatsContent = document.getElementById("snapStatsContent");
@@ -3053,9 +3048,6 @@
 
     var finalUnits = traderFiltered;
 
-    vtCountEl.textContent = finalUnits.length + " marché" + (finalUnits.length > 1 ? "s" : "") +
-      " avec ≥" + vtMinTraders + " traders (sur " + allUnits.length + " au total)" +
-      (vtMinScore != null ? " · note ≥ " + vtMinScore : "");
     if (!finalUnits.length) {
       valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ').</div>';
       return;
