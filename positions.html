@@ -643,6 +643,9 @@
   .snap-dist-wrap { margin-bottom: 16px; max-height: none; }
   .snap-dist-subtitle { font-size: 11px; font-style: italic; color: var(--text-dim); padding: 10px 12px 0; }
   .snap-dist-empty { color: var(--text-dim); }
+  .snap-dist-cell { cursor: pointer; transition: background-color .15s ease; }
+  .snap-dist-cell:hover { background: var(--row-hover); }
+  .snap-dist-cell.active { background: color-mix(in srgb, var(--gold) 30%, transparent); font-weight: 700; }
   /* Flat-$1000-per-bet simulation, one bold pill per snapshot — a solid
      fill (not just tinted text) so it stands out even against the card's
      own green/red wash. */
@@ -2572,6 +2575,17 @@
       else betLoss++;
     });
     var betWinRate = (betWin + betLoss) > 0 ? (betWin / (betWin + betLoss) * 100) : null;
+    // Average leader price at snapshot time, same source the odds table and
+    // the flat-stake simulation both key off (snapLeaderPrice) — a quick
+    // read on whether the trades being tracked skew toward heavy favorites
+    // or long shots.
+    var priceSum = 0, priceCount = 0;
+    list.forEach(function (snap) {
+      if (!snap.winningSide) return;
+      var p = snapLeaderPrice(snap);
+      if (p != null) { priceSum += p * 100; priceCount++; }
+    });
+    var avgCote = priceCount > 0 ? (priceSum / priceCount) : null;
     // Same flat HYPOTHETICAL_FLAT_STAKE-per-bet simulation used everywhere
     // else on this tab (tier gauge, odds table), rolled up across every
     // decided snapshot — the headline number for "is this actually profitable".
@@ -2583,7 +2597,7 @@
     var globalRoi = globalFlatCount > 0 ? (globalFlatPnl / (globalFlatCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
     var globalTiles = [
       { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
-      { label: "Gagné / Perdu", value: betWin + " / " + betLoss, cls: betWin >= betLoss ? "pos" : "neg" },
+      { label: "Cote moyenne", value: avgCote == null ? "—" : avgCote.toFixed(1) + "¢", title: "Prix moyen du camp leader au moment du snapshot, sur les snapshots décidés." },
       // "ROI moyen par pari", not "ROI global" — this is the AVERAGE return
       // of one flat HYPOTHETICAL_FLAT_STAKE bet, not a % of some pooled
       // total stake. Reads as "20% of $1000 = $200" otherwise, which is
@@ -2663,6 +2677,22 @@
   // badge in the winrate gauge to isolate that tier, click again to drop it;
   // several can be active at once). Empty = show every snapshot, the default.
   var tierCardFilter = [];
+  // Single cote-bracket (+ optional tier) cell clicked in the odds x
+  // conviction table below — { bracket: [min,max], tier: tierName|null },
+  // tier null meaning the bracket's "Tous" column. Only one active at a
+  // time (unlike tierCardFilter above, which is multi-select) since a cell
+  // is already a precise intersection. Clicking the same active cell again
+  // clears it. Combined with tierCardFilter via AND, not replacing it.
+  var snapDistCellFilter = null;
+  function snapMatchesDistCell(s, bracket, tier) {
+    if (!s.winningSide || !s.leaderName) return false;
+    var p = snapLeaderPrice(s);
+    if (p == null) return false;
+    var cents = p * 100;
+    if (!(cents >= bracket[0] && (bracket[1] === 100 ? cents <= bracket[1] : cents < bracket[1]))) return false;
+    if (tier && s.confidence !== tier) return false;
+    return true;
+  }
   function renderTierWinrate(list) {
     if (!tierWinrateContent) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
@@ -2818,10 +2848,16 @@
   function renderSnapDistribution(list) {
     if (!snapDistContent) return;
     var decided = list.filter(function (s) { return !!s.winningSide && s.leaderName; });
-    function cell(items) {
-      if (!items.length) return '<span class="snap-dist-empty">—</span>';
+    // Each non-empty win/loss cell doubles as a filter trigger — click it to
+    // narrow the snapshot cards below to exactly that bracket (+ tier, for
+    // anything but the "Tous" column); click the now-active cell again to
+    // clear it. Empty cells ("—", nothing to isolate) stay inert.
+    function cell(items, bracket, tier) {
+      if (!items.length) return '<td class="num"><span class="snap-dist-empty">—</span></td>';
       var win = items.filter(function (s) { return s.leaderName === s.winningSide; }).length;
-      return '<span class="pnl-pos">' + win + '</span> / <span class="pnl-neg">' + (items.length - win) + '</span>';
+      var isActive = !!snapDistCellFilter && snapDistCellFilter.bracket[0] === bracket[0] && snapDistCellFilter.bracket[1] === bracket[1] && snapDistCellFilter.tier === tier;
+      return '<td class="num snap-dist-cell' + (isActive ? ' active' : '') + '" data-odds-min="' + bracket[0] + '" data-odds-max="' + bracket[1] + '" data-tier="' + esc(tier || "") + '" title="Filtrer les snapshots sur ' + esc(tier || "toutes conviction") + ' · ' + bracket[0] + '–' + bracket[1] + '¢">' +
+        '<span class="pnl-pos">' + win + '</span> / <span class="pnl-neg">' + (items.length - win) + '</span></td>';
     }
     // Same flat HYPOTHETICAL_FLAT_STAKE-per-bet simulation as the tier
     // winrate gauge above, cut by cote bracket instead of by conviction —
@@ -2845,17 +2881,20 @@
         return cents >= b[0] && (b[1] === 100 ? cents <= b[1] : cents < b[1]);
       });
       var tierCells = CONFIDENCE_TIERS.map(function (tier) {
-        return '<td class="num">' + cell(inBucket.filter(function (s) { return s.confidence === tier; })) + '</td>';
+        return cell(inBucket.filter(function (s) { return s.confidence === tier; }), b, tier);
       }).join("");
-      return '<tr><td>' + b[0] + '–' + b[1] + '¢</td><td class="num">' + cell(inBucket) + '</td>' + tierCells + '<td class="num">' + roiCell(inBucket) + '</td></tr>';
+      return '<tr><td>' + b[0] + '–' + b[1] + '¢</td>' + cell(inBucket, b, null) + tierCells + '<td class="num">' + roiCell(inBucket) + '</td></tr>';
     }).join("");
     var headCells = '<th>Cote</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("") +
       '<th class="num" title="Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' misés à plat sur chaque snapshot décidé de la tranche, au prix du camp leader au moment du snapshot">ROI</th>';
+    var cellFilterNoteHtml = snapDistCellFilter
+      ? '<div class="tier-wr-note">Filtré sur <b>' + esc(snapDistCellFilter.tier || "Tous") + ' · ' + snapDistCellFilter.bracket[0] + '–' + snapDistCellFilter.bracket[1] + '¢</b> — reclique la cellule active pour l\'enlever.</div>'
+      : '';
     snapDistContent.innerHTML =
       '<button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapDistCollapsed ? "▸ Afficher l'analyse cote × note" : "▾ Réduire l'analyse cote × note") + '</button>' +
       '<div class="snap-dist-wrap table-scroll' + (snapDistCollapsed ? " collapsed" : "") + '">' +
-      '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction</div>' +
-      '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction. Clique une cellule pour filtrer les snapshots ci-dessous sur cette tranche.</div>' +
+      '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table>' + cellFilterNoteHtml + '</div>';
   }
   function renderSnapStats(list) {
     var byTrader = {};
@@ -2908,11 +2947,15 @@
   function renderSnapshots() {
     var list = loadSnapshots();
     // Dashboard/tier-gauge/recap table always reflect every snapshot — only
-    // the card list below is narrowed by tierCardFilter, otherwise clicking a
-    // tier badge would make its own gauge trivially collapse to 100%.
+    // the card list below is narrowed by tierCardFilter / snapDistCellFilter,
+    // otherwise clicking a tier badge or a distribution cell would make its
+    // own gauge/table trivially collapse to 100%.
     var cardsList = tierCardFilter.length ? list.filter(function (s) { return tierCardFilter.indexOf(s.confidence) !== -1; }) : list;
-    snapCountEl.textContent = tierCardFilter.length
-      ? cardsList.length + ' / ' + list.length + ' snapshots (filtré ' + tierCardFilter.join(", ") + ')'
+    if (snapDistCellFilter) cardsList = cardsList.filter(function (s) { return snapMatchesDistCell(s, snapDistCellFilter.bracket, snapDistCellFilter.tier); });
+    var activeFilterLabels = tierCardFilter.slice();
+    if (snapDistCellFilter) activeFilterLabels.push((snapDistCellFilter.tier || "Tous") + " " + snapDistCellFilter.bracket[0] + "–" + snapDistCellFilter.bracket[1] + "¢");
+    snapCountEl.textContent = activeFilterLabels.length
+      ? cardsList.length + ' / ' + list.length + ' snapshots (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' snapshot' + (list.length > 1 ? 's' : '');
     renderSnapDashboard(list);
     renderTierWinrate(list);
@@ -2920,8 +2963,8 @@
     renderSnapDistribution(list);
     renderSnapStats(list);
     if (!cardsList.length) {
-      snapshotsContent.innerHTML = '<div class="empty-note">' + (tierCardFilter.length
-        ? "Aucun snapshot dans " + (tierCardFilter.length > 1 ? "ces catégories" : "cette catégorie") + "."
+      snapshotsContent.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
+        ? "Aucun snapshot dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
         : "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.") + '</div>';
       return;
     }
@@ -4095,6 +4138,15 @@
     if (tierWinrateToggleBtn) {
       tierWinrateCollapsed = !tierWinrateCollapsed;
       renderTierWinrate(loadSnapshots());
+      return;
+    }
+    var distCell = e.target.closest ? e.target.closest(".snap-dist-cell") : null;
+    if (distCell) {
+      var cellBracket = [Number(distCell.getAttribute("data-odds-min")), Number(distCell.getAttribute("data-odds-max"))];
+      var cellTier = distCell.getAttribute("data-tier") || null;
+      var sameCell = snapDistCellFilter && snapDistCellFilter.bracket[0] === cellBracket[0] && snapDistCellFilter.bracket[1] === cellBracket[1] && snapDistCellFilter.tier === cellTier;
+      snapDistCellFilter = sameCell ? null : { bracket: cellBracket, tier: cellTier };
+      renderSnapshots();
       return;
     }
     var sortTh = e.target.closest ? e.target.closest("#snapStatsContent th.sortable") : null;
