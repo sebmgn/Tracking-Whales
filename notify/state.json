@@ -1,1 +1,62 @@
-{}
+{
+  "polymarket|0x0554017890cc77c401b70a899a6c6361b4eda82c51a0fc80a331b6e34d993aea+predict|1100629": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "Will Ferencvárosi TC win on 2026-08-05?",
+    "side": "Yes",
+    "note": 6.8
+  },
+  "polymarket|0x34aae0d3ca8f99d1ecee2e60f748f6e39a9447040bcd7db0ef2dbdfa5f9309f6+predict|1057481": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "Tampa Bay Rays vs. Colorado Rockies",
+    "side": "Tampa Bay Rays",
+    "note": 6.4
+  },
+  "polymarket|0x578c6d841cc8f27159c8babbbace6be450e9f2216fb6d2d27009482dd0671b81": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "Will Paris Saint-Germain win on 2026-08-05?",
+    "side": "No",
+    "note": 7.3
+  },
+  "polymarket|0x4c06bc8fb3132c2207a1379f18de3b1dff05e8d5bc2198f099f3da18eceae8d0": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "Will Arsenal FC win on 2026-08-05?",
+    "side": "No",
+    "note": 6.3
+  },
+  "polymarket|0xcf4ecf08fb1bb50219a9953b8fb5a85844157c856ce6330a7720e1f5526d1de0": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "Will RCD Mallorca win on 2026-08-05?",
+    "side": "Yes",
+    "note": 6.3
+  },
+  "polymarket|0xbbec760e17b0b88a2a381763d369df1d9d4a02fe02cfcc4b8e4ccb5378a66c0c": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "National Bank Open: Alexander Zverev vs Tallon Griekspoor",
+    "side": "Tallon Griekspoor",
+    "note": 6.3
+  },
+  "polymarket|0x201627450de7b83dc71636c267786aa74ee7bc99d00d773c8d7699c9980abfe6": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "Ferencvárosi TC vs. Górnik Zabrze: O/U 2.5",
+    "side": "Under",
+    "note": 6.3
+  },
+  "polymarket|0xcd889a0463f374ff80b78b21cc3b7df5deb765adb1da4d408230fdb77a527ffa": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "National Bank Open: Panna Udvardy vs Naomi Osaka",
+    "side": "Naomi Osaka",
+    "note": 6.6
+  },
+  "polymarket|0x66e113c45e55b58ccd8b27d8f47f00b5fb656aa090ed3e6390726c5eb4cabfd1": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "National Bank Open: Raphael Collignon vs Alexei Popyrin",
+    "side": "Alexei Popyrin",
+    "note": 6.1
+  },
+  "polymarket|0x5474c15746c9cfe2ee55b46a7d5d31fb0681fa0e8f755d816ee7c36abeb66b5e": {
+    "firstSeen": "2026-08-05T21:47:49.295Z",
+    "question": "Will Associação Chapecoense de Futebol win on 2026-08-05?",
+    "side": "No",
+    "note": 6.4
+  }
+}
