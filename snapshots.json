@@ -1,5 +1,77 @@
 [
   {
+    "id": "msgekm9672za9b",
+    "savedAt": "2026-08-05T18:10:50.923Z",
+    "question": "Fenerbahçe SK vs. SK Puntigamer Sturm Graz: O/U 3.5",
+    "leaderName": "Under",
+    "leaderPriceAtSnapshot": 0.595,
+    "noteAtSnapshot": 6,
+    "traderCount": 6,
+    "totalStake": 5728.111471549999,
+    "sides": [
+      {
+        "name": "Under",
+        "traderCount": 6,
+        "stake": 5417.537827759999,
+        "traders": [
+          {
+            "trader": "sbimbg",
+            "stake": 1499.9699999999998,
+            "avgPrice": 0.6
+          },
+          {
+            "trader": "NM-P",
+            "stake": 1130.44863312,
+            "avgPrice": 0.5844
+          },
+          {
+            "trader": "VeryLucky888",
+            "stake": 1120.001848,
+            "avgPrice": 0.56
+          },
+          {
+            "trader": "GC-P",
+            "stake": 853.2600117999999,
+            "avgPrice": 0.574
+          },
+          {
+            "trader": "wapol",
+            "stake": 471.01439999999997,
+            "avgPrice": 0.6133
+          },
+          {
+            "trader": "swisstony",
+            "stake": 342.84293484,
+            "avgPrice": 0.5502
+          }
+        ]
+      },
+      {
+        "name": "Over",
+        "traderCount": 1,
+        "stake": 310.57364379,
+        "traders": [
+          {
+            "trader": "swisstony",
+            "stake": 310.57364379,
+            "avgPrice": 0.4233
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "sbimbg",
+      "NM-P",
+      "VeryLucky888",
+      "GC-P",
+      "wapol",
+      "swisstony"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Fenerbahçe SK vs. SK Puntigamer Sturm Graz: O/U 3.5</span><span class=\"vt-leader\" style=\"background:#2f6672\">→ Under <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 59.5¢</span></span></span><span class=\"vt-badge-group\"><span class=\"vt-badge\">6 traders · 5 728,11 $</span><span class=\"vt-score-badge\" style=\"background:hsl(80,68%,37%)\" title=\"Note du trade : 6.0/10 — volume, nb de traders, accord entre eux, accord des traders fiables\">★ 6.0</span></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/ucl-fen-stu1-2026-08-05-more-markets\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a><span class=\"vt-kickoff\">05/08/2026 20:00</span></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Traders</span><div class=\"balance-bar bar-traders\"><div class=\"bal-seg\" style=\"width:85.71%;background:var(--green)\"><div class=\"bal-tooltip\">Under — 6/7 traders (86%) · mise 5 417,54 $</div></div><div class=\"bal-seg\" style=\"width:14.29%;background:var(--red)\"><div class=\"bal-tooltip\">Over — 1/7 traders (14%) · mise 310,57 $</div></div><div class=\"bal-tick\" style=\"left:85.71%\"></div></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:94.58%;background:var(--green)\"><div class=\"bal-tooltip\">Under — mise 5 417,54 $ / 5 728,11 $ (95%)</div></div><div class=\"bal-seg\" style=\"width:5.42%;background:var(--red)\"><div class=\"bal-tooltip\">Over — mise 310,57 $ / 5 728,11 $ (5%)</div></div><div class=\"bal-tick\" style=\"left:94.58%\"></div></div></div></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#2f6672\"><span class=\"vt-row-marker\" style=\"background:#2f6672\">U</span> <b>Under</b> — 6 traders · 5 417,54 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 59.5¢</span> · ROI +68.07%</span><span class=\"vt-sides-legend-item\" style=\"color:#96742c\"><span class=\"vt-row-marker\" style=\"background:#96742c\">O</span> <b>Over</b> — 1 trader · 310,57 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 43.5¢</span> · ROI +129.89%</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2f6672\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"sbimbg\">sbimbg</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#2f6672\"></div></div><span class=\"vt-trader-row-right\"><b>1 499,97 $</b> @ 60.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2f6672\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:75.4%;background:#2f6672\"></div></div><span class=\"vt-trader-row-right\"><b>1 130,45 $</b> @ 58.4¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2f6672\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:74.7%;background:#2f6672\"></div></div><span class=\"vt-trader-row-right\"><b>1 120,00 $</b> @ 56.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2f6672\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:56.9%;background:#2f6672\"></div></div><span class=\"vt-trader-row-right\"><b>853,26 $</b> @ 57.4¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2f6672\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"wapol\">wapol</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:31.4%;background:#2f6672\"></div></div><span class=\"vt-trader-row-right\"><b>471,01 $</b> @ 61.3¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#2f6672\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:22.9%;background:#2f6672\"></div></div><span class=\"vt-trader-row-right\"><b>342,84 $</b> @ 55.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">O</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:20.7%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>310,57 $</b> @ 42.3¢</span></div></div></div>",
+    "winningSide": null,
+    "confidence": null
+  },
+  {
     "id": "msgejjueybbddu",
     "savedAt": "2026-08-05T18:10:01.142Z",
     "question": "Exact Score: Fenerbahçe SK 2 - 1 SK Puntigamer Sturm Graz?",
