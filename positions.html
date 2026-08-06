@@ -178,6 +178,25 @@
 
   /* --- Value trades --- */
   .value-trades-box { display: flex; flex-direction: column; gap: 14px; }
+  /* Sticks to the viewport top once scrolled past, so which day you're
+     looking at stays legible on a long list instead of only showing at
+     the moment you scroll past the boundary. */
+  .vt-day-header {
+    position: sticky; top: 0; z-index: 3;
+    background: var(--bg);
+    padding: 7px 4px 5px;
+    margin-bottom: -4px;
+    font-family: "Times New Roman", Times, Georgia, serif;
+    font-style: italic;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--gold);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .vt-day-count { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-style: normal; font-size: 11px; color: var(--text-dim); font-weight: 400; }
   .value-trade-item {
     background: linear-gradient(180deg, #fffef9, #fbf5e9);
     border: 1px solid var(--panel-border);
@@ -186,6 +205,11 @@
     padding: 16px 20px 18px;
     box-shadow: 0 1px 4px rgba(51,43,30,.08);
   }
+  /* Opened at least once this session (even if closed again since) — dims
+     slightly so a card that's genuinely new since the last look keeps
+     standing out instead of every card looking equally "fresh". */
+  .value-trade-item.vt-seen { opacity: .68; }
+  .value-trade-item.vt-seen:hover, .value-trade-item.vt-seen[open] { opacity: 1; }
   /* Value trade cards render as <details> — header + gauges stay visible as
      the always-shown <summary>, the trader-by-trader breakdown is collapsed
      behind a click so the list reads compact by default. */
@@ -227,6 +251,7 @@
     letter-spacing: .01em;
   }
   .vt-leader-price { font-weight: 500; font-size: 10.5px; opacity: .82; margin-left: 2px; }
+  .vt-spark { display: inline-block; width: 44px; height: 15px; vertical-align: middle; flex: none; }
   .vt-outcome {
     display: inline-block;
     padding: 3px 11px;
@@ -243,6 +268,11 @@
   }
   .vt-market-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
   .vt-kickoff { font-style: italic; font-size: 10.5px; color: var(--text-dim); margin-left: auto; }
+  .vt-countdown {
+    font-style: normal; font-size: 10px; font-weight: 700; color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 16%, transparent);
+    border-radius: 999px; padding: 1px 8px; margin-left: 6px; white-space: nowrap;
+  }
   .vt-snap-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -354,6 +384,10 @@
     letter-spacing: .03em;
   }
   .balance-bar { flex: 1; display: flex; position: relative; border-radius: 999px; background: var(--panel-border); }
+  .consensus-gauge { flex: 1; display: flex; gap: 2px; }
+  .consensus-seg { flex: 1; height: 10px; border-radius: 2px; background: var(--panel-border); }
+  .consensus-seg.filled { background: var(--green); }
+  .consensus-count { flex: none; font-size: 10.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; width: 40px; text-align: right; }
   .balance-bar.bar-traders { height: 11px; }
   .balance-bar.bar-dollars { height: 6px; opacity: .8; }
   .bal-seg { height: 100%; position: relative; }
@@ -483,15 +517,27 @@
   .score-tier-track { flex: 1 1 auto; height: 9px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
   .score-tier-fill { height: 100%; border-radius: 999px; opacity: .85; transition: width .5s ease; min-width: 2px; }
   .score-tier-count { flex: 0 0 20px; text-align: right; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
-  /* The trade's own note — solid fill like weightBadge (a trader's own
-     rating) so the two read as the same kind of number, just bigger here
-     since this one drives the whole list's order. */
-  .vt-score-badge {
-    display: inline-flex; align-items: center; gap: 2px;
-    color: #fff; font-size: 12.5px; font-weight: 800;
-    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
-    font-variant-numeric: tabular-nums;
+  /* The trade's own note as a filled ring (not a flat pill) — reads as a
+     distinct shape in a dense grid of cards, not just another number.
+     Hovering reveals which factors actually drove the score. */
+  .vt-score-wrap { position: relative; display: inline-flex; cursor: default; vertical-align: middle; }
+  .vt-score-ring { display: block; }
+  .vt-score-breakdown {
+    position: absolute; top: 100%; right: 0; margin-top: 6px;
+    background: var(--text); color: var(--bg);
+    border-radius: 8px; padding: 10px 12px; width: 200px;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .12s;
+    z-index: 8;
+    box-shadow: 0 4px 14px rgba(51,43,30,.25);
   }
+  .vt-score-wrap:hover .vt-score-breakdown { opacity: 1; visibility: visible; }
+  .vt-score-breakdown-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+  .vt-score-factor-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+  .vt-score-factor-label { flex: 0 0 92px; font-size: 9.5px; opacity: .85; }
+  .vt-score-factor-track { flex: 1; height: 6px; border-radius: 999px; background: rgba(255,255,255,.2); overflow: hidden; }
+  .vt-score-factor-fill { height: 100%; border-radius: 999px; }
+  .vt-score-factor-pts { flex: 0 0 28px; text-align: right; font-variant-numeric: tabular-nums; font-size: 9.5px; }
 
   /* --- Recent trades --- */
   .rt-filters, .vt-filters { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
@@ -648,10 +694,25 @@
   .snap-delete-btn { color: var(--red); }
   .snap-stats-wrap { margin-bottom: 16px; }
   .snap-stats-toggle-btn { display: block; margin-bottom: 8px; }
+  .snap-stats-row { cursor: pointer; }
+  .snap-stats-row:hover { background: var(--row-hover); }
+  .snap-stats-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
+  .snap-stats-caret { display: inline-block; width: 11px; color: var(--accent); font-size: 11px; font-weight: 700; }
+  .snap-stats-detail-row td { padding: 0; }
+  .snap-stats-detail {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 10px 16px 12px 30px;
+    background: color-mix(in srgb, var(--panel-border) 18%, transparent);
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .trader-detail-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .trader-detail-date { color: var(--text-dim); width: 54px; flex: none; font-variant-numeric: tabular-nums; }
+  .trader-detail-question { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trader-detail-net { width: 84px; flex: none; text-align: right; font-family: ui-monospace, monospace; }
   .snap-dist-wrap { margin-bottom: 16px; max-height: none; }
   .snap-dist-subtitle { font-size: 11px; font-style: italic; color: var(--text-dim); padding: 10px 12px 0; }
   .snap-dist-empty { color: var(--text-dim); }
-  .snap-dist-cell { cursor: pointer; transition: background-color .15s ease; }
+  .snap-dist-cell { cursor: pointer; transition: background-color .15s ease; background: var(--cell-heat, transparent); }
   .snap-dist-cell:hover { background: var(--row-hover); }
   .snap-dist-cell.active { background: color-mix(in srgb, var(--gold) 30%, transparent); font-weight: 700; }
   /* Flat-$1000-per-bet simulation, one bold pill per snapshot — a solid
@@ -1294,6 +1355,11 @@
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
+  // Unlike expandedValueTrades (current open/closed state, flips back to
+  // false on close), this only ever gets set — once a card has been opened
+  // at least once this session it stays dimmed even after closing, so a
+  // fresh unopened card is the one that visually stands out.
+  var seenValueTrades = {};
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
   var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
   var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
@@ -1750,6 +1816,41 @@
     today.setHours(0, 0, 0, 0);
     return d.getTime() < today.getTime() ? "live" : "upcoming";
   }
+  // Groups a unit under "Aujourd'hui" / "Demain" / a formatted date / "Date
+  // inconnue" (outright/futures markets with no extractable date at all) —
+  // prefers the precise cached kickoff over the day-only heuristic when
+  // available, same precedence unitTimingStatus uses. sortKey orders
+  // buckets chronologically with "Date inconnue" (Infinity) always last.
+  function unitDateBucket(u) {
+    var d = null;
+    if (u.matchKey) {
+      var cached = matchTimingCache[u.matchKey];
+      if (cached && cached.kickoff) d = cached.kickoff;
+    }
+    if (!d) d = extractMatchDate(u.members[0].question, u.matchKey);
+    if (!d) return { key: "unknown", label: "Date inconnue", sortKey: Infinity };
+    var day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var diffDays = Math.round((day.getTime() - today.getTime()) / 86400000);
+    var label;
+    if (diffDays === 0) label = "Aujourd'hui";
+    else if (diffDays === 1) label = "Demain";
+    else if (diffDays === -1) label = "Hier";
+    else label = fmtDateLong(d) + (diffDays < 0 ? " (passé)" : "");
+    return { key: String(day.getTime()), label: label, sortKey: day.getTime() };
+  }
+  // "3j 4h" / "4h05" / "12 min" — coarsest unit that's still useful drops
+  // the finer one entirely (nobody needs "3j 4h05min" precision).
+  function fmtCountdown(ms) {
+    if (ms <= 0) return null;
+    var totalMin = Math.round(ms / 60000);
+    var days = Math.floor(totalMin / 1440);
+    var hours = Math.floor((totalMin % 1440) / 60);
+    var mins = totalMin % 60;
+    if (days > 0) return days + "j " + hours + "h";
+    if (hours > 0) return hours + "h" + (mins < 10 ? "0" : "") + mins;
+    return mins + " min";
+  }
 
   function computeMarketGroups() {
     // Groups are keyed per platform+market so the same real-world event on
@@ -2123,16 +2224,115 @@
   function scoreColor(score) {
     return "hsl(" + noteHue(score).toFixed(0) + ",68%,37%)";
   }
-  function scoreBadgeHtml(score, extraClass) {
+  // 3px at note 1 up to 10px at note 10 — a "weight" cue readable before
+  // the number itself: a thicker edge means a stronger trade, scanning
+  // down a list of cards top to bottom.
+  function noteBorderWidth(score) {
+    if (score == null) return 4;
+    return 3 + Math.max(0, Math.min(1, (score - 1) / 9)) * 7;
+  }
+  // In-memory only — there's no stored price history to draw from, so this
+  // sparkline is built up live from whatever the page happens to observe
+  // during the current session (one point per auto-refresh, at most). It
+  // starts empty on every reload and never claims to show history from
+  // before the tab was opened.
+  var priceHistory = {};
+  var PRICE_HISTORY_MAX = 20;
+  var PRICE_HISTORY_MIN_GAP_MS = 4000;
+  function recordPricePoint(key, price) {
+    if (price == null || !key) return;
+    var hist = priceHistory[key];
+    if (!hist) { hist = priceHistory[key] = []; }
+    var last = hist[hist.length - 1];
+    if (last && Date.now() - last.t < PRICE_HISTORY_MIN_GAP_MS) return;
+    hist.push({ t: Date.now(), p: price });
+    if (hist.length > PRICE_HISTORY_MAX) hist.shift();
+  }
+  // Needs at least 3 observed points before it's worth drawing — with only
+  // 2 it's just a straight line between two ticks, which reads as noise
+  // rather than a trend.
+  // Shared tiny line-chart renderer — takes any ordered list of numbers and
+  // draws a normalized (min/max-fit) trend line, colored by net direction
+  // (last vs. first point). Used both for the live price sparkline and the
+  // per-trader cumulative-PnL trend in the snapshots recap table.
+  function miniTrendSvg(values, extraClass, title) {
+    if (!values || values.length < 2) return '';
+    var w = 44, h = 15, pad = 1.5;
+    var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+    var range = max - min || 1;
+    var stepX = (w - pad * 2) / (values.length - 1);
+    var pts = values.map(function (v, i) {
+      var x = pad + i * stepX;
+      var y = pad + (1 - (v - min) / range) * (h - pad * 2);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    var trendColor = values[values.length - 1] >= values[0] ? "var(--green)" : "var(--red)";
+    return '<svg class="vt-spark' + (extraClass ? ' ' + extraClass : '') + '" viewBox="0 0 ' + w + ' ' + h + '" title="' + esc(title || '') + '"><polyline points="' + pts + '" fill="none" stroke="' + trendColor + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  function sparklineHtml(key) {
+    var hist = priceHistory[key];
+    // Needs at least 3 observed points before it's worth drawing — with only
+    // 2 it's just a straight line between two ticks, which reads as noise
+    // rather than a trend.
+    if (!hist || hist.length < 3) return '';
+    return miniTrendSvg(hist.map(function (p) { return p.p; }), '', "Évolution du prix depuis l'ouverture de la page");
+  }
+  function traderTrendSparkline(trend) {
+    if (!trend || trend.length < 2) return '';
+    return miniTrendSvg(trend, 'snap-stats-spark', "Tendance du PNL cumulé sur les snapshots décidés de ce trader");
+  }
+  // Human labels + display order for the score breakdown popover — same
+  // keys as SCORE_WEIGHTS/factors, ordered by weight (heaviest first).
+  var SCORE_FACTOR_LABELS = {
+    volumeConcentration: "Concentration $",
+    reliableAgreement: "Accord fiables",
+    volume: "Volume total",
+    agreement: "Accord (traders)",
+    traderCount: "Nb traders suivis"
+  };
+  var SCORE_FACTOR_ORDER = ["volumeConcentration", "reliableAgreement", "volume", "agreement", "traderCount"];
+  // Ring + (optional) hover breakdown for a trade's 1-10 note. Rescaled to
+  // [4,9] rather than the full [1,10] — real notes cluster in that band, so
+  // a straight 1-10 mapping left almost every badge looking 70-95% full;
+  // this spreads out the range that actually occurs in practice. factors
+  // (from unitScoreInfo) is optional — pass it to also render a hover
+  // popover showing each factor's weighted contribution (points added to
+  // the raw 1-10 scale), not just the final number.
+  function scoreBadgeHtml(score, factors, extraClass) {
     if (score == null) return "";
-    return '<span class="vt-score-badge' + (extraClass ? " " + extraClass : "") + '" style="background:' + scoreColor(score) +
-      '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables">★ ' + score.toFixed(1) + '</span>';
+    var color = scoreColor(score);
+    var fillFrac = normLinear(score, [4, 9]);
+    var r = 12, circumference = 2 * Math.PI * r;
+    var dash = (fillFrac * circumference).toFixed(1);
+    var ringSvg = '<svg width="30" height="30" viewBox="0 0 30 30" class="vt-score-ring">' +
+      '<circle cx="15" cy="15" r="' + r + '" fill="none" stroke="var(--panel-border)" stroke-width="4"/>' +
+      '<circle cx="15" cy="15" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="4" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + circumference.toFixed(1) + '" transform="rotate(-90 15 15)"/>' +
+      '<text x="15" y="18.5" text-anchor="middle" font-size="9" font-weight="800" fill="' + color + '">' + score.toFixed(1) + '</text>' +
+    '</svg>';
+    var breakdownHtml = "";
+    if (factors) {
+      var rows = SCORE_FACTOR_ORDER.map(function (key) {
+        var val = factors[key] || 0;
+        var pts = val * SCORE_WEIGHTS[key] * 9;
+        return '<div class="vt-score-factor-row"><span class="vt-score-factor-label">' + SCORE_FACTOR_LABELS[key] + '</span>' +
+          '<div class="vt-score-factor-track"><div class="vt-score-factor-fill" style="width:' + (val * 100).toFixed(0) + '%;background:' + color + '"></div></div>' +
+          '<span class="vt-score-factor-pts">+' + pts.toFixed(1) + '</span></div>';
+      }).join("");
+      breakdownHtml = '<div class="vt-score-breakdown"><div class="vt-score-breakdown-title">Note ' + score.toFixed(1) + '/10 — détail</div>' + rows + '</div>';
+    }
+    return '<span class="vt-score-wrap' + (extraClass ? " " + extraClass : "") + '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables">' + ringSvg + breakdownHtml + '</span>';
   }
   // Computes everything renderUnitCard needs, split into header (question +
   // leader badge) and body (balance bars + trader breakdown) so the header
   // can stay in the always-visible summary and just the body collapses,
   // instead of repeating the header inside the expanded detail.
   function computeUnitCardParts(u) {
+    // u can come from a codepath that never scored it (the peer-panel's
+    // unitByMarketKey, built independently of renderValueTrades' own pass)
+    // — compute it here so every caller (Value Trades, peer panel,
+    // snapshots) gets a real note/ring/border, not just the ones that
+    // happened to already run unitScoreInfo on this exact unit.
+    if (u.score == null) { var scoreInfo0 = unitScoreInfo(u); u.score = scoreInfo0.score; u.scoreFactors = scoreInfo0.factors; }
     var members = u.members;
     var primary = members[0];
     var secondary = members[1];
@@ -2156,7 +2356,13 @@
     // outcome name — with 4 possible "other" colors the two segments could
     // look too close to tell apart at a glance; a strict green/red split reads
     // instantly. The side-blocks below keep the per-name semantic/other color.
-    function gaugeColor(i) { return i === 0 ? "var(--green)" : "var(--red)"; }
+    // Diagonal hatching on the losing/minority segment(s), on top of the
+    // red fill — a second, non-color cue for the same "this is the camp
+    // behind" read, so it doesn't rely on red-vs-green alone.
+    function gaugeBackground(i) {
+      if (i === 0) return "var(--green)";
+      return "repeating-linear-gradient(45deg, var(--red), var(--red) 5px, color-mix(in srgb, var(--red) 72%, black) 5px, color-mix(in srgb, var(--red) 72%, black) 10px)";
+    }
     // A small tick mark right at the green/red seam — clearer than relying on
     // the color change alone, especially when the split is close to 50/50.
     function gaugeTick(leadPct) {
@@ -2167,12 +2373,12 @@
     var traderSegments = mergedSides.map(function (m, i) {
       var pct = totalTradersAll > 0 ? (m.traderCount / totalTradersAll * 100) : 0;
       var label = esc(m.name) + " — " + m.traderCount + "/" + totalTradersAll + " traders (" + pct.toFixed(0) + "%) · mise " + fmtUSD(m.stake);
-      return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeColor(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
+      return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeBackground(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
     }).join("") + gaugeTick(traderLeadPct);
     var dollarSegments = mergedSides.map(function (m, i) {
       var pct = totalStakeAll > 0 ? (m.stake / totalStakeAll * 100) : 0;
       var label = esc(m.name) + " — mise " + fmtUSD(m.stake) + " / " + fmtUSD(totalStakeAll) + " (" + pct.toFixed(0) + "%)";
-      return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeColor(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
+      return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeBackground(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
     }).join("") + gaugeTick(dollarLeadPct);
 
     var leaderGroup = mergedSides.length ? mergedSides[0] : null;
@@ -2192,6 +2398,8 @@
     var leaderRoi = leaderAvgPrice != null && leaderAvgPrice > 0 ? (1 - leaderAvgPrice) / leaderAvgPrice * 100 : null;
     var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
       (leaderPriceText ? ' <span class="vt-leader-price" title="Prix actuel du marché, pas le prix d\'entrée des traders">@ ' + leaderPriceText + '</span>' : '') + '</span>' : "";
+    recordPricePoint(primary.key, leaderAvgPrice);
+    var sparkHtml = sparklineHtml(primary.key);
 
     var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌 Snapshot</button>';
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
@@ -2216,7 +2424,10 @@
     if (u.matchKey) {
       var cachedTiming = matchTimingCache[u.matchKey];
       if (cachedTiming && cachedTiming.kickoff) {
-        kickoffHtml = '<span class="vt-kickoff">' + esc(cachedTiming.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '</span>';
+        var msToKickoff = cachedTiming.kickoff.getTime() - Date.now();
+        var countdownText = msToKickoff > 0 ? fmtCountdown(msToKickoff) : null;
+        var countdownHtml = countdownText ? '<span class="vt-countdown">⏱ dans ' + esc(countdownText) + '</span>' : '';
+        kickoffHtml = '<span class="vt-kickoff">' + esc(cachedTiming.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '</span>' + countdownHtml;
       } else {
         scheduleMatchTimingFetch(u.matchKey);
       }
@@ -2227,17 +2438,29 @@
     }).join("") + kickoffHtml + '</div>';
     var headerHtml =
       '<div class="vt-top">' +
-        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + leaderBadge + '</span>' +
-        '<span class="vt-badge-group"><span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + scoreBadgeHtml(u.score) + '</span>' +
+        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + leaderBadge + sparkHtml + '</span>' +
+        '<span class="vt-badge-group"><span class="vt-badge">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors) + '</span>' +
       '</div>' + marketLinksHtml;
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
     // breakdown behind a click, while Snapshots — which doesn't want that
     // split — keeps using the combined bodyHtml unchanged.
+    // A discrete "fuel gauge" reading of the same trader split the bar above
+    // already shows continuously — some people read 10 filled/unfilled
+    // blocks faster than a percentage-width bar, especially at a glance
+    // across a long list of cards.
+    var consensusSegCount = 10;
+    var consensusFilled = totalTradersAll > 0 ? Math.round(traderLeadPct / 100 * consensusSegCount) : 0;
+    var consensusHtml = '<div class="balance-row"><span class="balance-label">Consensus</span><div class="consensus-gauge">' +
+      Array.from({ length: consensusSegCount }, function (_, i) {
+        return '<div class="consensus-seg' + (i < consensusFilled ? ' filled' : '') + '"></div>';
+      }).join("") +
+      '</div><span class="consensus-count">' + (mergedSides[0] ? mergedSides[0].traderCount : 0) + '/' + totalTradersAll + '</span></div>';
     var balanceHtml =
       '<div class="balance-group">' +
         '<div class="balance-row"><span class="balance-label">Traders</span><div class="balance-bar bar-traders">' + traderSegments + '</div></div>' +
         '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
+        consensusHtml +
       '</div>';
     var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides) + renderMergedTraderRows(mergedSides, maxStakeInUnit) + '</div>';
     var bodyHtml = balanceHtml + sideGridHtml;
@@ -2247,7 +2470,8 @@
       leaderColor: leaderColor, leaderName: leaderName,
       leaderAvgPrice: leaderAvgPrice, leaderPriceText: leaderPriceText, leaderRoi: leaderRoi,
       headerHtml: headerHtml, bodyHtml: bodyHtml,
-      balanceHtml: balanceHtml, sideGridHtml: sideGridHtml
+      balanceHtml: balanceHtml, sideGridHtml: sideGridHtml,
+      borderWidth: noteBorderWidth(u.score)
     };
   }
 
@@ -2257,8 +2481,8 @@
   function renderUnitCard(u) {
     var parts = computeUnitCardParts(u);
     var key = u.members[0].key;
-    return '<details class="value-trade-item" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
-      ' style="border-left-color:' + parts.leaderColor + '">' +
+    return '<details class="value-trade-item' + (seenValueTrades[key] ? ' vt-seen' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
+      ' style="border-left-color:' + parts.leaderColor + ';border-left-width:' + parts.borderWidth.toFixed(1) + 'px">' +
       '<summary class="vt-summary">' + parts.headerHtml + parts.balanceHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
@@ -2474,12 +2698,9 @@
     syncNow();
   }
   function buildSnapshotFromUnit(u) {
-    // u can come from a codepath that never scored it (the peer-panel's
-    // unitByMarketKey, unlike Value Trades' own list, doesn't attach
-    // .score) — compute it fresh here so it's never missing, both for the
-    // badge baked into cardHtml below and for the dedicated field kept on
-    // the snapshot object itself.
-    if (u.score == null) u.score = unitScoreInfo(u).score;
+    // computeUnitCardParts fills in u.score/.scoreFactors itself when
+    // missing (peer-panel units, unlike Value Trades' own list, don't
+    // arrive pre-scored) — noteAtSnapshot below reads whatever it set.
     var parts = computeUnitCardParts(u);
     var mergedSides = mergeUnitSides(u);
     var sidesData = mergedSides.map(function (m) {
@@ -2676,6 +2897,21 @@
     if (!avgPrice || avgPrice <= 0) return null;
     return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
   }
+  // Coefficient of variation of the tracked traders' individual stakes on
+  // the leading side — near 0 when everyone bet roughly the same amount
+  // (a tight, agreeing signal), higher when a couple of whales dominate a
+  // long tail of small bets (a shakier signal to have followed). Feeds the
+  // PnL chart's confidence band, not the win/loss outcome itself.
+  function snapStakeDispersion(snap) {
+    var leaderSide = (snap.sides || []).filter(function (s) { return s.name === snap.leaderName; })[0];
+    if (!leaderSide || !leaderSide.traders || leaderSide.traders.length < 2) return 0;
+    var stakes = leaderSide.traders.map(function (t) { return t.stake; }).filter(function (s) { return s > 0; });
+    if (stakes.length < 2) return 0;
+    var mean = stakes.reduce(function (a, b) { return a + b; }, 0) / stakes.length;
+    if (mean <= 0) return 0;
+    var variance = stakes.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / stakes.length;
+    return Math.sqrt(variance) / mean;
+  }
   function computeTierWinrates(list) {
     var byTier = {};
     CONFIDENCE_TIERS.forEach(function (t) { byTier[t] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
@@ -2784,13 +3020,16 @@
       // apart (small dots, red-green color vision deficiency, glare).
       // Pushed to near-neon (Material A400) on request for a bigger, more
       // flashy win/loss read at a glance.
-      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#00e676" : "#ff1744" });
+      // Capped at 1.2 so one wildly lopsided bet (one whale + a token
+      // small-stake tagalong) doesn't blow out the whole band's scale.
+      var dispersion = Math.min(1.2, snapStakeDispersion(snap));
+      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#00e676" : "#ff1744", band: dispersion * HYPOTHETICAL_FLAT_STAKE * 0.5 });
     });
     if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
     snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
       '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' +
-      buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div></div>';
+      buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir. La bande ombrée reflète la dispersion des mises des traders sur chaque trade (plus large = mises moins homogènes).</div></div>';
     var box = document.getElementById("snapPnlChartBox");
     if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box); }
   }
@@ -2842,6 +3081,10 @@
     { key: "wr", label: "% réussite", numeric: true }
   ];
   var snapStatsSort = { key: "total", dir: "desc" };
+  // Trader name -> bool, survives re-renders the same way expandedValueTrades
+  // does — clicking a row in the recap table reveals its snapshot-by-snapshot
+  // detail inline instead of navigating away.
+  var expandedTraderStats = {};
   // Rows with a null sort value (no decided snapshot yet, so PNL/% réussite
   // show "—") always sink to the bottom regardless of direction — they
   // aren't meaningfully comparable, so flipping the sort shouldn't surface
@@ -2869,25 +3112,42 @@
     // narrow the snapshot cards below to exactly that bracket (+ tier, for
     // anything but the "Tous" column); click the now-active cell again to
     // clear it. Empty cells ("—", nothing to isolate) stay inert.
-    function cell(items, bracket, tier) {
-      if (!items.length) return '<td class="num"><span class="snap-dist-empty">—</span></td>';
-      var win = items.filter(function (s) { return s.leaderName === s.winningSide; }).length;
-      var isActive = !!snapDistCellFilter && snapDistCellFilter.bracket[0] === bracket[0] && snapDistCellFilter.bracket[1] === bracket[1] && snapDistCellFilter.tier === tier;
-      return '<td class="num snap-dist-cell' + (isActive ? ' active' : '') + '" data-odds-min="' + bracket[0] + '" data-odds-max="' + bracket[1] + '" data-tier="' + esc(tier || "") + '" title="Filtrer les snapshots sur ' + esc(tier || "toutes conviction") + ' · ' + bracket[0] + '–' + bracket[1] + '¢">' +
-        '<span class="pnl-pos">' + win + '</span> / <span class="pnl-neg">' + (items.length - win) + '</span></td>';
-    }
     // Same flat HYPOTHETICAL_FLAT_STAKE-per-bet simulation as the tier
     // winrate gauge above, cut by cote bracket instead of by conviction —
     // lets a bracket with a decent win/loss split still show up as a net
     // loser (or vice versa) once the stake-weighted payout is accounted for.
-    function roiCell(items) {
+    function cellRoi(items) {
       var flatPnl = 0, flatCount = 0;
       items.forEach(function (s) {
         var hyp = hypotheticalFlatPnl(s, HYPOTHETICAL_FLAT_STAKE);
         if (hyp != null) { flatPnl += hyp; flatCount++; }
       });
-      if (!flatCount) return '<span class="snap-dist-empty">—</span>';
-      var roi = flatPnl / (flatCount * HYPOTHETICAL_FLAT_STAKE) * 100;
+      if (!flatCount) return null;
+      return flatPnl / (flatCount * HYPOTHETICAL_FLAT_STAKE) * 100;
+    }
+    // Every win/loss cell doubles as a mini heatmap of its own ROI — green
+    // for a net-positive bracket, red for net-negative, saturation scaled by
+    // |ROI| (capped at 60% so one outlier cell doesn't wash the rest of the
+    // table out at full color). Read alongside the win/loss counts, not
+    // instead of them — a 1/4 cell and a 3/12 cell can land on a similar
+    // tint despite very different sample sizes.
+    function roiHeatStyle(roi) {
+      if (roi == null) return "";
+      var intensity = Math.max(0, Math.min(1, Math.abs(roi) / 60));
+      var base = roi >= 0 ? "var(--green)" : "var(--red)";
+      return ' style="--cell-heat:color-mix(in srgb, ' + base + ' ' + (intensity * 32).toFixed(0) + '%, transparent)"';
+    }
+    function cell(items, bracket, tier) {
+      if (!items.length) return '<td class="num"><span class="snap-dist-empty">—</span></td>';
+      var win = items.filter(function (s) { return s.leaderName === s.winningSide; }).length;
+      var roi = cellRoi(items);
+      var isActive = !!snapDistCellFilter && snapDistCellFilter.bracket[0] === bracket[0] && snapDistCellFilter.bracket[1] === bracket[1] && snapDistCellFilter.tier === tier;
+      return '<td class="num snap-dist-cell' + (isActive ? ' active' : '') + '"' + roiHeatStyle(roi) + ' data-odds-min="' + bracket[0] + '" data-odds-max="' + bracket[1] + '" data-tier="' + esc(tier || "") + '" title="' + esc(roi == null ? '' : 'ROI simulé ' + (roi >= 0 ? '+' : '') + roi.toFixed(0) + '% · ') + 'Filtrer les snapshots sur ' + esc(tier || "toutes conviction") + ' · ' + bracket[0] + '–' + bracket[1] + '¢">' +
+        '<span class="pnl-pos">' + win + '</span> / <span class="pnl-neg">' + (items.length - win) + '</span></td>';
+    }
+    function roiCell(items) {
+      var roi = cellRoi(items);
+      if (roi == null) return '<span class="snap-dist-empty">—</span>';
       return '<span class="' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span>';
     }
     var rows = DIST_ODDS_BUCKETS.map(function (b) {
@@ -2917,7 +3177,7 @@
     var byTrader = {};
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
-        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0 };
+        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, trend: [], entries: [] };
         byTrader[name].total++;
         var pnlResult = traderNetPnlInSnapshot(snap, name);
         if (pnlResult) byTrader[name].pnl += pnlResult.net;
@@ -2926,6 +3186,22 @@
         else if (cls === "loss") byTrader[name].loss++;
         else if (cls === "gain_nuance") byTrader[name].gainNuance++;
         else if (cls === "perte_nuance") byTrader[name].perteNuance++;
+        byTrader[name].entries.push({ snap: snap, cls: cls, net: pnlResult ? pnlResult.net : null });
+      });
+    });
+    // Cumulative-PnL trend per trader, in chronological snapshot order — a
+    // separate pass over the snapshots sorted oldest-first (the loop above
+    // runs in whatever order `list` is already in, which is newest-first)
+    // so the running sum this feeds the sparkline reads left-to-right as
+    // "PNL over time", not in save order.
+    var sortedByDate = list.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    var cumByTrader = {};
+    sortedByDate.forEach(function (snap) {
+      (snap.traderNames || []).forEach(function (name) {
+        var pnlResult = traderNetPnlInSnapshot(snap, name);
+        if (!pnlResult || !byTrader[name]) return;
+        cumByTrader[name] = (cumByTrader[name] || 0) + pnlResult.net;
+        byTrader[name].trend.push(cumByTrader[name]);
       });
     });
     var rowsData = Object.keys(byTrader).map(function (n) {
@@ -2942,19 +3218,38 @@
     if (!rowsData.length) { snapStatsContent.innerHTML = ""; return; }
     var sortField = snapStatsSort.key === "pnl" ? "pnlForSort" : snapStatsSort.key;
     rowsData.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, snapStatsSort.dir); });
+    // One snapshot-by-snapshot line per row, newest first — same
+    // date/question/result-badge vocabulary as the snapshot cards above, just
+    // condensed to one line each since this is scoped to a single trader.
+    function traderDetailRowHtml(st) {
+      if (!expandedTraderStats[st.name]) return '';
+      var sortedEntries = st.entries.slice().sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
+      var itemsHtml = sortedEntries.map(function (en) {
+        var d = new Date(en.snap.savedAt);
+        var dateLabel = isNaN(d.getTime()) ? en.snap.savedAt : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+        var netHtml = en.net == null ? '<span class="snap-dist-empty">en attente</span>' : '<span class="' + (en.net >= 0 ? "pnl-pos" : "pnl-neg") + '">' + fmtUSD(en.net) + '</span>';
+        return '<div class="trader-detail-row"><span class="trader-detail-date">' + esc(dateLabel) + '</span>' +
+          '<span class="trader-detail-question">' + esc(en.snap.question) + '</span>' +
+          traderResultBadge(en.cls) +
+          '<span class="trader-detail-net">' + netHtml + '</span></div>';
+      }).join("");
+      return '<tr class="snap-stats-detail-row"><td colspan="9"><div class="snap-stats-detail">' + itemsHtml + '</div></td></tr>';
+    }
     var rows = rowsData.map(function (st) {
       var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
-      return '<tr><td>' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
+      var isOpen = !!expandedTraderStats[st.name];
+      return '<tr class="snap-stats-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(st.name) + '"><td><span class="snap-stats-caret">' + (isOpen ? '▾' : '▸') + '</span> ' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
         '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
         '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
-        '<td class="num">' + (st.wr == null ? '—' : st.wr.toFixed(0) + '%') + '</td></tr>';
+        '<td class="num">' + (st.wr == null ? '—' : st.wr.toFixed(0) + '%') + '</td>' +
+        '<td>' + traderTrendSparkline(st.trend) + '</td></tr>' + traderDetailRowHtml(st);
     }).join("");
     var headCells = SNAP_STATS_COLUMNS.map(function (col) {
       var isActive = snapStatsSort.key === col.key;
       var arrow = isActive ? '<span class="sort-arrow">' + (snapStatsSort.dir === "asc" ? "▲" : "▼") + '</span>' : "";
       return '<th class="sortable' + (col.numeric ? " num" : "") + (isActive ? " sorted" : "") + '" data-sort-key="' + col.key + '">' + esc(col.label) + arrow + '</th>';
-    }).join("");
+    }).join("") + '<th>Tendance</th>';
     snapStatsContent.innerHTML =
       '<button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapStatsCollapsed ? "▸ Afficher le récap par trader" : "▾ Réduire le récap par trader") + '</button>' +
       '<div class="snap-stats-wrap table-scroll' + (snapStatsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
@@ -3129,6 +3424,7 @@
       var info = unitScoreInfo(u);
       u.score = info.score;
       u.leaderPrice = info.leaderPrice;
+      u.scoreFactors = info.factors;
       return u.leaderPrice == null || u.leaderPrice < 0.9995;
     });
     var traderFiltered = allUnits.filter(function (u) {
@@ -3158,7 +3454,23 @@
     // Ranked by note (highest first) instead of stake — the note is the
     // whole point of this list now, not just another number shown on it.
     var rankedUnits = finalUnits.slice().sort(function (a, b) { return b.score - a.score; });
-    valueTradesContent.innerHTML = rankedUnits.map(renderUnitCard).join("");
+    // Grouped into day buckets (chronological, "Date inconnue" — outright/
+    // futures markets with no extractable date — last), note-desc order
+    // preserved WITHIN each bucket since we group a list that's already
+    // sorted. Cuts down on scan fatigue on a long flat list.
+    var dayBuckets = {};
+    var dayOrder = [];
+    rankedUnits.forEach(function (u) {
+      var b = unitDateBucket(u);
+      if (!dayBuckets[b.key]) { dayBuckets[b.key] = { label: b.label, sortKey: b.sortKey, units: [] }; dayOrder.push(b.key); }
+      dayBuckets[b.key].units.push(u);
+    });
+    dayOrder.sort(function (ka, kb) { return dayBuckets[ka].sortKey - dayBuckets[kb].sortKey; });
+    valueTradesContent.innerHTML = dayOrder.map(function (k) {
+      var b = dayBuckets[k];
+      return '<div class="vt-day-header">' + esc(b.label) + '<span class="vt-day-count">' + b.units.length + ' marché' + (b.units.length > 1 ? 's' : '') + '</span></div>' +
+        b.units.map(renderUnitCard).join("");
+    }).join("");
   }
 
   // ---------- recent trades ----------
@@ -3468,8 +3780,10 @@
     var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var values = series.map(function (p) { return p.value; });
-    var min = Math.min.apply(null, values.concat([0]));
-    var max = Math.max.apply(null, values.concat([0]));
+    var bandBounds = [];
+    series.forEach(function (p) { if (p.band) { bandBounds.push(p.value + p.band); bandBounds.push(p.value - p.band); } });
+    var min = Math.min.apply(null, values.concat(bandBounds).concat([0]));
+    var max = Math.max.apply(null, values.concat(bandBounds).concat([0]));
     if (min === max) { min -= 1; max += 1; }
     var range = max - min;
     var n = series.length;
@@ -3481,6 +3795,21 @@
     var linePts = series.map(function (p, i) { return { x: x(i), y: y(p.value) }; });
     var pathD = smoothPathD(linePts);
     var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + y(0).toFixed(2) + " L" + x(0).toFixed(2) + "," + y(0).toFixed(2) + " Z";
+
+    // Shaded ribbon around the line, one point wide per snapshot — width at
+    // each point comes from that snapshot's own stake dispersion (see
+    // snapStakeDispersion), not a rolling/global measure, so a single
+    // lopsided bet shows up as a local bulge rather than smearing across
+    // neighboring points.
+    var hasBand = series.filter(function (p) { return p.band > 0; }).length > 0;
+    var bandD = "";
+    if (hasBand) {
+      var upperPts = series.map(function (p, i) { return { x: x(i), y: y(p.value + (p.band || 0)) }; });
+      var lowerPts = series.map(function (p, i) { return { x: x(i), y: y(p.value - (p.band || 0)) }; }).reverse();
+      var upperD = smoothPathD(upperPts);
+      var lowerD = smoothPathD(lowerPts).replace(/^M[-\d.]+,[-\d.]+/, "L");
+      bandD = upperD + " " + lowerD + " Z";
+    }
 
     var zeroY = y(0);
     var zeroLine = (min < 0 && max > 0)
@@ -3519,6 +3848,7 @@
           '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.22"/>' +
           '<stop offset="100%" stop-color="' + lineColor + '" stop-opacity="0"/>' +
         '</linearGradient></defs>' +
+        (bandD ? '<path d="' + bandD + '" fill="' + lineColor + '" fill-opacity="0.1" stroke="none"/>' : '') +
         '<path d="' + areaD + '" fill="url(#' + gradId + ')" stroke="none"/>' +
         zeroLine +
         '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2" stroke-linecap="round"/>' +
@@ -3739,7 +4069,9 @@
   // traders" peer panel), so they share one tracker.
   function trackValueTradeToggle(e) {
     if (e.target && e.target.classList.contains("value-trade-item")) {
-      expandedValueTrades[e.target.getAttribute("data-key")] = e.target.open;
+      var k = e.target.getAttribute("data-key");
+      expandedValueTrades[k] = e.target.open;
+      if (e.target.open) seenValueTrades[k] = true;
     }
   }
   valueTradesContent.addEventListener("toggle", trackValueTradeToggle, true);
@@ -3843,6 +4175,13 @@
         snapStatsSort.key = sortKey;
         snapStatsSort.dir = sortKey === "name" ? "asc" : "desc";
       }
+      renderSnapStats(loadSnapshots());
+      return;
+    }
+    var statsRow = e.target.closest ? e.target.closest(".snap-stats-row") : null;
+    if (statsRow) {
+      var statsTrader = statsRow.getAttribute("data-trader");
+      expandedTraderStats[statsTrader] = !expandedTraderStats[statsTrader];
       renderSnapStats(loadSnapshots());
       return;
     }
