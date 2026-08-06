@@ -251,26 +251,6 @@
 
   /* --- Value trades --- */
   .value-trades-box { display: flex; flex-direction: column; gap: 14px; }
-  /* Same "featured piece" language as the painting frame at the top of the
-     page — a gold-on-cream placard rather than another plain card, so the
-     single best-scored trade in view reads as curated, not just first in
-     a sorted list. */
-  .vt-spotlight {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 16%, var(--panel)), var(--panel));
-    border: 1px solid var(--gold);
-    border-radius: var(--radius-md);
-    padding: 12px 16px;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 22%, transparent);
-  }
-  .vt-spotlight-tag {
-    font-family: "Times New Roman", Times, Georgia, serif; font-style: italic;
-    color: var(--gold); font-weight: 700; font-size: 12px; margin-bottom: 8px; letter-spacing: .02em;
-  }
-  .vt-spotlight-body { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .vt-spotlight-emoji { font-size: 22px; flex: none; }
-  .vt-spotlight-question { font-weight: 800; font-size: 15px; flex: 1; min-width: 200px; }
-  .vt-spotlight-meta { font-size: 12px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .vt-spotlight .vt-score-ring { transform: scale(1.15); }
   /* Sticks to the viewport top once scrolled past, so which day you're
      looking at stays legible on a long list instead of only showing at
      the moment you scroll past the boundary. */
@@ -295,15 +275,30 @@
        few percent — a pre-sort cue on a mixed-sport list, subtle enough to
        never compete with the outcome-color semantics elsewhere on the
        card. Falls back to plain transparent (no wash at all) for the
-       unclassified "🎲 other" bucket, via color-mix's own default. */
-    background: linear-gradient(180deg,
-      color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-1)),
-      color-mix(in srgb, var(--sport-tint, transparent) 8%, var(--cream-grad-2)));
+       unclassified "🎲 other" bucket, via color-mix's own default.
+       The two dotted layers on top are a faint paper/canvas grain — an
+       echo of the painting frame at the top of the page, carried onto
+       every card. Grain color derives from --text (not a fixed black) so
+       it reads as light specks on dark, not a dark smudge, once dark
+       mode flips the ground. */
+    background-image:
+      radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--text) 5%, transparent) 1px, transparent 1px),
+      radial-gradient(circle at 70% 65%, color-mix(in srgb, var(--text) 4%, transparent) 1px, transparent 1px),
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-1)),
+        color-mix(in srgb, var(--sport-tint, transparent) 8%, var(--cream-grad-2)));
+    background-size: 5px 5px, 7px 7px, 100% 100%;
+    background-repeat: repeat, repeat, no-repeat;
     border: 1px solid var(--panel-border);
     border-left: 4px solid var(--accent);
     border-radius: var(--radius-md);
     padding: 16px 20px 18px;
-    box-shadow: 0 1px 4px rgba(51,43,30,.08);
+    /* --note-glow (set inline per card, see noteGlowVar) layers a colored
+       glow on top of the card's normal elevation shadow, scaled by score —
+       stronger note, more glow. Defaults to an inert zero-shadow so it's
+       always a valid item in this comma list even when unset (a bare
+       "none" can't sit inside a multi-shadow list). */
+    box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0));
   }
   /* Value trade cards render as <details> — header + gauges stay visible as
      the always-shown <summary>, the trader-by-trader breakdown is collapsed
@@ -319,6 +314,39 @@
      detail isn't fighting the dimmed state. */
   .value-trade-item.vt-live { filter: saturate(.55); opacity: .82; }
   .value-trade-item.vt-live:hover, .value-trade-item.vt-live[open] { filter: none; opacity: 1; }
+  /* More than 3 days out — same "hasn't earned full attention yet" logic
+     as .vt-live, opposite end of the timeline: an event too far away to
+     act on right now recedes a little too, so the cards that actually
+     need a decision this session stand out against both edges. Lighter
+     touch than .vt-live since "far away" is a much softer signal than
+     "already started". */
+  .value-trade-item.vt-far { filter: saturate(.75); opacity: .88; }
+  .value-trade-item.vt-far:hover, .value-trade-item.vt-far[open] { filter: none; opacity: 1; }
+  /* First time this browser has ever seen this market key, or within the
+     last hour of that — see markUnitSeen. The badge sits inline before
+     the rest of the summary; the glow rides on the card's existing
+     box-shadow slot so it doesn't fight the note-based glow below. */
+  .vt-new-badge {
+    display: inline-block; background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+    margin-bottom: 6px;
+  }
+  .value-trade-item.vt-new {
+    box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0)), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  /* New AND already a strong signal (note ≥8) — a few extra seconds of
+     motion on top of the steady new-card glow, so a rare high-quality
+     alert doesn't blend into the rest of "just new". Finite iteration
+     count (not infinite) so it settles down instead of nagging forever. */
+  .value-trade-item.vt-new-high { animation: vtNewHighPulse 1.4s ease-in-out 3; }
+  @keyframes vtNewHighPulse {
+    0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 40%, transparent), 0 0 8px color-mix(in srgb, var(--gold) 25%, transparent); }
+    50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 70%, transparent), 0 0 20px color-mix(in srgb, var(--gold) 55%, transparent); }
+  }
+  .vt-empty-illustrated { text-align: center; padding: 30px 18px; }
+  .vt-empty-whale { font-size: 34px; opacity: .55; margin-bottom: 6px; }
+  .vt-empty-headline { font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-size: 17px; color: var(--text-dim); margin-bottom: 8px; }
+  .vt-empty-detail { font-size: 12px; color: var(--text-dim); max-width: 520px; margin: 0 auto; line-height: 1.6; }
   .vt-summary { display: block; }
   .vt-summary::after {
     content: "▾ voir le détail des traders";
@@ -332,6 +360,15 @@
   /* Explicit rather than relying solely on the browser's native <details>
      hiding — belt-and-suspenders so this can never render open by default. */
   details.value-trade-item:not([open]) > .vt-detail { display: none; }
+  /* Native <details> snaps open/closed with no transition of its own —
+     this animates the reveal (fade + slight drop) without needing to
+     replace <details>/<summary> with a JS-driven disclosure widget just
+     to get a smooth height transition. Only the OPEN direction animates;
+     closing stays instant (animating a shrink-to-display:none reliably
+     needs JS to measure/drive it, and the open animation is the one that
+     actually matters for "feels abrupt"). */
+  details.value-trade-item[open] > .vt-detail { animation: vtDetailReveal .22s ease; }
+  @keyframes vtDetailReveal { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
   .vt-top {
     display: flex;
     justify-content: space-between;
@@ -353,6 +390,12 @@
     letter-spacing: .01em;
   }
   .vt-leader-price { font-weight: 500; font-size: 10.5px; opacity: .82; margin-left: 2px; }
+  /* White rather than red/green — this sits inside the leader badge,
+     whose own background is already semantic-colored (green/red/other),
+     so a colored arrow could land on a same-hue background and disappear
+     (a red ▼ on a red "No" badge, a green ▲ on a green "Yes" badge). The
+     shape (▲ vs ▼) carries the direction; color doesn't need to. */
+  .vt-price-arrow { font-size: 9px; margin-left: 2px; color: #fff; }
   .vt-spark { display: inline-block; width: 44px; height: 15px; vertical-align: middle; flex: none; }
   .vt-outcome {
     display: inline-block;
@@ -377,7 +420,7 @@
     font-size: 10.5px; color: var(--text-dim); text-decoration: none;
     border-bottom: 1px dotted var(--panel-border);
   }
-  .vt-market-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .vt-market-link:hover { color: var(--accent); border-bottom-color: var(--accent); text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent); }
   .vt-countdown {
     font-style: normal; font-size: 10px; font-weight: 700; color: var(--gold);
     background: color-mix(in srgb, var(--gold) 16%, transparent);
@@ -394,7 +437,7 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .vt-snap-btn:hover { border-color: var(--gold); }
+  .vt-snap-btn:hover { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 45%, transparent); }
   .vt-snap-btn:disabled { opacity: .6; cursor: default; }
   .vt-unit-detail { margin-top: 4px; }
   /* Compact per-camp summary replacing the old side-by-side blocks' own
@@ -668,6 +711,10 @@
     border-radius: 999px;
     padding: 6px 15px;
     font-weight: 600;
+    transition: box-shadow .15s ease;
+  }
+  .rt-filters button:hover, .vt-filters button:hover {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent);
   }
   .rt-filters button.active, .vt-filters button.active {
     background: var(--accent);
@@ -1017,6 +1064,9 @@
   .stat-value { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .stat-value.pos { color: var(--green); }
   .stat-value.neg { color: var(--red); }
+  /* Empty (no trend yet, e.g. a single snapshot) collapses to 0 width via
+     miniTrendSvg returning "" — no gap left behind. */
+  .stat-tile-spark { display: block; width: 56px; height: 16px; margin-top: 6px; }
   .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
   .evolution-row { display: flex; gap: 14px; align-items: stretch; margin-bottom: 20px; }
   .evolution-row .chart-box { flex: 1 1 65%; min-width: 0; margin-bottom: 0; }
@@ -1810,6 +1860,21 @@
     var s = (name || "").trim();
     return s ? s.charAt(0).toUpperCase() : "?";
   }
+  // Tints the team/outcome name AT THE START of a "TeamA vs TeamB"-style
+  // question with its own side's color — a pre-read cue before the leader
+  // badge. Only fires on an exact-prefix match against one of this unit's
+  // own side names, so a "Will X win on ...?"-phrased question (no side
+  // name at the very start) safely falls through untinted rather than
+  // coloring an arbitrary word.
+  function questionHtmlWithLeadTint(question, mergedSides) {
+    for (var i = 0; i < mergedSides.length; i++) {
+      var name = mergedSides[i].name;
+      if (name && question.indexOf(name) === 0) {
+        return '<span style="color:' + sideColorFor(name) + '">' + esc(name) + '</span>' + esc(question.slice(name.length));
+      }
+    }
+    return esc(question);
+  }
 
   // ---------- sport classification (heuristic) ----------
   // Neither API exposes an explicit "sport" field. This is built from slug
@@ -1982,6 +2047,16 @@
     else if (diffDays === -1) label = "Hier";
     else label = fmtDateLong(d) + (diffDays < 0 ? " (passé)" : "");
     return { key: String(day.getTime()), label: label, sortKey: day.getTime() };
+  }
+  // Whole days until this unit's event, reusing unitDateBucket's own
+  // precise-kickoff-first/day-fallback-second resolution so this never
+  // drifts out of sync with what the day header/countdown already show.
+  // null when no date could be resolved at all (outright/futures markets).
+  function unitDaysUntil(u) {
+    var b = unitDateBucket(u);
+    if (b.sortKey === Infinity) return null;
+    var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    return Math.round((b.sortKey - todayStart.getTime()) / 86400000);
   }
   // "3 jours" / "4h05" / "12 min" — past 24h the hour count drops entirely
   // (nobody needs "3j 4h05" precision that far out).
@@ -2375,12 +2450,62 @@
     if (score == null) return 4;
     return 3 + Math.max(0, Math.min(1, (score - 1) / 9)) * 7;
   }
+  // Ambient card-level glow that only kicks in for genuinely strong
+  // signals (note ≥7) and ramps up to note 10 — replaces the single
+  // "trade en vedette" spotlight's job of calling out the best trade, but
+  // graded across every strong card in view instead of picking just one.
+  // Returns a raw box-shadow VALUE (not a full declaration) meant for the
+  // --note-glow custom property, so .value-trade-item's own box-shadow
+  // rule controls where it actually gets composited in.
+  function noteGlowShadow(score) {
+    if (score == null || score < 7) return null;
+    var t = Math.min(1, (score - 7) / 3);
+    var blur = 6 + t * 16;
+    var alpha = 15 + t * 45;
+    return "0 0 " + blur.toFixed(0) + "px color-mix(in srgb, " + scoreColor(score) + " " + alpha.toFixed(0) + "%, transparent)";
+  }
   // In-memory only — there's no stored price history to draw from, so this
   // sparkline is built up live from whatever the page happens to observe
   // during the current session (one point per auto-refresh, at most). It
   // starts empty on every reload and never claims to show history from
   // before the tab was opened.
+  // Persisted in localStorage (not just this tab's memory) so a market
+  // only reads as "new" the very first time this browser has EVER seen
+  // it — a fresh page load doesn't make everything look new again. Pruned
+  // once per render pass rather than growing forever; entries older than
+  // NEW_CARD_PRUNE_MS are dropped since they'd never read as "new" again
+  // anyway.
+  var FIRST_SEEN_KEY = "vtFirstSeenAt";
+  var NEW_CARD_MS = 60 * 60 * 1000; // 1h
+  var NEW_CARD_PRUNE_MS = 48 * 60 * 60 * 1000; // 48h
+  var firstSeenMap = (function () {
+    try { return JSON.parse(localStorage.getItem(FIRST_SEEN_KEY) || "{}"); } catch (e) { return {}; }
+  })();
+  var firstSeenDirty = false;
+  function markUnitSeen(key) {
+    if (!key) return false;
+    var now = Date.now();
+    if (!firstSeenMap[key]) {
+      firstSeenMap[key] = now;
+      firstSeenDirty = true;
+      return true;
+    }
+    return (now - firstSeenMap[key]) < NEW_CARD_MS;
+  }
+  function flushFirstSeenIfDirty() {
+    if (!firstSeenDirty) return;
+    var now = Date.now();
+    Object.keys(firstSeenMap).forEach(function (k) {
+      if (now - firstSeenMap[k] > NEW_CARD_PRUNE_MS) delete firstSeenMap[k];
+    });
+    try { localStorage.setItem(FIRST_SEEN_KEY, JSON.stringify(firstSeenMap)); } catch (e) { /* won't persist this time */ }
+    firstSeenDirty = false;
+  }
   var priceHistory = {};
+  // Separate from priceHistory (which accumulates a whole session's worth
+  // of points for the sparkline) — this only ever holds ONE prior value
+  // per key, purely to detect direction since the last refresh cycle.
+  var lastRenderedPrice = {};
   var PRICE_HISTORY_MAX = 20;
   var PRICE_HISTORY_MIN_GAP_MS = 4000;
   function recordPricePoint(key, price) {
@@ -2461,7 +2586,7 @@
       '<circle cx="15" cy="15" r="' + r + '" fill="none" stroke="var(--panel-border)" stroke-width="4"/>' +
       '<circle cx="15" cy="15" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="4" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + circumference.toFixed(1) + '" transform="rotate(-90 15 15)"/>' +
       '<circle cx="15" cy="15" r="8.5" fill="' + color + '"/>' +
-      '<text x="15" y="18.3" text-anchor="middle" font-size="9.5" font-weight="800" fill="#fff">' + score.toFixed(1) + '</text>' +
+      '<text x="15" y="18.6" text-anchor="middle" font-family="Times New Roman, Times, Georgia, serif" font-style="italic" font-size="10" font-weight="700" fill="#fff">' + score.toFixed(1) + '</text>' +
     '</svg>';
     var breakdownHtml = "";
     if (factors) {
@@ -2544,8 +2669,23 @@
     var leaderAvgPrice = leaderGroup ? mergedSideAvgPrice(leaderGroup) : null;
     var leaderPriceText = leaderAvgPrice != null ? fmtCents(leaderAvgPrice) : '';
     var leaderRoi = leaderAvgPrice != null && leaderAvgPrice > 0 ? (1 - leaderAvgPrice) / leaderAvgPrice * 100 : null;
+    // Direction since the PREVIOUS refresh specifically — a much shorter,
+    // punchier signal than the sparkline (which trends over the whole
+    // session). Silent on a market's very first render (nothing to compare
+    // against yet) and on an unchanged price (no arrow is itself
+    // information — nothing moved).
+    var priceArrowHtml = "";
+    if (leaderAvgPrice != null && primary.key) {
+      var prevPrice = lastRenderedPrice[primary.key];
+      if (prevPrice != null && prevPrice !== leaderAvgPrice) {
+        priceArrowHtml = leaderAvgPrice > prevPrice
+          ? '<span class="vt-price-arrow vt-price-up" title="En hausse depuis le dernier rafraîchissement">▲</span>'
+          : '<span class="vt-price-arrow vt-price-down" title="En baisse depuis le dernier rafraîchissement">▼</span>';
+      }
+      lastRenderedPrice[primary.key] = leaderAvgPrice;
+    }
     var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
-      (leaderPriceText ? ' <span class="vt-leader-price" title="Prix actuel du marché, pas le prix d\'entrée des traders">@ ' + leaderPriceText + '</span>' : '') + '</span>' : "";
+      (leaderPriceText ? ' <span class="vt-leader-price" title="Prix actuel du marché, pas le prix d\'entrée des traders">@ ' + leaderPriceText + '</span>' + priceArrowHtml : '') + '</span>' : "";
     recordPricePoint(primary.key, leaderAvgPrice);
     var sparkHtml = sparklineHtml(primary.key);
 
@@ -2608,7 +2748,7 @@
     }).join("") + kickoffHtml + '</div>';
     var headerHtml =
       '<div class="vt-top">' +
-        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + esc(primary.question) + '</span>' + leaderBadge + sparkHtml + '</span>' +
+        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides) + '</span>' + leaderBadge + sparkHtml + '</span>' +
         '<span class="vt-badge-group"><span class="vt-badge"><span class="vt-badge-traders">' + u.traderCount + ' traders</span><span class="vt-badge-sep">·</span><span class="vt-badge-stake">' + fmtUSD(u.totalStake) + '</span></span>' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors) + '</span>' +
       '</div>' + marketLinksHtml;
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
@@ -2660,9 +2800,16 @@
     var parts = computeUnitCardParts(u);
     var key = u.members[0].key;
     var isLive = unitTimingStatus(u) === "live";
-    return '<details class="value-trade-item' + (isLive ? ' vt-live' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
-      ' style="border-left-color:' + parts.leaderColor + ';border-left-width:' + parts.borderWidth.toFixed(1) + 'px' + (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') + '">' +
-      '<summary class="vt-summary">' + parts.headerHtml + parts.balanceHtml + '</summary>' +
+    var daysUntil = unitDaysUntil(u);
+    var isFar = !isLive && daysUntil != null && daysUntil > 3;
+    var stateClass = isLive ? ' vt-live' : (isFar ? ' vt-far' : '');
+    var isNew = markUnitSeen(key);
+    var isHighNew = isNew && u.score != null && u.score >= 8;
+    var borderColor = parts.sportTint || "var(--accent)";
+    var noteGlow = noteGlowShadow(u.score);
+    return '<details class="value-trade-item' + stateClass + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
+      ' style="border-left-color:' + borderColor + ';border-left-width:' + parts.borderWidth.toFixed(1) + 'px' + (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') + (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
+      '<summary class="vt-summary">' + (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') + parts.headerHtml + parts.balanceHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
   }
@@ -3010,21 +3157,40 @@
       if (hyp != null) { globalFlatPnl += hyp; globalFlatCount++; }
     });
     var globalRoi = globalFlatCount > 0 ? (globalFlatPnl / (globalFlatCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+    // Each tile's own running value recomputed after every decided snapshot,
+    // oldest first — "what would this stat have read at each point as
+    // snapshots came in", not a live per-refresh series (these barely move
+    // refresh to refresh; they move as the snapshot history grows).
+    var sortedForTrend = list.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    var wrTrend = [], coteTrend = [], roiTrend = [];
+    var runWin = 0, runDecided = 0, runPriceSum = 0, runPriceCount = 0, runRoiSum = 0, runRoiCount = 0;
+    sortedForTrend.forEach(function (snap) {
+      if (!snap.winningSide) return;
+      runDecided++;
+      if (snap.leaderName === snap.winningSide) runWin++;
+      wrTrend.push(runWin / runDecided * 100);
+      var p = snapLeaderPrice(snap);
+      if (p != null) { runPriceSum += p * 100; runPriceCount++; coteTrend.push(runPriceSum / runPriceCount); }
+      var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+      if (hyp != null) { runRoiCount++; runRoiSum += (hyp / HYPOTHETICAL_FLAT_STAKE * 100); roiTrend.push(runRoiSum / runRoiCount); }
+    });
     var globalTiles = [
-      { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
-      { label: "Cote moyenne", value: avgCote == null ? "—" : avgCote.toFixed(1) + "¢", title: "Prix moyen du camp leader au moment du snapshot, sur les snapshots décidés." },
+      { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg"), trend: wrTrend },
+      { label: "Cote moyenne", value: avgCote == null ? "—" : avgCote.toFixed(1) + "¢", title: "Prix moyen du camp leader au moment du snapshot, sur les snapshots décidés.", trend: coteTrend },
       // "ROI moyen par pari", not "ROI global" — this is the AVERAGE return
       // of one flat HYPOTHETICAL_FLAT_STAKE bet, not a % of some pooled
       // total stake. Reads as "20% of $1000 = $200" otherwise, which is
       // wrong by an order of magnitude once there are 19 bets, not 1 — the
       // actual cumulative $ total is on the chart above.
       { label: "ROI moyen par pari", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + "%", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg"),
-        title: "Moyenne du ROI de chaque pari pris isolément (mise à plat de " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " à chaque fois), pas un pourcentage d'un total misé cumulé. Le gain cumulé réel est affiché sur le graphique ci-dessus." }
+        title: "Moyenne du ROI de chaque pari pris isolément (mise à plat de " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " à chaque fois), pas un pourcentage d'un total misé cumulé. Le gain cumulé réel est affiché sur le graphique ci-dessus.", trend: roiTrend }
     ];
     function tilesHtml(tiles) {
       return '<div class="stat-grid">' + tiles.map(function (t) {
         return '<div class="stat-tile"' + (t.title ? ' title="' + esc(t.title) + '"' : '') + '><div class="stat-label">' + esc(t.label) + '</div>' +
-          '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div></div>';
+          '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div>' +
+          miniTrendSvg(t.trend, 'stat-tile-spark', 'Évolution au fil des snapshots') +
+          '</div>';
       }).join("") + '</div>';
     }
     snapDashboard.innerHTML = tilesHtml(globalTiles);
@@ -3622,12 +3788,15 @@
     var finalUnits = traderFiltered;
 
     if (!finalUnits.length) {
-      // Total market count included specifically so an empty list can be
-      // told apart from a broken fetch at a glance — 0 marchés au total
-      // means the data pipeline itself is the problem, a nonzero total
-      // just means nothing currently clears the ≥5-traders bar.
-      valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ')' +
-        ' — ' + allUnits.length + ' marché' + (allUnits.length > 1 ? 's' : '') + ' au total actuellement suivi' + (allUnits.length > 1 ? 's' : '') + ', aucun avec > ' + (vtMinTraders - 1) + ' traders sur le même camp.</div>';
+      // The headline (whale + "Aucun trade") is the at-a-glance read; the
+      // diagnostic sentence underneath is still what actually tells a
+      // too-strict filter apart from a broken fetch (0 marchés au total
+      // means the data pipeline itself is the problem) — kept, just
+      // demoted to supporting detail instead of the whole message.
+      valueTradesContent.innerHTML = '<div class="empty-note vt-empty-illustrated">' +
+        '<div class="vt-empty-whale">🐋</div><div class="vt-empty-headline">Aucun trade</div>' +
+        '<div class="vt-empty-detail">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ')' +
+        ' — ' + allUnits.length + ' marché' + (allUnits.length > 1 ? 's' : '') + ' au total actuellement suivi' + (allUnits.length > 1 ? 's' : '') + ', aucun avec > ' + (vtMinTraders - 1) + ' traders sur le même camp.</div></div>';
       return;
     }
     // Ranked by note (highest first) instead of stake — the note is the
@@ -3645,32 +3814,12 @@
       dayBuckets[b.key].units.push(u);
     });
     dayOrder.sort(function (ka, kb) { return dayBuckets[ka].sortKey - dayBuckets[kb].sortKey; });
-    // The single highest-note trade in the current (filtered) view, called
-    // out above the day-grouped list — same treatment language as the
-    // painting-of-the-day frame at the top of the page. It also still
-    // appears in its normal spot further down; this is a spotlight, not a
-    // removal, so day counts and ordering below stay untouched.
-    valueTradesContent.innerHTML = renderSpotlightHtml(rankedUnits[0]) + dayOrder.map(function (k) {
+    valueTradesContent.innerHTML = dayOrder.map(function (k) {
       var b = dayBuckets[k];
       return '<div class="vt-day-header">' + esc(b.label) + '<span class="vt-day-count">' + b.units.length + ' marché' + (b.units.length > 1 ? 's' : '') + '</span></div>' +
         b.units.map(renderUnitCard).join("");
     }).join("");
-  }
-  function renderSpotlightHtml(u) {
-    var parts = computeUnitCardParts(u);
-    var sportEmoji = sportEmojiFor(parts.primary.question, parts.primary.slug);
-    var leaderBadge = parts.leaderName ? '<span class="vt-leader" style="background:' + parts.leaderColor + '">→ ' + esc(parts.leaderName) +
-      (parts.leaderPriceText ? ' <span class="vt-leader-price">@ ' + esc(parts.leaderPriceText) + '</span>' : '') + '</span>' : '';
-    return '<div class="vt-spotlight">' +
-      '<div class="vt-spotlight-tag">✦ Trade en vedette</div>' +
-      '<div class="vt-spotlight-body">' +
-        '<span class="vt-spotlight-emoji">' + sportEmoji + '</span>' +
-        '<span class="vt-spotlight-question">' + esc(parts.primary.question) + '</span>' +
-        leaderBadge +
-        '<span class="vt-spotlight-meta">' + u.traderCount + ' traders · ' + fmtUSD(u.totalStake) + '</span>' +
-        scoreBadgeHtml(u.score, null, 'vt-spotlight-ring') +
-      '</div>' +
-    '</div>';
+    flushFirstSeenIfDirty();
   }
 
   // ---------- recent trades ----------
