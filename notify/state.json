@@ -1,14 +1,1 @@
-{
-  "polymarket|0xa84b9537b2cee0e39d09e04cfe592dd63f5753fd94548fd5600de8c8092dd017": {
-    "firstSeen": "2026-08-06T06:15:32.123Z",
-    "question": "Will CD Guadalajara win on 2026-08-05?",
-    "side": "No",
-    "note": 6.4
-  },
-  "polymarket|0xee7b9d35f9dde698b1774ca8c10ff7e9518f360f6049a2aa53d9062c9ff4bba0": {
-    "firstSeen": "2026-08-06T06:15:32.123Z",
-    "question": "Will Los Angeles FC vs. CD Guadalajara end in a draw?",
-    "side": "Yes",
-    "note": 6.1
-  }
-}
+{}
