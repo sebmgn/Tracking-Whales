@@ -54,11 +54,11 @@
     margin: 4px 0 0;
     color: var(--text);
   }
-  /* Daily-changing Monet reproduction, top-right — a small framed print, not
-     a hero image. The specific painting is picked deterministically from the
-     date, so it's the same all day and changes tomorrow. */
-  .monet-frame { flex: none; width: 190px; text-align: center; }
-  .monet-frame img {
+  /* Daily-changing famous-painting reproduction, top-right — a small framed
+     print, not a hero image. The specific painting is picked deterministically
+     from the date, so it's the same all day and changes tomorrow. */
+  .artwork-frame { flex: none; width: 190px; text-align: center; }
+  .artwork-frame img {
     width: 100%;
     height: 130px;
     object-fit: cover;
@@ -68,7 +68,7 @@
     box-shadow: 0 4px 16px rgba(51,43,30,.2);
     background: var(--panel);
   }
-  .monet-caption {
+  .artwork-caption {
     margin-top: 6px;
     font-family: "Times New Roman", Times, Georgia, serif;
     font-style: italic;
@@ -77,8 +77,8 @@
     color: var(--text-dim);
   }
   @media (max-width: 620px) {
-    .monet-frame { width: 140px; }
-    .monet-frame img { height: 95px; }
+    .artwork-frame { width: 140px; }
+    .artwork-frame img { height: 95px; }
   }
   h2.section-title {
     font-size: 15px;
@@ -158,16 +158,17 @@
   .tab-btn-icon { font-size: 13px; }
   /* Value Trades and Mes Snapshots are what this app is actually for, so
      they win the eye first (bold gold, identical weight/size on both) and
-     stay pinned left; the other three are reference material, pushed all
-     the way to the right edge of the same bar (margin-left:auto on the
-     first of them) so the split between "what this app is for" and
-     "everything else" is spatial, not just visual weight. They step down
-     together to one flat, deliberate mid-gray (not the pale sand tint that
-     would fade next to everything else) — a clear break from the gold
-     family on purpose, not a third gradient stop. */
+     stay pinned left; the other three (Statistiques profils, Trades par
+     profils, Trades récents) are reference material, pushed all the way to
+     the right edge of the same bar (margin-left:auto on the first of them)
+     so the split between "what this app is for" and "everything else" is
+     spatial, not just visual weight — and all three share one flat,
+     deliberate mid-gray/size/weight (not the pale sand tint that would
+     fade next to everything else), so they read as one group rather than
+     three separately-styled tabs. */
   .tab-bar .tab-btn:nth-child(1) { color: #8a6a26; }
   .tab-bar .tab-btn:nth-child(2) { color: #a37f34; }
-  .tab-bar .tab-btn:nth-child(3) { color: #8c7a5c; margin-left: auto; }
+  .tab-bar .tab-btn:nth-child(3) { margin-left: auto; }
   .tab-btn-primary { font-weight: 800; font-size: 14.5px; }
   .tab-bar .tab-btn.tab-btn-quiet { color: #6b6b6b; font-weight: 500; font-size: 12.5px; }
   .tab-bar .tab-btn:hover { color: var(--text); }
@@ -950,9 +951,9 @@
 
   <header>
     <h1>Analyse Whales Rentables 🐋</h1>
-    <div class="monet-frame">
-      <img id="monetImg" src="" alt="">
-      <div class="monet-caption"><span id="monetTitle"></span>, <span id="monetYear"></span></div>
+    <div class="artwork-frame">
+      <img id="artworkImg" src="" alt="">
+      <div class="artwork-caption"><span id="artworkTitle"></span>, <span id="artworkArtist"></span>, <span id="artworkYear"></span></div>
     </div>
   </header>
 
@@ -969,7 +970,7 @@
   <div class="tab-bar">
     <button class="tab-btn tab-btn-primary active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
-    <button class="tab-btn" data-tab="stats-profiles" type="button"><span class="tab-btn-icon">📊</span>Statistiques profils</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="stats-profiles" type="button">Statistiques profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
   </div>
@@ -1159,47 +1160,128 @@
 
   document.getElementById("genTime").textContent = new Date().toLocaleString("fr-FR");
 
-  // ---------- daily Monet (top-right) ----------
-  // 18 public-domain reproductions, each verified to load from Wikimedia
-  // Commons (HTTP HEAD checked) and cross-checked (title/year) against the
-  // holding museum (NGA, Courtauld, Musée d'Orsay, Met, Art Institute of
-  // Chicago, Musée Marmottan, National Museum Cardiff). Skews toward
-  // Monet's best-known works so the rotation reads as "famous paintings",
-  // not just whatever was easiest to find. Picked deterministically from
-  // the day of year, so it's stable all day and changes tomorrow — no
-  // randomness, and with 18 entries the repeat cycle is long enough that it
-  // stops feeling like the same handful on loop.
-  var MONET_PAINTINGS = [
-    { title: "Impression, soleil levant", year: 1872, file: "Monet - Impression, Sunrise.jpg" },
-    { title: "Coquelicots (Poppy Field)", year: 1873, file: "Claude Monet - Poppy Field - Google Art Project.jpg" },
-    { title: "Argenteuil", year: 1872, file: "Claude Monet - Argenteuil.jpg" },
-    { title: "Camille Monet au jardin, Argenteuil", year: 1876, file: "Claude Monet - Camille Monet in the Garden at Argenteuil.jpg" },
-    { title: "La Cathédrale de Rouen, façade ouest, soleil", year: 1894, file: "Claude Monet - Rouen Cathedral, West Facade, Sunlight.jpg" },
-    { title: "Antibes", year: 1888, file: "Claude Monet - Antibes.jpg" },
-    { title: "Le Pont japonais", year: 1899, file: "Claude Monet - The Japanese Footbridge.jpg" },
-    { title: "Le Parlement de Londres, effet de soleil", year: 1903, file: "Claude Monet - The Houses of Parliament, Sunset.jpg" },
-    { title: "Femme à l'ombrelle — Madame Monet et son fils", year: 1875, file: "Claude Monet - Woman with a Parasol - Madame Monet and Her Son - Google Art Project.jpg" },
-    { title: "La Pie (The Magpie)", year: 1869, file: "Claude Monet - The Magpie - Google Art Project.jpg" },
-    { title: "Nymphéas (Water Lilies)", year: 1919, file: "Water Lilies by Claude Monet, 1919 at Metropolitan Museum of Art.jpg" },
-    { title: "Le Pont sur le bassin aux nymphéas", year: 1899, file: "Bridge Over a Pond of Water Lilies, Claude Monet 1899.jpg" },
-    { title: "La Falaise à Pourville", year: 1882, file: "Claude Monet - Cliff Walk at Pourville - Google Art Project.jpg" },
-    { title: "Jardin à Sainte-Adresse", year: 1867, file: "Claude Monet - 1867 - Garden at Sainte-Adresse.jpg" },
-    { title: "Glycines (Wisteria)", year: 1920, file: "Wisteria by Claude Monet, Musée Marmottan Monet 5124.JPG" },
-    { title: "Saint-Georges Majeur au crépuscule", year: 1908, file: "Claude Monet, Saint-Georges majeur au crépuscule.jpg" },
-    { title: "Le Déjeuner sur l'herbe", year: 1866, file: "Claude Monet - Le dejeuner sur l’herbe.JPG" },
-    { title: "Meules, fin de l'été (Wheatstacks)", year: 1891, file: "Monet - wheatstacks-end-of-summer-1891.jpg" }
+  // ---------- daily famous painting (top-right) ----------
+  // 95 public-domain reproductions spanning art history (Renaissance
+  // through early 20th century), each verified to actually resolve on
+  // Wikimedia Commons via the API (batch imageinfo lookup, not just a
+  // guessed filename) before being added here. Deliberately stops short of
+  // anything still in copyright (Picasso, Dalí, Matisse, Magritte, Duchamp
+  // are NOT public domain yet and aren't freely hosted on Commons — several
+  // were tried and dropped when the lookup came back empty) — Kandinsky and
+  // Hopper are the two exceptions Commons itself already hosts under US
+  // public-domain rules despite not yet being 70pma in the EU. Picked
+  // deterministically from the day of year, so it's stable all day and
+  // changes tomorrow — no randomness, and with 95 entries the repeat cycle
+  // is long enough that it stops feeling like the same handful on loop.
+  var FAMOUS_PAINTINGS = [
+    { title: "Mona Lisa", artist: "Léonard de Vinci", year: 1503, file: "Mona Lisa, by Leonardo da Vinci, from C2RMF retouched.jpg" },
+    { title: "La Cène", artist: "Léonard de Vinci", year: 1498, file: "Leonardo da Vinci (1452-1519) - The Last Supper (1495-1498).jpg" },
+    { title: "L'École d'Athènes", artist: "Raphaël", year: 1511, file: "\"The School of Athens\" by Raffaello Sanzio da Urbino.jpg" },
+    { title: "La Naissance de Vénus", artist: "Sandro Botticelli", year: 1486, file: "Sandro Botticelli - La nascita di Venere - Google Art Project - edited.jpg" },
+    { title: "Le Printemps", artist: "Sandro Botticelli", year: 1480, file: "Sandro Botticelli - La Primavera - Google Art Project.jpg" },
+    { title: "Le Jardin des délices", artist: "Jérôme Bosch", year: 1503, file: "The Garden of earthly delights.jpg" },
+    { title: "Les Chasseurs dans la neige", artist: "Pieter Brueghel l'Ancien", year: 1565, file: "Pieter Bruegel the Elder - Hunters in the Snow (Winter) - Google Art Project.jpg" },
+    { title: "La Tour de Babel", artist: "Pieter Brueghel l'Ancien", year: 1563, file: "Pieter Bruegel the Elder - The Tower of Babel (Vienna) - Google Art Project - edited.jpg" },
+    { title: "Les Époux Arnolfini", artist: "Jan van Eyck", year: 1434, file: "Van Eyck - Arnolfini Portrait.jpg" },
+    { title: "La Jeune Fille à la perle", artist: "Johannes Vermeer", year: 1665, file: "1665 Girl with a Pearl Earring.jpg" },
+    { title: "La Laitière", artist: "Johannes Vermeer", year: 1658, file: "Johannes Vermeer - Het melkmeisje - Google Art Project.jpg" },
+    { title: "Vue de Delft", artist: "Johannes Vermeer", year: 1661, file: "Vermeer-view-of-delft.jpg" },
+    { title: "L'Art de la peinture", artist: "Johannes Vermeer", year: 1668, file: "Jan Vermeer van Delft 021.jpg" },
+    { title: "La Ronde de nuit", artist: "Rembrandt", year: 1642, file: "The Nightwatch by Rembrandt.jpg" },
+    { title: "La Leçon d'anatomie du docteur Tulp", artist: "Rembrandt", year: 1632, file: "Rembrandt - The Anatomy Lesson of Dr Nicolaes Tulp.jpg" },
+    { title: "Autoportrait", artist: "Rembrandt", year: 1659, file: "Rembrandt van Rijn - Self-Portrait - Google Art Project.jpg" },
+    { title: "Les Ménines", artist: "Diego Vélasquez", year: 1656, file: "Las Meninas, by Diego Velázquez, from Prado in Google Earth.jpg" },
+    { title: "Vénus au miroir", artist: "Diego Vélasquez", year: 1651, file: "Diego Velázquez - Venus at her Mirror.jpg" },
+    { title: "Le Tres de Mayo", artist: "Francisco de Goya", year: 1814, file: "El Tres de Mayo, by Francisco de Goya, from Prado in Google Earth.jpg" },
+    { title: "Saturne dévorant un de ses fils", artist: "Francisco de Goya", year: 1823, file: "Francisco de Goya, Saturno devorando a su hijo (1819-1823).jpg" },
+    { title: "La Liberté guidant le peuple", artist: "Eugène Delacroix", year: 1830, file: "Eugène Delacroix - Le 28 Juillet. La Liberté guidant le peuple.jpg" },
+    { title: "Le Sacre de Napoléon", artist: "Jacques-Louis David", year: 1807, file: "Jacques-Louis David - The Coronation of Napoleon (1805-1807).jpg" },
+    { title: "La Mort de Marat", artist: "Jacques-Louis David", year: 1793, file: "Jacques-Louis David - Marat assassinated - Google Art Project 2.jpg" },
+    { title: "Le Serment des Horaces", artist: "Jacques-Louis David", year: 1784, file: "Jacques-Louis David - Oath of the Horatii - Google Art Project.jpg" },
+    { title: "Le Voyageur contemplant une mer de nuages", artist: "Caspar David Friedrich", year: 1818, file: "Caspar David Friedrich - Wanderer above the Sea of Fog.jpeg" },
+    { title: "La Charrette de foin", artist: "John Constable", year: 1821, file: "John Constable The Hay Wain.jpg" },
+    { title: "Un enterrement à Ornans", artist: "Gustave Courbet", year: 1850, file: "Gustave Courbet - A Burial at Ornans - Google Art Project.jpg" },
+    { title: "Des glaneuses", artist: "Jean-François Millet", year: 1857, file: "Jean-François Millet (II) 001.jpg" },
+    { title: "Le Déjeuner sur l'herbe", artist: "Édouard Manet", year: 1863, file: "Edouard Manet - Luncheon on the Grass - Google Art Project.jpg" },
+    { title: "Un bar aux Folies Bergère", artist: "Édouard Manet", year: 1882, file: "Edouard Manet, A Bar at the Folies-Bergère.jpg" },
+    { title: "Impression, soleil levant", artist: "Claude Monet", year: 1872, file: "Monet - Impression, Sunrise.jpg" },
+    { title: "Nymphéas", artist: "Claude Monet", year: 1919, file: "Water Lilies by Claude Monet, 1919 at Metropolitan Museum of Art.jpg" },
+    { title: "La Cathédrale de Rouen", artist: "Claude Monet", year: 1894, file: "Claude Monet - Rouen Cathedral, West Facade, Sunlight.jpg" },
+    { title: "Le Déjeuner des canotiers", artist: "Auguste Renoir", year: 1881, file: "Pierre-Auguste Renoir - Luncheon of the Boating Party - Google Art Project.jpg" },
+    { title: "La Classe de danse", artist: "Edgar Degas", year: 1874, file: "Edgar Degas - The Ballet Class - Google Art Project.jpg" },
+    { title: "L'Absinthe", artist: "Edgar Degas", year: 1876, file: "Edgar Degas - In a Café - Google Art Project 2.jpg" },
+    { title: "Une après-midi à l'île de la Grande Jatte", artist: "Georges Seurat", year: 1886, file: "A Sunday on La Grande Jatte, Georges Seurat, 1884.jpg" },
+    { title: "La Nuit étoilée", artist: "Vincent van Gogh", year: 1889, file: "Van Gogh - Starry Night - Google Art Project.jpg" },
+    { title: "Les Tournesols", artist: "Vincent van Gogh", year: 1888, file: "Vincent Willem van Gogh 128.jpg" },
+    { title: "La Chambre à Arles", artist: "Vincent van Gogh", year: 1888, file: "Vincent van Gogh - De slaapkamer - Google Art Project.jpg" },
+    { title: "La Terrasse du café le soir", artist: "Vincent van Gogh", year: 1888, file: "Van Gogh - Terrasse des Cafés an der Place du Forum in Arles am Abend1.jpeg" },
+    { title: "Champ de blé aux corbeaux", artist: "Vincent van Gogh", year: 1890, file: "Vincent van Gogh - Wheatfield with crows - Google Art Project.jpg" },
+    { title: "La Montagne Sainte-Victoire", artist: "Paul Cézanne", year: 1904, file: "Paul Cézanne - Mont Sainte-Victoire - Google Art Project.jpg" },
+    { title: "Quand te maries-tu ?", artist: "Paul Gauguin", year: 1892, file: "Paul Gauguin 137.jpg" },
+    { title: "Bal au Moulin Rouge", artist: "Henri de Toulouse-Lautrec", year: 1890, file: "Henri de Toulouse-Lautrec - At the Moulin Rouge - Google Art Project.jpg" },
+    { title: "Le Baiser", artist: "Gustav Klimt", year: 1908, file: "Gustav Klimt 016.jpg" },
+    { title: "Le Portrait d'Adele Bloch-Bauer I", artist: "Gustav Klimt", year: 1907, file: "Gustav Klimt 046.jpg" },
+    { title: "Le Cri", artist: "Edvard Munch", year: 1893, file: "Edvard Munch, 1893, The Scream, oil, tempera and pastel on cardboard, 91 x 73 cm, National Gallery of Norway.jpg" },
+    { title: "La Madone", artist: "Edvard Munch", year: 1895, file: "Edvard Munch - Madonna - Google Art Project.jpg" },
+    { title: "La Grande Vague de Kanagawa", artist: "Katsushika Hokusai", year: 1831, file: "Tsunami by hokusai 19th century.jpg" },
+    { title: "American Gothic", artist: "Grant Wood", year: 1930, file: "Grant Wood - American Gothic - Google Art Project.jpg" },
+    { title: "Mère de l'artiste (Arrangement en gris et noir)", artist: "James McNeill Whistler", year: 1871, file: "Whistlers Mother high res.jpg" },
+    { title: "Le Cauchemar", artist: "Johann Heinrich Füssli", year: 1781, file: "Johann Heinrich Füssli 054.jpg" },
+    { title: "Saint Georges et le dragon", artist: "Raphaël", year: 1506, file: "Raffael 041.jpg" },
+    { title: "Persée délivrant Andromède", artist: "Pierre Paul Rubens", year: 1622, file: "Peter Paul Rubens 076.jpg" },
+    { title: "Les Trois Grâces", artist: "Pierre Paul Rubens", year: 1635, file: "Peter Paul Rubens - The Three Graces, 1635.jpg" },
+    { title: "Composition VII", artist: "Vassily Kandinsky", year: 1913, file: "Vassily Kandinsky, 1913 - Composition 7.jpg" },
+    { title: "Nighthawks", artist: "Edward Hopper", year: 1942, file: "Nighthawks by Edward Hopper 1942.jpg" },
+    { title: "Le Plafond de la Chapelle Sixtine", artist: "Michel-Ange", year: 1512, file: "'Sistine Chapel ceiling' by Michelangelo JBU21.JPG" },
+    { title: "Le Jugement dernier", artist: "Michel-Ange", year: 1541, file: "Michelangelo Buonarroti - Last Judgment - WGA15472.jpg" },
+    { title: "La Vierge aux rochers", artist: "Léonard de Vinci", year: 1486, file: "Virgin of the Rocks (Louvre).jpg" },
+    { title: "La Dame à l'hermine", artist: "Léonard de Vinci", year: 1490, file: "Lady with an Ermine - Leonardo da Vinci - Google Art Project.jpg" },
+    { title: "La Chute d'Icare", artist: "Pieter Brueghel l'Ancien", year: 1560, file: "Pieter Bruegel the Elder - Landscape with the Fall of Icarus - WGA03321.jpg" },
+    { title: "La Vierge au chancelier Rolin", artist: "Jan van Eyck", year: 1435, file: "Jan van Eyck 070 Virgin of Chancellor Rolin adj.jpg" },
+    { title: "La Reddition de Breda", artist: "Diego Vélasquez", year: 1635, file: "Velazquez-The Surrender of Breda.jpg" },
+    { title: "La Maja nue", artist: "Francisco de Goya", year: 1800, file: "Maja desnuda (museo del Prado).jpg" },
+    { title: "Le Radeau de la Méduse", artist: "Théodore Géricault", year: 1819, file: "JEAN LOUIS THÉODORE GÉRICAULT - La Balsa de la Medusa (Museo del Louvre, 1818-19).jpg" },
+    { title: "Pluie, vapeur et vitesse", artist: "William Turner", year: 1844, file: "Turner - Rain, Steam and Speed - National Gallery file.jpg" },
+    { title: "Le Téméraire remorqué à son dernier mouillage", artist: "William Turner", year: 1839, file: "Turner, J. M. W. - The Fighting Téméraire tugged to her last Berth to be broken.jpg" },
+    { title: "L'Angélus", artist: "Jean-François Millet", year: 1859, file: "Jean-François Millet Angelus.jpg" },
+    { title: "Olympia", artist: "Édouard Manet", year: 1863, file: "Edouard Manet - Olympia - Google Art Project 3.jpg" },
+    { title: "Bal du moulin de la Galette", artist: "Auguste Renoir", year: 1876, file: "Auguste Renoir - Dance at Le Moulin de la Galette - Google Art Project.jpg" },
+    { title: "Autoportrait à l'oreille bandée", artist: "Vincent van Gogh", year: 1889, file: "Vincent van Gogh - Self portrait with bandaged ear F529.jpg" },
+    { title: "Les Mangeurs de pommes de terre", artist: "Vincent van Gogh", year: 1885, file: "Vincent van Gogh - The potato eaters - Google Art Project.jpg" },
+    { title: "Les Joueurs de cartes", artist: "Paul Cézanne", year: 1895, file: "The Card Players by Paul Cézanne at Metropolitan Museum of Art.jpg" },
+    { title: "D'où venons-nous ? Que sommes-nous ? Où allons-nous ?", artist: "Paul Gauguin", year: 1897, file: "Gauguin - Where Do We Come From? What Are We? Where Are We Going? (1897-98).jpg" },
+    { title: "La Bohémienne endormie", artist: "Henri Rousseau", year: 1897, file: "WLA moma Henri Rousseau The Sleeping Gypsy 3.jpg" },
+    { title: "Cinquante-trois stations du Tokaido", artist: "Utagawa Hiroshige", year: 1833, file: "Hiroshige-53-Stations-Hoeido-01-Nihonbashi-BM-03.jpg" },
+    { title: "Le Colosse", artist: "Francisco de Goya", year: 1818, file: "The Colossus, Francisco de Goya.jpg" },
+    { title: "La Vierge au chardonneret", artist: "Raphaël", year: 1506, file: "Raphael, Madonna del Cardellino, 1507, Uffizi.jpg" },
+    { title: "La Naissance de Vénus (Cabanel)", artist: "Alexandre Cabanel", year: 1863, file: "Alexandre Cabanel - The Birth of Venus - Google Art Project 2.jpg" },
+    { title: "La Grande Odalisque", artist: "Jean-Auguste-Dominique Ingres", year: 1814, file: "Jean Auguste Dominique Ingres, La Grande Odalisque, 1814.jpg" },
+    { title: "Le Bain turc", artist: "Jean-Auguste-Dominique Ingres", year: 1862, file: "Le Bain Turc, by Jean Auguste Dominique Ingres, from C2RMF retouched.jpg" },
+    { title: "Le Jardin d'Eden", artist: "Lucas Cranach l'Ancien", year: 1530, file: "Lucas Cranach the Elder - Adam and Eve - Google Art Project.jpg" },
+    { title: "Vénus d'Urbino", artist: "Titien", year: 1538, file: "Tiziano - Venere di Urbino - Google Art Project.jpg" },
+    { title: "Amour sacré et amour profane", artist: "Titien", year: 1514, file: "Tizian 041.jpg" },
+    { title: "La Vocation de saint Matthieu", artist: "Le Caravage", year: 1600, file: "The Calling of Saint Matthew-Caravaggo (1599-1600).jpg" },
+    { title: "Autoportrait au col de fourrure", artist: "Albrecht Dürer", year: 1500, file: "Albrecht Dürer - 1500 self-portrait (High resolution and detail).jpg" },
+    { title: "Melencolia I", artist: "Albrecht Dürer", year: 1514, file: "Melencolia I (Durero).jpg" },
+    { title: "L'Escarpolette", artist: "Jean-Honoré Fragonard", year: 1767, file: "Fragonard, The Swing.jpg" },
+    { title: "Le Verrou", artist: "Jean-Honoré Fragonard", year: 1778, file: "Jean-Honoré Fragonard 020.jpg" },
+    { title: "Le Fils prodigue", artist: "Rembrandt", year: 1669, file: "Rembrandt Harmensz. van Rijn 143.jpg" },
+    { title: "La Nef des fous", artist: "Jérôme Bosch", year: 1500, file: "Hieronymus Bosch 001.jpg" },
+    { title: "L'Été (Arcimboldo)", artist: "Giuseppe Arcimboldo", year: 1563, file: "Giuseppe Arcimboldo - Summer - Google Art Project.jpg" },
+    { title: "L'Homme au gant", artist: "Titien", year: 1523, file: "Tizian 100.jpg" }
   ];
-  (function initDailyMonet() {
+  (function initDailyArtwork() {
     var now = new Date();
     var startOfYear = new Date(now.getFullYear(), 0, 0);
     var dayOfYear = Math.floor((now - startOfYear) / 86400000);
-    var pick = MONET_PAINTINGS[dayOfYear % MONET_PAINTINGS.length];
+    var pick = FAMOUS_PAINTINGS[dayOfYear % FAMOUS_PAINTINGS.length];
     var url = "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(pick.file).replace(/%20/g, "_");
-    var img = document.getElementById("monetImg");
+    var img = document.getElementById("artworkImg");
     img.src = url;
-    img.alt = pick.title + ", Claude Monet, " + pick.year;
-    document.getElementById("monetTitle").textContent = pick.title;
-    document.getElementById("monetYear").textContent = pick.year;
+    img.alt = pick.title + ", " + pick.artist + ", " + pick.year;
+    document.getElementById("artworkTitle").textContent = pick.title;
+    document.getElementById("artworkArtist").textContent = pick.artist;
+    document.getElementById("artworkYear").textContent = pick.year;
   })();
 
   var paused = false;
