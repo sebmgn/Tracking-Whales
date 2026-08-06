@@ -205,11 +205,6 @@
     padding: 16px 20px 18px;
     box-shadow: 0 1px 4px rgba(51,43,30,.08);
   }
-  /* Opened at least once this session (even if closed again since) — dims
-     slightly so a card that's genuinely new since the last look keeps
-     standing out instead of every card looking equally "fresh". */
-  .value-trade-item.vt-seen { opacity: .68; }
-  .value-trade-item.vt-seen:hover, .value-trade-item.vt-seen[open] { opacity: 1; }
   /* Value trade cards render as <details> — header + gauges stay visible as
      the always-shown <summary>, the trader-by-trader breakdown is collapsed
      behind a click so the list reads compact by default. */
@@ -1355,11 +1350,6 @@
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
-  // Unlike expandedValueTrades (current open/closed state, flips back to
-  // false on close), this only ever gets set — once a card has been opened
-  // at least once this session it stays dimmed even after closing, so a
-  // fresh unopened card is the one that visually stands out.
-  var seenValueTrades = {};
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
   var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
   var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
@@ -1839,15 +1829,15 @@
     else label = fmtDateLong(d) + (diffDays < 0 ? " (passé)" : "");
     return { key: String(day.getTime()), label: label, sortKey: day.getTime() };
   }
-  // "3j 4h" / "4h05" / "12 min" — coarsest unit that's still useful drops
-  // the finer one entirely (nobody needs "3j 4h05min" precision).
+  // "3 jours" / "4h05" / "12 min" — past 24h the hour count drops entirely
+  // (nobody needs "3j 4h05" precision that far out).
   function fmtCountdown(ms) {
     if (ms <= 0) return null;
     var totalMin = Math.round(ms / 60000);
     var days = Math.floor(totalMin / 1440);
     var hours = Math.floor((totalMin % 1440) / 60);
     var mins = totalMin % 60;
-    if (days > 0) return days + "j " + hours + "h";
+    if (days > 0) return days + (days > 1 ? " jours" : " jour");
     if (hours > 0) return hours + "h" + (mins < 10 ? "0" : "") + mins;
     return mins + " min";
   }
@@ -2269,13 +2259,17 @@
     var trendColor = values[values.length - 1] >= values[0] ? "var(--green)" : "var(--red)";
     return '<svg class="vt-spark' + (extraClass ? ' ' + extraClass : '') + '" viewBox="0 0 ' + w + ' ' + h + '" title="' + esc(title || '') + '"><polyline points="' + pts + '" fill="none" stroke="' + trendColor + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
+  // Deliberately not a precise historical chart — there's no price-history
+  // API behind this. It's a rough read built live from what THIS tab has
+  // observed: one point per refresh cycle at most (throttled to a 4s
+  // floor), capped at the last 20, drawn evenly spaced regardless of the
+  // actual gaps between them, and wiped to empty on every reload. Good for
+  // "has this been drifting up or down the last few minutes I've had the
+  // page open", not for anything more exact than that.
   function sparklineHtml(key) {
     var hist = priceHistory[key];
-    // Needs at least 3 observed points before it's worth drawing — with only
-    // 2 it's just a straight line between two ticks, which reads as noise
-    // rather than a trend.
     if (!hist || hist.length < 3) return '';
-    return miniTrendSvg(hist.map(function (p) { return p.p; }), '', "Évolution du prix depuis l'ouverture de la page");
+    return miniTrendSvg(hist.map(function (p) { return p.p; }), '', "Tendance approximative sur cette session (" + hist.length + " points, page ouverte depuis peu) — pas un historique précis, réinitialisé à chaque rechargement");
   }
   function traderTrendSparkline(trend) {
     if (!trend || trend.length < 2) return '';
@@ -2304,10 +2298,15 @@
     var fillFrac = normLinear(score, [4, 9]);
     var r = 12, circumference = 2 * Math.PI * r;
     var dash = (fillFrac * circumference).toFixed(1);
+    // The number used to sit as small colored text on the card's own
+    // background — easy to lose at a glance across a long list. A solid
+    // disc in the same color, with white text on top, reads instantly
+    // instead of needing a second look.
     var ringSvg = '<svg width="30" height="30" viewBox="0 0 30 30" class="vt-score-ring">' +
       '<circle cx="15" cy="15" r="' + r + '" fill="none" stroke="var(--panel-border)" stroke-width="4"/>' +
       '<circle cx="15" cy="15" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="4" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + circumference.toFixed(1) + '" transform="rotate(-90 15 15)"/>' +
-      '<text x="15" y="18.5" text-anchor="middle" font-size="9" font-weight="800" fill="' + color + '">' + score.toFixed(1) + '</text>' +
+      '<circle cx="15" cy="15" r="8.5" fill="' + color + '"/>' +
+      '<text x="15" y="18.3" text-anchor="middle" font-size="9.5" font-weight="800" fill="#fff">' + score.toFixed(1) + '</text>' +
     '</svg>';
     var breakdownHtml = "";
     if (factors) {
@@ -2370,11 +2369,6 @@
     }
     var traderLeadPct = totalTradersAll > 0 ? (mergedSides[0].traderCount / totalTradersAll * 100) : 0;
     var dollarLeadPct = totalStakeAll > 0 ? (mergedSides[0].stake / totalStakeAll * 100) : 0;
-    var traderSegments = mergedSides.map(function (m, i) {
-      var pct = totalTradersAll > 0 ? (m.traderCount / totalTradersAll * 100) : 0;
-      var label = esc(m.name) + " — " + m.traderCount + "/" + totalTradersAll + " traders (" + pct.toFixed(0) + "%) · mise " + fmtUSD(m.stake);
-      return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeBackground(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
-    }).join("") + gaugeTick(traderLeadPct);
     var dollarSegments = mergedSides.map(function (m, i) {
       var pct = totalStakeAll > 0 ? (m.stake / totalStakeAll * 100) : 0;
       var label = esc(m.name) + " — mise " + fmtUSD(m.stake) + " / " + fmtUSD(totalStakeAll) + " (" + pct.toFixed(0) + "%)";
@@ -2421,17 +2415,36 @@
     // trigger it here too or the cache would stay empty on the default
     // "Tous" filter.
     var kickoffHtml = "";
+    var countdownText = null;
+    var preciseKickoff = null;
     if (u.matchKey) {
       var cachedTiming = matchTimingCache[u.matchKey];
       if (cachedTiming && cachedTiming.kickoff) {
-        var msToKickoff = cachedTiming.kickoff.getTime() - Date.now();
-        var countdownText = msToKickoff > 0 ? fmtCountdown(msToKickoff) : null;
-        var countdownHtml = countdownText ? '<span class="vt-countdown">⏱ dans ' + esc(countdownText) + '</span>' : '';
-        kickoffHtml = '<span class="vt-kickoff">' + esc(cachedTiming.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '</span>' + countdownHtml;
+        preciseKickoff = cachedTiming.kickoff;
+        var msToKickoff = preciseKickoff.getTime() - Date.now();
+        countdownText = msToKickoff > 0 ? fmtCountdown(msToKickoff) : null;
       } else {
         scheduleMatchTimingFetch(u.matchKey);
       }
     }
+    // No precise kickoff yet (still fetching, gamma-api has no matching
+    // event, or a Predict.fun-only market it can never match) — fall back
+    // to the same day-only date unitTimingStatus/unitDateBucket already
+    // use, in whole days only, so every card with an extractable date
+    // still gets a countdown instead of only the ones lucky enough to have
+    // a matched Polymarket event. A same-day match with no precise kickoff
+    // stays blank here rather than fabricate an hour count we don't have.
+    if (countdownText == null) {
+      var fallbackDay = extractMatchDate(primary.question, u.matchKey);
+      if (fallbackDay) {
+        var dayStart = new Date(fallbackDay.getFullYear(), fallbackDay.getMonth(), fallbackDay.getDate());
+        var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        var diffDays = Math.round((dayStart.getTime() - todayStart.getTime()) / 86400000);
+        if (diffDays >= 1) countdownText = diffDays + (diffDays > 1 ? " jours" : " jour");
+      }
+    }
+    var countdownHtml = countdownText ? '<span class="vt-countdown">⏱ dans ' + esc(countdownText) + '</span>' : '';
+    kickoffHtml = (preciseKickoff ? '<span class="vt-kickoff">' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '</span>' : '') + countdownHtml;
     var marketLinksHtml = '<div class="vt-market-links">' + members.map(function (m) {
       var info = PLATFORMS[m.platform] || { label: m.platform, short: m.platform };
       return '<a class="vt-market-link" href="' + esc(m.marketUrl) + '" target="_blank" rel="noopener" title="Ouvrir sur ' + esc(info.label) + '">' + esc(info.short) + ' ↗</a>';
@@ -2458,9 +2471,8 @@
       '</div><span class="consensus-count">' + (mergedSides[0] ? mergedSides[0].traderCount : 0) + '/' + totalTradersAll + '</span></div>';
     var balanceHtml =
       '<div class="balance-group">' +
-        '<div class="balance-row"><span class="balance-label">Traders</span><div class="balance-bar bar-traders">' + traderSegments + '</div></div>' +
-        '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
         consensusHtml +
+        '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
       '</div>';
     var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides) + renderMergedTraderRows(mergedSides, maxStakeInUnit) + '</div>';
     var bodyHtml = balanceHtml + sideGridHtml;
@@ -2481,7 +2493,7 @@
   function renderUnitCard(u) {
     var parts = computeUnitCardParts(u);
     var key = u.members[0].key;
-    return '<details class="value-trade-item' + (seenValueTrades[key] ? ' vt-seen' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
+    return '<details class="value-trade-item" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="border-left-color:' + parts.leaderColor + ';border-left-width:' + parts.borderWidth.toFixed(1) + 'px">' +
       '<summary class="vt-summary">' + parts.headerHtml + parts.balanceHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
@@ -4071,7 +4083,6 @@
     if (e.target && e.target.classList.contains("value-trade-item")) {
       var k = e.target.getAttribute("data-key");
       expandedValueTrades[k] = e.target.open;
-      if (e.target.open) seenValueTrades[k] = true;
     }
   }
   valueTradesContent.addEventListener("toggle", trackValueTradeToggle, true);
