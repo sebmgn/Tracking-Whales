@@ -1,51 +1,27 @@
 {
-  "polymarket|0xd1f4e22e7790a7d15ba817c7c450337b5b8a06f041c5751058d07e1c4d3d23e0": {
-    "firstSeen": "2026-08-06T00:03:47.236Z",
-    "question": "CA Boca Juniors vs. Estudiantes de La Plata: O/U 2.5",
-    "side": "Under",
+  "polymarket|0x7e80d3794e50e7fb8626efb9a7826fd6deedd621f48e609a04f453235d6b7e60+predict|1057504": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "Detroit Tigers vs. Seattle Mariners",
+    "side": "Seattle Mariners",
     "note": 6.3
   },
-  "polymarket|0x6dd26ff4cf53e7799bc5474b800403fee98b1776967ec69e9dea535d3b8dec5a": {
-    "firstSeen": "2026-08-06T00:03:47.236Z",
-    "question": "National Bank Open: Karen Khachanov vs Terence Atmane",
-    "side": "Terence Atmane",
-    "note": 6.2
-  },
-  "polymarket|0x3ea95fcc365131d9407274ddad70c98814788fe7a5beac0f23180d867210027c": {
-    "firstSeen": "2026-08-05T22:57:57.868Z",
-    "question": "Will Estudiantes de La Plata win on 2026-08-05?",
-    "side": "No",
-    "note": 6.3
-  },
-  "polymarket|0x0c5dc4bd43fed5544b0f9c2dc4fea25f12950c18c5cee4bcceeb13e819faa73f": {
-    "firstSeen": "2026-08-06T00:03:47.236Z",
-    "question": "Will CA Boca Juniors win on 2026-08-05?",
-    "side": "Yes",
+  "polymarket|0xfa7715db801d85d5f0909d56c4cf912b3412d5b4f043880f042293a3f29e3b3c+predict|1057495": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "St. Louis Cardinals vs. New York Yankees",
+    "side": "St. Louis Cardinals",
     "note": 6.5
   },
-  "polymarket|0x86755ef4c8f24b883184b975ceb1864990017617b8dff17df02784c3f9a3bbaa": {
-    "firstSeen": "2026-08-06T00:03:47.236Z",
-    "question": "National Bank Open: Daniil Medvedev vs Botic van de Zandschulp",
-    "side": "Botic van de Zandschulp",
-    "note": 6.1
+  "polymarket|0xa1b31bac0ea53770e042bd436afa607b8c5234246c8923feb26f242725ba811a+predict|1152056": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "National Bank Open: Learner Tien vs Gael Monfils",
+    "side": "Learner Tien",
+    "note": 7.7
   },
-  "polymarket|0xa7ac1c8effa5ee3fb9f327505f40b408065a7ce9970d2dd25dadd14880fa2c22": {
-    "firstSeen": "2026-08-06T00:03:47.236Z",
-    "question": "National Bank Open: Fabian Marozsan vs Matteo Arnaldi",
-    "side": "Matteo Arnaldi",
-    "note": 7
-  },
-  "polymarket|0x5474c15746c9cfe2ee55b46a7d5d31fb0681fa0e8f755d816ee7c36abeb66b5e": {
-    "firstSeen": "2026-08-05T21:47:49.295Z",
-    "question": "Will Associação Chapecoense de Futebol win on 2026-08-05?",
-    "side": "No",
-    "note": 6.4
-  },
-  "polymarket|0xdc52a8db25f5ba3d2744bd7f38483cd00484d998903d4046601e28a92fadcb45": {
-    "firstSeen": "2026-08-06T00:03:47.236Z",
-    "question": "Will Cruzeiro EC win on 2026-08-05?",
-    "side": "Yes",
-    "note": 6.8
+  "polymarket|0x2c0176b5b5941b48ad9f88b7018d9ef852d631b0dc94905998689a4c8b670f6d": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "Detroit Tigers vs. Seattle Mariners: O/U 7.5",
+    "side": "Under",
+    "note": 6.5
   },
   "polymarket|0x313e81183056d644771c85c9fda2a429aba2afb3b5a59dcdee66c80939066987": {
     "firstSeen": "2026-08-06T00:03:47.236Z",
@@ -53,10 +29,34 @@
     "side": "Yes",
     "note": 6.1
   },
-  "polymarket|0x2c42015a9071740d01bb530f863531ebbdb94f03eec72610997eb83d6c09cb70": {
-    "firstSeen": "2026-08-06T00:03:47.236Z",
-    "question": "Will Grêmio FBPA win on 2026-08-05?",
+  "polymarket|0x9e8ff9a10d3dc8d4c40ec07a1a4bded9755fd26561bca50147550673362c45f4": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "Will Nashville SC win on 2026-08-05?",
+    "side": "No",
+    "note": 6.6
+  },
+  "polymarket|0xa94e0de99b11fff92f984580a5c3a722eafd71140c9e911a4e0af362be418a46": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "Will Deportivo Toluca FC win on 2026-08-05?",
     "side": "Yes",
-    "note": 7.2
+    "note": 6.4
+  },
+  "polymarket|0x92ae9a25207ddaa91bf19789a0c3d8e3e32c8caea9e6a056d3324d4da829e786": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "Will Fluminense FC win on 2026-08-05?",
+    "side": "No",
+    "note": 6.3
+  },
+  "polymarket|0x6dd91890249e44d757fcb9b4fdefa2e85f2288d3e5337cd6b5ddbdebc363f270": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "Will CF Monterrey win on 2026-08-05?",
+    "side": "No",
+    "note": 6.2
+  },
+  "polymarket|0xdbe01fe5cccfe6d34973c86fa70f8d96d3fe238d59bc097cd2cfcba9ce693b38": {
+    "firstSeen": "2026-08-06T03:36:21.500Z",
+    "question": "Will Querétaro FC win on 2026-08-05?",
+    "side": "No",
+    "note": 6.3
   }
 }
