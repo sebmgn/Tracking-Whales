@@ -1,9 +1,15 @@
 {
-  "polymarket|0xb4786d7bf58ec9e49caa2bda28871575a9d73db5dfe87d56b5fc764e15dd5692": {
-    "firstSeen": "2026-08-05T22:57:57.868Z",
-    "question": "National Bank Open: Alex Michelsen vs Francisco Cerundolo",
-    "side": "Alex Michelsen",
-    "note": 6.8
+  "polymarket|0xd1f4e22e7790a7d15ba817c7c450337b5b8a06f041c5751058d07e1c4d3d23e0": {
+    "firstSeen": "2026-08-06T00:03:47.236Z",
+    "question": "CA Boca Juniors vs. Estudiantes de La Plata: O/U 2.5",
+    "side": "Under",
+    "note": 6.3
+  },
+  "polymarket|0x6dd26ff4cf53e7799bc5474b800403fee98b1776967ec69e9dea535d3b8dec5a": {
+    "firstSeen": "2026-08-06T00:03:47.236Z",
+    "question": "National Bank Open: Karen Khachanov vs Terence Atmane",
+    "side": "Terence Atmane",
+    "note": 6.2
   },
   "polymarket|0x3ea95fcc365131d9407274ddad70c98814788fe7a5beac0f23180d867210027c": {
     "firstSeen": "2026-08-05T22:57:57.868Z",
@@ -11,16 +17,46 @@
     "side": "No",
     "note": 6.3
   },
+  "polymarket|0x0c5dc4bd43fed5544b0f9c2dc4fea25f12950c18c5cee4bcceeb13e819faa73f": {
+    "firstSeen": "2026-08-06T00:03:47.236Z",
+    "question": "Will CA Boca Juniors win on 2026-08-05?",
+    "side": "Yes",
+    "note": 6.5
+  },
+  "polymarket|0x86755ef4c8f24b883184b975ceb1864990017617b8dff17df02784c3f9a3bbaa": {
+    "firstSeen": "2026-08-06T00:03:47.236Z",
+    "question": "National Bank Open: Daniil Medvedev vs Botic van de Zandschulp",
+    "side": "Botic van de Zandschulp",
+    "note": 6.1
+  },
+  "polymarket|0xa7ac1c8effa5ee3fb9f327505f40b408065a7ce9970d2dd25dadd14880fa2c22": {
+    "firstSeen": "2026-08-06T00:03:47.236Z",
+    "question": "National Bank Open: Fabian Marozsan vs Matteo Arnaldi",
+    "side": "Matteo Arnaldi",
+    "note": 7
+  },
   "polymarket|0x5474c15746c9cfe2ee55b46a7d5d31fb0681fa0e8f755d816ee7c36abeb66b5e": {
     "firstSeen": "2026-08-05T21:47:49.295Z",
     "question": "Will Associação Chapecoense de Futebol win on 2026-08-05?",
     "side": "No",
     "note": 6.4
   },
-  "polymarket|0xd6fab46b14f7befc694a48fd07066e41bc348f60365a80c1c30773ccca4721d7": {
-    "firstSeen": "2026-08-05T22:57:57.868Z",
-    "question": "National Bank Open: Jacob Fearnley vs Jakub Mensik",
-    "side": "Jakub Mensik",
-    "note": 6.6
+  "polymarket|0xdc52a8db25f5ba3d2744bd7f38483cd00484d998903d4046601e28a92fadcb45": {
+    "firstSeen": "2026-08-06T00:03:47.236Z",
+    "question": "Will Cruzeiro EC win on 2026-08-05?",
+    "side": "Yes",
+    "note": 6.8
+  },
+  "polymarket|0x313e81183056d644771c85c9fda2a429aba2afb3b5a59dcdee66c80939066987": {
+    "firstSeen": "2026-08-06T00:03:47.236Z",
+    "question": "Will SE Palmeiras win on 2026-08-05?",
+    "side": "Yes",
+    "note": 6.1
+  },
+  "polymarket|0x2c42015a9071740d01bb530f863531ebbdb94f03eec72610997eb83d6c09cb70": {
+    "firstSeen": "2026-08-06T00:03:47.236Z",
+    "question": "Will Grêmio FBPA win on 2026-08-05?",
+    "side": "Yes",
+    "note": 7.2
   }
 }
