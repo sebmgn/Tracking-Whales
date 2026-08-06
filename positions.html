@@ -157,14 +157,17 @@
   }
   .tab-btn-icon { font-size: 13px; }
   /* Value Trades and Mes Snapshots are what this app is actually for, so
-     they win the eye first (bold gold, identical weight/size on both); the
-     two reference/profile tabs step down together to one flat, deliberate
-     mid-gray (not the pale sand tint that would fade next to everything
-     else) — a clear break from the gold family on purpose, not a third
-     gradient stop, so "these two are secondary" reads as one grouping. */
+     they win the eye first (bold gold, identical weight/size on both) and
+     stay pinned left; the other three are reference material, pushed all
+     the way to the right edge of the same bar (margin-left:auto on the
+     first of them) so the split between "what this app is for" and
+     "everything else" is spatial, not just visual weight. They step down
+     together to one flat, deliberate mid-gray (not the pale sand tint that
+     would fade next to everything else) — a clear break from the gold
+     family on purpose, not a third gradient stop. */
   .tab-bar .tab-btn:nth-child(1) { color: #8a6a26; }
   .tab-bar .tab-btn:nth-child(2) { color: #a37f34; }
-  .tab-bar .tab-btn:nth-child(3) { color: #8c7a5c; }
+  .tab-bar .tab-btn:nth-child(3) { color: #8c7a5c; margin-left: auto; }
   .tab-btn-primary { font-weight: 800; font-size: 14.5px; }
   .tab-bar .tab-btn.tab-btn-quiet { color: #6b6b6b; font-weight: 500; font-size: 12.5px; }
   .tab-bar .tab-btn:hover { color: var(--text); }
@@ -3067,7 +3070,7 @@
       // means the data pipeline itself is the problem, a nonzero total
       // just means nothing currently clears the ≥5-traders bar.
       valueTradesContent.innerHTML = '<div class="empty-note">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ')' +
-        ' — ' + allUnits.length + ' marché' + (allUnits.length > 1 ? 's' : '') + ' au total actuellement suivi' + (allUnits.length > 1 ? 's' : '') + ', aucun avec ≥' + vtMinTraders + ' traders sur le même camp.</div>';
+        ' — ' + allUnits.length + ' marché' + (allUnits.length > 1 ? 's' : '') + ' au total actuellement suivi' + (allUnits.length > 1 ? 's' : '') + ', aucun avec > ' + (vtMinTraders - 1) + ' traders sur le même camp.</div>';
       return;
     }
     // Ranked by note (highest first) instead of stake — the note is the
