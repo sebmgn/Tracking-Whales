@@ -1,1 +1,32 @@
-{}
+{
+  "polymarket|0xa5144d487f22937f5bc46c655ab3cf1063edebefef327fa08ffeed421e60688f+predict|1093019": {
+    "firstSeen": "2026-08-07T00:40:30.179Z",
+    "question": "Chicago White Sox vs. Boston Red Sox",
+    "side": "Boston Red Sox",
+    "note": 6.9
+  },
+  "polymarket|0x373044b4469d15d3cf53ee2ffa980d25275b2ecd9a692ca225970381b51830bf": {
+    "firstSeen": "2026-08-07T00:40:30.179Z",
+    "question": "National Bank Open: Rafael Jodar vs Lorenzo Musetti",
+    "side": "Rafael Jodar",
+    "note": 6.8
+  },
+  "polymarket|0xd3be830c73a8c159ceed799fda206e97f985eec2a7a7b2e1d897492c1be5eae1": {
+    "firstSeen": "2026-08-07T00:40:30.179Z",
+    "question": "Will EC Vitória win on 2026-08-06?",
+    "side": "Yes",
+    "note": 6.9
+  },
+  "polymarket|0x2a3e804fcc470275f1fb22b3641d8166cbec85549510794ff4bdeb3c5bf7b7ca": {
+    "firstSeen": "2026-08-07T00:40:30.179Z",
+    "question": "Will SC Internacional win on 2026-08-06?",
+    "side": "No",
+    "note": 7.2
+  },
+  "polymarket|0x5ff0402fac1a03e60cd683a90f1dbf70c8b69852a13afc5baf73b3d232279ddb": {
+    "firstSeen": "2026-08-07T00:40:30.179Z",
+    "question": "Will SC Corinthians Paulista win on 2026-08-06?",
+    "side": "Yes",
+    "note": 6.2
+  }
+}
