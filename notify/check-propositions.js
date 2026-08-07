@@ -221,6 +221,15 @@ async function fetchAllPoly(address) {
   return all.filter((p) => p.redeemable !== true);
 }
 
+// Best-effort current price, mirroring positions.html's currentPriceOf —
+// simplified to skip the shares-based fallback (needs the raw share amount,
+// not worth porting just for an email line) and fall back to the entry
+// price instead, close enough for an alert rather than a live quote.
+function predictCurrentPrice(p) {
+  if (p.outcome && p.outcome.bestAsk && typeof p.outcome.bestAsk.price === "number") return p.outcome.bestAsk.price;
+  return parseFloat(p.averageBuyPriceUsd) || 0;
+}
+
 function normPredict(p, t) {
   const market = p.market || {};
   const outcome = p.outcome || {};
@@ -231,16 +240,19 @@ function normPredict(p, t) {
     outcomeKey: String(outcome.indexSet),
     outcomeName: outcome.name || "—",
     valueUsd: parseFloat(p.valueUsd) || 0,
+    curPrice: predictCurrentPrice(p),
     marketUrl: market.categorySlug ? "https://predict.fun/market/" + market.categorySlug : "https://predict.fun"
   };
 }
 
 function normPoly(p, t) {
+  const shares = p.size || 0;
   return {
     trader: t.name, platform: "polymarket", marketKey: "polymarket|" + p.conditionId,
     question: p.title || "—", slug: p.slug || p.eventSlug,
     outcomeKey: String(p.outcomeIndex), outcomeName: p.outcome || "—",
     valueUsd: p.currentValue || 0,
+    curPrice: typeof p.curPrice === "number" ? p.curPrice : (shares > 0 ? (p.currentValue || 0) / shares : 0),
     marketUrl: (p.eventSlug || p.slug) ? "https://polymarket.com/event/" + (p.eventSlug || p.slug) : "https://polymarket.com"
   };
 }
@@ -332,7 +344,7 @@ function findAlerts(positions) {
     g.traderSet.add(p.trader);
     g.totalStake += p.valueUsd;
     if (!g.bySide[p.outcomeKey]) g.bySide[p.outcomeKey] = { name: p.outcomeName, entries: [] };
-    g.bySide[p.outcomeKey].entries.push({ trader: p.trader, valueUsd: p.valueUsd });
+    g.bySide[p.outcomeKey].entries.push({ trader: p.trader, valueUsd: p.valueUsd, curPrice: p.curPrice });
   });
   const groupList = Object.values(groups);
 
@@ -364,19 +376,32 @@ function findAlerts(positions) {
     if (!unit.leader || unit.note <= NOTE_THRESHOLD) return;
 
     const key = members.map((m) => m.key).sort().join("+");
-    const leaderStakeByTrader = {};
-    unit.leader.entries.forEach((e) => { leaderStakeByTrader[e.trader] = (leaderStakeByTrader[e.trader] || 0) + e.valueUsd; });
-    const traders = Object.keys(leaderStakeByTrader)
-      .map((trader) => ({ trader, stake: leaderStakeByTrader[trader] }))
-      .sort((a, b) => b.stake - a.stake);
-    const opposingSides = unit.mergedSides.filter((s) => s !== unit.leader && s.traderCount > 0);
+    // One block per camp (leader first, then every side that actually has
+    // qualifying traders on it) — same shape for each, so the email can
+    // print them identically instead of treating the leader specially and
+    // the rest as an afterthought summary.
+    const campOf = (side) => {
+      const stakeByTrader = {};
+      side.entries.forEach((e) => { stakeByTrader[e.trader] = (stakeByTrader[e.trader] || 0) + e.valueUsd; });
+      const traders = Object.keys(stakeByTrader)
+        .map((trader) => ({ trader, stake: stakeByTrader[trader] }))
+        .sort((a, b) => b.stake - a.stake);
+      // Stake-weighted current price across this camp's own entries — the
+      // same "cote actuelle" concept the site shows on the leader badge,
+      // just computed locally here since the notify script keeps its own
+      // copy of the scoring/aggregation logic.
+      const priced = side.entries.filter((e) => typeof e.curPrice === "number" && e.curPrice > 0);
+      const pricedStake = priced.reduce((s, e) => s + e.valueUsd, 0);
+      const avgPrice = pricedStake > 0 ? priced.reduce((s, e) => s + e.curPrice * e.valueUsd, 0) / pricedStake : null;
+      return { name: side.name, traderCount: traders.length, stake: side.stake, avgPrice, traders };
+    };
+    const camps = unit.mergedSides.filter((s) => s.traderCount > 0).map(campOf);
 
     alerts.push({
       key, question: members[0].question, side: unit.leader.name, note: unit.note,
       matchKey: members[0].matchKey,
-      traders, stake: unit.leader.stake,
-      opposingSides: opposingSides.map((s) => s.name + " (" + s.traderCount + ")"),
-      urls: members.map((m) => m.marketUrl)
+      camps,
+      urls: members.map((m) => ({ platform: m.platform, url: m.marketUrl }))
     });
   });
   return alerts;
@@ -394,6 +419,10 @@ function saveState(state) {
 function fmtUSD(n) {
   return new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + " $";
 }
+function fmtCents(p) {
+  return (p * 100).toFixed(1) + "¢";
+}
+const PLATFORM_LABELS = { polymarket: "Polymarket", predict: "Predict.fun" };
 
 async function sendEmail(alerts) {
   const transporter = nodemailer.createTransport({
@@ -407,14 +436,23 @@ async function sendEmail(alerts) {
     ? `Corrélation Whales [Note ${sorted[0].note.toFixed(1)}] : ${sorted[0].question}`
     : `Corrélation Whales : ${sorted.length} trades notés > ${NOTE_THRESHOLD} (meilleure note ${sorted[0].note.toFixed(1)})`;
   const lines = sorted.map((a) => {
-    const traderLines = a.traders.map((t) => `    - ${t.trader} : ${fmtUSD(t.stake)}`).join("\n");
-    const oppLine = a.opposingSides.length ? `\n  Camp d'en face : ${a.opposingSides.join(", ")}` : "";
     // Best-effort — no line at all when gamma-api has no matching event
     // (Predict.fun-only alert) rather than printing a blank/fabricated time.
     const kickoffLine = a.kickoff
-      ? `\n  Début de l'événement : ${a.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`
+      ? `\nDébut de l'événement : ${a.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`
       : "";
-    return `• [Note ${a.note.toFixed(1)}] ${a.question}\n  Camp : ${a.side} (${a.traders.length} traders)${kickoffLine}\n${traderLines}${oppLine}\n  Mise combinée (camp leader) : ${fmtUSD(a.stake)}\n  ${a.urls.filter(Boolean).join("\n  ")}`;
+    // One block per camp, same shape each time (name / traders / volume,
+    // then one line per trader with their own stake) — leader camp first,
+    // a blank line between camps instead of the leader getting the full
+    // detail and the rest just a one-line summary.
+    const campBlocks = a.camps.map((c, i) => {
+      const label = i === 0 ? "Camp 1 (leader)" : (a.camps.length === 2 ? "Camp adverse" : `Camp ${i + 1} (adverse)`);
+      const priceText = c.avgPrice != null ? ` — cote actuelle ${fmtCents(c.avgPrice)}` : "";
+      const traderLines = c.traders.map((t) => `  - ${t.trader} : ${fmtUSD(t.stake)}`).join("\n");
+      return `${label} : ${c.name} ; ${c.traderCount} trader${c.traderCount > 1 ? "s" : ""} ; ${fmtUSD(c.stake)}${priceText}\n${traderLines}`;
+    });
+    const linkLines = a.urls.filter((u) => u.url).map((u) => `${PLATFORM_LABELS[u.platform] || u.platform} : ${u.url}`).join("\n");
+    return `• [Note ${a.note.toFixed(1)}] ${a.question}${kickoffLine}\n\n${campBlocks.join("\n\n")}\n\n${linkLines}`;
   });
   const text = `Nouvelle(s) proposition(s) : note > ${NOTE_THRESHOLD}/10 (même formule que le site).\n\n` + lines.join("\n\n");
   await withRetry(() => transporter.sendMail({ from: GMAIL_USER, to: NOTIFY_TO, subject, text }), { attempts: 3, delayMs: 2000 });
