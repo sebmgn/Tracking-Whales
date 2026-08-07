@@ -11,6 +11,12 @@
     "side": "No",
     "note": 7.4
   },
+  "polymarket|0xfc57cd75106bffb4885b9b149b48b5cfe9dcededae35a37efbbcd818adf7b63a": {
+    "firstSeen": "2026-08-07T14:40:37.707Z",
+    "question": "Aston Villa vs. Bayern Munich: O/U 2.5",
+    "side": "Over",
+    "note": 6.8
+  },
   "polymarket|0xd4d5a77ffd466f30472965867ae40d9b9f28921cbbef6135e4eb5f78824c8595": {
     "firstSeen": "2026-08-07T13:39:26.861Z",
     "question": "Aston Villa vs. Bayern Munich: O/U 3.5",
