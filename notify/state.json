@@ -11,34 +11,10 @@
     "side": "Under",
     "note": 6.9
   },
-  "polymarket|0x78bf75cf19ef47843bea529e871530c1f5fbcf6df2a43e217f68fe35ab4fba39": {
-    "firstSeen": "2026-08-07T21:10:56.639Z",
-    "question": "Will FC Famalicão win on 2026-08-07?",
-    "side": "No",
-    "note": 6.8
-  },
-  "polymarket|0x7fc1b3612cdd176fd75f10923a1ca8391b4ad08a928ebc5bf1a6bd13e2582765": {
-    "firstSeen": "2026-08-07T21:10:56.639Z",
-    "question": "Will Wrexham AFC win on 2026-08-07?",
-    "side": "No",
-    "note": 6.6
-  },
   "polymarket|0x06df5cdb8ca6313d7cca43b46ed62d949409c2ecab24b7209c0c25814c13a5ac": {
     "firstSeen": "2026-08-07T21:10:56.639Z",
     "question": "Will Middlesbrough FC win on 2026-08-07?",
     "side": "Yes",
     "note": 7.5
-  },
-  "polymarket|0x5752313c6d929555fd29dec6db697516891d4c874549e0c840c4ef4add5b6811": {
-    "firstSeen": "2026-08-07T21:10:56.639Z",
-    "question": "Estoril Praia vs. FC Famalicão: O/U 2.5",
-    "side": "Under",
-    "note": 6.1
-  },
-  "polymarket|0x65066109ee395ef6c8839e0604874ba2dff26cf797380b214dd077b8c05a6fb9": {
-    "firstSeen": "2026-08-07T19:34:54.396Z",
-    "question": "Middlesbrough FC vs. Wrexham AFC: Both Teams to Score",
-    "side": "No",
-    "note": 7.1
   }
 }
