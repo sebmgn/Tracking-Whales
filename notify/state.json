@@ -1,14 +1,1 @@
-{
-  "polymarket|0x5ff0402fac1a03e60cd683a90f1dbf70c8b69852a13afc5baf73b3d232279ddb": {
-    "firstSeen": "2026-08-07T00:40:30.179Z",
-    "question": "Will SC Corinthians Paulista win on 2026-08-06?",
-    "side": "Yes",
-    "note": 6.2
-  },
-  "polymarket|0xa5d4879fa2c7e1ac3d2fd2b7c552bd2f603ca2517b9641ca14061ae94091a65e": {
-    "firstSeen": "2026-08-07T03:39:15.357Z",
-    "question": "Will San Diego FC win on 2026-08-06?",
-    "side": "No",
-    "note": 6.2
-  }
-}
+{}
