@@ -333,6 +333,22 @@
   .value-trade-item.vt-new {
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0)), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
   }
+  /* Top-right corner, mirroring .vt-new-badge's top-left — a card can be
+     both new AND live at once, so they need separate corners. */
+  .vt-live-badge {
+    position: absolute; top: -9px; right: 14px; z-index: 1;
+    display: inline-block; background: var(--red); color: #fff;
+    font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  }
+  /* Same unitTimingStatus "live" read the En cours filter uses — a red wash
+     instead of the sport tint, so a genuinely in-progress event stands out
+     from the rest of the list at a glance. */
+  .value-trade-item.vt-live-now {
+    background-image: linear-gradient(180deg,
+        color-mix(in srgb, var(--red) 7%, var(--cream-grad-1)),
+        color-mix(in srgb, var(--red) 11%, var(--cream-grad-2)));
+  }
   /* New AND already a strong signal (note ≥8) — a few extra seconds of
      motion on top of the steady new-card glow, so a rare high-quality
      alert doesn't blend into the rest of "just new". Finite iteration
@@ -386,6 +402,10 @@
      shrinking away to nothing. */
   .vt-question { font-weight: 700; font-size: 15px; flex: 1 1 auto; min-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vt-sport-emoji { font-size: 26px; line-height: 1; flex: none; }
+  /* The pill/frame stays in the leading side's color, but the fill is a
+     light tint (not a solid color) and the text is plain ink, bold — the
+     majority pick reads as a fact stated in black, not as a colored claim.
+     --leader-color is set inline per card (see leaderBadge). */
   .vt-leader {
     display: inline-block;
     flex: none;
@@ -394,16 +414,16 @@
     border-radius: 999px;
     font-size: 12.5px;
     font-weight: 800;
-    color: #fff;
+    color: var(--text);
     letter-spacing: .01em;
+    background: color-mix(in srgb, var(--leader-color, var(--accent)) 16%, var(--panel));
+    border: 1.5px solid var(--leader-color, var(--accent));
   }
   .vt-leader-price { font-weight: 500; font-size: 10.5px; opacity: .82; margin-left: 2px; }
-  /* White rather than red/green — this sits inside the leader badge,
-     whose own background is already semantic-colored (green/red/other),
-     so a colored arrow could land on a same-hue background and disappear
-     (a red ▼ on a red "No" badge, a green ▲ on a green "Yes" badge). The
-     shape (▲ vs ▼) carries the direction; color doesn't need to. */
-  .vt-price-arrow { font-size: 9px; margin-left: 2px; color: #fff; }
+  /* Inherits the badge's own ink color now that the fill is a light tint
+     instead of a solid semantic color — no more same-hue-on-same-hue risk
+     to dodge with a forced white. */
+  .vt-price-arrow { font-size: 9px; margin-left: 2px; color: var(--text); }
   /* Sized up from the original 44×15 — same SVG (viewBox stays 44×15,
      coordinates just stretch to fill), so the line itself also reads
      thicker at the bigger size instead of looking like a stray hairline
@@ -416,16 +436,7 @@
     font-size: 12px;
     font-weight: 700;
   }
-  .vt-badge { color: var(--gold); font-size: 12px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: baseline; gap: 4px; }
-  /* Fixed-width, right-aligned columns (not just a free-flowing string) —
-     .vt-badge-group is flush against the card's right edge on every card,
-     so once these two sub-widths are constant, the trader-count and stake
-     figures land at the exact same x on every card in the list regardless
-     of how many digits either one has, instead of drifting card to card
-     with the text length. */
-  .vt-badge-traders { display: inline-block; width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
   .vt-badge-sep { opacity: .55; }
-  .vt-badge-stake { display: inline-block; width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .vt-badge-group { display: flex; align-items: center; gap: 10px; flex: none; white-space: nowrap; }
   .vt-market-links { display: flex; gap: 12px; margin-top: 3px; }
   .vt-market-link {
@@ -433,25 +444,29 @@
     border-bottom: 1px dotted var(--panel-border);
   }
   .vt-market-link:hover { color: var(--accent); border-bottom-color: var(--accent); text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent); }
-  /* Bottom-right corner of the card rather than inline with the market
-     links — absolutely positioned within .vt-summary (not the <details>
-     itself: see the .vt-new-badge comment above for why that distinction
-     matters for a <details>'s non-<summary> children). A different color
-     from the note/traders/stake group up top so the two don't read as the
-     same kind of badge at a glance. */
+  /* The card's real bottom row, in normal flow (no <details>-vs-<summary>
+     absolute-position quirk to fight — see .vt-new-badge above) — volume
+     and trader count on the left, the countdown on the right, so the two
+     share one baseline instead of the timer floating over other content. */
+  .vt-bottom-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  .vt-bottom-meta { color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* The number worth noticing at a glance — sized up well past the
+     surrounding trader-count/label text. */
+  .vt-bottom-stake { font-size: 16px; font-weight: 800; color: var(--text); }
   .vt-countdown {
-    position: absolute; bottom: 10px; right: 20px;
-    display: flex; align-items: center; gap: 4px;
-    font-style: normal; font-size: 10px; font-weight: 700; color: var(--accent);
+    display: flex; align-items: center; gap: 4px; flex: none;
+    font-style: normal; font-size: 10px; font-weight: 700;
     white-space: nowrap;
   }
   /* Clock emoji sits outside the tint — it's already its own color, tinting
-     it too just muddies it. Only the "depuis/dans …" text gets the pill. */
+     it too just muddies it. Only the "depuis/dans …" text gets the pill.
+     Direction carries its own color: an upcoming kickoff ("dans …") reads
+     green, one already underway ("depuis …") reads blue — distinct from
+     each other, and from the accent/gold used elsewhere on the card. */
   .vt-countdown-icon { font-size: 11px; }
-  .vt-countdown-text {
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-    border-radius: 999px; padding: 1px 8px;
-  }
+  .vt-countdown-text { border-radius: 999px; padding: 1px 8px; }
+  .vt-countdown-soon .vt-countdown-text { color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); }
+  .vt-countdown-live .vt-countdown-text { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .vt-snap-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -2535,12 +2550,17 @@
   // more evenly across the low-to-mid range, so this one is a straight
   // line across the full 1-10 span instead, and a touch more saturated so
   // steps between adjacent notes stay easy to tell apart at a glance.
+  // Stretched across the practical 4-10 band (not the full theoretical
+  // 1-10 range) — real notes cluster there, so a 1-10 linear ramp left
+  // adjacent notes looking nearly identical. This way note 4 reads
+  // unambiguously red and note 10 unambiguously green, with the swing
+  // between them happening entirely inside the range that actually occurs.
   function noteHue(score) {
-    var t = Math.max(0, Math.min(1, ((score || 0) - 1) / 9));
-    return 5 + t * 135; // 5 = red at note 1, 140 = green at note 10
+    var t = Math.max(0, Math.min(1, ((score || 0) - 4) / 6));
+    return 5 + t * 135; // 5 = red at note ≤4, 140 = green at note 10
   }
   function scoreColor(score) {
-    return "hsl(" + noteHue(score).toFixed(0) + ",68%,37%)";
+    return "hsl(" + noteHue(score).toFixed(0) + ",75%,36%)";
   }
   // 3px at note 1 up to 10px at note 10 — a "weight" cue readable before
   // the number itself: a thicker edge means a stronger trade, scanning
@@ -2673,11 +2693,12 @@
   function scoreBadgeHtml(score, factors, extraClass) {
     if (score == null) return "";
     var color = scoreColor(score);
-    // Picked over the ring/disc treatment: no shape, no container, no
-    // glow — a large bold colored number. A faint tint of its own color
-    // sits behind it (no visible border) just to delimit the number from
-    // the rest of the header without turning it back into a hard badge.
-    var scoreNumHtml = '<span class="vt-score-num" style="color:' + color + ';background:color-mix(in srgb, ' + color + ' 12%, transparent)">' + score.toFixed(1) + '</span>';
+    // Picked over the ring/disc treatment: no shape, no container — a
+    // large bold colored number. A tint of its own color sits behind it
+    // (no visible border) to delimit it from the rest of the header
+    // without turning it back into a hard badge, plus a soft halo glowing
+    // outward so the note reads as the most eye-catching thing on the card.
+    var scoreNumHtml = '<span class="vt-score-num" style="color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent);box-shadow:0 0 12px color-mix(in srgb, ' + color + ' 50%, transparent)">' + score.toFixed(1) + '</span>';
     var breakdownHtml = "";
     if (factors) {
       var rows = SCORE_FACTOR_ORDER.map(function (key) {
@@ -2787,7 +2808,7 @@
       }
       lastRenderedPrice[stableKey] = leaderAvgPrice;
     }
-    var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
+    var leaderBadge = leaderName ? '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(leaderName) +
       (leaderPriceText ? ' <span class="vt-leader-price" title="Prix actuel du marché, pas le prix d\'entrée des traders">@ ' + leaderPriceText + '</span>' + priceArrowHtml : '') + '</span>' : "";
     recordPricePoint(stableKey, leaderAvgPrice);
     var sparkHtml = sparklineHtml(stableKey);
@@ -2842,11 +2863,12 @@
         else if (diffDays < 0) relTimeText = "depuis " + (-diffDays) + (diffDays < -1 ? " jours" : " jour");
       }
     }
-    // Absolutely positioned (see .vt-countdown CSS), so it rides along in
-    // headerHtml purely to land inside .vt-summary — its position on the
-    // card doesn't depend on where in the markup it sits.
+    // Color (green/blue for "dans"/"depuis") lives on the wrapping span so
+    // both the icon and the text-pill can reference it via currentColor —
+    // the icon itself stays uncolored/untinted, only the text gets the pill.
+    var isUpcoming = relTimeText != null && relTimeText.indexOf("dans") === 0;
     var kickoffHtml = relTimeText
-      ? '<span class="vt-countdown"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '><span class="vt-countdown-icon">🕐</span><span class="vt-countdown-text">' + esc(relTimeText) + '</span></span>'
+      ? '<span class="vt-countdown ' + (isUpcoming ? 'vt-countdown-soon' : 'vt-countdown-live') + '"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '><span class="vt-countdown-icon">🕐</span><span class="vt-countdown-text">' + esc(relTimeText) + '</span></span>'
       : '';
     var marketLinksHtml = '<div class="vt-market-links">' + members.map(function (m) {
       var info = PLATFORMS[m.platform] || { label: m.platform, short: m.platform };
@@ -2855,8 +2877,14 @@
     var headerHtml =
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + leaderBadge + sparkHtml + '</span>' +
-        '<span class="vt-badge-group"><span class="vt-badge"><span class="vt-badge-traders">' + u.traderCount + ' traders</span><span class="vt-badge-sep">·</span><span class="vt-badge-stake">' + fmtUSD(u.totalStake) + '</span></span>' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors) + '</span>' +
-      '</div>' + marketLinksHtml + kickoffHtml;
+        '<span class="vt-badge-group">' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors) + '</span>' +
+      '</div>' + marketLinksHtml;
+    // Volume + trader count moved down here (was in the top-right badge
+    // group) — sits on the card's real bottom row, left of the countdown,
+    // in normal flow so it doesn't fight the <details>/absolute-position
+    // quirk documented on .vt-new-badge. The stake figure is sized up
+    // (.vt-bottom-stake) since that's the number worth noticing at a glance.
+    var bottomBarHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders">' + u.traderCount + ' traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(u.totalStake) + '</span></span>' + kickoffHtml + '</div>';
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
     // breakdown behind a click, while Snapshots — which doesn't want that
@@ -2886,12 +2914,13 @@
         '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
       '</div>';
     var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides, distinctColors) + renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors) + '</div>';
-    var bodyHtml = balanceHtml + sideGridHtml;
+    var bodyHtml = balanceHtml + bottomBarHtml + sideGridHtml;
 
     return {
       primary: primary, secondary: secondary, linked: linked, stableKey: stableKey,
       leaderColor: leaderColor, leaderName: leaderName,
       leaderAvgPrice: leaderAvgPrice, leaderPriceText: leaderPriceText, leaderRoi: leaderRoi,
+      bottomBarHtml: bottomBarHtml,
       headerHtml: headerHtml, bodyHtml: bodyHtml,
       balanceHtml: balanceHtml, sideGridHtml: sideGridHtml,
       borderWidth: noteBorderWidth(u.score),
@@ -2912,13 +2941,18 @@
     var isNew = markUnitSeen(parts.stableKey);
     var isHighNew = isNew && u.score != null && u.score >= 8;
     var noteGlow = noteGlowShadow(u.score);
-    return '<details class="value-trade-item' + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
+    // Same "live" read the En cours filter already uses — kickoff has
+    // passed (or there's no extractable date at all, treated as live by
+    // unitTimingStatus). Own corner (top-right) from vt-new-badge (top-left)
+    // since a card can be both new AND live at once.
+    var isLive = unitTimingStatus(u) === "live";
+    return '<details class="value-trade-item' + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + (isLive ? ' vt-live-now' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="border-left-width:' + parts.borderWidth.toFixed(1) + 'px' +
       (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
       ';--border-tint:' + (parts.sportTint || "var(--accent)") +
       ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
       (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
-      '<summary class="vt-summary">' + (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') + parts.headerHtml + parts.balanceHtml + '</summary>' +
+      '<summary class="vt-summary">' + (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') + (isLive ? '<span class="vt-live-badge">🔴 Live</span>' : '') + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
   }
