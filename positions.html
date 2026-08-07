@@ -315,9 +315,9 @@
      the always-shown <summary>, the trader-by-trader breakdown is collapsed
      behind a click so the list reads compact by default. */
   details.value-trade-item { padding: 0; cursor: default; }
-  details.value-trade-item > .vt-summary { cursor: pointer; list-style: none; padding: 16px 20px 18px; }
+  details.value-trade-item > .vt-summary { cursor: pointer; list-style: none; padding: 13px 20px 14px; }
   details.value-trade-item > .vt-summary::-webkit-details-marker { display: none; }
-  details.value-trade-item[open] > .vt-summary { padding-bottom: 10px; }
+  details.value-trade-item[open] > .vt-summary { padding-bottom: 8px; }
   /* First time this browser has ever seen this market key, or within the
      last hour of that — see markUnitSeen. Overlaps the card's own top
      edge (a corner-ribbon read) instead of sitting in normal flow above
@@ -440,10 +440,17 @@
      from the note/traders/stake group up top so the two don't read as the
      same kind of badge at a glance. */
   .vt-countdown {
-    position: absolute; bottom: 14px; right: 20px;
+    position: absolute; bottom: 10px; right: 20px;
+    display: flex; align-items: center; gap: 4px;
     font-style: normal; font-size: 10px; font-weight: 700; color: var(--accent);
+    white-space: nowrap;
+  }
+  /* Clock emoji sits outside the tint — it's already its own color, tinting
+     it too just muddies it. Only the "depuis/dans …" text gets the pill. */
+  .vt-countdown-icon { font-size: 11px; }
+  .vt-countdown-text {
     background: color-mix(in srgb, var(--accent) 16%, transparent);
-    border-radius: 999px; padding: 1px 8px; white-space: nowrap;
+    border-radius: 999px; padding: 1px 8px;
   }
   .vt-snap-btn {
     background: var(--panel);
@@ -2839,7 +2846,7 @@
     // headerHtml purely to land inside .vt-summary — its position on the
     // card doesn't depend on where in the markup it sits.
     var kickoffHtml = relTimeText
-      ? '<span class="vt-countdown"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '>🕐 ' + esc(relTimeText) + '</span>'
+      ? '<span class="vt-countdown"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '><span class="vt-countdown-icon">🕐</span><span class="vt-countdown-text">' + esc(relTimeText) + '</span></span>'
       : '';
     var marketLinksHtml = '<div class="vt-market-links">' + members.map(function (m) {
       var info = PLATFORMS[m.platform] || { label: m.platform, short: m.platform };
@@ -3443,51 +3450,55 @@
   // trade's own computed note (noteAtSnapshot) instead of the manual
   // confidence tag — "do the trades this app itself scored highly actually
   // win more", independent of whatever tier a trader hand-tagged them with.
-  // Thresholds are cumulative (">7" includes every decided snapshot rated
-  // above 7, not just the 7-8 band) since that's the practical question —
-  // "is raising my note cutoff worth it" — not a per-point breakdown.
-  var NOTE_WR_THRESHOLDS = [4, 5, 6, 7, 8, 9];
-  // Single active threshold (or null) — thresholds are cumulative, not
-  // mutually exclusive buckets, so unlike tierCardFilter above there's no
-  // sensible multi-select combination (">4" AND ">7" together just means
-  // ">7"); click the active row again to clear it, same as snapDistCellFilter.
+  // Discrete, non-overlapping bins (not cumulative ">X") — each bin is
+  // [min, max), except the last which includes its top edge (10 has
+  // nowhere else to go). "4-5" reads as "4 up to but not including 5".
+  var NOTE_WR_BINS = [[4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10]];
+  function noteInBin(note, bin, isLast) {
+    return note >= bin[0] && (isLast ? note <= bin[1] : note < bin[1]);
+  }
+  // Single active bin (its min value) or null — bins are mutually
+  // exclusive, so unlike tierCardFilter above there's no sensible
+  // multi-select combination; click the active row again to clear it, same
+  // as snapDistCellFilter.
   var noteCardFilter = null;
   function computeNoteWinrates(list) {
-    var byThreshold = {};
-    NOTE_WR_THRESHOLDS.forEach(function (t) { byThreshold[t] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
+    var byBin = {};
+    NOTE_WR_BINS.forEach(function (b) { byBin[b[0]] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
     list.forEach(function (snap) {
       if (!snap.winningSide || snap.noteAtSnapshot == null) return;
-      NOTE_WR_THRESHOLDS.forEach(function (t) {
-        if (snap.noteAtSnapshot <= t) return;
-        byThreshold[t].decided++;
-        if (snap.leaderName === snap.winningSide) byThreshold[t].win++;
+      NOTE_WR_BINS.forEach(function (b, i) {
+        if (!noteInBin(snap.noteAtSnapshot, b, i === NOTE_WR_BINS.length - 1)) return;
+        byBin[b[0]].decided++;
+        if (snap.leaderName === snap.winningSide) byBin[b[0]].win++;
         var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
-        if (hyp != null) { byThreshold[t].flatPnl += hyp; byThreshold[t].flatPnlCount++; }
+        if (hyp != null) { byBin[b[0]].flatPnl += hyp; byBin[b[0]].flatPnlCount++; }
       });
     });
-    return byThreshold;
+    return byBin;
   }
   function renderNoteWinrate(list) {
     if (!noteWinrateContent) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
     if (!decidedAll.length) { noteWinrateContent.innerHTML = ""; return; }
-    var byThreshold = computeNoteWinrates(list);
+    var byBin = computeNoteWinrates(list);
     var untagged = decidedAll.filter(function (s) { return s.noteAtSnapshot == null; }).length;
-    var rows = NOTE_WR_THRESHOLDS.map(function (t) {
-      var st = byThreshold[t];
+    var rows = NOTE_WR_BINS.map(function (b) {
+      var st = byBin[b[0]];
+      var label = b[0] + '-' + b[1];
       var wr = st.decided > 0 ? (st.win / st.decided * 100) : null;
-      var color = scoreColor(t);
+      var color = scoreColor((b[0] + b[1]) / 2);
       var countLabel = st.decided > 0 ? (st.win + " / " + st.decided) : "aucun résultat";
       var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
-      var isActive = noteCardFilter === t;
+      var isActive = noteCardFilter === b[0];
       var hyp = st.flatPnlCount > 0 ? st.flatPnl : null;
       var roi = st.flatPnlCount > 0 ? (st.flatPnl / (st.flatPnlCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
       var hypHtml = hyp == null ? "" :
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
         ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
-      return '<div class="note-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-note-threshold="' + t + '" title="Filtrer les snapshots sur note > ' + t + '">' +
-        '<button type="button" class="note-wr-badge" data-note-threshold="' + t + '" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">&gt;' + t + '</button>' +
-        '<div class="tier-wr-track" title="' + esc('Note > ' + t + ' : ' + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
+      return '<div class="note-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-note-bin-min="' + b[0] + '" title="Filtrer les snapshots sur note ' + label + '">' +
+        '<button type="button" class="note-wr-badge" data-note-bin-min="' + b[0] + '" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">' + label + '</button>' +
+        '<div class="tier-wr-track" title="' + esc('Note ' + label + ' : ' + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
         hypHtml +
@@ -3497,12 +3508,12 @@
       ? '<div class="tier-wr-note">' + untagged + (untagged > 1 ? ' snapshots résolus ont été enregistrés avant le suivi de la note' : ' snapshot résolu a été enregistré avant le suivi de la note') + ' — pas d\'assez de recul pour les inclure ici.</div>'
       : '';
     var filterNoteHtml = noteCardFilter != null
-      ? '<div class="tier-wr-note">Filtré sur <b>note > ' + noteCardFilter + '</b> — reclique le seuil actif pour l\'enlever.</div>'
+      ? '<div class="tier-wr-note">Filtré sur <b>note ' + noteCardFilter + '-' + (noteCardFilter + 1) + '</b> — reclique le seuil actif pour l\'enlever.</div>'
       : '';
     noteWinrateContent.innerHTML =
       '<button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (noteWinrateCollapsed ? "▸ Afficher l'analyse winrate × note" : "▾ Réduire l'analyse winrate × note") + '</button>' +
-      '<div class="tier-wr-collapse-wrap' + (noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par seuil de note</div>' +
-      '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot — seuils cumulatifs (">7" inclut tout ce qui est noté au-dessus de 7)</div>' +
+      '<div class="tier-wr-collapse-wrap' + (noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par tranche de note</div>' +
+      '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
   }
   // Cumulative version of the same flat-$1000-per-pari simulation, in the
@@ -3777,10 +3788,14 @@
     // own gauge/table trivially collapse to 100%.
     var cardsList = tierCardFilter.length ? list.filter(function (s) { return tierCardFilter.indexOf(s.confidence) !== -1; }) : list;
     if (snapDistCellFilter) cardsList = cardsList.filter(function (s) { return snapMatchesDistCell(s, snapDistCellFilter.bracket, snapDistCellFilter.tier); });
-    if (noteCardFilter != null) cardsList = cardsList.filter(function (s) { return s.noteAtSnapshot != null && s.noteAtSnapshot > noteCardFilter; });
+    if (noteCardFilter != null) {
+      var activeNoteBin = NOTE_WR_BINS.filter(function (b) { return b[0] === noteCardFilter; })[0];
+      var activeNoteBinIsLast = NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === noteCardFilter;
+      cardsList = cardsList.filter(function (s) { return s.noteAtSnapshot != null && noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast); });
+    }
     var activeFilterLabels = tierCardFilter.slice();
     if (snapDistCellFilter) activeFilterLabels.push((snapDistCellFilter.tier || "Tous") + " " + snapDistCellFilter.bracket[0] + "–" + snapDistCellFilter.bracket[1] + "¢");
-    if (noteCardFilter != null) activeFilterLabels.push("note > " + noteCardFilter);
+    if (noteCardFilter != null) activeFilterLabels.push("note " + noteCardFilter + "-" + (noteCardFilter + 1));
     snapCountEl.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + list.length + ' snapshots (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' snapshot' + (list.length > 1 ? 's' : '');
@@ -4739,8 +4754,8 @@
     }
     var noteRow = e.target.closest ? e.target.closest(".note-wr-row") : null;
     if (noteRow) {
-      var rowThreshold = Number(noteRow.getAttribute("data-note-threshold"));
-      noteCardFilter = noteCardFilter === rowThreshold ? null : rowThreshold;
+      var rowBinMin = Number(noteRow.getAttribute("data-note-bin-min"));
+      noteCardFilter = noteCardFilter === rowBinMin ? null : rowBinMin;
       renderSnapshots();
       return;
     }
