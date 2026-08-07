@@ -1,16 +1,4 @@
 {
-  "polymarket|0x804ec7e5dd9d2c5ebd3a8df587434ca8e0083010d60cd5f02fb36945e290a06f+predict|963480": {
-    "firstSeen": "2026-08-07T13:39:26.861Z",
-    "question": "Will Beijing Guoan FC vs. Shenzhen Xinpengcheng FC end in a draw?",
-    "side": "No",
-    "note": 6.1
-  },
-  "polymarket|0x96af7ac638dc989c64a570b7d677d456102e9d1146487ec8a85ee518d208d637+predict|963481": {
-    "firstSeen": "2026-08-07T12:08:57.594Z",
-    "question": "Will Shenzhen Xinpengcheng FC win on 2026-08-07?",
-    "side": "No",
-    "note": 7.4
-  },
   "polymarket|0xfc57cd75106bffb4885b9b149b48b5cfe9dcededae35a37efbbcd818adf7b63a": {
     "firstSeen": "2026-08-07T14:40:37.707Z",
     "question": "Aston Villa vs. Bayern Munich: O/U 2.5",
