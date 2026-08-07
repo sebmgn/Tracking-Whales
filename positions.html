@@ -433,10 +433,17 @@
     border-bottom: 1px dotted var(--panel-border);
   }
   .vt-market-link:hover { color: var(--accent); border-bottom-color: var(--accent); text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent); }
+  /* Bottom-right corner of the card rather than inline with the market
+     links — absolutely positioned within .vt-summary (not the <details>
+     itself: see the .vt-new-badge comment above for why that distinction
+     matters for a <details>'s non-<summary> children). A different color
+     from the note/traders/stake group up top so the two don't read as the
+     same kind of badge at a glance. */
   .vt-countdown {
-    font-style: normal; font-size: 10px; font-weight: 700; color: var(--gold);
-    background: color-mix(in srgb, var(--gold) 16%, transparent);
-    border-radius: 999px; padding: 1px 8px; margin-left: auto; white-space: nowrap;
+    position: absolute; bottom: 14px; right: 20px;
+    font-style: normal; font-size: 10px; font-weight: 700; color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-radius: 999px; padding: 1px 8px; white-space: nowrap;
   }
   .vt-snap-btn {
     background: var(--panel);
@@ -958,6 +965,20 @@
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .tier-wr-roi { font-style: italic; font-size: 10.5px; font-weight: 400; color: var(--text-dim); }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
+  /* Same visual language as .tier-wr-* above (winrate-by-conviction), under
+     its own class namespace — this gauge is keyed by cumulative note
+     threshold instead of confidence tag, and needs its own click-filter
+     handler, so sharing the .tier-wr-row class would misfire the other
+     gauge's delegated click handler on these rows instead. */
+  .note-wr-row { display: flex; align-items: center; gap: 12px; margin: 0 -8px 12px; padding: 4px 8px; border-radius: var(--radius-md); cursor: pointer; transition: background-color .15s ease; }
+  .note-wr-row:last-child { margin-bottom: 0; }
+  .note-wr-row:hover { background: var(--row-hover); }
+  .note-wr-row.tier-win { background: color-mix(in srgb, var(--green) 38%, transparent); border: 1px solid color-mix(in srgb, var(--green) 55%, transparent); }
+  .note-wr-row.tier-lose { background: color-mix(in srgb, var(--red) 38%, transparent); border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); }
+  .note-wr-row.tier-win:hover { background: color-mix(in srgb, var(--green) 48%, transparent); }
+  .note-wr-row.tier-lose:hover { background: color-mix(in srgb, var(--red) 48%, transparent); }
+  .note-wr-row.active { box-shadow: 0 0 0 1px var(--accent) inset; }
+  .note-wr-badge { flex: 0 0 36px; text-align: center; font-size: 12.5px; font-weight: 700; padding: 3px 0; border-radius: var(--radius-sm); border: 1px solid; font-variant-numeric: tabular-nums; }
 
   .snap-sync-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 4px 14px; }
   .snap-sync-status { font-size: 12px; font-weight: 700; color: var(--text-dim); }
@@ -1276,6 +1297,7 @@
     <div id="snapPnlChartContent"></div>
     <div id="snapDashboard"></div>
     <div id="tierWinrateContent"></div>
+    <div id="noteWinrateContent"></div>
     <div id="snapDistContent"></div>
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
@@ -1407,6 +1429,7 @@
   var snapStatsContent = document.getElementById("snapStatsContent");
   var snapDashboard = document.getElementById("snapDashboard");
   var tierWinrateContent = document.getElementById("tierWinrateContent");
+  var noteWinrateContent = document.getElementById("noteWinrateContent");
   var snapPnlChartContent = document.getElementById("snapPnlChartContent");
   var snapDistContent = document.getElementById("snapDistContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
@@ -1562,6 +1585,7 @@
   var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
   var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
   var tierWinrateCollapsed = true; // winrate-by-conviction gauge — same optional/collapsed-by-default pattern
+  var noteWinrateCollapsed = true; // winrate-by-note-threshold gauge — same optional/collapsed-by-default pattern
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   // Fixed floor now (used to be an adjustable ">= N traders" filter row,
@@ -1944,6 +1968,14 @@
   // (harmless, just unused) keys and added the real codes plus every other
   // country-league prefix a full scan of the tracked wallets' live
   // positions turned up, so this isn't just a two-club patch.
+  // AUDITED 2026-08-07: pulled live positions for every tracked wallet on
+  // both platforms (6700+ open positions) and ran them through this
+  // function directly — 461 fell through to 🎲, the large majority of them
+  // genuinely non-sport (crypto price targets, politics, weather) and
+  // correctly landing there, but ~35 distinct league/cup codes below were
+  // real football that just wasn't in the map yet (Ligue 2, J-League,
+  // Copa del Rey, UEFA Super Cup, Leagues Cup, and a batch of Tier-2
+  // European leagues among them).
   var FOOTBALL_SLUG_PREFIXES = {
     fifwc: 1, ucl: 1, uel: 1, mls: 1, chi: 1, kor: 1, swe: 1, rou1: 1, epl: 1,
     laliga: 1, bundesliga: 1, seriea: 1, ligue1: 1, eredivisie: 1, brasileirao: 1,
@@ -1952,7 +1984,12 @@
     cde: 1, clf: 1, col: 1, col1: 1, cze1: 1, den: 1, ecu1: 1, efa: 1, egy1: 1,
     elc: 1, ere: 1, es2: 1, fif: 1, fl1: 1, lal: 1, lib: 1, mex: 1, nor: 1,
     per1: 1, por: 1, sclc: 1, scop: 1, sea: 1, spl: 1, srb: 1, sud: 1, tur: 1,
-    uzb1: 1
+    uzb1: 1,
+    aut: 1, bel1: 1, bol1: 1, brco: 1, cdr: 1, chi1: 1, chi2: 1, efl: 1,
+    est1: 1, fin1: 1, fr2: 1, fro1: 1, hr1: 1, hun: 1, irl1: 1, isl1: 1,
+    j1100: 1, j2100: 1, jap: 1, lec: 1, ltu1: 1, mar1: 1, ned2: 1, nor2: 1,
+    pol: 1, rus: 1, slo: 1, svk1: 1, swe2: 1, tur2: 1, ukr1: 1, uru1: 1,
+    uef: 1, usc: 1, argpn: 1, asean: 1, cof: 1, gtm: 1, nwsl: 1, ptc: 1
   };
   var NON_FOOTBALL_HINTS = /\bmlb\b|\bnba\b|\bwnba\b|\batp\b|\bwta\b|\bitf\b|\bnpb\b|\bkbo\b|\blol\b|\bdota ?2\b|\bcs2\b|valorant|\bufc\b|\bmma\b|grand prix|\bf1\b|\bnascar\b|drivers.? champion|open championship|\bgolf\b|world series|nba finals|nhl\b|nfl\b|\bcricket\b/i;
   var FOOTBALL_KEYWORDS = /\bfc\b|fifa world cup|world cup golden|world cup winner|champions league|europa league|premier league|\bla liga\b|bundesliga|\bserie a\b|ligue 1|copa america|\buefa\b|\bmls\b/i;
@@ -1973,21 +2010,26 @@
   // (crypto-price markets, odd one-offs) rather than guessing.
   var SPORT_EMOJI_RULES = [
     { emoji: "🎾", test: /\batp\b|\bwta\b|\bitf\b|\btennis\b/i },
-    { emoji: "🏀", test: /\bnba\b|\bwnba\b|nba finals|\bbasketball\b/i },
+    { emoji: "🏀", test: /\bnba\b|\bwnba\b|nba finals|\bbasketball\b|\bbkcba\b/i },
     { emoji: "⚾", test: /\bmlb\b|\bnpb\b|\bkbo\b|world series|\bbaseball\b/i },
-    { emoji: "🏈", test: /\bnfl\b|american football/i },
+    { emoji: "🏈", test: /\bnfl\b|american football|\bcfl\b/i },
     { emoji: "🏒", test: /\bnhl\b|\bhockey\b/i },
     { emoji: "🏎️", test: /\bf1\b|grand prix|drivers.? champion/i },
     { emoji: "🏁", test: /\bnascar\b/i },
     { emoji: "⛳", test: /\bgolf\b|open championship/i },
     { emoji: "🥊", test: /\bufc\b|\bmma\b|\bboxing\b/i },
-    { emoji: "🎮", test: /\blol\b|\bdota ?2\b|\besports\b|valorant|\bcs2\b/i }
+    // "map/game handicap" catches Predict.fun esports slugs regardless of
+    // which title it is (val-, mlbb-, ...) instead of chasing one game code
+    // at a time.
+    { emoji: "🎮", test: /\blol\b|\bdota ?2\b|\besports?\b|valorant|\bcs2\b|map handicap|game handicap|\br6siege\b|rainbow six/i },
+    { emoji: "♟️", test: /\bfide\b|\bchess\b/i }
   ];
   function sportEmojiFor(question, slug) {
     if (isFootball(question, slug)) return "⚽";
     var q = (question || "").toLowerCase();
     var s = (slug || "").toLowerCase();
-    if (s.indexOf("cric") === 0) return "🏏"; // cricket slugs (cricecsch, crict20blast, ...) never carry the word "cricket" in the question itself
+    if (s.indexOf("cric") === 0 || s.indexOf("crint") === 0) return "🏏"; // cricket slugs (cricecsch, crict20blast, crint..., ...) never carry the word "cricket" in the question itself
+    if (s.indexOf("val") === 0) return "🎮"; // Valorant slugs (val-...) come in too many market-type phrasings ("Map 2 Rounds Handicap", "Games Total", ...) to regex-match reliably
     for (var i = 0; i < SPORT_EMOJI_RULES.length; i++) {
       if (SPORT_EMOJI_RULES[i].test.test(q) || SPORT_EMOJI_RULES[i].test.test(s)) return SPORT_EMOJI_RULES[i].emoji;
     }
@@ -2770,7 +2812,7 @@
       if (cachedTiming && cachedTiming.kickoff) {
         preciseKickoff = cachedTiming.kickoff;
         var msDiff = preciseKickoff.getTime() - Date.now();
-        relTimeText = (msDiff > 0 ? "dans " : "il y a ") + fmtCountdown(Math.abs(msDiff));
+        relTimeText = (msDiff > 0 ? "dans " : "depuis ") + fmtCountdown(Math.abs(msDiff));
       } else {
         scheduleMatchTimingFetch(u.matchKey);
       }
@@ -2790,21 +2832,24 @@
         var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
         var diffDays = Math.round((dayStart.getTime() - todayStart.getTime()) / 86400000);
         if (diffDays > 0) relTimeText = "dans " + diffDays + (diffDays > 1 ? " jours" : " jour");
-        else if (diffDays < 0) relTimeText = "il y a " + (-diffDays) + (diffDays < -1 ? " jours" : " jour");
+        else if (diffDays < 0) relTimeText = "depuis " + (-diffDays) + (diffDays < -1 ? " jours" : " jour");
       }
     }
+    // Absolutely positioned (see .vt-countdown CSS), so it rides along in
+    // headerHtml purely to land inside .vt-summary — its position on the
+    // card doesn't depend on where in the markup it sits.
     var kickoffHtml = relTimeText
-      ? '<span class="vt-countdown"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '>⏱ ' + esc(relTimeText) + '</span>'
+      ? '<span class="vt-countdown"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '>🕐 ' + esc(relTimeText) + '</span>'
       : '';
     var marketLinksHtml = '<div class="vt-market-links">' + members.map(function (m) {
       var info = PLATFORMS[m.platform] || { label: m.platform, short: m.platform };
       return '<a class="vt-market-link" href="' + esc(m.marketUrl) + '" target="_blank" rel="noopener" title="Ouvrir sur ' + esc(info.label) + '">' + esc(info.short) + ' ↗</a>';
-    }).join("") + kickoffHtml + '</div>';
+    }).join("") + '</div>';
     var headerHtml =
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + leaderBadge + sparkHtml + '</span>' +
         '<span class="vt-badge-group"><span class="vt-badge"><span class="vt-badge-traders">' + u.traderCount + ' traders</span><span class="vt-badge-sep">·</span><span class="vt-badge-stake">' + fmtUSD(u.totalStake) + '</span></span>' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors) + '</span>' +
-      '</div>' + marketLinksHtml;
+      '</div>' + marketLinksHtml + kickoffHtml;
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
     // breakdown behind a click, while Snapshots — which doesn't want that
@@ -3394,6 +3439,72 @@
       '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
   }
+  // Same winrate/ROI read as the conviction gauge above, but cut by the
+  // trade's own computed note (noteAtSnapshot) instead of the manual
+  // confidence tag — "do the trades this app itself scored highly actually
+  // win more", independent of whatever tier a trader hand-tagged them with.
+  // Thresholds are cumulative (">7" includes every decided snapshot rated
+  // above 7, not just the 7-8 band) since that's the practical question —
+  // "is raising my note cutoff worth it" — not a per-point breakdown.
+  var NOTE_WR_THRESHOLDS = [4, 5, 6, 7, 8, 9];
+  // Single active threshold (or null) — thresholds are cumulative, not
+  // mutually exclusive buckets, so unlike tierCardFilter above there's no
+  // sensible multi-select combination (">4" AND ">7" together just means
+  // ">7"); click the active row again to clear it, same as snapDistCellFilter.
+  var noteCardFilter = null;
+  function computeNoteWinrates(list) {
+    var byThreshold = {};
+    NOTE_WR_THRESHOLDS.forEach(function (t) { byThreshold[t] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
+    list.forEach(function (snap) {
+      if (!snap.winningSide || snap.noteAtSnapshot == null) return;
+      NOTE_WR_THRESHOLDS.forEach(function (t) {
+        if (snap.noteAtSnapshot <= t) return;
+        byThreshold[t].decided++;
+        if (snap.leaderName === snap.winningSide) byThreshold[t].win++;
+        var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+        if (hyp != null) { byThreshold[t].flatPnl += hyp; byThreshold[t].flatPnlCount++; }
+      });
+    });
+    return byThreshold;
+  }
+  function renderNoteWinrate(list) {
+    if (!noteWinrateContent) return;
+    var decidedAll = list.filter(function (s) { return !!s.winningSide; });
+    if (!decidedAll.length) { noteWinrateContent.innerHTML = ""; return; }
+    var byThreshold = computeNoteWinrates(list);
+    var untagged = decidedAll.filter(function (s) { return s.noteAtSnapshot == null; }).length;
+    var rows = NOTE_WR_THRESHOLDS.map(function (t) {
+      var st = byThreshold[t];
+      var wr = st.decided > 0 ? (st.win / st.decided * 100) : null;
+      var color = scoreColor(t);
+      var countLabel = st.decided > 0 ? (st.win + " / " + st.decided) : "aucun résultat";
+      var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
+      var isActive = noteCardFilter === t;
+      var hyp = st.flatPnlCount > 0 ? st.flatPnl : null;
+      var roi = st.flatPnlCount > 0 ? (st.flatPnl / (st.flatPnlCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+      var hypHtml = hyp == null ? "" :
+        '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
+        ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
+      return '<div class="note-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-note-threshold="' + t + '" title="Filtrer les snapshots sur note > ' + t + '">' +
+        '<button type="button" class="note-wr-badge" data-note-threshold="' + t + '" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">&gt;' + t + '</button>' +
+        '<div class="tier-wr-track" title="' + esc('Note > ' + t + ' : ' + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
+        '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
+        '<span class="tier-wr-count">' + countLabel + '</span>' +
+        hypHtml +
+      '</div>';
+    }).join("");
+    var noteHtml = untagged > 0
+      ? '<div class="tier-wr-note">' + untagged + (untagged > 1 ? ' snapshots résolus ont été enregistrés avant le suivi de la note' : ' snapshot résolu a été enregistré avant le suivi de la note') + ' — pas d\'assez de recul pour les inclure ici.</div>'
+      : '';
+    var filterNoteHtml = noteCardFilter != null
+      ? '<div class="tier-wr-note">Filtré sur <b>note > ' + noteCardFilter + '</b> — reclique le seuil actif pour l\'enlever.</div>'
+      : '';
+    noteWinrateContent.innerHTML =
+      '<button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (noteWinrateCollapsed ? "▸ Afficher l'analyse winrate × note" : "▾ Réduire l'analyse winrate × note") + '</button>' +
+      '<div class="tier-wr-collapse-wrap' + (noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par seuil de note</div>' +
+      '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot — seuils cumulatifs (">7" inclut tout ce qui est noté au-dessus de 7)</div>' +
+      rows + noteHtml + filterNoteHtml + '</div></div>';
+  }
   // Cumulative version of the same flat-$1000-per-pari simulation, in the
   // order the snapshots were actually saved — reuses buildHistoryChartSvg
   // (already generic over any {date, value} series) instead of a second
@@ -3570,7 +3681,7 @@
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(snapDistCellFilter.tier || "Tous") + ' · ' + snapDistCellFilter.bracket[0] + '–' + snapDistCellFilter.bracket[1] + '¢</b> — reclique la cellule active pour l\'enlever.</div>'
       : '';
     snapDistContent.innerHTML =
-      '<button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapDistCollapsed ? "▸ Afficher l'analyse cote × note" : "▾ Réduire l'analyse cote × note") + '</button>' +
+      '<button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapDistCollapsed ? "▸ Afficher l'analyse cote × confiance" : "▾ Réduire l'analyse cote × confiance") + '</button>' +
       '<div class="snap-dist-wrap table-scroll' + (snapDistCollapsed ? " collapsed" : "") + '">' +
       '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction. Clique une cellule pour filtrer les snapshots ci-dessous sur cette tranche.</div>' +
       '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table>' + cellFilterNoteHtml + '</div>';
@@ -3666,13 +3777,16 @@
     // own gauge/table trivially collapse to 100%.
     var cardsList = tierCardFilter.length ? list.filter(function (s) { return tierCardFilter.indexOf(s.confidence) !== -1; }) : list;
     if (snapDistCellFilter) cardsList = cardsList.filter(function (s) { return snapMatchesDistCell(s, snapDistCellFilter.bracket, snapDistCellFilter.tier); });
+    if (noteCardFilter != null) cardsList = cardsList.filter(function (s) { return s.noteAtSnapshot != null && s.noteAtSnapshot > noteCardFilter; });
     var activeFilterLabels = tierCardFilter.slice();
     if (snapDistCellFilter) activeFilterLabels.push((snapDistCellFilter.tier || "Tous") + " " + snapDistCellFilter.bracket[0] + "–" + snapDistCellFilter.bracket[1] + "¢");
+    if (noteCardFilter != null) activeFilterLabels.push("note > " + noteCardFilter);
     snapCountEl.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + list.length + ' snapshots (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' snapshot' + (list.length > 1 ? 's' : '');
     renderSnapDashboard(list);
     renderTierWinrate(list);
+    renderNoteWinrate(list);
     renderSnapPnlChart(cardsList);
     renderSnapDistribution(list);
     renderSnapStats(list);
@@ -4581,6 +4695,12 @@
       renderTierWinrate(loadSnapshots());
       return;
     }
+    var noteWinrateToggleBtn = e.target.closest ? e.target.closest("#noteWinrateToggleBtn") : null;
+    if (noteWinrateToggleBtn) {
+      noteWinrateCollapsed = !noteWinrateCollapsed;
+      renderNoteWinrate(loadSnapshots());
+      return;
+    }
     var distCell = e.target.closest ? e.target.closest(".snap-dist-cell") : null;
     if (distCell) {
       var cellBracket = [Number(distCell.getAttribute("data-odds-min")), Number(distCell.getAttribute("data-odds-max"))];
@@ -4614,6 +4734,13 @@
       var rowTier = tierRow.getAttribute("data-tier");
       var tierIdx = tierCardFilter.indexOf(rowTier);
       if (tierIdx === -1) tierCardFilter.push(rowTier); else tierCardFilter.splice(tierIdx, 1);
+      renderSnapshots();
+      return;
+    }
+    var noteRow = e.target.closest ? e.target.closest(".note-wr-row") : null;
+    if (noteRow) {
+      var rowThreshold = Number(noteRow.getAttribute("data-note-threshold"));
+      noteCardFilter = noteCardFilter === rowThreshold ? null : rowThreshold;
       renderSnapshots();
       return;
     }
