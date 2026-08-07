@@ -5,12 +5,6 @@
     "side": "Boston Red Sox",
     "note": 6.9
   },
-  "polymarket|0x373044b4469d15d3cf53ee2ffa980d25275b2ecd9a692ca225970381b51830bf": {
-    "firstSeen": "2026-08-07T00:40:30.179Z",
-    "question": "National Bank Open: Rafael Jodar vs Lorenzo Musetti",
-    "side": "Rafael Jodar",
-    "note": 6.8
-  },
   "polymarket|0xd3be830c73a8c159ceed799fda206e97f985eec2a7a7b2e1d897492c1be5eae1": {
     "firstSeen": "2026-08-07T00:40:30.179Z",
     "question": "Will EC Vitória win on 2026-08-06?",
@@ -23,10 +17,28 @@
     "side": "No",
     "note": 7.2
   },
+  "polymarket|0xaceacecb0b6f0d5cfdb6250bffa85afb062ed704eacedde78d7987becae51848": {
+    "firstSeen": "2026-08-07T03:39:15.356Z",
+    "question": "Will Club Tijuana win on 2026-08-06?",
+    "side": "No",
+    "note": 6.8
+  },
+  "polymarket|0x246d9fd0381eaf76f954bf538713f64e130386035f6c5055c7664fa4bc64558b": {
+    "firstSeen": "2026-08-07T03:39:15.357Z",
+    "question": "Will Chicago Fire FC win on 2026-08-06?",
+    "side": "Yes",
+    "note": 6.2
+  },
   "polymarket|0x5ff0402fac1a03e60cd683a90f1dbf70c8b69852a13afc5baf73b3d232279ddb": {
     "firstSeen": "2026-08-07T00:40:30.179Z",
     "question": "Will SC Corinthians Paulista win on 2026-08-06?",
     "side": "Yes",
+    "note": 6.2
+  },
+  "polymarket|0xa5d4879fa2c7e1ac3d2fd2b7c552bd2f603ca2517b9641ca14061ae94091a65e": {
+    "firstSeen": "2026-08-07T03:39:15.357Z",
+    "question": "Will San Diego FC win on 2026-08-06?",
+    "side": "No",
     "note": 6.2
   }
 }
