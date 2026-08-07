@@ -275,30 +275,41 @@
        few percent — a pre-sort cue on a mixed-sport list, subtle enough to
        never compete with the outcome-color semantics elsewhere on the
        card. Falls back to plain transparent (no wash at all) for the
-       unclassified "🎲 other" bucket, via color-mix's own default.
-       The two dotted layers on top are a faint paper/canvas grain — an
-       echo of the painting frame at the top of the page, carried onto
-       every card. Grain color derives from --text (not a fixed black) so
-       it reads as light specks on dark, not a dark smudge, once dark
-       mode flips the ground. */
-    background-image:
-      radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--text) 5%, transparent) 1px, transparent 1px),
-      radial-gradient(circle at 70% 65%, color-mix(in srgb, var(--text) 4%, transparent) 1px, transparent 1px),
-      linear-gradient(180deg,
+       unclassified "🎲 other" bucket, via color-mix's own default. Plain
+       soft gradient, no grain texture (tried, decided against — read as
+       too busy across a long list of cards). */
+    background-image: linear-gradient(180deg,
         color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-1)),
         color-mix(in srgb, var(--sport-tint, transparent) 8%, var(--cream-grad-2)));
-    background-size: 5px 5px, 7px 7px, 100% 100%;
-    background-repeat: repeat, repeat, no-repeat;
     border: 1px solid var(--panel-border);
-    border-left: 4px solid var(--accent);
+    /* --border-tint/--border-tint-hover (set inline, see sportTintFor)
+       always resolve to a real color — the sport's own hue, or --accent
+       for the unclassified "🎲 other" bucket — unlike --sport-tint above,
+       which stays genuinely unset there so the background wash can fall
+       through to fully transparent. Hover pushes to a visibly brighter
+       variant of the same hue, not just a generic highlight. */
+    border-left: 4px solid var(--border-tint, var(--accent));
     border-radius: var(--radius-md);
     padding: 16px 20px 18px;
+    position: relative;
+    transition: border-left-color .15s ease;
     /* --note-glow (set inline per card, see noteGlowVar) layers a colored
        glow on top of the card's normal elevation shadow, scaled by score —
        stronger note, more glow. Defaults to an inert zero-shadow so it's
        always a valid item in this comma list even when unset (a bare
        "none" can't sit inside a multi-shadow list). */
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0));
+  }
+  .value-trade-item:hover { border-left-color: var(--border-tint-hover, var(--accent)); }
+  /* Resting state stays each element's own plain color (leader badge's
+     side color, the green consensus/mises fills) — only on hover do they
+     turn a touch more vivid. A filter (not a recomputed color) so this
+     works uniformly regardless of which specific color is underneath
+     (leader badge color varies by side name). */
+  .value-trade-item:hover .vt-leader,
+  .value-trade-item:hover .consensus-seg.filled,
+  .value-trade-item:hover .bal-seg {
+    filter: saturate(1.4) brightness(1.08);
   }
   /* Value trade cards render as <details> — header + gauges stay visible as
      the always-shown <summary>, the trader-by-trader breakdown is collapsed
@@ -323,13 +334,16 @@
   .value-trade-item.vt-far { filter: saturate(.75); opacity: .88; }
   .value-trade-item.vt-far:hover, .value-trade-item.vt-far[open] { filter: none; opacity: 1; }
   /* First time this browser has ever seen this market key, or within the
-     last hour of that — see markUnitSeen. The badge sits inline before
-     the rest of the summary; the glow rides on the card's existing
-     box-shadow slot so it doesn't fight the note-based glow below. */
+     last hour of that — see markUnitSeen. Overlaps the card's own top
+     edge (a corner-ribbon read) instead of sitting in normal flow above
+     the title, which used to just push the whole card taller; the glow
+     rides on the card's existing box-shadow slot so it doesn't fight the
+     note-based glow below. */
   .vt-new-badge {
+    position: absolute; top: -9px; left: 14px; z-index: 1;
     display: inline-block; background: var(--accent); color: #fff;
     font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
-    margin-bottom: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
   }
   .value-trade-item.vt-new {
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0)), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
@@ -347,7 +361,7 @@
   .vt-empty-whale { font-size: 34px; opacity: .55; margin-bottom: 6px; }
   .vt-empty-headline { font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-size: 17px; color: var(--text-dim); margin-bottom: 8px; }
   .vt-empty-detail { font-size: 12px; color: var(--text-dim); max-width: 520px; margin: 0 auto; line-height: 1.6; }
-  .vt-summary { display: block; }
+  .vt-summary { display: block; position: relative; }
   .vt-summary::after {
     content: "▾ voir le détail des traders";
     display: block;
@@ -533,8 +547,7 @@
     flex: none;
     color: var(--text-dim);
     font-size: 10.5px;
-    text-transform: uppercase;
-    letter-spacing: .03em;
+    font-weight: 700;
   }
   .balance-bar { flex: 1; display: flex; position: relative; border-radius: 999px; background: var(--panel-border); }
   /* flex:1 here (not on .consensus-gauge itself) is what makes this row
@@ -683,11 +696,19 @@
   .score-tier-track { flex: 1 1 auto; height: 9px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
   .score-tier-fill { height: 100%; border-radius: 999px; opacity: .85; transition: width .5s ease; min-width: 2px; }
   .score-tier-count { flex: 0 0 20px; text-align: right; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
-  /* The trade's own note as a filled ring (not a flat pill) — reads as a
-     distinct shape in a dense grid of cards, not just another number.
-     Hovering reveals which factors actually drove the score. */
-  .vt-score-wrap { position: relative; display: inline-flex; cursor: default; vertical-align: middle; }
-  .vt-score-ring { display: block; }
+  /* Picked over a ring/disc/pill treatment — no shape, no container, just
+     a big bold colored number. Size alone is what makes it readable
+     across a long list, deliberately not paired with a glow or background
+     on top. Hovering still reveals which factors drove the score. */
+  .vt-score-wrap { position: relative; display: inline-flex; align-items: center; cursor: default; vertical-align: middle; }
+  .vt-score-num {
+    font-family: "Times New Roman", Times, Georgia, serif;
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
   .vt-score-breakdown {
     position: absolute; top: 100%; right: 0; margin-top: 6px;
     background: var(--text); color: var(--bg);
@@ -1945,7 +1966,7 @@
   // (unclassified/other) — it keeps the plain cream background rather than
   // a meaningless tint.
   var SPORT_TINT_HUE = {
-    "⚽": 142,  // football — green
+    "⚽": 132,  // football — classic grass green
     "🎾": 28,   // tennis — clay/terracotta
     "🏀": 32,   // basketball — amber
     "⚾": 8,    // baseball — brick red
@@ -1953,14 +1974,19 @@
     "🏒": 196,  // hockey — ice blue
     "🏎️": 355, // F1 — racing red
     "🏁": 20,   // nascar — orange-red
-    "⛳": 96,   // golf — fairway sage (distinct from football's brighter green)
+    "⛳": 100,  // golf — fairway sage (distinct from football's brighter green)
     "🥊": 350,  // MMA/boxing — maroon
     "🎮": 262,  // esports — violet
     "🏏": 178   // cricket — teal
   };
-  function sportTintFor(emoji) {
+  // Resting state is already fairly vivid; hover pushes saturation/lightness
+  // further so there's a deliberate, felt difference on interaction — not
+  // just the same color slightly faded like the old .55-saturation resting
+  // tone.
+  function sportTintFor(emoji, hover) {
     var hue = SPORT_TINT_HUE[emoji];
-    return hue == null ? null : "hsl(" + hue + ",50%,42%)";
+    if (hue == null) return null;
+    return hover ? "hsl(" + hue + ",85%,56%)" : "hsl(" + hue + ",72%,46%)";
   }
 
   // ---------- match timing ----------
@@ -2574,20 +2600,11 @@
   function scoreBadgeHtml(score, factors, extraClass) {
     if (score == null) return "";
     var color = scoreColor(score);
-    var fillFrac = normLinear(score, [4, 9]);
-    var r = 12, circumference = 2 * Math.PI * r;
-    var dash = (fillFrac * circumference).toFixed(1);
-    // The number used to sit as small colored text on the card's own
-    // background — easy to lose at a glance across a long list. A solid
-    // disc in the same color, with white text on top, plus a soft colored
-    // glow (drop-shadow) around the whole badge, reads instantly instead
-    // of needing a second look.
-    var ringSvg = '<svg width="30" height="30" viewBox="0 0 30 30" class="vt-score-ring" style="filter:drop-shadow(0 0 5px color-mix(in srgb, ' + color + ' 70%, transparent))">' +
-      '<circle cx="15" cy="15" r="' + r + '" fill="none" stroke="var(--panel-border)" stroke-width="4"/>' +
-      '<circle cx="15" cy="15" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="4" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + circumference.toFixed(1) + '" transform="rotate(-90 15 15)"/>' +
-      '<circle cx="15" cy="15" r="8.5" fill="' + color + '"/>' +
-      '<text x="15" y="18.6" text-anchor="middle" font-family="Times New Roman, Times, Georgia, serif" font-style="italic" font-size="10" font-weight="700" fill="#fff">' + score.toFixed(1) + '</text>' +
-    '</svg>';
+    // Picked over the ring/disc treatment: no shape, no container, no
+    // glow — a very large bold colored number, size alone doing all the
+    // work. Deliberately minimal, so it doesn't get another visual layer
+    // stacked back on.
+    var scoreNumHtml = '<span class="vt-score-num" style="color:' + color + '">' + score.toFixed(1) + '</span>';
     var breakdownHtml = "";
     if (factors) {
       var rows = SCORE_FACTOR_ORDER.map(function (key) {
@@ -2599,7 +2616,7 @@
       }).join("");
       breakdownHtml = '<div class="vt-score-breakdown"><div class="vt-score-breakdown-title">Note ' + score.toFixed(1) + '/10 — détail</div>' + rows + '</div>';
     }
-    return '<span class="vt-score-wrap' + (extraClass ? " " + extraClass : "") + '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables">' + ringSvg + breakdownHtml + '</span>';
+    return '<span class="vt-score-wrap' + (extraClass ? " " + extraClass : "") + '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables">' + scoreNumHtml + breakdownHtml + '</span>';
   }
   // Computes everything renderUnitCard needs, split into header (question +
   // leader badge) and body (balance bars + trader breakdown) so the header
@@ -2616,6 +2633,15 @@
     var primary = members[0];
     var secondary = members[1];
     var linked = !!secondary;
+    // primary.key is NOT a safe cache key on its own for a linked
+    // (cross-platform) unit — buildRenderUnits sorts members by trader
+    // count, so members[0] can flip from the Poly side to the Predict
+    // side (or back) the moment the two platforms' counts cross, which
+    // would silently reset any state keyed off it (price history, the
+    // last-refresh price-arrow comparison, "first seen" timestamps).
+    // Sorted + joined so it stays identical regardless of which member
+    // ends up first.
+    var stableKey = members.map(function (m) { return m.key; }).sort().join("+");
     var mergedSides = mergeUnitSides(u);
 
     var totalTradersAll = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
@@ -2675,19 +2701,19 @@
     // against yet) and on an unchanged price (no arrow is itself
     // information — nothing moved).
     var priceArrowHtml = "";
-    if (leaderAvgPrice != null && primary.key) {
-      var prevPrice = lastRenderedPrice[primary.key];
+    if (leaderAvgPrice != null) {
+      var prevPrice = lastRenderedPrice[stableKey];
       if (prevPrice != null && prevPrice !== leaderAvgPrice) {
         priceArrowHtml = leaderAvgPrice > prevPrice
           ? '<span class="vt-price-arrow vt-price-up" title="En hausse depuis le dernier rafraîchissement">▲</span>'
           : '<span class="vt-price-arrow vt-price-down" title="En baisse depuis le dernier rafraîchissement">▼</span>';
       }
-      lastRenderedPrice[primary.key] = leaderAvgPrice;
+      lastRenderedPrice[stableKey] = leaderAvgPrice;
     }
     var leaderBadge = leaderName ? '<span class="vt-leader" style="background:' + leaderColor + '">→ ' + esc(leaderName) +
       (leaderPriceText ? ' <span class="vt-leader-price" title="Prix actuel du marché, pas le prix d\'entrée des traders">@ ' + leaderPriceText + '</span>' + priceArrowHtml : '') + '</span>' : "";
-    recordPricePoint(primary.key, leaderAvgPrice);
-    var sparkHtml = sparklineHtml(primary.key);
+    recordPricePoint(stableKey, leaderAvgPrice);
+    var sparkHtml = sparklineHtml(stableKey);
 
     var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌 Snapshot</button>';
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
@@ -2783,13 +2809,13 @@
     var bodyHtml = balanceHtml + sideGridHtml;
 
     return {
-      primary: primary, secondary: secondary, linked: linked,
+      primary: primary, secondary: secondary, linked: linked, stableKey: stableKey,
       leaderColor: leaderColor, leaderName: leaderName,
       leaderAvgPrice: leaderAvgPrice, leaderPriceText: leaderPriceText, leaderRoi: leaderRoi,
       headerHtml: headerHtml, bodyHtml: bodyHtml,
       balanceHtml: balanceHtml, sideGridHtml: sideGridHtml,
       borderWidth: noteBorderWidth(u.score),
-      sportTint: sportTintFor(sportEmoji)
+      sportTint: sportTintFor(sportEmoji), sportTintHover: sportTintFor(sportEmoji, true)
     };
   }
 
@@ -2803,12 +2829,19 @@
     var daysUntil = unitDaysUntil(u);
     var isFar = !isLive && daysUntil != null && daysUntil > 3;
     var stateClass = isLive ? ' vt-live' : (isFar ? ' vt-far' : '');
-    var isNew = markUnitSeen(key);
+    // Keyed off the member-order-independent stableKey, not primary.key —
+    // see computeUnitCardParts — so a linked market's "new" clock doesn't
+    // reset every time the two platforms' trader counts cross and flip
+    // which one sorts first.
+    var isNew = markUnitSeen(parts.stableKey);
     var isHighNew = isNew && u.score != null && u.score >= 8;
-    var borderColor = parts.sportTint || "var(--accent)";
     var noteGlow = noteGlowShadow(u.score);
     return '<details class="value-trade-item' + stateClass + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
-      ' style="border-left-color:' + borderColor + ';border-left-width:' + parts.borderWidth.toFixed(1) + 'px' + (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') + (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
+      ' style="border-left-width:' + parts.borderWidth.toFixed(1) + 'px' +
+      (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
+      ';--border-tint:' + (parts.sportTint || "var(--accent)") +
+      ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
+      (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
       '<summary class="vt-summary">' + (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') + parts.headerHtml + parts.balanceHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';

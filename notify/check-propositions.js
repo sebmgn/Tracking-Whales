@@ -294,6 +294,29 @@ function linkScore(pg, mg) {
   return j >= threshold ? j : 0;
 }
 
+// ---------- kickoff time (same gamma-api lookup positions.html uses) ----------
+// Predict.fun's market object carries no kickoff field at all — only
+// Polymarket's gamma-api has a real one (event.startTime / a market's own
+// gameStartTime), keyed by the same slug prefix matchKeyFromSlug already
+// computes for cross-platform linking. A Predict.fun-only alert (no
+// matching Polymarket event) simply gets no kickoff line rather than a
+// fabricated one.
+const GAMMA_EVENTS_BASE = "https://gamma-api.polymarket.com/events";
+async function fetchKickoff(matchKey) {
+  if (!matchKey) return null;
+  try {
+    const events = await fetchJson(GAMMA_EVENTS_BASE + "?slug=" + encodeURIComponent(matchKey));
+    const ev = events && events[0];
+    const market0 = ev && ev.markets && ev.markets[0];
+    const raw = (ev && ev.startTime) || (market0 && market0.gameStartTime);
+    if (!raw) return null;
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+  } catch (e) {
+    return null; // best-effort — a failed lookup just means no kickoff line, not a broken alert
+  }
+}
+
 // ---------- group positions by market, link across platforms, score, evaluate the rule ----------
 function findAlerts(positions) {
   const groups = {};
@@ -350,6 +373,7 @@ function findAlerts(positions) {
 
     alerts.push({
       key, question: members[0].question, side: unit.leader.name, note: unit.note,
+      matchKey: members[0].matchKey,
       traders, stake: unit.leader.stake,
       opposingSides: opposingSides.map((s) => s.name + " (" + s.traderCount + ")"),
       urls: members.map((m) => m.marketUrl)
@@ -385,7 +409,12 @@ async function sendEmail(alerts) {
   const lines = sorted.map((a) => {
     const traderLines = a.traders.map((t) => `    - ${t.trader} : ${fmtUSD(t.stake)}`).join("\n");
     const oppLine = a.opposingSides.length ? `\n  Camp d'en face : ${a.opposingSides.join(", ")}` : "";
-    return `• [Note ${a.note.toFixed(1)}] ${a.question}\n  Camp : ${a.side} (${a.traders.length} traders)\n${traderLines}${oppLine}\n  Mise combinée (camp leader) : ${fmtUSD(a.stake)}\n  ${a.urls.filter(Boolean).join("\n  ")}`;
+    // Best-effort — no line at all when gamma-api has no matching event
+    // (Predict.fun-only alert) rather than printing a blank/fabricated time.
+    const kickoffLine = a.kickoff
+      ? `\n  Début de l'événement : ${a.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`
+      : "";
+    return `• [Note ${a.note.toFixed(1)}] ${a.question}\n  Camp : ${a.side} (${a.traders.length} traders)${kickoffLine}\n${traderLines}${oppLine}\n  Mise combinée (camp leader) : ${fmtUSD(a.stake)}\n  ${a.urls.filter(Boolean).join("\n  ")}`;
   });
   const text = `Nouvelle(s) proposition(s) : note > ${NOTE_THRESHOLD}/10 (même formule que le site).\n\n` + lines.join("\n\n");
   await withRetry(() => transporter.sendMail({ from: GMAIL_USER, to: NOTIFY_TO, subject, text }), { attempts: 3, delayMs: 2000 });
@@ -401,6 +430,10 @@ async function main() {
 
   if (fresh.length) {
     console.log(fresh.length + " nouvelle(s) alerte(s) :", fresh.map((a) => "[" + a.note.toFixed(1) + "] " + a.question + " / " + a.side));
+    // Only for the ones actually being emailed, not every active alert —
+    // no point spending gamma-api calls on bets the recipient's already
+    // been notified about.
+    await Promise.all(fresh.map(async (a) => { a.kickoff = await fetchKickoff(a.matchKey); }));
     if (GMAIL_USER && GMAIL_APP_PASSWORD) {
       await sendEmail(fresh);
       console.log("Email envoyé à " + NOTIFY_TO);
