@@ -1,20 +1,14 @@
 {
+  "polymarket|0x977c0519cc902a6bf7a8a6015ab745581615790f3f19b6f98b88c38054790d68+predict|1092864": {
+    "firstSeen": "2026-08-07T23:59:12.752Z",
+    "question": "Athletics vs. Boston Red Sox",
+    "side": "Boston Red Sox",
+    "note": 6.4
+  },
   "polymarket|0xae6a0716f4715bdf4deb9f9ed927c1bbe07b8ec61c747c8f856f92a7ce5dbefd": {
     "firstSeen": "2026-08-07T21:56:10.926Z",
     "question": "Will CA Aldosivi win on 2026-08-07?",
     "side": "No",
     "note": 6.3
-  },
-  "polymarket|0x43c1a0695d251fed1d7a0eec140b962d66c00fe36ba7b771d33a5c073fad31f6": {
-    "firstSeen": "2026-08-07T21:56:10.926Z",
-    "question": "CA Rosario Central vs. CA Aldosivi: O/U 2.5",
-    "side": "Under",
-    "note": 6.9
-  },
-  "polymarket|0x06df5cdb8ca6313d7cca43b46ed62d949409c2ecab24b7209c0c25814c13a5ac": {
-    "firstSeen": "2026-08-07T21:10:56.639Z",
-    "question": "Will Middlesbrough FC win on 2026-08-07?",
-    "side": "Yes",
-    "note": 7.5
   }
 }
