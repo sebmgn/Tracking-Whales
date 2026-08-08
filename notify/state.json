@@ -1,16 +1,4 @@
 {
-  "polymarket|0xad396f729d4af29a055281bb4cdd6431087600b76d2c0a308e71705659af7c02+predict|963501": {
-    "firstSeen": "2026-08-08T13:58:30.845Z",
-    "question": "Will Chengdu Rongcheng FC win on 2026-08-08?",
-    "side": "No",
-    "note": 7
-  },
-  "polymarket|0x132d579b7b166d5d12760a86bd060c46c4c586a648c1ced612777fe52ef99881+predict|963470": {
-    "firstSeen": "2026-08-08T13:58:30.845Z",
-    "question": "Will Dalian Yingbo FC win on 2026-08-08?",
-    "side": "Yes",
-    "note": 6.4
-  },
   "polymarket|0xd04592df0e40ae39dfcb6916965cc8fa612896788ca1feb8f08514e0164985cf": {
     "firstSeen": "2026-08-08T13:58:30.845Z",
     "question": "Will FK Bodø/Glimt win on 2026-08-08?",
