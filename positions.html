@@ -529,6 +529,10 @@
   .vt-trader-row-name { flex: 0 0 108px; display: flex; align-items: center; overflow: hidden; }
   .vt-trader-row-name-text { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .vt-trader-row-name .w-badge { flex: none; }
+  /* Marks a trader's row on the camp that ISN'T their main position (they
+     also hold a bigger stake on the other side) — a plain neutral grey so it
+     reads as "secondary" regardless of which camp's color it sits next to. */
+  .vt-trader-row-name-marginal { background: rgba(128,128,128,.28); border-radius: 4px; padding: 1px 4px; margin: -1px -4px; }
   .vt-trader-row-track {
     position: relative; flex: 1 1 auto; height: 19px; border-radius: 999px;
     background: color-mix(in srgb, var(--panel-border) 16%, var(--panel));
@@ -1122,8 +1126,6 @@
 
   .empty-state, .loading-state { text-align: center; color: var(--text-dim); padding: 40px 20px; }
 
-  footer { margin-top: 26px; color: var(--text-dim); font-size: 11.5px; text-align: center; }
-
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1372,7 +1374,6 @@
     </div>
   </div>
 
-  <footer>Page générée le <span id="genTime"></span> — données live via les API Predict.fun & Polymarket (refresh auto 10s)</footer>
 
 </div>
 
@@ -1491,8 +1492,6 @@
   var rtCountEl = document.getElementById("rtCount");
   var rtFilters = document.getElementById("rtFilters");
   var statsProfilesContent = document.getElementById("statsProfilesContent");
-
-  document.getElementById("genTime").textContent = new Date().toLocaleString("fr-FR");
 
   // ---------- daily famous painting (top-right) ----------
   // 95 public-domain reproductions spanning art history (Renaissance
@@ -1620,6 +1619,7 @@
 
   var paused = false;
   var isFetching = false;
+  var hasLoadedOnce = false; // flips true after the first fetch cycle actually lands data — lets the empty state tell "still loading" apart from "genuinely 0 matches"
   var secondsLeft = REFRESH_MS / 1000;
   var tradersData = {};      // name -> array of open positions
   var recentMatches = {};    // name -> array of recent match events
@@ -2483,12 +2483,25 @@
         });
       });
     });
+    // A trader can hold a real position on one camp AND a small leftover/
+    // hedge on the other — that trader then gets two rows here. Flag every
+    // row that ISN'T their biggest stake as the marginal one, so it reads as
+    // secondary instead of looking like an equally-weighted second bet.
+    var maxStakeByTrader = {};
+    rows.forEach(function (r) {
+      if (!(r.trader in maxStakeByTrader) || r.stake > maxStakeByTrader[r.trader]) maxStakeByTrader[r.trader] = r.stake;
+    });
+    var rowCountByTrader = {};
+    rows.forEach(function (r) { rowCountByTrader[r.trader] = (rowCountByTrader[r.trader] || 0) + 1; });
+
     rows.sort(function (a, b) { return b.stake - a.stake; });
     return '<div class="vt-traders">' + rows.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
+      var isMarginal = rowCountByTrader[e.trader] > 1 && e.stake < maxStakeByTrader[e.trader];
+      var nameTitle = esc(e.trader) + (isMarginal ? " — position marginale ici, camp principal sur l'autre côté" : "");
       return '<div class="vt-trader-row">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
-        '<span class="vt-trader-row-name"><span class="vt-trader-row-name-text" title="' + esc(e.trader) + '">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<span class="vt-trader-row-name' + (isMarginal ? ' vt-trader-row-name-marginal' : '') + '"><span class="vt-trader-row-name-text" title="' + nameTitle + '">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track">' +
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
         '</div>' +
@@ -4103,6 +4116,15 @@
     var finalUnits = traderFiltered;
 
     if (!finalUnits.length) {
+      // Before the very first fetch cycle has landed, an empty list means
+      // "still loading", not "genuinely nothing found" — showing the same
+      // "Aucun trade" illustration in both cases read as a broken/empty
+      // site on every fresh page load, right up until the first refresh
+      // resolved a few seconds later.
+      if (!hasLoadedOnce) {
+        valueTradesContent.innerHTML = '<div class="loading-state">Analyse des positions communes…</div>';
+        return;
+      }
       // The headline (whale + "Aucun trade") is the at-a-glance read; the
       // diagnostic sentence underneath is still what actually tells a
       // too-strict filter apart from a broken fetch (0 marchés au total
@@ -4653,6 +4675,7 @@
         // logged to console) — keep its last known data instead of blanking it.
         posResults.forEach(function (r) { if (r.positions) tradersData[r.name] = r.positions; });
         matchResults.forEach(function (r) { if (r.matches) recentMatches[r.name] = r.matches; });
+        hasLoadedOnce = true;
         renderAll();
         // Snapshots aren't part of renderAll (rebuilding that list every
         // cycle would fight the user's scroll/expand state for no reason
