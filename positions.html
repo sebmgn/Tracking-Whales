@@ -318,39 +318,30 @@
   details.value-trade-item > .vt-summary { cursor: pointer; list-style: none; padding: 13px 20px 14px; }
   details.value-trade-item > .vt-summary::-webkit-details-marker { display: none; }
   details.value-trade-item[open] > .vt-summary { padding-bottom: 8px; }
-  /* First time this browser has ever seen this market key, or within the
-     last hour of that — see markUnitSeen. Overlaps the card's own top
-     edge (a corner-ribbon read) instead of sitting in normal flow above
-     the title, which used to just push the whole card taller; the glow
-     rides on the card's existing box-shadow slot so it doesn't fight the
-     note-based glow below. */
-  .vt-new-badge {
+  /* Live, the countdown, and Nouveau all share one flex strip overlapping
+     the card's top edge (in that order — see renderUnitCard) instead of
+     each being individually absolute-positioned with manually-computed
+     pixel offsets; flexbox handles the spacing regardless of which subset
+     of the three is actually present on a given card. Overlapping the
+     card's own top edge (a corner-ribbon read) instead of sitting in
+     normal flow above the title, which used to just push the whole card
+     taller. */
+  .vt-corner-badges {
     position: absolute; top: -9px; left: 14px; z-index: 1;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .vt-new-badge {
     display: inline-block; background: var(--accent); color: #fff;
     font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
     box-shadow: 0 1px 3px rgba(0,0,0,.25);
   }
-  /* Shifts right to make room when Live is also present (see .vt-live-badge
-     below) — Live sits left of Nouveau when a card is both at once. */
-  .value-trade-item.vt-live-now .vt-new-badge { left: 78px; }
   .value-trade-item.vt-new {
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0)), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
   }
-  /* Same left corner as .vt-new-badge — always the leftmost of the two. */
   .vt-live-badge {
-    position: absolute; top: -9px; left: 14px; z-index: 1;
     display: inline-block; background: var(--red); color: #fff;
     font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
     box-shadow: 0 1px 3px rgba(0,0,0,.25);
-  }
-  /* Same unitTimingStatus "live" read the En cours filter uses — a strong
-     red wash (well past the ~5-8% sport tint resting cards get) so a
-     genuinely in-progress event is unmistakable at a glance, not just a
-     faint hue shift. */
-  .value-trade-item.vt-live-now {
-    background-image: linear-gradient(180deg,
-        color-mix(in srgb, var(--red) 20%, var(--cream-grad-1)),
-        color-mix(in srgb, var(--red) 28%, var(--cream-grad-2)));
   }
   /* Same unitTimingStatus "live" read the En cours filter uses — a strong
      red wash (well past the ~5-8% sport tint resting cards get) so a
@@ -454,11 +445,9 @@
     border-bottom: 1px dotted var(--panel-border);
   }
   .vt-market-link:hover { color: var(--accent); border-bottom-color: var(--accent); text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent); }
-  /* The card's real bottom row, in normal flow (no <details>-vs-<summary>
-     absolute-position quirk to fight — see .vt-new-badge above) — volume
-     and trader count on the left, the countdown on the right, so the two
-     share one baseline instead of the timer floating over other content. */
-  .vt-bottom-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  /* The card's real bottom row — just volume + trader count now that the
+     countdown has moved up to .vt-corner-badges alongside Live/Nouveau. */
+  .vt-bottom-row { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; }
   .vt-bottom-meta { color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .vt-bottom-traders-num { font-size: 14px; font-weight: 800; color: var(--text); }
   /* The number worth noticing at a glance — sized up well past the
@@ -2057,7 +2046,11 @@
     // which title it is (val-, mlbb-, ...) instead of chasing one game code
     // at a time.
     { emoji: "🎮", test: /\blol\b|\bdota ?2\b|\besports?\b|valorant|\bcs2\b|map handicap|game handicap|\br6siege\b|rainbow six/i },
-    { emoji: "♟️", test: /\bfide\b|\bchess\b/i }
+    { emoji: "♟️", test: /\bfide\b|\bchess\b/i },
+    // "ruprem" (Rugby Premiership) turned up during the football slug audit
+    // as a real miss — confirmed rugby, not football, so it needs its own
+    // bucket rather than falling to 🎲.
+    { emoji: "🏉", test: /\brugby\b|\bruprem\b|six nations|top 14|\burc\b/i }
   ];
   function sportEmojiFor(question, slug) {
     if (isFootball(question, slug)) return "⚽";
@@ -2075,19 +2068,21 @@
   // same emoji sportEmojiFor already classified, so there's exactly one
   // place sport identity is decided. No entry for the "🎲" catch-all
   // (unclassified/other) — it keeps the plain cream background rather than
-  // a meaningless tint.
+  // a meaningless tint. Four fixed picks (football/tennis/baseball/rugby),
+  // the rest spread out around the wheel to stay distinct from those four
+  // and from each other.
   var SPORT_TINT_HUE = {
-    "⚽": 132,  // football — classic grass green
-    "🎾": 28,   // tennis — clay/terracotta
-    "🏀": 32,   // basketball — amber
-    "⚾": 8,    // baseball — brick red
-    "🏈": 24,   // american football — leather brown
-    "🏒": 196,  // hockey — ice blue
-    "🏎️": 355, // F1 — racing red
-    "🏁": 20,   // nascar — orange-red
-    "⛳": 100,  // golf — fairway sage (distinct from football's brighter green)
-    "🥊": 350,  // MMA/boxing — maroon
-    "🎮": 262,  // esports — violet
+    "⚽": 215,  // football — blue
+    "🎾": 50,   // tennis — ball yellow
+    "🏉": 132,  // rugby — pitch green
+    "🏀": 25,   // basketball — orange
+    "🏈": 345,  // american football — crimson
+    "🏒": 240,  // hockey — indigo (cool, but far enough from football's blue)
+    "🏎️": 0,   // F1 — racing red
+    "🏁": 12,   // nascar — orange-red
+    "⛳": 100,  // golf — fairway sage
+    "🥊": 320,  // MMA/boxing — magenta
+    "🎮": 275,  // esports — violet
     "🏏": 178   // cricket — teal
   };
   // Resting state is already fairly vivid; hover pushes saturation/lightness
@@ -2095,6 +2090,10 @@
   // just the same color slightly faded like the old .55-saturation resting
   // tone.
   function sportTintFor(emoji, hover) {
+    // Baseball doesn't fit the hue model — "white" was the actual ask, so
+    // it gets a near-neutral gray-white instead of a colored hue, still
+    // visible enough as a border/wash without reading as "a color".
+    if (emoji === "⚾") return hover ? "hsl(0,0%,74%)" : "hsl(0,0%,86%)";
     var hue = SPORT_TINT_HUE[emoji];
     if (hue == null) return null;
     return hover ? "hsl(" + hue + ",85%,56%)" : "hsl(" + hue + ",72%,46%)";
@@ -2443,10 +2442,11 @@
   // immediately instead of needing to compare two separate columns.
   // Earliest recentMatches entry for this trader on this exact market —
   // "when did they first get in", not the average of every top-up since.
-  // recentMatches only holds each trader's last 20 trades across EVERY
-  // market they're in (see fetchRecentMatchesForTrader), so a position
-  // opened further back than that window just won't have a match here —
-  // returns null rather than guessing, and the caller renders nothing for it.
+  // recentMatches only holds each trader's last 100 trades across EVERY
+  // market they're in (see the refresh loop's fetchRecentMatchesForTrader
+  // call), so a position opened further back than that window — a real
+  // risk for the most hyperactive traders — just won't have a match here.
+  // Returns null rather than guessing; the caller renders nothing for it.
   function firstTradeTimeFor(traderName, platform, question) {
     var matches = recentMatches[traderName];
     if (!matches) return null;
@@ -2919,11 +2919,13 @@
         '<span class="vt-badge-group">' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors) + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
-    // group) — sits on the card's real bottom row, left of the countdown,
-    // in normal flow so it doesn't fight the <details>/absolute-position
-    // quirk documented on .vt-new-badge. The stake figure is sized up
-    // (.vt-bottom-stake) since that's the number worth noticing at a glance.
-    var bottomBarHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders"><b class="vt-bottom-traders-num">' + u.traderCount + '</b> traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(u.totalStake) + '</span></span>' + kickoffHtml + '</div>';
+    // group) — sits on the card's real bottom row, in normal flow so it
+    // doesn't fight the <details>/absolute-position quirk documented on
+    // .vt-new-badge. The stake figure is sized up (.vt-bottom-stake) since
+    // that's the number worth noticing at a glance. The countdown used to
+    // live here too; it's now up in .vt-corner-badges instead (see
+    // renderUnitCard), next to Live.
+    var bottomBarHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders"><b class="vt-bottom-traders-num">' + u.traderCount + '</b> traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(u.totalStake) + '</span></span></div>';
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
     // breakdown behind a click, while Snapshots — which doesn't want that
@@ -2959,7 +2961,7 @@
       primary: primary, secondary: secondary, linked: linked, stableKey: stableKey,
       leaderColor: leaderColor, leaderName: leaderName,
       leaderAvgPrice: leaderAvgPrice, leaderPriceText: leaderPriceText, leaderRoi: leaderRoi,
-      bottomBarHtml: bottomBarHtml,
+      bottomBarHtml: bottomBarHtml, kickoffHtml: kickoffHtml,
       headerHtml: headerHtml, bodyHtml: bodyHtml,
       balanceHtml: balanceHtml, sideGridHtml: sideGridHtml,
       borderWidth: noteBorderWidth(u.score),
@@ -2982,16 +2984,26 @@
     var noteGlow = noteGlowShadow(u.score);
     // Same "live" read the En cours filter already uses — kickoff has
     // passed (or there's no extractable date at all, treated as live by
-    // unitTimingStatus). Live renders first (leftmost); Nouveau shifts
-    // right to make room when both are present — see .vt-live-badge CSS.
+    // unitTimingStatus).
     var isLive = unitTimingStatus(u) === "live";
+    // Live, the countdown, and Nouveau all sit in one corner strip — Live
+    // and the countdown are the paired "this is happening now/soon" read,
+    // Nouveau tags along after when it also applies. Flexbox in
+    // .vt-corner-badges spaces however many of the three are present.
+    var cornerBadgesHtml = (isLive || parts.kickoffHtml || isNew)
+      ? '<div class="vt-corner-badges">' +
+          (isLive ? '<span class="vt-live-badge">🔴 Live</span>' : '') +
+          parts.kickoffHtml +
+          (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') +
+        '</div>'
+      : '';
     return '<details class="value-trade-item' + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + (isLive ? ' vt-live-now' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="border-left-width:' + parts.borderWidth.toFixed(1) + 'px' +
       (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
       ';--border-tint:' + (parts.sportTint || "var(--accent)") +
       ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
       (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
-      '<summary class="vt-summary">' + (isLive ? '<span class="vt-live-badge">🔴 Live</span>' : '') + (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
+      '<summary class="vt-summary">' + cornerBadgesHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
   }
@@ -4586,8 +4598,19 @@
         Promise.all(TRADERS.map(function (t) {
           return fetchPositionsForTrader(t).then(function (positions) { return { name: t.name, positions: positions }; });
         })),
+        // 100, not 20 — same one request per trader per refresh either way,
+        // just a bigger page, but it meaningfully widens how far back
+        // firstTradeTimeFor can still find a hyperactive trader's entry on
+        // a given market. Neither platform's endpoint supports filtering
+        // matches/trades down to one specific market server-side (verified
+        // live: Predict.fun's conditionId/marketId params are silently
+        // ignored — Polymarket's own trades endpoint does support a
+        // market= filter, but using it would mean a whole separate
+        // per-card fetch, not something to add for a tiny nice-to-have
+        // label), so this is the practical ceiling without a bigger
+        // architecture change.
         Promise.all(TRADERS.map(function (t) {
-          return fetchRecentMatchesForTrader(t, 20).then(function (matches) { return { name: t.name, matches: matches }; });
+          return fetchRecentMatchesForTrader(t, 100).then(function (matches) { return { name: t.name, matches: matches }; });
         }))
       ]);
       var posResults = results[0], matchResults = results[1];
