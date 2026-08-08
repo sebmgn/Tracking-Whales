@@ -2199,7 +2199,16 @@
     "🏏": 9 * 3600000      // a full day's play
   };
   var DEFAULT_MAX_LIVE_MS = 3.5 * 3600000; // sports without a specific entry above
-  function unitTimingStatus(u) {
+  // skipFetch=true reads whatever's already cached without triggering a new
+  // lookup — for a check that runs across EVERY position on EVERY render
+  // (the "already over" filter below), letting it schedule fetches too
+  // meant dozens of matchKeys nobody was even looking at could all resolve
+  // within moments of each other, each one calling renderValueTrades() and
+  // rebuilding the whole list — visible as a rapid flicker on any card left
+  // open at the time. Cards that actually render still trigger their own
+  // fetch via computeUnitCardParts' kickoffHtml lookup, so the cache still
+  // fills in normally; this just isn't the path that kicks it off.
+  function unitTimingStatus(u, skipFetch) {
     if (u.matchKey) {
       var cached = matchTimingCache[u.matchKey];
       if (cached && cached.kickoff) {
@@ -2209,7 +2218,7 @@
         var maxLiveMs = SPORT_MAX_LIVE_MS[emoji] != null ? SPORT_MAX_LIVE_MS[emoji] : DEFAULT_MAX_LIVE_MS;
         return elapsed > maxLiveMs ? "over" : "live";
       }
-      scheduleMatchTimingFetch(u.matchKey);
+      if (!skipFetch) scheduleMatchTimingFetch(u.matchKey);
     }
     var d = extractMatchDate(u.members[0].question, u.matchKey);
     if (!d) return "live";
@@ -4123,7 +4132,7 @@
       u.leaderPrice = info.leaderPrice;
       u.scoreFactors = info.factors;
       u.scoreGate = info.gate;
-      if (unitTimingStatus(u) === "over") return false;
+      if (unitTimingStatus(u, true) === "over") return false;
       return u.leaderPrice == null || u.leaderPrice < 0.9995;
     });
     var traderFiltered = allUnits.filter(function (u) {
