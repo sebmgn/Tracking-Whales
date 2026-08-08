@@ -424,37 +424,36 @@ function fmtCents(p) {
 }
 const PLATFORM_LABELS = { polymarket: "Polymarket", predict: "Predict.fun" };
 
+// One trade per email — main() calls this once per fresh alert rather than
+// batching a run's alerts into one digest, so each email's subject/body is
+// about exactly one bet.
 async function sendEmail(alerts) {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD }
   });
-  const sorted = alerts.slice().sort((a, b) => b.note - a.note);
+  const a = alerts[0];
   // The note goes in the subject itself (not just the body) so it's visible
   // from a notification banner / inbox list without opening the email.
-  const subject = sorted.length === 1
-    ? `Corrélation Whales [Note ${sorted[0].note.toFixed(1)}] : ${sorted[0].question}`
-    : `Corrélation Whales : ${sorted.length} trades notés > ${NOTE_THRESHOLD} (meilleure note ${sorted[0].note.toFixed(1)})`;
-  const lines = sorted.map((a) => {
-    // Best-effort — no line at all when gamma-api has no matching event
-    // (Predict.fun-only alert) rather than printing a blank/fabricated time.
-    const kickoffLine = a.kickoff
-      ? `\nDébut de l'événement : ${a.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`
-      : "";
-    // One block per camp, same shape each time (name / traders / volume,
-    // then one line per trader with their own stake) — leader camp first,
-    // a blank line between camps instead of the leader getting the full
-    // detail and the rest just a one-line summary.
-    const campBlocks = a.camps.map((c, i) => {
-      const label = i === 0 ? "Camp 1 (leader)" : (a.camps.length === 2 ? "Camp adverse" : `Camp ${i + 1} (adverse)`);
-      const priceText = c.avgPrice != null ? ` — cote actuelle ${fmtCents(c.avgPrice)}` : "";
-      const traderLines = c.traders.map((t) => `  - ${t.trader} : ${fmtUSD(t.stake)}`).join("\n");
-      return `${label} : ${c.name} ; ${c.traderCount} trader${c.traderCount > 1 ? "s" : ""} ; ${fmtUSD(c.stake)}${priceText}\n${traderLines}`;
-    });
-    const linkLines = a.urls.filter((u) => u.url).map((u) => `${PLATFORM_LABELS[u.platform] || u.platform} : ${u.url}`).join("\n");
-    return `• [Note ${a.note.toFixed(1)}] ${a.question}${kickoffLine}\n\n${campBlocks.join("\n\n")}\n\n${linkLines}`;
+  const subject = `Corrélation Whales [Note ${a.note.toFixed(1)}] : ${a.question}`;
+  // Best-effort — no line at all when gamma-api has no matching event
+  // (Predict.fun-only alert) rather than printing a blank/fabricated time.
+  const kickoffLine = a.kickoff
+    ? `\nDébut de l'événement : ${a.kickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`
+    : "";
+  // One block per camp, same shape each time (name / traders / volume,
+  // then one line per trader with their own stake) — leader camp first,
+  // a blank line between camps instead of the leader getting the full
+  // detail and the rest just a one-line summary.
+  const campBlocks = a.camps.map((c, i) => {
+    const label = i === 0 ? "Camp 1 (leader)" : (a.camps.length === 2 ? "Camp adverse" : `Camp ${i + 1} (adverse)`);
+    const priceText = c.avgPrice != null ? ` — cote actuelle ${fmtCents(c.avgPrice)}` : "";
+    const traderLines = c.traders.map((t) => `  - ${t.trader} : ${fmtUSD(t.stake)}`).join("\n");
+    return `${label} : ${c.name} ; ${c.traderCount} trader${c.traderCount > 1 ? "s" : ""} ; ${fmtUSD(c.stake)}${priceText}\n${traderLines}`;
   });
-  const text = `Nouvelle(s) proposition(s) : note > ${NOTE_THRESHOLD}/10 (même formule que le site).\n\n` + lines.join("\n\n");
+  const linkLines = a.urls.filter((u) => u.url).map((u) => `${PLATFORM_LABELS[u.platform] || u.platform} : ${u.url}`).join("\n");
+  const text = `Nouvelle proposition : note > ${NOTE_THRESHOLD}/10 (même formule que le site).\n\n` +
+    `[Note ${a.note.toFixed(1)}] ${a.question}${kickoffLine}\n\n${campBlocks.join("\n\n")}\n\n${linkLines}`;
   await withRetry(() => transporter.sendMail({ from: GMAIL_USER, to: NOTIFY_TO, subject, text }), { attempts: 3, delayMs: 2000 });
 }
 
@@ -473,8 +472,15 @@ async function main() {
     // been notified about.
     await Promise.all(fresh.map(async (a) => { a.kickoff = await fetchKickoff(a.matchKey); }));
     if (GMAIL_USER && GMAIL_APP_PASSWORD) {
-      await sendEmail(fresh);
-      console.log("Email envoyé à " + NOTIFY_TO);
+      // One email per trade, sent in sequence (not Promise.all — a shared
+      // nodemailer transporter over Gmail is safer sent one at a time than
+      // fired concurrently) — even if several trades cross the threshold in
+      // the same run, each gets its own subject/body instead of being
+      // folded into one digest.
+      for (const a of fresh) {
+        await sendEmail([a]);
+        console.log("Email envoyé à " + NOTIFY_TO + " — [" + a.note.toFixed(1) + "] " + a.question);
+      }
     } else {
       console.log("GMAIL_USER / GMAIL_APP_PASSWORD absents — email non envoyé (secrets manquants).");
     }
