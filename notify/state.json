@@ -1,4 +1,10 @@
 {
+  "polymarket|0x59a69e6437c49ff260deb32b8467bd8ad0ba08f0e6b9f27648708b47cd7ac02d": {
+    "firstSeen": "2026-08-08T20:29:39.139Z",
+    "question": "New England Revolution vs. Houston Dynamo: O/U 3.5",
+    "side": "Under",
+    "note": 6.9
+  },
   "polymarket|0x88b53e0d9cc5df335c52c526e1f3115c220ab88e65188129cba22849a0656605": {
     "firstSeen": "2026-08-08T13:58:30.845Z",
     "question": "Will CA Gimnasia y Esgrima de Mendoza win on 2026-08-08?",
