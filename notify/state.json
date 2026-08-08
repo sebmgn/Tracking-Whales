@@ -1,20 +1,20 @@
 {
-  "polymarket|0xc3d4ea1d592f030ba20a226a4825b83ee10dd0fd428650e60011109c8a617346+predict|1093032": {
-    "firstSeen": "2026-08-08T03:43:37.577Z",
-    "question": "Toronto Blue Jays vs. Philadelphia Phillies",
-    "side": "Toronto Blue Jays",
-    "note": 6.8
-  },
   "polymarket|0x69c0dc8696a48e33c00269da2f2978eafb60b148c3018ab55368332313e8f981+predict|947860": {
     "firstSeen": "2026-08-08T02:07:23.102Z",
     "question": "Will Tigres de la UANL win on 2026-08-07?",
     "side": "No",
     "note": 6.4
   },
-  "polymarket|0xf7f95ada8db60d1e43a221971b602e5d6f04cb0e6ae33c0f05ede04c0183ee3d+predict|1193128": {
-    "firstSeen": "2026-08-08T03:43:37.577Z",
-    "question": "National Bank Open: Taylor Townsend vs Belinda Bencic",
-    "side": "Belinda Bencic",
-    "note": 7
+  "polymarket|0xa73955ebdf4e8d95eb2c2211552c6890ca837aa5094c4c12b8005323c102edef+predict|1093022": {
+    "firstSeen": "2026-08-08T04:40:43.064Z",
+    "question": "Houston Astros vs. San Diego Padres",
+    "side": "Houston Astros",
+    "note": 6.8
+  },
+  "polymarket|0x01a5b17ba0156325ce9411eb95a1ad95960c60056881ae7d31d45809d7e01511": {
+    "firstSeen": "2026-08-08T04:40:43.064Z",
+    "question": "Will FC Juárez win on 2026-08-07?",
+    "side": "Yes",
+    "note": 6.5
   }
 }
