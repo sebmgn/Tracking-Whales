@@ -278,9 +278,22 @@
        unclassified "🎲 other" bucket, via color-mix's own default. Plain
        soft gradient, no grain texture (tried, decided against — read as
        too busy across a long list of cards). */
+    /* Second layer: a thin note gauge on the right edge, filled from the
+       bottom to note/10 of the card's height (--note-fill-color/-pct set
+       inline per card, see renderUnitCard) — same idea as the sport bar on
+       the left, but this one's about the trade's own score, not its sport.
+       A background layer rather than a positioned child so it isn't
+       subject to the <details>-vs-<summary> absolute-position quirk
+       documented on .vt-new-badge above. */
     background-image: linear-gradient(180deg,
         color-mix(in srgb, var(--sport-tint, transparent) 3%, var(--cream-grad-1)),
-        color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-2)));
+        color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-2))),
+      linear-gradient(0deg,
+        var(--note-fill-color, transparent) 0%, var(--note-fill-color, transparent) var(--note-fill-pct, 0%),
+        var(--panel-border) var(--note-fill-pct, 0%), var(--panel-border) 100%);
+    background-position: 0 0, right center;
+    background-size: 100% 100%, 6px 100%;
+    background-repeat: no-repeat, no-repeat;
     border: 1px solid var(--panel-border);
     /* --border-tint/--border-tint-hover (set inline, see sportTintFor)
        always resolve to a real color — the sport's own hue, or --accent
@@ -350,7 +363,10 @@
   .value-trade-item.vt-live-now {
     background-image: linear-gradient(180deg,
         color-mix(in srgb, var(--red) 20%, var(--cream-grad-1)),
-        color-mix(in srgb, var(--red) 28%, var(--cream-grad-2)));
+        color-mix(in srgb, var(--red) 28%, var(--cream-grad-2))),
+      linear-gradient(0deg,
+        var(--note-fill-color, transparent) 0%, var(--note-fill-color, transparent) var(--note-fill-pct, 0%),
+        var(--panel-border) var(--note-fill-pct, 0%), var(--panel-border) 100%);
   }
   /* New AND already a strong signal (note ≥8) — a few extra seconds of
      motion on top of the steady new-card glow, so a rare high-quality
@@ -2993,6 +3009,11 @@
     var isNew = markUnitSeen(parts.stableKey);
     var isHighNew = isNew && u.score != null && u.score >= 8;
     var noteGlow = noteGlowShadow(u.score);
+    // Right-edge gauge, filled bottom-up to note/10 of the card's height —
+    // purely additive next to the note number itself (scoreBadgeHtml),
+    // not a replacement for it.
+    var noteFillPct = u.score != null ? (Math.max(0, Math.min(100, u.score / 10 * 100))).toFixed(1) + '%' : '0%';
+    var noteFillColor = u.score != null ? scoreColor(u.score) : 'transparent';
     // Same "live" read the En cours filter already uses — kickoff has
     // passed (or there's no extractable date at all, treated as live by
     // unitTimingStatus).
@@ -3013,6 +3034,7 @@
       (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
       ';--border-tint:' + (parts.sportTint || "var(--accent)") +
       ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
+      ';--note-fill-color:' + noteFillColor + ';--note-fill-pct:' + noteFillPct +
       (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
       '<summary class="vt-summary">' + cornerBadgesHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
