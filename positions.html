@@ -278,22 +278,9 @@
        unclassified "🎲 other" bucket, via color-mix's own default. Plain
        soft gradient, no grain texture (tried, decided against — read as
        too busy across a long list of cards). */
-    /* Second layer: a thin note gauge on the right edge, filled from the
-       bottom to note/10 of the card's height (--note-fill-color/-pct set
-       inline per card, see renderUnitCard) — same idea as the sport bar on
-       the left, but this one's about the trade's own score, not its sport.
-       A background layer rather than a positioned child so it isn't
-       subject to the <details>-vs-<summary> absolute-position quirk
-       documented on .vt-new-badge above. */
     background-image: linear-gradient(180deg,
         color-mix(in srgb, var(--sport-tint, transparent) 3%, var(--cream-grad-1)),
-        color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-2))),
-      linear-gradient(0deg,
-        var(--note-fill-color, transparent) 0%, var(--note-fill-color, transparent) var(--note-fill-pct, 0%),
-        var(--panel-border) var(--note-fill-pct, 0%), var(--panel-border) 100%);
-    background-position: 0 0, right center;
-    background-size: 100% 100%, 6px 100%;
-    background-repeat: no-repeat, no-repeat;
+        color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-2)));
     border: 1px solid var(--panel-border);
     /* --border-tint/--border-tint-hover (set inline, see sportTintFor)
        always resolve to a real color — the sport's own hue, or --accent
@@ -363,10 +350,7 @@
   .value-trade-item.vt-live-now {
     background-image: linear-gradient(180deg,
         color-mix(in srgb, var(--red) 20%, var(--cream-grad-1)),
-        color-mix(in srgb, var(--red) 28%, var(--cream-grad-2))),
-      linear-gradient(0deg,
-        var(--note-fill-color, transparent) 0%, var(--note-fill-color, transparent) var(--note-fill-pct, 0%),
-        var(--panel-border) var(--note-fill-pct, 0%), var(--panel-border) 100%);
+        color-mix(in srgb, var(--red) 28%, var(--cream-grad-2)));
   }
   /* New AND already a strong signal (note ≥8) — a few extra seconds of
      motion on top of the steady new-card glow, so a rare high-quality
@@ -386,6 +370,22 @@
      regardless (that's the browser's default <details> behavior, not
      something this text was providing). */
   .vt-summary { display: block; position: relative; }
+  /* Right-edge note gauge, filled bottom-up to note/10 — a real positioned
+     child of .vt-summary (not a background-image layer: a multi-layer
+     background-image combining the card's sport-tint wash with a couple of
+     flat-color layers sized via background-size turned out not to paint
+     reliably here, even though every computed style checked out — safer to
+     use an actual element, and .vt-summary is already the proven place to
+     position one, see .vt-new-badge/.vt-corner-badges above). Scoped to
+     .vt-summary's own height (the always-visible collapsed card), not the
+     expanded trader breakdown below it. */
+  .vt-note-gauge {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 6px;
+    background: var(--panel-border);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    overflow: hidden;
+  }
+  .vt-note-gauge-fill { position: absolute; left: 0; right: 0; bottom: 0; }
   .vt-detail { padding: 0 20px 18px; }
   /* Explicit rather than relying solely on the browser's native <details>
      hiding — belt-and-suspenders so this can never render open by default. */
@@ -2701,23 +2701,38 @@
   // Needs at least 3 observed points before it's worth drawing — with only
   // 2 it's just a straight line between two ticks, which reads as noise
   // rather than a trend.
+  // Unique per SVG instance — <linearGradient id> has to be document-unique
+  // or every sparkline after the first silently reuses whichever gradient
+  // the browser resolved first (there can be dozens of these on one page:
+  // every card's price spark plus every trader's PnL spark).
+  var sparkGradientIdCounter = 0;
   // Shared tiny line-chart renderer — takes any ordered list of numbers and
   // draws a normalized (min/max-fit) trend line, colored by net direction
-  // (last vs. first point). Used both for the live price sparkline and the
-  // per-trader cumulative-PnL trend in the snapshots recap table.
+  // (last vs. first point), with a gradient-filled area underneath fading
+  // to transparent — more visual weight on the movement than the line
+  // alone. Used both for the live price sparkline and the per-trader
+  // cumulative-PnL trend in the snapshots recap table.
   function miniTrendSvg(values, extraClass, title) {
     if (!values || values.length < 2) return '';
     var w = 44, h = 15, pad = 1.5;
     var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
     var range = max - min || 1;
     var stepX = (w - pad * 2) / (values.length - 1);
-    var pts = values.map(function (v, i) {
-      var x = pad + i * stepX;
-      var y = pad + (1 - (v - min) / range) * (h - pad * 2);
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    }).join(' ');
+    var coords = values.map(function (v, i) {
+      return { x: pad + i * stepX, y: pad + (1 - (v - min) / range) * (h - pad * 2) };
+    });
+    var pts = coords.map(function (c) { return c.x.toFixed(1) + ',' + c.y.toFixed(1); }).join(' ');
+    var areaPts = pts + ' ' + coords[coords.length - 1].x.toFixed(1) + ',' + h + ' ' + coords[0].x.toFixed(1) + ',' + h;
     var trendColor = values[values.length - 1] >= values[0] ? "var(--green)" : "var(--red)";
-    return '<svg class="vt-spark' + (extraClass ? ' ' + extraClass : '') + '" viewBox="0 0 ' + w + ' ' + h + '" title="' + esc(title || '') + '"><polyline points="' + pts + '" fill="none" stroke="' + trendColor + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var gradId = 'spark-grad-' + (sparkGradientIdCounter++);
+    return '<svg class="vt-spark' + (extraClass ? ' ' + extraClass : '') + '" viewBox="0 0 ' + w + ' ' + h + '" title="' + esc(title || '') + '">' +
+      '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0" stop-color="' + trendColor + '" stop-opacity=".35"/>' +
+        '<stop offset="1" stop-color="' + trendColor + '" stop-opacity="0"/>' +
+      '</linearGradient></defs>' +
+      '<polygon points="' + areaPts + '" fill="url(#' + gradId + ')"/>' +
+      '<polyline points="' + pts + '" fill="none" stroke="' + trendColor + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
   }
   // Deliberately not a precise historical chart — there's no price-history
   // API behind this. It's a rough read built live from what THIS tab has
@@ -3010,10 +3025,13 @@
     var isHighNew = isNew && u.score != null && u.score >= 8;
     var noteGlow = noteGlowShadow(u.score);
     // Right-edge gauge, filled bottom-up to note/10 of the card's height —
-    // purely additive next to the note number itself (scoreBadgeHtml),
-    // not a replacement for it.
-    var noteFillPct = u.score != null ? (Math.max(0, Math.min(100, u.score / 10 * 100))).toFixed(1) + '%' : '0%';
-    var noteFillColor = u.score != null ? scoreColor(u.score) : 'transparent';
+    // purely additive next to the note number itself (scoreBadgeHtml), not
+    // a replacement for it. A real element inside .vt-summary (proven spot
+    // for a positioned child — see .vt-new-badge/.vt-corner-badges), scoped
+    // to the summary's own height rather than the full expanded card.
+    var noteGaugeHtml = u.score != null
+      ? '<div class="vt-note-gauge"><div class="vt-note-gauge-fill" style="height:' + (Math.max(0, Math.min(100, u.score / 10 * 100))).toFixed(1) + '%;background:' + scoreColor(u.score) + '"></div></div>'
+      : '';
     // Same "live" read the En cours filter already uses — kickoff has
     // passed (or there's no extractable date at all, treated as live by
     // unitTimingStatus).
@@ -3034,9 +3052,8 @@
       (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
       ';--border-tint:' + (parts.sportTint || "var(--accent)") +
       ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
-      ';--note-fill-color:' + noteFillColor + ';--note-fill-pct:' + noteFillPct +
       (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
-      '<summary class="vt-summary">' + cornerBadgesHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
+      '<summary class="vt-summary">' + cornerBadgesHtml + noteGaugeHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
   }
