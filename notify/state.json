@@ -1,4 +1,16 @@
 {
+  "polymarket|0x3e4b432101d5753903af11951557e07f7f5047d16a8ba860466cee7a6879313a+predict|997921": {
+    "firstSeen": "2026-08-08T13:12:29.764Z",
+    "question": "Qingdao Hainiu FC vs. Shanghai Shenhua FC: O/U 3.5",
+    "side": "Under",
+    "note": 6.9
+  },
+  "polymarket|0x7ece79cd49ecdff7546874a1a1a0df6877a91e3f45eb31a02765ba56824bdfa5+predict|963472": {
+    "firstSeen": "2026-08-08T13:12:29.764Z",
+    "question": "Will Liaoning Tieren FC win on 2026-08-08?",
+    "side": "No",
+    "note": 6.3
+  },
   "polymarket|0x8b1b214fa92ce58b5beb777ef8e755b5ac2b768ce4faaa0679ae43f571f0c374": {
     "firstSeen": "2026-08-08T11:42:56.775Z",
     "question": "Will Jeonbuk Hyundai Motors FC win on 2026-08-08?",
