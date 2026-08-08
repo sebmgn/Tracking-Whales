@@ -330,24 +330,36 @@
     font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
     box-shadow: 0 1px 3px rgba(0,0,0,.25);
   }
+  /* Shifts right to make room when Live is also present (see .vt-live-badge
+     below) — Live sits left of Nouveau when a card is both at once. */
+  .value-trade-item.vt-live-now .vt-new-badge { left: 78px; }
   .value-trade-item.vt-new {
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0)), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
   }
-  /* Top-right corner, mirroring .vt-new-badge's top-left — a card can be
-     both new AND live at once, so they need separate corners. */
+  /* Same left corner as .vt-new-badge — always the leftmost of the two. */
   .vt-live-badge {
-    position: absolute; top: -9px; right: 14px; z-index: 1;
+    position: absolute; top: -9px; left: 14px; z-index: 1;
     display: inline-block; background: var(--red); color: #fff;
     font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
     box-shadow: 0 1px 3px rgba(0,0,0,.25);
   }
-  /* Same unitTimingStatus "live" read the En cours filter uses — a red wash
-     instead of the sport tint, so a genuinely in-progress event stands out
-     from the rest of the list at a glance. */
+  /* Same unitTimingStatus "live" read the En cours filter uses — a strong
+     red wash (well past the ~5-8% sport tint resting cards get) so a
+     genuinely in-progress event is unmistakable at a glance, not just a
+     faint hue shift. */
   .value-trade-item.vt-live-now {
     background-image: linear-gradient(180deg,
-        color-mix(in srgb, var(--red) 7%, var(--cream-grad-1)),
-        color-mix(in srgb, var(--red) 11%, var(--cream-grad-2)));
+        color-mix(in srgb, var(--red) 20%, var(--cream-grad-1)),
+        color-mix(in srgb, var(--red) 28%, var(--cream-grad-2)));
+  }
+  /* Same unitTimingStatus "live" read the En cours filter uses — a strong
+     red wash (well past the ~5-8% sport tint resting cards get) so a
+     genuinely in-progress event is unmistakable at a glance, not just a
+     faint hue shift. */
+  .value-trade-item.vt-live-now {
+    background-image: linear-gradient(180deg,
+        color-mix(in srgb, var(--red) 20%, var(--cream-grad-1)),
+        color-mix(in srgb, var(--red) 28%, var(--cream-grad-2)));
   }
   /* New AND already a strong signal (note ≥8) — a few extra seconds of
      motion on top of the steady new-card glow, so a rare high-quality
@@ -362,15 +374,11 @@
   .vt-empty-whale { font-size: 34px; opacity: .55; margin-bottom: 6px; }
   .vt-empty-headline { font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-size: 17px; color: var(--text-dim); margin-bottom: 8px; }
   .vt-empty-detail { font-size: 12px; color: var(--text-dim); max-width: 520px; margin: 0 auto; line-height: 1.6; }
+  /* No visible "voir le détail" hint text anymore — dropped to shave a
+     line off every card's height. <summary> stays natively clickable
+     regardless (that's the browser's default <details> behavior, not
+     something this text was providing). */
   .vt-summary { display: block; position: relative; }
-  .vt-summary::after {
-    content: "▾ voir le détail des traders";
-    display: block;
-    margin-top: 10px;
-    font-size: 11px;
-    color: var(--text-dim);
-  }
-  details.value-trade-item[open] .vt-summary::after { content: "▴ masquer le détail"; }
   .vt-detail { padding: 0 20px 18px; }
   /* Explicit rather than relying solely on the browser's native <details>
      hiding — belt-and-suspenders so this can never render open by default. */
@@ -402,28 +410,30 @@
      shrinking away to nothing. */
   .vt-question { font-weight: 700; font-size: 15px; flex: 1 1 auto; min-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vt-sport-emoji { font-size: 26px; line-height: 1; flex: none; }
-  /* The pill/frame stays in the leading side's color, but the fill is a
-     light tint (not a solid color) and the text is plain ink, bold — the
-     majority pick reads as a fact stated in black, not as a colored claim.
-     --leader-color is set inline per card (see leaderBadge). */
+  /* Picked from the 20-proposal round (option 5) — a neutral mini-card with
+     a colored left bar, rather than a colored fill. Plain ink, bold text —
+     the majority pick reads as a stated fact, the color lives only in the
+     accent bar. --leader-color is set inline per card (see leaderBadge). */
   .vt-leader {
     display: inline-block;
     flex: none;
     margin-left: 10px;
     padding: 3px 12px;
-    border-radius: 999px;
+    border-radius: 6px;
     font-size: 12.5px;
     font-weight: 800;
     color: var(--text);
     letter-spacing: .01em;
-    background: color-mix(in srgb, var(--leader-color, var(--accent)) 16%, var(--panel));
-    border: 1.5px solid var(--leader-color, var(--accent));
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-left: 3px solid var(--leader-color, var(--accent));
   }
   .vt-leader-price { font-weight: 500; font-size: 10.5px; opacity: .82; margin-left: 2px; }
   /* Inherits the badge's own ink color now that the fill is a light tint
      instead of a solid semantic color — no more same-hue-on-same-hue risk
      to dodge with a forced white. */
   .vt-price-arrow { font-size: 9px; margin-left: 2px; color: var(--text); }
+  .vt-leader-roi { font-size: 11px; font-weight: 700; color: var(--text); flex: none; margin-left: 8px; }
   /* Sized up from the original 44×15 — same SVG (viewBox stays 44×15,
      coordinates just stretch to fill), so the line itself also reads
      thicker at the bigger size instead of looking like a stray hairline
@@ -450,12 +460,13 @@
      share one baseline instead of the timer floating over other content. */
   .vt-bottom-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 8px; }
   .vt-bottom-meta { color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .vt-bottom-traders-num { font-size: 14px; font-weight: 800; color: var(--text); }
   /* The number worth noticing at a glance — sized up well past the
      surrounding trader-count/label text. */
   .vt-bottom-stake { font-size: 16px; font-weight: 800; color: var(--text); }
   .vt-countdown {
     display: flex; align-items: center; gap: 4px; flex: none;
-    font-style: normal; font-size: 10px; font-weight: 700;
+    font-style: normal; font-size: 13px; font-weight: 700;
     white-space: nowrap;
   }
   /* Clock emoji sits outside the tint — it's already its own color, tinting
@@ -463,7 +474,7 @@
      Direction carries its own color: an upcoming kickoff ("dans …") reads
      green, one already underway ("depuis …") reads blue — distinct from
      each other, and from the accent/gold used elsewhere on the card. */
-  .vt-countdown-icon { font-size: 11px; }
+  .vt-countdown-icon { font-size: 13px; }
   .vt-countdown-text { border-radius: 999px; padding: 1px 8px; }
   .vt-countdown-soon .vt-countdown-text { color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); }
   .vt-countdown-live .vt-countdown-text { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
@@ -560,7 +571,12 @@
      short "$" figure here let its track steal a few extra pixels, making bar
      length a slightly dishonest stake comparison between traders. */
   .vt-trader-row-right { flex: 0 0 148px; text-align: right; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* Widened just enough to fit the optional first-trade time on the same
+     line — keeps every row at its normal height instead of adding a
+     second line under each one. */
+  .vt-trader-row-right:has(.vt-trader-first-time) { flex-basis: 205px; }
   .vt-trader-row-right b { color: var(--text); }
+  .vt-trader-first-time { font-size: 9.5px; opacity: .7; }
   /* Legacy — the "% de son book" note was dropped from the trader row; kept
      only so snapshots frozen before that change still render correctly. */
   .vt-book-pct { font-size: 9.5px; opacity: .75; margin-left: 6px; }
@@ -1129,9 +1145,6 @@
   .stat-value { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .stat-value.pos { color: var(--green); }
   .stat-value.neg { color: var(--red); }
-  /* Empty (no trend yet, e.g. a single snapshot) collapses to 0 width via
-     miniTrendSvg returning "" — no gap left behind. */
-  .stat-tile-spark { display: block; width: 56px; height: 16px; margin-top: 6px; }
   .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
   .evolution-row { display: flex; gap: 14px; align-items: stretch; margin-bottom: 20px; }
   .evolution-row .chart-box { flex: 1 1 65%; min-width: 0; margin-bottom: 0; }
@@ -2428,6 +2441,22 @@
   // width scale regardless of camp, so fill length/color is an honest,
   // direct comparison — "is the single biggest bettor on Yes or No" reads
   // immediately instead of needing to compare two separate columns.
+  // Earliest recentMatches entry for this trader on this exact market —
+  // "when did they first get in", not the average of every top-up since.
+  // recentMatches only holds each trader's last 20 trades across EVERY
+  // market they're in (see fetchRecentMatchesForTrader), so a position
+  // opened further back than that window just won't have a match here —
+  // returns null rather than guessing, and the caller renders nothing for it.
+  function firstTradeTimeFor(traderName, platform, question) {
+    var matches = recentMatches[traderName];
+    if (!matches) return null;
+    var earliest = null;
+    matches.forEach(function (m) {
+      if (m.platform !== platform || m.question !== question) return;
+      if (!earliest || m.time < earliest) earliest = m.time;
+    });
+    return earliest;
+  }
   function renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors) {
     var rows = [];
     mergedSides.forEach(function (m) {
@@ -2435,20 +2464,24 @@
       var initial = sideInitial(m.name);
       m.items.forEach(function (it) {
         it.s.entries.forEach(function (e) {
-          rows.push({ trader: e.trader, stake: e.stake, avgPrice: e.avgPrice, color: color, initial: initial });
+          rows.push({ trader: e.trader, stake: e.stake, avgPrice: e.avgPrice, color: color, initial: initial, platform: it.g.platform, question: it.g.question });
         });
       });
     });
     rows.sort(function (a, b) { return b.stake - a.stake; });
     return '<div class="vt-traders">' + rows.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
+      var firstTime = firstTradeTimeFor(e.trader, e.platform, e.question);
+      var firstTimeHtml = firstTime
+        ? ' <span class="vt-trader-first-time" title="Premier achat détecté sur ce marché (parmi les 20 derniers trades de ce trader)">· ' + esc(firstTime.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) + '</span>'
+        : '';
       return '<div class="vt-trader-row">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
         '<span class="vt-trader-row-name"><span class="vt-trader-row-name-text" title="' + esc(e.trader) + '">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track">' +
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
         '</div>' +
-        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b> @ ' + fmtCents(e.avgPrice) + '</span>' +
+        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b> @ ' + fmtCents(e.avgPrice) + firstTimeHtml + '</span>' +
       '</div>';
     }).join("") + '</div>';
   }
@@ -2590,12 +2623,14 @@
   // before the tab was opened.
   // Persisted in localStorage (not just this tab's memory) so a market
   // only reads as "new" the very first time this browser has EVER seen
-  // it — a fresh page load doesn't make everything look new again. Pruned
-  // once per render pass rather than growing forever; entries older than
-  // NEW_CARD_PRUNE_MS are dropped since they'd never read as "new" again
-  // anyway.
+  // it — a fresh page load doesn't make everything look new again. "Seen"
+  // means rendered at least once, not clicked/opened — the very first
+  // render call below returns true and records it; every call after that
+  // (even the next refresh, 10s later) returns false. Pruned once per
+  // render pass rather than growing forever; entries older than
+  // NEW_CARD_PRUNE_MS are dropped since they'd never be looked up again
+  // anyway (that market has long since dropped out of the live feed).
   var FIRST_SEEN_KEY = "vtFirstSeenAt";
-  var NEW_CARD_MS = 60 * 60 * 1000; // 1h
   var NEW_CARD_PRUNE_MS = 48 * 60 * 60 * 1000; // 48h
   var firstSeenMap = (function () {
     try { return JSON.parse(localStorage.getItem(FIRST_SEEN_KEY) || "{}"); } catch (e) { return {}; }
@@ -2603,13 +2638,10 @@
   var firstSeenDirty = false;
   function markUnitSeen(key) {
     if (!key) return false;
-    var now = Date.now();
-    if (!firstSeenMap[key]) {
-      firstSeenMap[key] = now;
-      firstSeenDirty = true;
-      return true;
-    }
-    return (now - firstSeenMap[key]) < NEW_CARD_MS;
+    if (firstSeenMap[key]) return false;
+    firstSeenMap[key] = Date.now();
+    firstSeenDirty = true;
+    return true;
   }
   function flushFirstSeenIfDirty() {
     if (!firstSeenDirty) return;
@@ -2874,9 +2906,16 @@
       var info = PLATFORMS[m.platform] || { label: m.platform, short: m.platform };
       return '<a class="vt-market-link" href="' + esc(m.marketUrl) + '" target="_blank" rel="noopener" title="Ouvrir sur ' + esc(info.label) + '">' + esc(info.short) + ' ↗</a>';
     }).join("") + '</div>';
+    // Plain ink, not semantic green/red — this is a number, not a verdict
+    // (a favorite's ROI is legitimately small and positive same as a
+    // longshot's is large and positive; color here would just repeat the
+    // win/lose coding already carried elsewhere on the card).
+    var roiHtml = leaderRoi != null
+      ? '<span class="vt-leader-roi" title="ROI si le camp majoritaire gagne, à la cote actuelle">ROI ' + (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + '%</span>'
+      : '';
     var headerHtml =
       '<div class="vt-top">' +
-        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + leaderBadge + sparkHtml + '</span>' +
+        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + leaderBadge + roiHtml + sparkHtml + '</span>' +
         '<span class="vt-badge-group">' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors) + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
@@ -2884,7 +2923,7 @@
     // in normal flow so it doesn't fight the <details>/absolute-position
     // quirk documented on .vt-new-badge. The stake figure is sized up
     // (.vt-bottom-stake) since that's the number worth noticing at a glance.
-    var bottomBarHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders">' + u.traderCount + ' traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(u.totalStake) + '</span></span>' + kickoffHtml + '</div>';
+    var bottomBarHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders"><b class="vt-bottom-traders-num">' + u.traderCount + '</b> traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(u.totalStake) + '</span></span>' + kickoffHtml + '</div>';
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
     // breakdown behind a click, while Snapshots — which doesn't want that
@@ -2943,8 +2982,8 @@
     var noteGlow = noteGlowShadow(u.score);
     // Same "live" read the En cours filter already uses — kickoff has
     // passed (or there's no extractable date at all, treated as live by
-    // unitTimingStatus). Own corner (top-right) from vt-new-badge (top-left)
-    // since a card can be both new AND live at once.
+    // unitTimingStatus). Live renders first (leftmost); Nouveau shifts
+    // right to make room when both are present — see .vt-live-badge CSS.
     var isLive = unitTimingStatus(u) === "live";
     return '<details class="value-trade-item' + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + (isLive ? ' vt-live-now' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="border-left-width:' + parts.borderWidth.toFixed(1) + 'px' +
@@ -2952,7 +2991,7 @@
       ';--border-tint:' + (parts.sportTint || "var(--accent)") +
       ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
       (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
-      '<summary class="vt-summary">' + (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') + (isLive ? '<span class="vt-live-badge">🔴 Live</span>' : '') + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
+      '<summary class="vt-summary">' + (isLive ? '<span class="vt-live-badge">🔴 Live</span>' : '') + (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
   }
@@ -3300,39 +3339,21 @@
       if (hyp != null) { globalFlatPnl += hyp; globalFlatCount++; }
     });
     var globalRoi = globalFlatCount > 0 ? (globalFlatPnl / (globalFlatCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
-    // Each tile's own running value recomputed after every decided snapshot,
-    // oldest first — "what would this stat have read at each point as
-    // snapshots came in", not a live per-refresh series (these barely move
-    // refresh to refresh; they move as the snapshot history grows).
-    var sortedForTrend = list.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
-    var wrTrend = [], coteTrend = [], roiTrend = [];
-    var runWin = 0, runDecided = 0, runPriceSum = 0, runPriceCount = 0, runRoiSum = 0, runRoiCount = 0;
-    sortedForTrend.forEach(function (snap) {
-      if (!snap.winningSide) return;
-      runDecided++;
-      if (snap.leaderName === snap.winningSide) runWin++;
-      wrTrend.push(runWin / runDecided * 100);
-      var p = snapLeaderPrice(snap);
-      if (p != null) { runPriceSum += p * 100; runPriceCount++; coteTrend.push(runPriceSum / runPriceCount); }
-      var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
-      if (hyp != null) { runRoiCount++; runRoiSum += (hyp / HYPOTHETICAL_FLAT_STAKE * 100); roiTrend.push(runRoiSum / runRoiCount); }
-    });
     var globalTiles = [
-      { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg"), trend: wrTrend },
-      { label: "Cote moyenne", value: avgCote == null ? "—" : avgCote.toFixed(1) + "¢", title: "Prix moyen du camp leader au moment du snapshot, sur les snapshots décidés.", trend: coteTrend },
+      { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
+      { label: "Cote moyenne", value: avgCote == null ? "—" : avgCote.toFixed(1) + "¢", title: "Prix moyen du camp leader au moment du snapshot, sur les snapshots décidés." },
       // "ROI moyen par pari", not "ROI global" — this is the AVERAGE return
       // of one flat HYPOTHETICAL_FLAT_STAKE bet, not a % of some pooled
       // total stake. Reads as "20% of $1000 = $200" otherwise, which is
       // wrong by an order of magnitude once there are 19 bets, not 1 — the
       // actual cumulative $ total is on the chart above.
       { label: "ROI moyen par pari", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + "%", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg"),
-        title: "Moyenne du ROI de chaque pari pris isolément (mise à plat de " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " à chaque fois), pas un pourcentage d'un total misé cumulé. Le gain cumulé réel est affiché sur le graphique ci-dessus.", trend: roiTrend }
+        title: "Moyenne du ROI de chaque pari pris isolément (mise à plat de " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " à chaque fois), pas un pourcentage d'un total misé cumulé. Le gain cumulé réel est affiché sur le graphique ci-dessus." }
     ];
     function tilesHtml(tiles) {
       return '<div class="stat-grid">' + tiles.map(function (t) {
         return '<div class="stat-tile"' + (t.title ? ' title="' + esc(t.title) + '"' : '') + '><div class="stat-label">' + esc(t.label) + '</div>' +
           '<div class="stat-value' + (t.cls ? " " + t.cls : "") + '">' + esc(t.value) + '</div>' +
-          miniTrendSvg(t.trend, 'stat-tile-spark', 'Évolution au fil des snapshots') +
           '</div>';
       }).join("") + '</div>';
     }
