@@ -1,10 +1,4 @@
 {
-  "polymarket|0x311f32416a52f8ceab4b8766abc1500f68abf30d4ae3b409ecbd60588220a0c3+predict|1228811": {
-    "firstSeen": "2026-08-08T17:46:33.439Z",
-    "question": "National Bank Open: Arthur Rinderknech vs Brandon Nakashima",
-    "side": "Arthur Rinderknech",
-    "note": 6.1
-  },
   "polymarket|0xc6bf958e3e4ac4be9b85c8861dc91020e740f582b0159bc5e9e6d546c3baa0c4": {
     "firstSeen": "2026-08-08T17:46:33.439Z",
     "question": "Will VfL Wolfsburg win on 2026-08-08?",
