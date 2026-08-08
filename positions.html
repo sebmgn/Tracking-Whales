@@ -2181,10 +2181,34 @@
     var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     return isNaN(d.getTime()) ? null : d;
   }
+  // How long a single match can realistically stay "live" after kickoff
+  // before it's simply over — a real end-time isn't available from either
+  // API, so this caps how long the "Live" badge (and the card itself) keeps
+  // treating a match as in progress. Generous on purpose: better to show a
+  // finished match a little too long than to hide one that's genuinely
+  // still going (tennis 5-setters, extra innings, OT/shootouts...).
+  var SPORT_MAX_LIVE_MS = {
+    "⚽": 2.5 * 3600000,  // 90 min + halftime + stoppage/ET/penalties on a cup tie
+    "🏀": 2.75 * 3600000, // regulation + realistic OT
+    "🏈": 3.75 * 3600000,
+    "🏒": 3 * 3600000,    // regulation + OT/shootout
+    "🎾": 5.5 * 3600000,  // best-of-5 Grand Slam matches can run this long
+    "⚾": 5 * 3600000,     // extra innings can stretch a game a long way
+    "🥊": 4 * 3600000,    // a UFC/boxing card, not just the headline bout
+    "🏉": 2.5 * 3600000,
+    "🏏": 9 * 3600000      // a full day's play
+  };
+  var DEFAULT_MAX_LIVE_MS = 3.5 * 3600000; // sports without a specific entry above
   function unitTimingStatus(u) {
     if (u.matchKey) {
       var cached = matchTimingCache[u.matchKey];
-      if (cached && cached.kickoff) return Date.now() >= cached.kickoff.getTime() ? "live" : "upcoming";
+      if (cached && cached.kickoff) {
+        var elapsed = Date.now() - cached.kickoff.getTime();
+        if (elapsed < 0) return "upcoming";
+        var emoji = sportEmojiFor(u.members[0].question, u.members[0].slug);
+        var maxLiveMs = SPORT_MAX_LIVE_MS[emoji] != null ? SPORT_MAX_LIVE_MS[emoji] : DEFAULT_MAX_LIVE_MS;
+        return elapsed > maxLiveMs ? "over" : "live";
+      }
       scheduleMatchTimingFetch(u.matchKey);
     }
     var d = extractMatchDate(u.members[0].question, u.matchKey);
@@ -4089,15 +4113,17 @@
     var allGroups = computeMarketGroups();
     linkAcrossPlatforms(allGroups);
     var allUnitsRaw = buildRenderUnits(allGroups);
-    // A trade priced at (or effectively at) 100¢ has already happened —
-    // there's no more "value" left to catch, so it never belongs in this
-    // list at all, not even under a lenient filter combination.
+    // A trade priced at (or effectively at) 100¢ has already happened, and
+    // a match that's been "live" for longer than SPORT_MAX_LIVE_MS is over
+    // even if its price never fully settled — neither belongs in this list
+    // at all, not even under a lenient filter combination.
     var allUnits = allUnitsRaw.filter(function (u) {
       var info = unitScoreInfo(u);
       u.score = info.score;
       u.leaderPrice = info.leaderPrice;
       u.scoreFactors = info.factors;
       u.scoreGate = info.gate;
+      if (unitTimingStatus(u) === "over") return false;
       return u.leaderPrice == null || u.leaderPrice < 0.9995;
     });
     var traderFiltered = allUnits.filter(function (u) {
