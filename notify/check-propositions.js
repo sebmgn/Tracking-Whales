@@ -76,19 +76,21 @@ const WATCHED = [
 // RELIABLE_TRADERS, feeding the note's reliableAgreement factor.
 const RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "zaizoibele", "VeryLucky888"];
 
-// ---------- note / score (ported verbatim from positions.html's unitScoreInfo) ----------
+// ---------- note / score (ported verbatim from positions.html's unitScoreInfo,
+// recalibrated 2026-08-08 against 20 hand-scored real-shaped examples — see
+// the comment above positions.html's SCORE_WEIGHTS for the full rationale) ----------
 const SCORE_WEIGHTS = {
-  volumeConcentration: 0.35,
-  reliableAgreement: 0.25,
-  volume: 0.15,
-  agreement: 0.15,
+  consensusRatio: 0.26,
+  volumeConcentration: 0.24,
+  reliableAgreement: 0.24,
+  volume: 0.16,
   traderCount: 0.10
 };
 const SCORE_RANGES = {
+  consensusRatio: [0.5, 1],
   volumeConcentration: [0.5, 1],
   volume: [3000, 50000],
   traderCount: [4, 9],
-  agreement: [1, 9],
   reliableAgreement: [0, RELIABLE_TRADERS.length]
 };
 function normLinear(value, range) {
@@ -100,6 +102,10 @@ function normLog(value, range) {
   const lo = Math.max(1, range[0]), hi = Math.max(lo + 1, range[1]);
   const v = Math.max(1, value);
   return Math.max(0, Math.min(1, (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo))));
+}
+function consensusGate(normalized01, rampHi, floor) {
+  const t = Math.max(0, Math.min(1, normalized01 / rampHi));
+  return floor + (1 - floor) * t;
 }
 // Merges a linked unit's sides by outcome name (mirrors positions.html's
 // mergeUnitSides), scores the leading side's concentration/agreement, and
@@ -128,18 +134,25 @@ function computeUnit(members) {
   const leaderTraderNames = new Set(leader.entries.map((e) => e.trader));
   const reliableAgreeing = RELIABLE_TRADERS.reduce((n, name) => n + (leaderTraderNames.has(name) ? 1 : 0), 0);
   const volumeConcentration = totalStake > 0 ? leader.stake / totalStake : 0;
+  const consensusRatio = traderCount > 0 ? leader.traderCount / traderCount : 0;
 
   const factors = {
+    consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
     volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
     volume: normLog(totalStake, SCORE_RANGES.volume),
     traderCount: normLinear(traderCount, SCORE_RANGES.traderCount),
-    agreement: normLinear(leader.traderCount, SCORE_RANGES.agreement),
     reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement)
   };
-  const raw = factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
+  const raw = factors.consensusRatio * SCORE_WEIGHTS.consensusRatio +
+    factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
     factors.volume * SCORE_WEIGHTS.volume + factors.traderCount * SCORE_WEIGHTS.traderCount +
-    factors.agreement * SCORE_WEIGHTS.agreement + factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
-  const note = Math.round((1 + raw * 9) * 10) / 10;
+    factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
+  // Weak consensus — by headcount OR by money — sinks the whole trade, not
+  // just a handful of additive points (mirrors positions.html's gate).
+  const gateHeadcount = consensusGate(factors.consensusRatio, 0.65, 0.45);
+  const gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
+  const gate = gateHeadcount * gateMoney;
+  const note = Math.round((1 + raw * 9 * gate) * 10) / 10;
 
   return { note, leader, mergedSides };
 }

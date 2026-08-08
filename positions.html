@@ -2526,19 +2526,36 @@
   // weighted, so "raise the volume ceiling" or "weight agreement more" is
   // a one-line change here.
   var SCORE_WEIGHTS = {
-    volumeConcentration: 0.35, // $ share sitting on the leading side vs the other camp(s)
-    reliableAgreement: 0.25,   // how many of the curated "fiables" traders are on that leading side
-    volume: 0.15,              // total $ staked across the whole trade
-    agreement: 0.15,           // how many traders (not $) are on the SAME (leading) side
+    consensusRatio: 0.26,      // share of TRADERS (not $) on the leading side — 6-of-7 now beats 7-of-9
+    volumeConcentration: 0.24, // $ share sitting on the leading side vs the other camp(s)
+    reliableAgreement: 0.24,   // how many of the curated "fiables" traders are on that leading side
+    volume: 0.16,              // total $ staked across the whole trade
     traderCount: 0.10          // how many tracked traders are in it at all
   };
   var SCORE_RANGES = {
+    consensusRatio: [0.5, 1],                      // leaderCount / traderCount — 0.5 = even split, 1 = unanimous
     volumeConcentration: [0.5, 1],                 // leaderStake / totalStake — 0.5 = split evenly, 1 = all the money on one side
     volume: [3000, 50000],                         // $, log scale between the two
     traderCount: [4, 9],                           // traders, linear
-    agreement: [1, 9],                             // traders on the leading side, linear
     reliableAgreement: [0, RELIABLE_TRADERS.length] // fiables traders agreeing, linear
   };
+  // Calibrated 2026-08-08 against 20 hand-scored real-shaped examples (see
+  // notify/SCORE_CALIBRATION.md) after the additive-only formula badly
+  // mis-ranked several cases users flagged by hand:
+  //  - unanimous trader consensus (6-0, 4-0...) was underrated whenever
+  //    volume was modest, since a big absolute leader HEADCOUNT (the old
+  //    "agreement" factor) isn't the same as a high leader RATIO — replaced
+  //    by consensusRatio (leaderCount/traderCount) below, so 6-of-7 (86%)
+  //    now clearly beats 7-of-9 (78%) instead of losing to it on raw count.
+  //  - near-even trader splits (5-4, 4-4) still scored a mediocre-but-not-
+  //    terrible ~4/10 because the other additive factors (volume, reliable,
+  //    traderCount) padded the score back up — real disagreement needs to
+  //    crush the WHOLE score, not just lose a few additive points, hence
+  //    gateHeadcount below.
+  //  - a trade where the majority-by-headcount side actually holds LESS
+  //    money than the dissenting minority (a real, if rare, case) needs its
+  //    own veto even when the headcount split looks convincing — hence
+  //    gateMoney, independent of gateHeadcount.
   function normLinear(value, range) {
     var lo = range[0], hi = range[1];
     if (hi <= lo) return 0;
@@ -2548,6 +2565,14 @@
     var lo = Math.max(1, range[0]), hi = Math.max(lo + 1, range[1]);
     var v = Math.max(1, value);
     return Math.max(0, Math.min(1, (Math.log10(v) - Math.log10(lo)) / (Math.log10(hi) - Math.log10(lo))));
+  }
+  // floor = the multiplier applied when normalized01 is 0 (never zeroes a
+  // trade out entirely); rampHi = the normalized value at which the gate
+  // is already fully open (1.0) — reaching "good enough" consensus doesn't
+  // require being at the theoretical max.
+  function consensusGate(normalized01, rampHi, floor) {
+    var t = Math.max(0, Math.min(1, normalized01 / rampHi));
+    return floor + (1 - floor) * t;
   }
   // Returns the leading side's live price alongside the score (both need
   // mergeUnitSides — computed once here, not twice) so callers can filter
@@ -2565,21 +2590,29 @@
     // call that a near-even split.
     var volumeConcentration = u.totalStake > 0 && leaderGroup ? (leaderGroup.stake / u.totalStake) : 0;
 
+    var consensusRatio = u.traderCount > 0 ? leaderCount / u.traderCount : 0;
     var factors = {
+      consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
       volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
       volume: normLog(u.totalStake, SCORE_RANGES.volume),
       traderCount: normLinear(u.traderCount, SCORE_RANGES.traderCount),
-      agreement: normLinear(leaderCount, SCORE_RANGES.agreement),
       reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement)
     };
-    var raw = factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
+    var raw = factors.consensusRatio * SCORE_WEIGHTS.consensusRatio +
+      factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
       factors.volume * SCORE_WEIGHTS.volume + factors.traderCount * SCORE_WEIGHTS.traderCount +
-      factors.agreement * SCORE_WEIGHTS.agreement + factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
-    var score = Math.round((1 + raw * 9) * 10) / 10;
+      factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
+    // Weak consensus — by headcount OR by money — sinks the whole trade,
+    // not just a handful of additive points; see the calibration note above.
+    var gateHeadcount = consensusGate(factors.consensusRatio, 0.65, 0.45);
+    var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
+    var gate = gateHeadcount * gateMoney;
+    var score = Math.round((1 + raw * 9 * gate) * 10) / 10;
     return {
       score: score,
       leaderPrice: leaderGroup ? mergedSideAvgPrice(leaderGroup) : null,
       factors: factors,
+      gate: gate,
       volumeConcentration: volumeConcentration,
       reliableAgreeing: reliableAgreeing,
       agreeingCount: leaderCount
@@ -2734,13 +2767,13 @@
   // Human labels + display order for the score breakdown popover — same
   // keys as SCORE_WEIGHTS/factors, ordered by weight (heaviest first).
   var SCORE_FACTOR_LABELS = {
+    consensusRatio: "Accord (% traders)",
     volumeConcentration: "Concentration $",
     reliableAgreement: "Accord fiables",
     volume: "Volume total",
-    agreement: "Accord (traders)",
     traderCount: "Nb traders suivis"
   };
-  var SCORE_FACTOR_ORDER = ["volumeConcentration", "reliableAgreement", "volume", "agreement", "traderCount"];
+  var SCORE_FACTOR_ORDER = ["consensusRatio", "volumeConcentration", "reliableAgreement", "volume", "traderCount"];
   // Ring + (optional) hover breakdown for a trade's 1-10 note. Rescaled to
   // [4,9] rather than the full [1,10] — real notes cluster in that band, so
   // a straight 1-10 mapping left almost every badge looking 70-95% full;
@@ -2748,7 +2781,7 @@
   // (from unitScoreInfo) is optional — pass it to also render a hover
   // popover showing each factor's weighted contribution (points added to
   // the raw 1-10 scale), not just the final number.
-  function scoreBadgeHtml(score, factors, extraClass) {
+  function scoreBadgeHtml(score, factors, extraClass, gate) {
     if (score == null) return "";
     var color = scoreColor(score);
     // Picked over the ring/disc treatment: no shape, no container — a
@@ -2759,14 +2792,29 @@
     var scoreNumHtml = '<span class="vt-score-num" style="color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent);box-shadow:0 0 12px color-mix(in srgb, ' + color + ' 50%, transparent)">' + score.toFixed(1) + '</span>';
     var breakdownHtml = "";
     if (factors) {
+      var g = gate == null ? 1 : gate;
+      var rawTotal = 0;
       var rows = SCORE_FACTOR_ORDER.map(function (key) {
         var val = factors[key] || 0;
-        var pts = val * SCORE_WEIGHTS[key] * 9;
+        var rawPts = val * SCORE_WEIGHTS[key] * 9;
+        rawTotal += rawPts;
+        // Shown un-gated (this factor's own weight, in isolation) — the
+        // consensus-gate deduction is broken out as its own row below so
+        // the two don't get subtracted twice.
         return '<div class="vt-score-factor-row"><span class="vt-score-factor-label">' + SCORE_FACTOR_LABELS[key] + '</span>' +
           '<div class="vt-score-factor-track"><div class="vt-score-factor-fill" style="width:' + (val * 100).toFixed(0) + '%;background:' + color + '"></div></div>' +
-          '<span class="vt-score-factor-pts">+' + pts.toFixed(1) + '</span></div>';
+          '<span class="vt-score-factor-pts">+' + rawPts.toFixed(1) + '</span></div>';
       }).join("");
-      breakdownHtml = '<div class="vt-score-breakdown"><div class="vt-score-breakdown-title">Note ' + score.toFixed(1) + '/10 — détail</div>' + rows + '</div>';
+      // Only shown when it actually bit — most trades with real consensus
+      // never see this row at all (gate stays ~1).
+      var penaltyRow = "";
+      if (g < 0.98) {
+        var penaltyPts = rawTotal * (1 - g);
+        penaltyRow = '<div class="vt-score-factor-row vt-score-factor-penalty"><span class="vt-score-factor-label">Cohérence</span>' +
+          '<div class="vt-score-factor-track"><div class="vt-score-factor-fill" style="width:' + (g * 100).toFixed(0) + '%;background:var(--red)"></div></div>' +
+          '<span class="vt-score-factor-pts">-' + penaltyPts.toFixed(1) + '</span></div>';
+      }
+      breakdownHtml = '<div class="vt-score-breakdown"><div class="vt-score-breakdown-title">Note ' + score.toFixed(1) + '/10 — détail</div>' + rows + penaltyRow + '</div>';
     }
     return '<span class="vt-score-wrap' + (extraClass ? " " + extraClass : "") + '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables">' + scoreNumHtml + breakdownHtml + '</span>';
   }
@@ -2780,7 +2828,7 @@
     // — compute it here so every caller (Value Trades, peer panel,
     // snapshots) gets a real note/ring/border, not just the ones that
     // happened to already run unitScoreInfo on this exact unit.
-    if (u.score == null) { var scoreInfo0 = unitScoreInfo(u); u.score = scoreInfo0.score; u.scoreFactors = scoreInfo0.factors; }
+    if (u.score == null) { var scoreInfo0 = unitScoreInfo(u); u.score = scoreInfo0.score; u.scoreFactors = scoreInfo0.factors; u.scoreGate = scoreInfo0.gate; }
     var members = u.members;
     var primary = members[0];
     var secondary = members[1];
@@ -2939,7 +2987,7 @@
     var headerHtml =
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + roiHtml + '</span>' +
-        '<span class="vt-badge-group">' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors) + '</span>' +
+        '<span class="vt-badge-group">' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
     // group) — sits on the card's real bottom row, in normal flow so it
@@ -4054,6 +4102,7 @@
       u.score = info.score;
       u.leaderPrice = info.leaderPrice;
       u.scoreFactors = info.factors;
+      u.scoreGate = info.gate;
       return u.leaderPrice == null || u.leaderPrice < 0.9995;
     });
     var traderFiltered = allUnits.filter(function (u) {
