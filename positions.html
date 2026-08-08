@@ -800,6 +800,62 @@
     box-shadow: 0 2px 10px rgba(27,51,88,.35);
   }
   #sportFilters button.active { background: #355aa0; box-shadow: 0 2px 10px rgba(53,90,160,.35); }
+  /* Live result count riding along each chip — muted so the label itself
+     stays the primary read, computed under every OTHER active filter (same
+     "what would this option show" precedent as the note-tier chart). */
+  .vt-filter-count { opacity: .68; font-weight: 500; margin-left: 3px; font-variant-numeric: tabular-nums; }
+  .vt-filters button.active .vt-filter-count { opacity: .85; }
+
+  .vt-title-row { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+  .vt-title-row .section-title { margin: 0; }
+  .vt-dense-toggle-btn {
+    border-radius: 999px; padding: 5px 13px; font-size: 12px; font-weight: 700;
+    background: var(--panel); border: 1px solid var(--panel-border); color: var(--text-dim);
+  }
+  .vt-dense-toggle-btn:hover { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .vt-dense-toggle-btn.active { background: var(--accent); color: #fff; border-color: transparent; }
+
+  /* Three sliders sharing the same compact row/label/readout shape — moving
+     one re-renders the list live (native `input` events, no submit step),
+     and the trailing count previews the result under every OTHER active
+     filter, same convention as .vt-filter-count above. */
+  .vt-adv-filters { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 14px; max-width: 420px; }
+  .vt-adv-filter { display: flex; align-items: center; gap: 10px; font-size: 11.5px; }
+  .vt-adv-filter label { flex: 0 0 168px; color: var(--text-dim); white-space: nowrap; }
+  .vt-adv-filter label b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .vt-adv-filter input[type="range"] { flex: 1 1 auto; accent-color: var(--accent); min-width: 60px; }
+  .vt-adv-filter-count { flex: 0 0 auto; color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: 11px; white-space: nowrap; }
+
+  /* Sits above the Value Trades filters — catches attention without
+     stealing it, one line, gone entirely once there's nothing to report. */
+  .vt-last-visit-banner {
+    background: color-mix(in srgb, var(--gold) 14%, var(--panel));
+    border: 1px solid var(--gold);
+    border-radius: var(--radius-md);
+    padding: 9px 14px;
+    font-size: 12.5px;
+    margin: 14px 0 -4px;
+  }
+  .vt-last-visit-banner b { color: var(--text); }
+
+  /* ---- Vue compacte (dense) ---- */
+  details.value-trade-item.vt-dense { padding: 0; }
+  .vt-summary-dense {
+    display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+    list-style: none; cursor: pointer;
+  }
+  .vt-summary-dense::-webkit-details-marker { display: none; }
+  .vt-dense-sport { font-size: 15px; flex: none; line-height: 1; }
+  .vt-dense-question {
+    flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 12.5px; color: var(--text);
+  }
+  .vt-dense-live { flex: none; font-size: 10px; }
+  .vt-dense-meta { flex: none; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .vt-dense-score {
+    flex: none; font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 900;
+    font-size: 15px; width: 34px; text-align: right; font-variant-numeric: tabular-nums;
+  }
 
   .caveat-box {
     background: #221607;
@@ -1302,18 +1358,39 @@
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
+    <div id="vtLastVisitBanner"></div>
     <div class="vt-header-row">
       <div class="vt-header-left">
-        <h2 class="section-title">Value Trades</h2>
+        <div class="vt-title-row">
+          <h2 class="section-title">Value Trades</h2>
+          <button id="vtDenseToggleBtn" type="button" class="vt-dense-toggle-btn" title="Bascule vers une ligne par trade, sans les jauges">☰ Vue compacte</button>
+        </div>
         <div class="vt-filters" id="sportFilters">
-          <button data-sport="all" type="button">Tous les sports</button>
-          <button data-sport="football" class="active" type="button">⚽ Football</button>
-          <button data-sport="other" type="button">Autres</button>
+          <button data-sport="all" type="button">Tous les sports<span class="vt-filter-count"></span></button>
+          <button data-sport="football" class="active" type="button">⚽ Football<span class="vt-filter-count"></span></button>
+          <button data-sport="other" type="button">Autres<span class="vt-filter-count"></span></button>
         </div>
         <div class="vt-filters" id="timingFilters">
-          <button data-timing="all" class="active" type="button">Tous</button>
-          <button data-timing="live" type="button">🔴 En cours</button>
-          <button data-timing="upcoming" type="button">📅 À venir</button>
+          <button data-timing="all" class="active" type="button">Tous<span class="vt-filter-count"></span></button>
+          <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
+          <button data-timing="upcoming" type="button">📅 À venir<span class="vt-filter-count"></span></button>
+        </div>
+        <div class="vt-adv-filters" id="vtAdvFilters">
+          <div class="vt-adv-filter">
+            <label for="vtMinScoreSlider">Note ≥ <b id="vtMinScoreVal">1</b></label>
+            <input type="range" id="vtMinScoreSlider" min="1" max="10" step="0.5" value="1" />
+            <span class="vt-adv-filter-count" id="vtMinScoreCount"></span>
+          </div>
+          <div class="vt-adv-filter">
+            <label for="vtMinAgreementSlider">Traders d'accord ≥ <b id="vtMinAgreementVal">0</b></label>
+            <input type="range" id="vtMinAgreementSlider" min="0" max="9" step="1" value="0" />
+            <span class="vt-adv-filter-count" id="vtMinAgreementCount"></span>
+          </div>
+          <div class="vt-adv-filter">
+            <label for="vtMinVolumeSlider">Volume ≥ <b id="vtMinVolumeVal">0 $</b></label>
+            <input type="range" id="vtMinVolumeSlider" min="0" max="100000" step="1000" value="0" />
+            <span class="vt-adv-filter-count" id="vtMinVolumeCount"></span>
+          </div>
         </div>
       </div>
       <div class="score-tier-box" id="vtTierChart"></div>
@@ -1651,7 +1728,13 @@
   var RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "zaizoibele", "VeryLucky888"];
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
-  var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart
+  var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart, or dragging the slider (kept in sync both ways)
+  var vtMinAgreement = 0; // 0 = no filter; else the leading side's own trader count must be >= this
+  var vtMinVolume = 0; // 0 = no filter; else totalStake must be >= this ($)
+  // One line per trade, no jauges/badges — a scan mode for going through a
+  // long list fast. Remembered across reloads since it's a reading
+  // preference, not a filter.
+  var vtDenseMode = (function () { try { return localStorage.getItem("vtDenseMode") === "1"; } catch (e) { return false; } })();
 
   // ---------- helpers ----------
   function amountToFloat(amountStr, decimals) {
@@ -2742,6 +2825,34 @@
     try { localStorage.setItem(FIRST_SEEN_KEY, JSON.stringify(firstSeenMap)); } catch (e) { /* won't persist this time */ }
     firstSeenDirty = false;
   }
+  // Captured ONCE at load, before it gets overwritten below — every render
+  // this whole session compares firstSeenMap timestamps against this same
+  // fixed point, so the banner doesn't shrink to 0 the moment it renders.
+  // null on someone's very first-ever visit (nothing to compare against).
+  var LAST_VISIT_KEY = "vtLastVisitAt";
+  var lastVisitAt = (function () {
+    try { var v = localStorage.getItem(LAST_VISIT_KEY); return v ? Number(v) : null; } catch (e) { return null; }
+  })();
+  try { localStorage.setItem(LAST_VISIT_KEY, String(Date.now())); } catch (e) { /* won't persist this time */ }
+  // Threshold a trade needs to clear to be worth calling out in the banner
+  // — well above "new" alone (every market is new once), a bar for "would
+  // have been worth noticing".
+  var LAST_VISIT_NOTE_THRESHOLD = 7;
+  function renderLastVisitBanner(candidateUnits) {
+    var el = document.getElementById("vtLastVisitBanner");
+    if (!el) return;
+    if (lastVisitAt == null) { el.innerHTML = ""; return; }
+    var fresh = candidateUnits.filter(function (u) {
+      var key = u.members.map(function (m) { return m.key; }).sort().join("+");
+      var seenAt = firstSeenMap[key];
+      return seenAt && seenAt > lastVisitAt && u.score != null && u.score >= LAST_VISIT_NOTE_THRESHOLD;
+    });
+    if (!fresh.length) { el.innerHTML = ""; return; }
+    var n = fresh.length;
+    var since = fmtCountdown(Date.now() - lastVisitAt) || "quelques instants";
+    el.innerHTML = '<div class="vt-last-visit-banner">🆕 <b>' + n + ' nouveau' + (n > 1 ? "x" : "") + ' trade' + (n > 1 ? "s" : "") +
+      ' avec une note ≥ ' + LAST_VISIT_NOTE_THRESHOLD + '</b> depuis votre dernière visite (il y a ' + since + ')</div>';
+  }
   var priceHistory = {};
   // Separate from priceHistory (which accumulates a whole session's worth
   // of points for the sparkline) — this only ever holds ONE prior value
@@ -3129,6 +3240,33 @@
       ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
       (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
       '<summary class="vt-summary">' + cornerBadgesHtml + noteGaugeHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
+      '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
+    '</details>';
+  }
+  // "Vue compacte" — one line per trade (sport, question, live dot, traders
+  // ·  volume, note), no jauges or badge strip. Still a real <details> with
+  // the same expanded detail underneath (parts.sideGridHtml) — only the
+  // SUMMARY is slimmed down, so opening a row still shows the full
+  // trader-by-trader breakdown.
+  function renderUnitCardDense(u) {
+    var parts = computeUnitCardParts(u);
+    var key = u.members[0].key;
+    markUnitSeen(parts.stableKey); // keeps the "new" clock ticking even while dense mode is on
+    var primary = u.members[0];
+    var sportEmoji = sportEmojiFor(primary.question, primary.slug);
+    var isLive = unitTimingStatus(u) === "live";
+    var color = u.score != null ? scoreColor(u.score) : "var(--text-dim)";
+    return '<details class="value-trade-item vt-dense" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
+      ' style="border-left-width:3px' +
+      (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
+      ';--border-tint:' + (parts.sportTint || "var(--accent)") + '">' +
+      '<summary class="vt-summary-dense">' +
+        '<span class="vt-dense-sport" title="Type de pari">' + sportEmoji + '</span>' +
+        '<span class="vt-dense-question">' + esc(primary.question) + '</span>' +
+        (isLive ? '<span class="vt-dense-live" title="En cours">🔴</span>' : '') +
+        '<span class="vt-dense-meta">' + u.traderCount + ' tr · ' + fmtUSD(u.totalStake) + '</span>' +
+        '<span class="vt-dense-score" style="color:' + color + '">' + (u.score != null ? u.score.toFixed(1) : '—') + '</span>' +
+      '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
   }
@@ -4074,7 +4212,106 @@
       if (sportFilter === "other" && football) return false;
     }
     if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
+    if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return false;
+    if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return false;
     return true;
+  }
+  // Live count riding each sport/timing chip — "how many would show if you
+  // picked THIS option", under every other active filter (note/traders/
+  // volume sliders included), same convention vtBaseUnitFilter already
+  // follows. base is the trader-count-floor pool, before sport/timing.
+  function updateVtFilterChipCounts(base) {
+    function passesNoteEtc(u) { return vtMinScore == null || u.score >= vtMinScore; }
+    function isFootballUnit(u) { return isFootball(u.members[0].question, u.members[0].slug); }
+    var sportCounts = { all: 0, football: 0, other: 0 };
+    base.forEach(function (u) {
+      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return;
+      if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return;
+      if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return;
+      if (!passesNoteEtc(u)) return;
+      sportCounts.all++;
+      sportCounts[isFootballUnit(u) ? "football" : "other"]++;
+    });
+    var timingCounts = { all: 0, live: 0, upcoming: 0 };
+    base.forEach(function (u) {
+      if (sportFilter !== "all") {
+        var f = isFootballUnit(u);
+        if (sportFilter === "football" && !f) return;
+        if (sportFilter === "other" && f) return;
+      }
+      if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return;
+      if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return;
+      if (!passesNoteEtc(u)) return;
+      timingCounts.all++;
+      var status = unitTimingStatus(u);
+      if (status === "live" || status === "upcoming") timingCounts[status]++;
+    });
+    sportFiltersEl.querySelectorAll("button").forEach(function (btn) {
+      var mode = btn.getAttribute("data-sport");
+      var span = btn.querySelector(".vt-filter-count");
+      if (span) span.textContent = " · " + (sportCounts[mode] || 0);
+    });
+    timingFiltersEl.querySelectorAll("button").forEach(function (btn) {
+      var mode = btn.getAttribute("data-timing");
+      var span = btn.querySelector(".vt-filter-count");
+      if (span) span.textContent = " · " + (timingCounts[mode] || 0);
+    });
+  }
+  // Keeps the 3 slider labels/readouts in sync with whatever the filter
+  // variables currently are (including vtMinScore when it was set by
+  // clicking a tier-chart row instead of dragging the slider itself), and
+  // shows each one's live "N trades at this position" count, computed
+  // under every OTHER active filter — moving a slider previews its own
+  // effect without the other two filters' counts jumping around too.
+  function updateVtAdvFilterCounts(base) {
+    var scoreSlider = document.getElementById("vtMinScoreSlider");
+    var agreementSlider = document.getElementById("vtMinAgreementSlider");
+    var volumeSlider = document.getElementById("vtMinVolumeSlider");
+    if (!scoreSlider || !agreementSlider || !volumeSlider) return;
+    scoreSlider.value = vtMinScore == null ? 1 : vtMinScore;
+    agreementSlider.value = vtMinAgreement;
+    volumeSlider.value = Math.min(vtMinVolume, 100000);
+    document.getElementById("vtMinScoreVal").textContent = vtMinScore == null ? "1 (aucun filtre)" : vtMinScore.toFixed(1);
+    document.getElementById("vtMinAgreementVal").textContent = vtMinAgreement > 0 ? String(vtMinAgreement) : "0 (aucun filtre)";
+    document.getElementById("vtMinVolumeVal").textContent = vtMinVolume > 0 ? fmtUSD(vtMinVolume) : "0 $ (aucun filtre)";
+
+    var scoreThreshold = scoreSlider.value <= 1 ? null : Number(scoreSlider.value);
+    var scoreCount = base.filter(function (u) {
+      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
+      if (sportFilter !== "all") {
+        var f = isFootball(u.members[0].question, u.members[0].slug);
+        if (sportFilter === "football" && !f) return false;
+        if (sportFilter === "other" && f) return false;
+      }
+      if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return false;
+      if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return false;
+      return scoreThreshold == null || u.score >= scoreThreshold;
+    }).length;
+    var agreementCount = base.filter(function (u) {
+      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
+      if (sportFilter !== "all") {
+        var f2 = isFootball(u.members[0].question, u.members[0].slug);
+        if (sportFilter === "football" && !f2) return false;
+        if (sportFilter === "other" && f2) return false;
+      }
+      if (vtMinScore != null && u.score < vtMinScore) return false;
+      if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return false;
+      return Number(agreementSlider.value) <= 0 || (u.leaderCount || 0) >= Number(agreementSlider.value);
+    }).length;
+    var volumeCount = base.filter(function (u) {
+      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
+      if (sportFilter !== "all") {
+        var f3 = isFootball(u.members[0].question, u.members[0].slug);
+        if (sportFilter === "football" && !f3) return false;
+        if (sportFilter === "other" && f3) return false;
+      }
+      if (vtMinScore != null && u.score < vtMinScore) return false;
+      if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return false;
+      return Number(volumeSlider.value) <= 0 || u.totalStake >= Number(volumeSlider.value);
+    }).length;
+    document.getElementById("vtMinScoreCount").textContent = scoreCount + " trade" + (scoreCount > 1 ? "s" : "");
+    document.getElementById("vtMinAgreementCount").textContent = agreementCount + " trade" + (agreementCount > 1 ? "s" : "");
+    document.getElementById("vtMinVolumeCount").textContent = volumeCount + " trade" + (volumeCount > 1 ? "s" : "");
   }
   // One row per NOTE threshold (>=8 down to >=4), not trader count — color
   // comes straight from the threshold itself (vtTierColor(n)), never from
@@ -4132,6 +4369,7 @@
       u.leaderPrice = info.leaderPrice;
       u.scoreFactors = info.factors;
       u.scoreGate = info.gate;
+      u.leaderCount = info.agreeingCount;
       if (unitTimingStatus(u, true) === "over") return false;
       return u.leaderPrice == null || u.leaderPrice < 0.9995;
     });
@@ -4140,13 +4378,20 @@
       if (vtMinScore != null && u.score < vtMinScore) return false;
       return vtBaseUnitFilter(u);
     });
+    // Everything below the trader-count floor but before any other filter —
+    // shared base for the tier chart, the chip/slider live counts, and the
+    // last-visit banner, so they all agree on what "the universe" is.
+    var floorUnits = allUnits.filter(function (u) { return u.traderCount >= vtMinTraders; });
+    renderLastVisitBanner(floorUnits);
     // Same pool as traderFiltered minus the note check itself (that's what
     // this chart is slicing) — NOT allUnits wholesale. allUnits includes
     // every thin 1-2-trader position too, which this app never treats as a
     // real "value trade" (>=4 traders is the lowest selectable floor) —
     // counting those made the chart's own ">=4" row read wildly higher than
     // the actual visible list ("234" vs the "12" markets really shown).
-    renderVtTierChart(allUnits.filter(function (u) { return u.traderCount >= vtMinTraders && vtBaseUnitFilter(u); }));
+    renderVtTierChart(floorUnits.filter(vtBaseUnitFilter));
+    updateVtFilterChipCounts(floorUnits);
+    updateVtAdvFilterCounts(floorUnits);
 
     var finalUnits = traderFiltered;
 
@@ -4186,10 +4431,11 @@
       dayBuckets[b.key].units.push(u);
     });
     dayOrder.sort(function (ka, kb) { return dayBuckets[ka].sortKey - dayBuckets[kb].sortKey; });
+    var cardRenderFn = vtDenseMode ? renderUnitCardDense : renderUnitCard;
     valueTradesContent.innerHTML = dayOrder.map(function (k) {
       var b = dayBuckets[k];
       return '<div class="vt-day-header">' + esc(b.label) + '<span class="vt-day-count">' + b.units.length + ' marché' + (b.units.length > 1 ? 's' : '') + '</span></div>' +
-        b.units.map(renderUnitCard).join("");
+        b.units.map(cardRenderFn).join("");
     }).join("");
     flushFirstSeenIfDirty();
   }
@@ -4547,6 +4793,27 @@
     var gradId = "histAreaGrad" + historyChartGradSeq;
     var lastPt = linePts[linePts.length - 1];
 
+    // The best/worst day get a direct value label instead of only being
+    // discoverable by hovering — skipped when the extremum IS the first or
+    // last point (the axis label / halo already call those out) so nothing
+    // doubles up.
+    var maxIdx = 0, minIdx = 0;
+    for (var ei = 1; ei < n; ei++) {
+      if (values[ei] > values[maxIdx]) maxIdx = ei;
+      if (values[ei] < values[minIdx]) minIdx = ei;
+    }
+    function extremumLabel(idx, color) {
+      var px = x(idx), py = y(values[idx]);
+      var above = py - padT > 14; // enough room to sit above the point without clipping the top edge
+      var ly = above ? py - 8 : py + 14;
+      return '<text x="' + px.toFixed(2) + '" y="' + ly.toFixed(2) + '" font-size="9.5" font-weight="700" fill="' + color + '" text-anchor="middle">' + esc(fmtUSDSigned(values[idx])) + '</text>';
+    }
+    var extremaLabels = "";
+    if (n > 2) {
+      if (maxIdx !== 0 && maxIdx !== n - 1) extremaLabels += extremumLabel(maxIdx, "var(--green)");
+      if (minIdx !== 0 && minIdx !== n - 1 && minIdx !== maxIdx) extremaLabels += extremumLabel(minIdx, "var(--red)");
+    }
+
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
           '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.4"/>' +
@@ -4559,7 +4826,7 @@
         // now — so the eye lands there first regardless of how the curve
         // wanders before it.
         '<circle cx="' + lastPt.x.toFixed(2) + '" cy="' + lastPt.y.toFixed(2) + '" r="11" fill="' + lineColor + '" opacity="0.16"/>' +
-        yLabels + xLabels + points +
+        yLabels + xLabels + points + extremaLabels +
       '</svg>';
   }
 
@@ -4659,6 +4926,33 @@
       vtTimingFilter = btn.getAttribute("data-timing") || "all";
       renderValueTrades();
     });
+  });
+  // `input` (not `change`) so the list updates live while dragging, not
+  // just on release — that's the whole point of the "aperçu live".
+  document.getElementById("vtMinScoreSlider").addEventListener("input", function (e) {
+    var v = Number(e.target.value);
+    vtMinScore = v <= 1 ? null : v;
+    renderValueTrades();
+  });
+  document.getElementById("vtMinAgreementSlider").addEventListener("input", function (e) {
+    vtMinAgreement = Number(e.target.value);
+    renderValueTrades();
+  });
+  document.getElementById("vtMinVolumeSlider").addEventListener("input", function (e) {
+    vtMinVolume = Number(e.target.value);
+    renderValueTrades();
+  });
+  var vtDenseToggleBtn = document.getElementById("vtDenseToggleBtn");
+  function syncDenseToggleBtn() {
+    vtDenseToggleBtn.classList.toggle("active", vtDenseMode);
+    vtDenseToggleBtn.textContent = vtDenseMode ? "☰ Vue détaillée" : "☰ Vue compacte";
+  }
+  syncDenseToggleBtn();
+  vtDenseToggleBtn.addEventListener("click", function () {
+    vtDenseMode = !vtDenseMode;
+    try { localStorage.setItem("vtDenseMode", vtDenseMode ? "1" : "0"); } catch (e) { /* won't persist this time */ }
+    syncDenseToggleBtn();
+    renderValueTrades();
   });
   // Top-5-by-weight player filter for "Trades récents" — multi-select (OR):
   // built from TRADERS_BY_WEIGHT so it stays correct if ratings ever change.
