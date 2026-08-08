@@ -1,10 +1,4 @@
 {
-  "polymarket|0x3e4b432101d5753903af11951557e07f7f5047d16a8ba860466cee7a6879313a+predict|997921": {
-    "firstSeen": "2026-08-08T13:12:29.764Z",
-    "question": "Qingdao Hainiu FC vs. Shanghai Shenhua FC: O/U 3.5",
-    "side": "Under",
-    "note": 6.9
-  },
   "polymarket|0xad396f729d4af29a055281bb4cdd6431087600b76d2c0a308e71705659af7c02+predict|963501": {
     "firstSeen": "2026-08-08T13:58:30.845Z",
     "question": "Will Chengdu Rongcheng FC win on 2026-08-08?",
