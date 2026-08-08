@@ -3497,21 +3497,6 @@
     if (!avgPrice || avgPrice <= 0) return null;
     return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
   }
-  // Coefficient of variation of the tracked traders' individual stakes on
-  // the leading side — near 0 when everyone bet roughly the same amount
-  // (a tight, agreeing signal), higher when a couple of whales dominate a
-  // long tail of small bets (a shakier signal to have followed). Feeds the
-  // PnL chart's confidence band, not the win/loss outcome itself.
-  function snapStakeDispersion(snap) {
-    var leaderSide = (snap.sides || []).filter(function (s) { return s.name === snap.leaderName; })[0];
-    if (!leaderSide || !leaderSide.traders || leaderSide.traders.length < 2) return 0;
-    var stakes = leaderSide.traders.map(function (t) { return t.stake; }).filter(function (s) { return s > 0; });
-    if (stakes.length < 2) return 0;
-    var mean = stakes.reduce(function (a, b) { return a + b; }, 0) / stakes.length;
-    if (mean <= 0) return 0;
-    var variance = stakes.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / stakes.length;
-    return Math.sqrt(variance) / mean;
-  }
   function computeTierWinrates(list) {
     var byTier = {};
     CONFIDENCE_TIERS.forEach(function (t) { byTier[t] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
@@ -3690,16 +3675,13 @@
       // apart (small dots, red-green color vision deficiency, glare).
       // Pushed to near-neon (Material A400) on request for a bigger, more
       // flashy win/loss read at a glance.
-      // Capped at 1.2 so one wildly lopsided bet (one whale + a token
-      // small-stake tagalong) doesn't blow out the whole band's scale.
-      var dispersion = Math.min(1.2, snapStakeDispersion(snap));
-      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#00e676" : "#ff1744", band: dispersion * HYPOTHETICAL_FLAT_STAKE * 0.5 });
+      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#00e676" : "#ff1744" });
     });
     if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
     snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
       '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' +
-      buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir. La bande ombrée reflète la dispersion des mises des traders sur chaque trade (plus large = mises moins homogènes).</div></div>';
+      buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div></div>';
     var box = document.getElementById("snapPnlChartBox");
     if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box); }
   }
@@ -4462,10 +4444,8 @@
     var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var values = series.map(function (p) { return p.value; });
-    var bandBounds = [];
-    series.forEach(function (p) { if (p.band) { bandBounds.push(p.value + p.band); bandBounds.push(p.value - p.band); } });
-    var min = Math.min.apply(null, values.concat(bandBounds).concat([0]));
-    var max = Math.max.apply(null, values.concat(bandBounds).concat([0]));
+    var min = Math.min.apply(null, values.concat([0]));
+    var max = Math.max.apply(null, values.concat([0]));
     if (min === max) { min -= 1; max += 1; }
     var range = max - min;
     var n = series.length;
@@ -4477,21 +4457,6 @@
     var linePts = series.map(function (p, i) { return { x: x(i), y: y(p.value) }; });
     var pathD = smoothPathD(linePts);
     var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + y(0).toFixed(2) + " L" + x(0).toFixed(2) + "," + y(0).toFixed(2) + " Z";
-
-    // Shaded ribbon around the line, one point wide per snapshot — width at
-    // each point comes from that snapshot's own stake dispersion (see
-    // snapStakeDispersion), not a rolling/global measure, so a single
-    // lopsided bet shows up as a local bulge rather than smearing across
-    // neighboring points.
-    var hasBand = series.filter(function (p) { return p.band > 0; }).length > 0;
-    var bandD = "";
-    if (hasBand) {
-      var upperPts = series.map(function (p, i) { return { x: x(i), y: y(p.value + (p.band || 0)) }; });
-      var lowerPts = series.map(function (p, i) { return { x: x(i), y: y(p.value - (p.band || 0)) }; }).reverse();
-      var upperD = smoothPathD(upperPts);
-      var lowerD = smoothPathD(lowerPts).replace(/^M[-\d.]+,[-\d.]+/, "L");
-      bandD = upperD + " " + lowerD + " Z";
-    }
 
     var zeroY = y(0);
     var zeroLine = (min < 0 && max > 0)
@@ -4527,10 +4492,9 @@
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.32"/>' +
+          '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.4"/>' +
           '<stop offset="100%" stop-color="' + lineColor + '" stop-opacity="0"/>' +
         '</linearGradient></defs>' +
-        (bandD ? '<path d="' + bandD + '" fill="' + lineColor + '" fill-opacity="0.1" stroke="none"/>' : '') +
         '<path d="' + areaD + '" fill="url(#' + gradId + ')" stroke="none"/>' +
         zeroLine +
         '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2" stroke-linecap="round"/>' +
