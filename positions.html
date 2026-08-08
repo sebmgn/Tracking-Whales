@@ -468,7 +468,7 @@
      countdown has moved up to .vt-corner-badges alongside Live/Nouveau. */
   .vt-bottom-row { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; }
   .vt-bottom-meta { color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .vt-bottom-traders-num { font-size: 14px; font-weight: 800; color: var(--text); }
+  .vt-bottom-traders-num { font-size: 16px; font-weight: 800; color: var(--text); }
   /* The number worth noticing at a glance — sized up well past the
      surrounding trader-count/label text. */
   .vt-bottom-stake { font-size: 16px; font-weight: 800; color: var(--text); }
@@ -581,12 +581,7 @@
      short "$" figure here let its track steal a few extra pixels, making bar
      length a slightly dishonest stake comparison between traders. */
   .vt-trader-row-right { flex: 0 0 148px; text-align: right; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  /* Widened just enough to fit the optional first-trade time on the same
-     line — keeps every row at its normal height instead of adding a
-     second line under each one. */
-  .vt-trader-row-right:has(.vt-trader-first-time) { flex-basis: 205px; }
   .vt-trader-row-right b { color: var(--text); }
-  .vt-trader-first-time { font-size: 9.5px; opacity: .7; }
   /* Legacy — the "% de son book" note was dropped from the trader row; kept
      only so snapshots frozen before that change still render correctly. */
   .vt-book-pct { font-size: 9.5px; opacity: .75; margin-left: 6px; }
@@ -1413,7 +1408,14 @@
     { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74", weight: 7 },
     { name: "NM-P", platform: "polymarket", address: "0xcf7379b4b891c06d88807f6f70efa75378120215", weight: 7 },
     { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6", weight: 7 },
-    { name: "newteam", platform: "polymarket", address: "0xc46368a3374e87566eff1ffae7e6ec0163509a2f", weight: 6 }
+    { name: "newteam", platform: "polymarket", address: "0xc46368a3374e87566eff1ffae7e6ec0163509a2f", weight: 6 },
+    // Added on request — addresses aren't in the @username profile URLs
+    // given, resolved by reading each profile page's own embedded
+    // proxyWallet and cross-checked against a live positions fetch.
+    { name: "tradecraft", platform: "polymarket", address: "0xde9f7f4e77a1595623ceb58e469f776257ccd43c", weight: 8 },
+    { name: "anon", platform: "polymarket", address: "0x076daa87c4fe1a85402a9b6b8e0a866224388d4c", weight: 6 },
+    { name: "trmc", platform: "polymarket", address: "0x42c99f38d2b951b0dc8e8bd5371fa80c9dd19623", weight: 8 },
+    { name: "flatbarrel", platform: "polymarket", address: "0x6485f47d0344c03eb4340f985159f6eb2dcba265", weight: 6 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -2470,23 +2472,6 @@
   // width scale regardless of camp, so fill length/color is an honest,
   // direct comparison — "is the single biggest bettor on Yes or No" reads
   // immediately instead of needing to compare two separate columns.
-  // Earliest recentMatches entry for this trader on this exact market —
-  // "when did they first get in", not the average of every top-up since.
-  // recentMatches only holds each trader's last 100 trades across EVERY
-  // market they're in (see the refresh loop's fetchRecentMatchesForTrader
-  // call), so a position opened further back than that window — a real
-  // risk for the most hyperactive traders — just won't have a match here.
-  // Returns null rather than guessing; the caller renders nothing for it.
-  function firstTradeTimeFor(traderName, platform, question) {
-    var matches = recentMatches[traderName];
-    if (!matches) return null;
-    var earliest = null;
-    matches.forEach(function (m) {
-      if (m.platform !== platform || m.question !== question) return;
-      if (!earliest || m.time < earliest) earliest = m.time;
-    });
-    return earliest;
-  }
   function renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors) {
     var rows = [];
     mergedSides.forEach(function (m) {
@@ -2494,24 +2479,20 @@
       var initial = sideInitial(m.name);
       m.items.forEach(function (it) {
         it.s.entries.forEach(function (e) {
-          rows.push({ trader: e.trader, stake: e.stake, avgPrice: e.avgPrice, color: color, initial: initial, platform: it.g.platform, question: it.g.question });
+          rows.push({ trader: e.trader, stake: e.stake, avgPrice: e.avgPrice, color: color, initial: initial });
         });
       });
     });
     rows.sort(function (a, b) { return b.stake - a.stake; });
     return '<div class="vt-traders">' + rows.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
-      var firstTime = firstTradeTimeFor(e.trader, e.platform, e.question);
-      var firstTimeHtml = firstTime
-        ? ' <span class="vt-trader-first-time" title="Premier achat détecté sur ce marché (parmi les 20 derniers trades de ce trader)">· ' + esc(firstTime.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) + '</span>'
-        : '';
       return '<div class="vt-trader-row">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
         '<span class="vt-trader-row-name"><span class="vt-trader-row-name-text" title="' + esc(e.trader) + '">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track">' +
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
         '</div>' +
-        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b> @ ' + fmtCents(e.avgPrice) + firstTimeHtml + '</span>' +
+        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b> @ ' + fmtCents(e.avgPrice) + '</span>' +
       '</div>';
     }).join("") + '</div>';
   }
@@ -4497,7 +4478,7 @@
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.22"/>' +
+          '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.32"/>' +
           '<stop offset="100%" stop-color="' + lineColor + '" stop-opacity="0"/>' +
         '</linearGradient></defs>' +
         (bandD ? '<path d="' + bandD + '" fill="' + lineColor + '" fill-opacity="0.1" stroke="none"/>' : '') +
@@ -4648,19 +4629,8 @@
         Promise.all(TRADERS.map(function (t) {
           return fetchPositionsForTrader(t).then(function (positions) { return { name: t.name, positions: positions }; });
         })),
-        // 100, not 20 — same one request per trader per refresh either way,
-        // just a bigger page, but it meaningfully widens how far back
-        // firstTradeTimeFor can still find a hyperactive trader's entry on
-        // a given market. Neither platform's endpoint supports filtering
-        // matches/trades down to one specific market server-side (verified
-        // live: Predict.fun's conditionId/marketId params are silently
-        // ignored — Polymarket's own trades endpoint does support a
-        // market= filter, but using it would mean a whole separate
-        // per-card fetch, not something to add for a tiny nice-to-have
-        // label), so this is the practical ceiling without a bigger
-        // architecture change.
         Promise.all(TRADERS.map(function (t) {
-          return fetchRecentMatchesForTrader(t, 100).then(function (matches) { return { name: t.name, matches: matches }; });
+          return fetchRecentMatchesForTrader(t, 20).then(function (matches) { return { name: t.name, matches: matches }; });
         }))
       ]);
       var posResults = results[0], matchResults = results[1];
