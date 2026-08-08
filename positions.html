@@ -279,8 +279,8 @@
        soft gradient, no grain texture (tried, decided against — read as
        too busy across a long list of cards). */
     background-image: linear-gradient(180deg,
-        color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-1)),
-        color-mix(in srgb, var(--sport-tint, transparent) 8%, var(--cream-grad-2)));
+        color-mix(in srgb, var(--sport-tint, transparent) 3%, var(--cream-grad-1)),
+        color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-2)));
     border: 1px solid var(--panel-border);
     /* --border-tint/--border-tint-hover (set inline, see sportTintFor)
        always resolve to a real color — the sport's own hue, or --accent
@@ -399,7 +399,10 @@
      always survive the ellipsis even when the fixed-size siblings (leader
      badge, sparkline) leave almost no room, instead of the title silently
      shrinking away to nothing. */
-  .vt-question { font-weight: 700; font-size: 15px; flex: 1 1 auto; min-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Normal weight by default — bold is applied selectively, only to the
+     part of the title that's specific to the event (see
+     questionHtmlWithLeadTint), not the boilerplate around it. */
+  .vt-question { font-weight: 400; font-size: 15px; flex: 1 1 auto; min-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vt-sport-emoji { font-size: 26px; line-height: 1; flex: none; }
   /* Picked from the 20-proposal round (option 5) — a neutral mini-card with
      a colored left bar, rather than a colored fill. Plain ink, bold text —
@@ -454,27 +457,29 @@
      surrounding trader-count/label text. */
   .vt-bottom-stake { font-size: 16px; font-weight: 800; color: var(--text); }
   .vt-countdown {
-    display: flex; align-items: center; gap: 4px; flex: none;
+    display: flex; align-items: center; flex: none;
     font-style: normal; font-size: 13px; font-weight: 700;
     white-space: nowrap;
   }
-  /* Clock emoji sits outside the tint — it's already its own color, tinting
-     it too just muddies it. Only the "depuis/dans …" text gets the pill.
-     Direction carries its own color: an upcoming kickoff ("dans …") reads
-     green, one already underway ("depuis …") reads blue — distinct from
-     each other, and from the accent/gold used elsewhere on the card. */
-  .vt-countdown-icon { font-size: 13px; }
-  .vt-countdown-text { border-radius: 999px; padding: 1px 8px; }
-  .vt-countdown-soon .vt-countdown-text { color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); }
-  .vt-countdown-live .vt-countdown-text { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  /* Solid fill, not a transparent tint — a translucent pill read as too
+     low-contrast to actually read at a glance. White text throughout since
+     the fill is always a fairly saturated color. Direction carries its own
+     color: an upcoming kickoff ("dans …") reads green, one already
+     underway ("depuis …") reads blue. */
+  .vt-countdown-text { border-radius: 999px; padding: 1px 8px; color: #fff; }
+  .vt-countdown-soon .vt-countdown-text { background: var(--green); }
+  .vt-countdown-live .vt-countdown-text { background: var(--accent); }
+  /* Icon-only now (was "📌 Snapshot") — square-ish padding instead of the
+     pill shape that made sense for a text label. */
   .vt-snap-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     color: var(--gold);
-    padding: 4px 10px;
+    padding: 4px 7px;
     border-radius: 999px;
     cursor: pointer;
-    font-size: 11.5px;
+    font-size: 13px;
+    line-height: 1;
     font-weight: 700;
     white-space: nowrap;
   }
@@ -1963,19 +1968,28 @@
     var s = (name || "").trim();
     return s ? s.charAt(0).toUpperCase() : "?";
   }
-  // Tints the team/outcome name AT THE START of a "TeamA vs TeamB"-style
-  // question with its own side's color — a pre-read cue before the leader
-  // badge. Only fires on an exact-prefix match against one of this unit's
-  // own side names, so a "Will X win on ...?"-phrased question (no side
-  // name at the very start) safely falls through untinted rather than
-  // coloring an arbitrary word.
+  // Only the part of the title that's actually specific to THIS event gets
+  // bold — "Will " and " win on 2026-08-08?" are the same boilerplate on
+  // every card in the list, so bolding all of it drowned out the one word
+  // that's worth reading first. .vt-question's own font-weight is normal;
+  // bold only comes from the spans built here.
+  var WILL_WIN_RE = /^(Will )(.+?)( win(?: on \d{4}-\d{2}-\d{2})?\?)$/i;
   function questionHtmlWithLeadTint(question, mergedSides, distinctColors) {
+    // "TeamA vs TeamB"-style question starting with a known side name —
+    // bold AND tint it with that side's color, a pre-read cue before the
+    // leader badge.
     for (var i = 0; i < mergedSides.length; i++) {
       var name = mergedSides[i].name;
       if (name && question.indexOf(name) === 0) {
-        return '<span style="color:' + distinctColors[name] + '">' + esc(name) + '</span>' + esc(question.slice(name.length));
+        return '<b style="color:' + distinctColors[name] + '">' + esc(name) + '</b>' + esc(question.slice(name.length));
       }
     }
+    // "Will X win[ on DATE]?" — X is the distinctive part, no side-name
+    // match needed (the sides here are usually just Yes/No).
+    var m = question.match(WILL_WIN_RE);
+    if (m) return esc(m[1]) + '<b>' + esc(m[2]) + '</b>' + esc(m[3]);
+    // Unrecognized phrasing — don't guess at what's distinctive, leave it
+    // all at normal weight rather than falling back to bolding everything.
     return esc(question);
   }
 
@@ -2845,7 +2859,7 @@
     recordPricePoint(stableKey, leaderAvgPrice);
     var sparkHtml = sparklineHtml(stableKey);
 
-    var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌 Snapshot</button>';
+    var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌</button>';
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
     // Emoji + question live in ONE flex item (.vt-top-left), not two
     // siblings of .vt-top — .vt-top uses justify-content:space-between,
@@ -2895,12 +2909,9 @@
         else if (diffDays < 0) relTimeText = "depuis " + (-diffDays) + (diffDays < -1 ? " jours" : " jour");
       }
     }
-    // Color (green/blue for "dans"/"depuis") lives on the wrapping span so
-    // both the icon and the text-pill can reference it via currentColor —
-    // the icon itself stays uncolored/untinted, only the text gets the pill.
     var isUpcoming = relTimeText != null && relTimeText.indexOf("dans") === 0;
     var kickoffHtml = relTimeText
-      ? '<span class="vt-countdown ' + (isUpcoming ? 'vt-countdown-soon' : 'vt-countdown-live') + '"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '><span class="vt-countdown-icon">🕐</span><span class="vt-countdown-text">' + esc(relTimeText) + '</span></span>'
+      ? '<span class="vt-countdown ' + (isUpcoming ? 'vt-countdown-soon' : 'vt-countdown-live') + '"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '><span class="vt-countdown-text">' + esc(relTimeText) + '</span></span>'
       : '';
     var marketLinksHtml = '<div class="vt-market-links">' + members.map(function (m) {
       var info = PLATFORMS[m.platform] || { label: m.platform, short: m.platform };
