@@ -328,6 +328,25 @@ async function fetchKickoff(matchKey) {
     return null; // best-effort — a failed lookup just means no kickoff line, not a broken alert
   }
 }
+// Only alert for bets on events that haven't started yet — a trade whose
+// match is already live isn't a "here's a proposition to consider" moment
+// the way an upcoming one is. Falls back to the day extracted from the
+// matchKey itself (mirrors positions.html's own day-level fallback) when
+// gamma-api has no precise kickoff for it; a same-day match with no precise
+// time is treated as too uncertain to call "upcoming" and excluded, same as
+// anything dated today-or-earlier. A matchKey with no date at all (a
+// non-time-bound outright/futures market) isn't "in progress" the way a
+// live match is, so it's let through rather than suppressed.
+const MATCH_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
+function isUpcoming(a) {
+  if (a.kickoff) return a.kickoff.getTime() > Date.now();
+  const m = (a.matchKey || "").match(MATCH_DATE_RE);
+  if (!m) return true;
+  const day = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return day.getTime() > todayStart.getTime();
+}
 
 // ---------- group positions by market, link across platforms, score, evaluate the rule ----------
 function findAlerts(positions) {
@@ -463,14 +482,24 @@ async function main() {
   const positions = await fetchAllWatchedPositions();
   const alerts = findAlerts(positions);
   const state = loadState();
-  const fresh = alerts.filter((a) => !state[a.key]);
+  const freshCandidates = alerts.filter((a) => !state[a.key]);
+  // Only for the ones that might actually get emailed, not every active
+  // alert — no point spending gamma-api calls on bets the recipient's
+  // already been notified about.
+  await Promise.all(freshCandidates.map(async (a) => { a.kickoff = await fetchKickoff(a.matchKey); }));
+  // Candidates whose event already started are deliberately left OUT of
+  // `fresh` (and, below, out of newState too) rather than being emailed —
+  // a live match never becomes "upcoming" again, so it'll just keep getting
+  // silently re-skipped every run until it drops out of the tracked feed
+  // entirely, with no email ever sent for it.
+  const skippedLive = freshCandidates.filter((a) => !isUpcoming(a));
+  const fresh = freshCandidates.filter(isUpcoming);
+  if (skippedLive.length) {
+    console.log(skippedLive.length + " alerte(s) ignorée(s) (événement déjà en cours) :", skippedLive.map((a) => "[" + a.note.toFixed(1) + "] " + a.question));
+  }
 
   if (fresh.length) {
     console.log(fresh.length + " nouvelle(s) alerte(s) :", fresh.map((a) => "[" + a.note.toFixed(1) + "] " + a.question + " / " + a.side));
-    // Only for the ones actually being emailed, not every active alert —
-    // no point spending gamma-api calls on bets the recipient's already
-    // been notified about.
-    await Promise.all(fresh.map(async (a) => { a.kickoff = await fetchKickoff(a.matchKey); }));
     if (GMAIL_USER && GMAIL_APP_PASSWORD) {
       // One email per trade, sent in sequence (not Promise.all — a shared
       // nodemailer transporter over Gmail is safer sent one at a time than
@@ -491,9 +520,14 @@ async function main() {
   // Rebuild state from scratch each run, keyed only by currently-qualifying
   // bets — a bet that drops below threshold (closed, resolved, reduced, or
   // its note simply drops back to <= NOTE_THRESHOLD) is forgotten, so it can
-  // notify again if it re-qualifies later.
+  // notify again if it re-qualifies later. skippedLive bets are deliberately
+  // left OUT of newState (not just out of the email) — they were never
+  // actually notified about, so the next run should check them again rather
+  // than silently treating "we decided not to email this" the same as "the
+  // recipient already knows about this."
   const newState = {};
   alerts.forEach((a) => {
+    if (skippedLive.indexOf(a) !== -1) return;
     newState[a.key] = state[a.key] || { firstSeen: new Date().toISOString(), question: a.question, side: a.side, note: a.note };
   });
   saveState(newState);
