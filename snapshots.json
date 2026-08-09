@@ -60,66 +60,6 @@
     "confidence": "B"
   },
   {
-    "id": "msm2f1wuicao5a",
-    "savedAt": "2026-08-09T17:17:12.942Z",
-    "question": "Athletics vs. Boston Red Sox",
-    "leaderName": "Boston Red Sox",
-    "leaderPriceAtSnapshot": 0.675,
-    "noteAtSnapshot": 7.4,
-    "traderCount": 5,
-    "totalStake": 40249.38180562,
-    "sides": [
-      {
-        "name": "Boston Red Sox",
-        "traderCount": 5,
-        "stake": 40249.38180562,
-        "traders": [
-          {
-            "trader": "0x2c33",
-            "stake": 20100,
-            "avgPrice": 0.67
-          },
-          {
-            "trader": "VeryLucky888",
-            "stake": 10200,
-            "avgPrice": 0.68
-          },
-          {
-            "trader": "homerun",
-            "stake": 7826.56551342,
-            "avgPrice": 0.6779
-          },
-          {
-            "trader": "herdonia",
-            "stake": 1327.0982680000002,
-            "avgPrice": 0.68
-          },
-          {
-            "trader": "0xa697",
-            "stake": 795.7180242000001,
-            "avgPrice": 0.6732
-          }
-        ]
-      },
-      {
-        "name": "Athletics",
-        "traderCount": 0,
-        "stake": 0,
-        "traders": []
-      }
-    ],
-    "traderNames": [
-      "0x2c33",
-      "VeryLucky888",
-      "homerun",
-      "herdonia",
-      "0xa697"
-    ],
-    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚾</span><span class=\"vt-question\"><b style=\"color:#3d5a80\">Athletics</b> vs. Boston Red Sox</span><span class=\"vt-leader\" style=\"--leader-color:#96742c\">→ Boston Red Sox <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 67.5¢</span></span><span class=\"vt-leader-roi\" title=\"ROI si le camp majoritaire gagne, à la cote actuelle\">ROI +48%</span></span><span class=\"vt-badge-group\"><button type=\"button\" class=\"vt-follow-btn\" data-follow-key=\"polymarket|0x3ce579eea14d5a4e781cb9b0f9cfea2bfe2b2d42e51750ff275624e0b72d530c+predict|1162377\" title=\"Ajouter aux suivis — reste visible même si le trade devient inéligible\">☆</button><span class=\"vt-score-wrap\" title=\"Note du trade : 7.4/10 — volume, nb de traders, accord entre eux, accord des traders fiables\"><span class=\"vt-score-num\" style=\"color:hsl(82,75%,36%);background:color-mix(in srgb, hsl(82,75%,36%) 14%, transparent);box-shadow:0 0 12px color-mix(in srgb, hsl(82,75%,36%) 50%, transparent)\">7.4</span><div class=\"vt-score-breakdown\"><div class=\"vt-score-breakdown-title\">Note 7.4/10 — détail</div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Accord (% traders)</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:100%;background:hsl(82,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+2.3</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Concentration $</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:100%;background:hsl(82,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+2.2</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Accord fiables</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:17%;background:hsl(82,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.4</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Volume total</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:92%;background:hsl(82,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+1.3</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Nb traders suivis</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:20%;background:hsl(82,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.2</span></div></div></span><button type=\"button\" class=\"vt-trash-btn\" data-trash-key=\"polymarket|0x3ce579eea14d5a4e781cb9b0f9cfea2bfe2b2d42e51750ff275624e0b72d530c+predict|1162377\" title=\"Mettre ce trade à la corbeille\">🗑</button></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/mlb-oak-bos-2026-08-09\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a><a class=\"vt-market-link\" href=\"https://predict.fun/market/mlb-oak-bos-2026-08-09\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Predict.fun\">Predict ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Consensus</span><div class=\"consensus-gauge-wrap\"><div class=\"consensus-gauge\"><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div></div><span class=\"consensus-count\">5/5</span></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">Boston Red Sox — mise 40 249,38 $ / 40 249,38 $ (100%)</div></div><div class=\"bal-seg\" style=\"width:0.00%;background:repeating-linear-gradient(45deg, var(--red), var(--red) 5px, color-mix(in srgb, var(--red) 72%, black) 5px, color-mix(in srgb, var(--red) 72%, black) 10px)\"><div class=\"bal-tooltip\">Athletics — mise 0,00 $ / 40 249,38 $ (0%)</div></div></div></div></div><div class=\"vt-bottom-row\"><span class=\"vt-bottom-meta\"><span class=\"vt-bottom-traders\"><b class=\"vt-bottom-traders-num\">5</b> traders</span><span class=\"vt-badge-sep\">·</span><span class=\"vt-bottom-stake\">40 249,38 $</span></span></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#96742c\"><span class=\"vt-row-marker\" style=\"background:#96742c\">B</span> <b>Boston Red Sox</b> — 5 traders · 40 249,38 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 67.5¢</span> · ROI +48.15%</span><span class=\"vt-sides-legend-item\" style=\"color:#3d5a80\"><span class=\"vt-row-marker\" style=\"background:#3d5a80\">A</span> <b>Athletics</b> — 0 trader · 0,00 $</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">B</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"0x2c33\">0x2c33</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(56,62%,35%);border-color:hsl(56,62%,35%)\" title=\"Note qualite : 6/10\">6</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>20 100,00 $</b> @ 67.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">B</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:50.7%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>10 200,00 $</b> @ 68.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">B</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"homerun\">homerun</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:38.9%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>7 826,57 $</b> @ 67.8¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">B</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"herdonia\">herdonia</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:6.6%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>1 327,10 $</b> @ 68.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">B</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"0xa697\">0xa697</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:4.0%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>795,72 $</b> @ 67.3¢</span></div></div></div>",
-    "winningSide": null,
-    "confidence": null
-  },
-  {
     "id": "mslxjqcvivkff3",
     "savedAt": "2026-08-09T15:00:53.167Z",
     "question": "Will Mirassol FC win on 2026-08-09?",
