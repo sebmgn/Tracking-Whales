@@ -1,20 +1,14 @@
 {
+  "polymarket|0x919a10cca927c6bed86f3cced9a6624b9ab388da976d0ed3a68a38fa17e5f09c": {
+    "firstSeen": "2026-08-09T23:02:52.333Z",
+    "question": "Will Club Necaxa win on 2026-08-09?",
+    "side": "No",
+    "note": 7.2
+  },
   "polymarket|0x2516370cc36d055197dcc639a4b6bb803c18c22d2bdf4b573145dbfb3c357773": {
     "firstSeen": "2026-08-09T21:14:02.855Z",
     "question": "Will Santos FC win on 2026-08-09?",
     "side": "No",
     "note": 6.5
-  },
-  "polymarket|0xb62236c692275872be91dd4fc18dec2e9a79cec456cb5be908e91157294a3937": {
-    "firstSeen": "2026-08-09T21:14:02.855Z",
-    "question": "Will SC Corinthians Paulista win on 2026-08-09?",
-    "side": "No",
-    "note": 8.5
-  },
-  "polymarket|0x0a1f4a792c08ba674faa39d44ca162806db2a48e2962ba7b018acfb7a37396dd": {
-    "firstSeen": "2026-08-09T20:37:57.446Z",
-    "question": "Will Cuiabá EC win on 2026-08-09?",
-    "side": "Yes",
-    "note": 7.5
   }
 }
