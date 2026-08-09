@@ -1,27 +1,21 @@
 {
+  "polymarket|0x3f6878a56edfe8ff42a25bb664036955d18a3d54d898d2d06315329a99a16548": {
+    "firstSeen": "2026-08-09T01:49:31.701Z",
+    "question": "Will Atlante FC win on 2026-08-08?",
+    "side": "No",
+    "note": 6.5
+  },
   "polymarket|0xd1d79f29e21ddb6798eea87c160ab2252cecb5e1035b7cf5a44149b96d000949": {
     "firstSeen": "2026-08-08T21:00:59.994Z",
     "question": "Will Associação Chapecoense de Futebol win on 2026-08-08?",
     "side": "No",
     "note": 6.6
   },
-  "polymarket|0xf4d3da47cda6b78883ea1877338fce545a8742a8dfdb109c8e84c884b2e6bdf0": {
-    "firstSeen": "2026-08-08T23:28:08.998Z",
-    "question": "Will Botafogo FR win on 2026-08-08?",
-    "side": "Yes",
-    "note": 7.1
-  },
   "polymarket|0x1206c3ba1f6c40748cedaeb3b9e9d890eaf7fd64933132fb9f282227e917e5b7": {
     "firstSeen": "2026-08-08T23:28:08.998Z",
     "question": "Will Fluminense FC win on 2026-08-08?",
     "side": "No",
     "note": 7.3
-  },
-  "polymarket|0x59a69e6437c49ff260deb32b8467bd8ad0ba08f0e6b9f27648708b47cd7ac02d": {
-    "firstSeen": "2026-08-08T20:29:39.139Z",
-    "question": "New England Revolution vs. Houston Dynamo: O/U 3.5",
-    "side": "Under",
-    "note": 6.9
   },
   "polymarket|0x88b53e0d9cc5df335c52c526e1f3115c220ab88e65188129cba22849a0656605": {
     "firstSeen": "2026-08-08T13:58:30.845Z",
