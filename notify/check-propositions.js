@@ -74,7 +74,8 @@ const WATCHED = [
   { name: "herdonia", platform: "polymarket", address: "0xd106952ebf30a3125affd8a23b6c1f30c35fc79c" },
   { name: "billbenter", platform: "polymarket", address: "0x84ad9c5c547a82ec9a08547b94bd922446e5bfb7" },
   { name: "0xa697", platform: "polymarket", address: "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5" },
-  { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2" }
+  { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2" },
+  { name: "uptheblues", platform: "polymarket", address: "0x2a69660046d7acc4ab204d7cc5ba78b0776cd2f7" }
 ];
 
 // Curated "trusted" subset — same list and same purpose as positions.html's
@@ -312,6 +313,37 @@ function jaccard(a, b) {
 function numericFingerprint(s) { const m = (s || "").match(/\d+(\.\d+)?/g); return m ? m.join(",") : ""; }
 function sharedTokenCount(a, b) { const B = {}; b.forEach((w) => (B[w] = 1)); let n = 0; a.forEach((w) => { if (B[w]) n++; }); return n; }
 function matchKeyFromSlug(slug) { if (!slug) return null; const m = slug.match(/^(.*?-\d{4}-\d{2}-\d{2})/); return m ? m[1] : null; }
+
+// Ported verbatim from positions.html's isFootball/FOOTBALL_SLUG_PREFIXES/
+// NON_FOOTBALL_HINTS/FOOTBALL_KEYWORDS — alerts are football-only on
+// request, so this needs to classify a market the same way the site does,
+// not a separate looser heuristic that could drift from what the cards show.
+const FOOTBALL_SLUG_PREFIXES = {
+  fifwc: 1, ucl: 1, uel: 1, mls: 1, chi: 1, kor: 1, swe: 1, rou1: 1, epl: 1,
+  laliga: 1, bundesliga: 1, seriea: 1, ligue1: 1, eredivisie: 1, brasileirao: 1,
+  concacaf: 1, copa: 1,
+  acn: 1, arg: 1, atc: 1, auc: 1, bl2: 1, bra: 1, bra2: 1, bul: 1, bun: 1,
+  cde: 1, clf: 1, col: 1, col1: 1, cze1: 1, den: 1, ecu1: 1, efa: 1, egy1: 1,
+  elc: 1, ere: 1, es2: 1, fif: 1, fl1: 1, lal: 1, lib: 1, mex: 1, nor: 1,
+  per1: 1, por: 1, sclc: 1, scop: 1, sea: 1, spl: 1, srb: 1, sud: 1, tur: 1,
+  uzb1: 1,
+  aut: 1, bel1: 1, bol1: 1, brco: 1, cdr: 1, chi1: 1, chi2: 1, efl: 1,
+  est1: 1, fin1: 1, fr2: 1, fro1: 1, hr1: 1, hun: 1, irl1: 1, isl1: 1,
+  j1100: 1, j2100: 1, jap: 1, lec: 1, ltu1: 1, mar1: 1, ned2: 1, nor2: 1,
+  pol: 1, rus: 1, slo: 1, svk1: 1, swe2: 1, tur2: 1, ukr1: 1, uru1: 1,
+  uef: 1, usc: 1, argpn: 1, asean: 1, cof: 1, gtm: 1, nwsl: 1, ptc: 1
+};
+const NON_FOOTBALL_HINTS = /\bmlb\b|\bnba\b|\bwnba\b|\batp\b|\bwta\b|\bitf\b|\bnpb\b|\bkbo\b|\blol\b|\bdota ?2\b|\bcs2\b|valorant|\bufc\b|\bmma\b|grand prix|\bf1\b|\bnascar\b|drivers.? champion|open championship|\bgolf\b|world series|nba finals|nhl\b|nfl\b|\bcricket\b/i;
+const FOOTBALL_KEYWORDS = /\bfc\b|fifa world cup|world cup golden|world cup winner|champions league|europa league|premier league|\bla liga\b|bundesliga|\bserie a\b|ligue 1|copa america|\buefa\b|\bmls\b/i;
+function isFootball(question, slug) {
+  const q = (question || "").toLowerCase();
+  const s = (slug || "").toLowerCase();
+  if (NON_FOOTBALL_HINTS.test(q) || NON_FOOTBALL_HINTS.test(s)) return false;
+  const prefix = s.split("-")[0];
+  if (FOOTBALL_SLUG_PREFIXES[prefix]) return true;
+  if (FOOTBALL_KEYWORDS.test(q) || FOOTBALL_KEYWORDS.test(s)) return true;
+  return false;
+}
 function linkScore(pg, mg) {
   const sameConfrontation = pg.matchKey && mg.matchKey && pg.matchKey === mg.matchKey;
   const bothOutright = !pg.matchKey && !mg.matchKey;
@@ -411,6 +443,7 @@ function findAlerts(positions) {
 
     const unit = computeUnit(members);
     if (!unit.leader || unit.note <= NOTE_THRESHOLD) return;
+    if (!isFootball(members[0].question, members[0].slug)) return; // football-only alerts, on request
 
     const key = members.map((m) => m.key).sort().join("+");
     // One block per camp (leader first, then every side that actually has
