@@ -486,8 +486,12 @@
   .vt-countdown-soon .vt-countdown-text { background: var(--green); }
   .vt-countdown-live .vt-countdown-text { background: var(--accent); }
   /* Icon-only now (was "📌 Snapshot") — square-ish padding instead of the
-     pill shape that made sense for a text label. */
-  .vt-snap-btn {
+     pill shape that made sense for a text label. Shared base for every
+     small icon-button in this family (snapshot, follow, trash) — each one
+     is its OWN class, never combined with .vt-snap-btn on the same
+     element, or the delegated click handler's .vt-snap-btn check (which
+     runs first and returns early) would swallow their clicks too. */
+  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     color: var(--gold);
@@ -501,6 +505,15 @@
   }
   .vt-snap-btn:hover { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 45%, transparent); }
   .vt-snap-btn:disabled { opacity: .6; cursor: default; }
+  /* Same pill shape/size as the snapshot button — reads as one family of
+     small icon actions, distinguished only by color/icon. Unfilled star =
+     not followed yet, so it doesn't compete visually with an active one. */
+  .vt-follow-btn { color: var(--text-dim); }
+  .vt-follow-btn.active { color: var(--gold); }
+  .vt-follow-btn:hover { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 45%, transparent); }
+  .vt-trash-btn { color: var(--text-dim); }
+  .vt-trash-btn:hover { color: var(--red); border-color: var(--red); box-shadow: 0 0 8px color-mix(in srgb, var(--red) 40%, transparent); }
+  .vt-trash-btn.active { color: var(--accent); } /* already trashed — showing ↺ Restaurer, not the destructive action */
   .vt-unit-detail { margin-top: 4px; }
   /* Compact per-camp summary replacing the old side-by-side blocks' own
      headers — same one-letter camp marker the merged rows below reuse. */
@@ -826,18 +839,6 @@
   .vt-adv-filter input[type="range"] { flex: 1 1 auto; accent-color: var(--accent); min-width: 60px; }
   .vt-adv-filter-count { flex: 0 0 auto; color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: 11px; white-space: nowrap; }
 
-  /* Sits above the Value Trades filters — catches attention without
-     stealing it, one line, gone entirely once there's nothing to report. */
-  .vt-last-visit-banner {
-    background: color-mix(in srgb, var(--gold) 14%, var(--panel));
-    border: 1px solid var(--gold);
-    border-radius: var(--radius-md);
-    padding: 9px 14px;
-    font-size: 12.5px;
-    margin: 14px 0 -4px;
-  }
-  .vt-last-visit-banner b { color: var(--text); }
-
   /* ---- Vue compacte (dense) ---- */
   details.value-trade-item.vt-dense { padding: 0; }
   .vt-summary-dense {
@@ -856,6 +857,22 @@
     flex: none; font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 900;
     font-size: 15px; width: 34px; text-align: right; font-variant-numeric: tabular-nums;
   }
+  .vt-dense-actions { flex: none; display: flex; gap: 4px; }
+  .vt-dense-actions .vt-follow-btn, .vt-dense-actions .vt-trash-btn { padding: 2px 5px; font-size: 11px; }
+
+  /* ---- Trades suivis ---- */
+  .vt-followed-box {
+    background: color-mix(in srgb, var(--gold) 8%, var(--panel));
+    border: 1px solid var(--gold);
+    border-radius: var(--radius-md);
+    padding: 14px 16px 4px;
+    margin: 14px 0;
+  }
+  .vt-followed-title { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
+  .vt-followed-count { color: var(--text-dim); font-weight: 600; font-size: 12px; }
+  .vt-followed-note { font-size: 11px; font-style: italic; color: var(--text-dim); margin-bottom: 10px; }
+  .vt-followed-box .value-trade-item, .vt-followed-box details.value-trade-item.vt-dense { margin-bottom: 10px; }
+  .vt-followed-box .value-trade-item:last-child, .vt-followed-box details.value-trade-item.vt-dense:last-child { margin-bottom: 10px; }
 
   .caveat-box {
     background: #221607;
@@ -1362,12 +1379,12 @@
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
-    <div id="vtLastVisitBanner"></div>
     <div class="vt-header-row">
       <div class="vt-header-left">
         <div class="vt-title-row">
           <h2 class="section-title">Value Trades</h2>
           <button id="vtDenseToggleBtn" type="button" class="vt-dense-toggle-btn" title="Bascule vers une ligne par trade, sans les jauges">☰ Vue compacte</button>
+          <button id="vtTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
         </div>
         <div class="vt-filters" id="sportFilters">
           <button data-sport="all" type="button">Tous les sports<span class="vt-filter-count"></span></button>
@@ -1399,6 +1416,7 @@
       </div>
       <div class="score-tier-box" id="vtTierChart"></div>
     </div>
+    <div id="vtFollowedContent"></div>
     <div id="valueTradesContent" class="value-trades-box">
       <div class="loading-state">Analyse des positions communes…</div>
     </div>
@@ -1755,6 +1773,31 @@
   // long list fast. Remembered across reloads since it's a reading
   // preference, not a filter.
   var vtDenseMode = (function () { try { return localStorage.getItem("vtDenseMode") === "1"; } catch (e) { return false; } })();
+  // Persisted per-market flags, keyed by unitStableKey — deliberately
+  // separate from Mes Snapshots (which freezes a copy at bet time for
+  // win/loss tracking): these two just tag a LIVE unit, still recomputed
+  // from live data every refresh like any other Value Trade.
+  var TRASHED_KEY = "vtTrashedKeys";
+  var FOLLOWED_KEY = "vtFollowedKeys";
+  var TRASH_PRUNE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — old trash entries aren't worth keeping around forever
+  var trashedKeys = (function () {
+    try { return JSON.parse(localStorage.getItem(TRASHED_KEY) || "{}"); } catch (e) { return {}; }
+  })();
+  var followedKeys = (function () {
+    try { return JSON.parse(localStorage.getItem(FOLLOWED_KEY) || "{}"); } catch (e) { return {}; }
+  })();
+  function saveTrashedKeys() {
+    var now = Date.now();
+    Object.keys(trashedKeys).forEach(function (k) { if (now - trashedKeys[k] > TRASH_PRUNE_MS) delete trashedKeys[k]; });
+    try { localStorage.setItem(TRASHED_KEY, JSON.stringify(trashedKeys)); } catch (e) { /* won't persist this time */ }
+  }
+  function saveFollowedKeys() {
+    try { localStorage.setItem(FOLLOWED_KEY, JSON.stringify(followedKeys)); } catch (e) { /* won't persist this time */ }
+  }
+  // Toggled by the 🗑 Corbeille header button — swaps the main list for the
+  // trashed one instead of adding a whole separate tab, same idea as
+  // vtDenseMode's toggle-button pattern.
+  var vtTrashMode = false;
 
   // ---------- helpers ----------
   function amountToFloat(amountStr, decimals) {
@@ -2645,6 +2688,15 @@
       '</div>';
     }).join("") + '</div>';
   }
+  // A linked unit's members can flip order between refreshes (buildRenderUnits
+  // sorts by trader count, so members[0] can cross from one platform to the
+  // other) — sorted + joined so this stays identical regardless of which
+  // member ends up first. The one stable identity a unit has across
+  // renders; everything that needs to persist per-market (first-seen,
+  // trash, follow) keys off this, not off members[0].key alone.
+  function unitStableKey(u) {
+    return u.members.map(function (m) { return m.key; }).sort().join("+");
+  }
   // Merges sides across a unit's members by normalized outcome name, so a
   // linked pair (e.g. "Argentina" on Predict.fun + "Argentina" on Polymarket)
   // is treated as one outcome with a combined trader count — used both to
@@ -2845,34 +2897,6 @@
     try { localStorage.setItem(FIRST_SEEN_KEY, JSON.stringify(firstSeenMap)); } catch (e) { /* won't persist this time */ }
     firstSeenDirty = false;
   }
-  // Captured ONCE at load, before it gets overwritten below — every render
-  // this whole session compares firstSeenMap timestamps against this same
-  // fixed point, so the banner doesn't shrink to 0 the moment it renders.
-  // null on someone's very first-ever visit (nothing to compare against).
-  var LAST_VISIT_KEY = "vtLastVisitAt";
-  var lastVisitAt = (function () {
-    try { var v = localStorage.getItem(LAST_VISIT_KEY); return v ? Number(v) : null; } catch (e) { return null; }
-  })();
-  try { localStorage.setItem(LAST_VISIT_KEY, String(Date.now())); } catch (e) { /* won't persist this time */ }
-  // Threshold a trade needs to clear to be worth calling out in the banner
-  // — well above "new" alone (every market is new once), a bar for "would
-  // have been worth noticing".
-  var LAST_VISIT_NOTE_THRESHOLD = 7;
-  function renderLastVisitBanner(candidateUnits) {
-    var el = document.getElementById("vtLastVisitBanner");
-    if (!el) return;
-    if (lastVisitAt == null) { el.innerHTML = ""; return; }
-    var fresh = candidateUnits.filter(function (u) {
-      var key = u.members.map(function (m) { return m.key; }).sort().join("+");
-      var seenAt = firstSeenMap[key];
-      return seenAt && seenAt > lastVisitAt && u.score != null && u.score >= LAST_VISIT_NOTE_THRESHOLD;
-    });
-    if (!fresh.length) { el.innerHTML = ""; return; }
-    var n = fresh.length;
-    var since = fmtCountdown(Date.now() - lastVisitAt) || "quelques instants";
-    el.innerHTML = '<div class="vt-last-visit-banner">🆕 <b>' + n + ' nouveau' + (n > 1 ? "x" : "") + ' trade' + (n > 1 ? "s" : "") +
-      ' avec une note ≥ ' + LAST_VISIT_NOTE_THRESHOLD + '</b> depuis votre dernière visite (il y a ' + since + ')</div>';
-  }
   var priceHistory = {};
   // Separate from priceHistory (which accumulates a whole session's worth
   // of points for the sparkline) — this only ever holds ONE prior value
@@ -3011,14 +3035,8 @@
     var secondary = members[1];
     var linked = !!secondary;
     // primary.key is NOT a safe cache key on its own for a linked
-    // (cross-platform) unit — buildRenderUnits sorts members by trader
-    // count, so members[0] can flip from the Poly side to the Predict
-    // side (or back) the moment the two platforms' counts cross, which
-    // would silently reset any state keyed off it (price history, the
-    // last-refresh price-arrow comparison, "first seen" timestamps).
-    // Sorted + joined so it stays identical regardless of which member
-    // ends up first.
-    var stableKey = members.map(function (m) { return m.key; }).sort().join("+");
+    // (cross-platform) unit — see unitStableKey.
+    var stableKey = unitStableKey(u);
     var mergedSides = mergeUnitSides(u);
     // See resolveDistinctSideColors — guarantees the camps in THIS unit
     // never render as the same color, even if their global/preferred
@@ -3097,6 +3115,10 @@
     var sparkHtml = sparklineHtml(stableKey);
 
     var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌</button>';
+    var isFollowed = !!followedKeys[stableKey];
+    var followBtnHtml = '<button type="button" class="vt-follow-btn' + (isFollowed ? ' active' : '') + '" data-follow-key="' + esc(stableKey) + '" title="' + (isFollowed ? "Retirer des suivis" : "Ajouter aux suivis — reste visible même si le trade devient inéligible") + '">' + (isFollowed ? '⭐' : '☆') + '</button>';
+    var isTrashed = !!trashedKeys[stableKey];
+    var trashBtnHtml = '<button type="button" class="vt-trash-btn' + (isTrashed ? ' active' : '') + '" data-trash-key="' + esc(stableKey) + '" title="' + (isTrashed ? "Restaurer ce trade" : "Mettre ce trade à la corbeille") + '">' + (isTrashed ? '↺' : '🗑') + '</button>';
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
     // Emoji + question live in ONE flex item (.vt-top-left), not two
     // siblings of .vt-top — .vt-top uses justify-content:space-between,
@@ -3164,7 +3186,7 @@
     var headerHtml =
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + roiHtml + '</span>' +
-        '<span class="vt-badge-group">' + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + '</span>' +
+        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + trashBtnHtml + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
     // group) — sits on the card's real bottom row, in normal flow so it
@@ -3212,6 +3234,7 @@
       bottomBarHtml: bottomBarHtml, kickoffHtml: kickoffHtml,
       headerHtml: headerHtml, bodyHtml: bodyHtml,
       balanceHtml: balanceHtml, sideGridHtml: sideGridHtml,
+      followBtnHtml: followBtnHtml, trashBtnHtml: trashBtnHtml, isFollowed: isFollowed, isTrashed: isTrashed,
       borderWidth: noteBorderWidth(u.score),
       sportTint: sportTintFor(sportEmoji), sportTintHover: sportTintFor(sportEmoji, true)
     };
@@ -3286,6 +3309,7 @@
         (isLive ? '<span class="vt-dense-live" title="En cours">🔴</span>' : '') +
         '<span class="vt-dense-meta">' + u.traderCount + ' tr · ' + fmtUSD(u.totalStake) + '</span>' +
         '<span class="vt-dense-score" style="color:' + color + '">' + (u.score != null ? u.score.toFixed(1) : '—') + '</span>' +
+        '<span class="vt-dense-actions">' + parts.followBtnHtml + parts.trashBtnHtml + '</span>' +
       '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
@@ -4503,34 +4527,76 @@
       });
     });
   }
+  // Always-visible pinned list, independent of every other Value Trades
+  // filter — pulled from allUnitsRaw (before the decided-price / match-over
+  // / trader-floor exclusions), so a followed trade keeps showing exactly
+  // as asked ("même s'il devient nul"), as long as the underlying market is
+  // still present at all in the live fetch.
+  function renderFollowedSection(allUnitsRaw) {
+    var el = document.getElementById("vtFollowedContent");
+    if (!el) return;
+    var followed = allUnitsRaw.filter(function (u) { return !!followedKeys[unitStableKey(u)]; });
+    if (!followed.length) { el.innerHTML = ""; return; }
+    followed.sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+    var cardFn = vtDenseMode ? renderUnitCardDense : renderUnitCard;
+    el.innerHTML = '<div class="vt-followed-box">' +
+      '<div class="vt-followed-title">⭐ Trades suivis <span class="vt-followed-count">' + followed.length + '</span></div>' +
+      '<div class="vt-followed-note">Reste ici même si le trade devient inéligible à la liste normale (prix décidé, match terminé, filtres…) — retire l\'étoile pour l\'enlever.</div>' +
+      followed.map(cardFn).join("") +
+    '</div>';
+  }
+  // Corbeille — swaps the main list for whatever's been trashed, same
+  // unfiltered allUnitsRaw source as Suivis (a trashed match can be past
+  // its normal eligibility too), each card's 🗑 button already reads as ↺
+  // Restaurer since isTrashed flips its label/icon.
+  function renderTrashView(allUnitsRaw) {
+    var trashed = allUnitsRaw.filter(function (u) { return !!trashedKeys[unitStableKey(u)]; });
+    trashed.sort(function (a, b) { return (trashedKeys[unitStableKey(b)] || 0) - (trashedKeys[unitStableKey(a)] || 0); });
+    if (!trashed.length) {
+      valueTradesContent.innerHTML = '<div class="empty-note vt-empty-illustrated"><div class="vt-empty-whale">🗑️</div><div class="vt-empty-headline">Corbeille vide</div></div>';
+      return;
+    }
+    var cardFn = vtDenseMode ? renderUnitCardDense : renderUnitCard;
+    valueTradesContent.innerHTML = '<div class="vt-day-header">Corbeille<span class="vt-day-count">' + trashed.length + ' trade' + (trashed.length > 1 ? "s" : "") + '</span></div>' +
+      trashed.map(cardFn).join("");
+  }
   function renderValueTrades() {
     var allGroups = computeMarketGroups();
     linkAcrossPlatforms(allGroups);
     var allUnitsRaw = buildRenderUnits(allGroups);
-    // A trade priced at (or effectively at) 100¢ has already happened, and
-    // a match that's been "live" for longer than SPORT_MAX_LIVE_MS is over
-    // even if its price never fully settled — neither belongs in this list
-    // at all, not even under a lenient filter combination.
-    var allUnits = allUnitsRaw.filter(function (u) {
+    // Scored up front, for EVERY unit, before any exclusion — a followed
+    // unit still needs its note/price/factors even if it would otherwise
+    // get filtered out below (decided price, match over, trashed…), since
+    // "suivi" is explicitly meant to keep showing a trade regardless.
+    allUnitsRaw.forEach(function (u) {
       var info = unitScoreInfo(u);
       u.score = info.score;
       u.leaderPrice = info.leaderPrice;
       u.scoreFactors = info.factors;
       u.scoreGate = info.gate;
       u.leaderCount = info.agreeingCount;
+    });
+    renderFollowedSection(allUnitsRaw);
+    // A trade priced at (or effectively at) 100¢ has already happened, a
+    // match that's been "live" for longer than SPORT_MAX_LIVE_MS is over
+    // even if its price never fully settled, and a trashed unit was
+    // explicitly asked to be hidden — none belong in this list at all, not
+    // even under a lenient filter combination.
+    var allUnits = allUnitsRaw.filter(function (u) {
+      if (trashedKeys[unitStableKey(u)]) return false;
       if (unitTimingStatus(u, true) === "over") return false;
       return u.leaderPrice == null || u.leaderPrice < 0.9995;
     });
+    if (vtTrashMode) { renderTrashView(allUnitsRaw); return; }
     var traderFiltered = allUnits.filter(function (u) {
       if (u.traderCount < vtMinTraders) return false;
       if (vtMinScore != null && u.score < vtMinScore) return false;
       return vtBaseUnitFilter(u);
     });
     // Everything below the trader-count floor but before any other filter —
-    // shared base for the tier chart, the chip/slider live counts, and the
-    // last-visit banner, so they all agree on what "the universe" is.
+    // shared base for the tier chart and the chip/slider live counts, so
+    // they all agree on what "the universe" is.
     var floorUnits = allUnits.filter(function (u) { return u.traderCount >= vtMinTraders; });
-    renderLastVisitBanner(floorUnits);
     // Same pool as traderFiltered minus the note check itself (that's what
     // this chart is slicing) — NOT allUnits wholesale. allUnits includes
     // every thin 1-2-trader position too, which this app never treats as a
@@ -5102,6 +5168,17 @@
     syncDenseToggleBtn();
     renderValueTrades();
   });
+  var vtTrashToggleBtn = document.getElementById("vtTrashToggleBtn");
+  function syncTrashToggleBtn() {
+    vtTrashToggleBtn.classList.toggle("active", vtTrashMode);
+    vtTrashToggleBtn.textContent = vtTrashMode ? "← Retour" : "🗑 Corbeille";
+  }
+  syncTrashToggleBtn();
+  vtTrashToggleBtn.addEventListener("click", function () {
+    vtTrashMode = !vtTrashMode;
+    syncTrashToggleBtn();
+    renderValueTrades();
+  });
   // Top-5-by-weight player filter for "Trades récents" — multi-select (OR):
   // built from TRADERS_BY_WEIGHT so it stays correct if ratings ever change.
   var rtPlayerFiltersEl = document.getElementById("rtPlayerFilters");
@@ -5272,6 +5349,28 @@
         snapBtn.textContent = "✅ Sauvegardé";
         snapBtn.disabled = true;
       }
+      return;
+    }
+    var followBtn = e.target.closest ? e.target.closest(".vt-follow-btn") : null;
+    if (followBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var followKey = followBtn.getAttribute("data-follow-key");
+      if (followedKeys[followKey]) delete followedKeys[followKey];
+      else followedKeys[followKey] = Date.now();
+      saveFollowedKeys();
+      renderValueTrades();
+      return;
+    }
+    var trashBtn = e.target.closest ? e.target.closest(".vt-trash-btn") : null;
+    if (trashBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var trashKey = trashBtn.getAttribute("data-trash-key");
+      if (trashedKeys[trashKey]) delete trashedKeys[trashKey];
+      else trashedKeys[trashKey] = Date.now();
+      saveTrashedKeys();
+      renderValueTrades();
       return;
     }
     var sideBtn = e.target.closest ? e.target.closest(".snap-side-btn") : null;
