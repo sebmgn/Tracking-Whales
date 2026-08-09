@@ -1,1 +1,14 @@
-{}
+{
+  "polymarket|0x9cd79ddca351f7e07cea28445dad494cd5001efc36237dadb161aec297620649": {
+    "firstSeen": "2026-08-09T16:34:06.455Z",
+    "question": "Will SE Palmeiras win on 2026-08-09?",
+    "side": "No",
+    "note": 6.5
+  },
+  "polymarket|0x5771528ad81bb2f14935479692b2ed9919155ff48c3aff181be2204fa2d792be": {
+    "firstSeen": "2026-08-09T16:34:06.455Z",
+    "question": "New York Mets vs. Pittsburgh Pirates: O/U 8.5",
+    "side": "Under",
+    "note": 7.7
+  }
+}
