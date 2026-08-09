@@ -5,10 +5,22 @@
     "side": "Boston Red Sox",
     "note": 7.6
   },
+  "polymarket|0x299323b7c950c5ede518e89c6e6ad1161e77f40478163119a4470da77c9c1e93+predict|1162312": {
+    "firstSeen": "2026-08-09T17:50:44.463Z",
+    "question": "Detroit Tigers vs. San Francisco Giants",
+    "side": "Detroit Tigers",
+    "note": 6.1
+  },
   "polymarket|0x5771528ad81bb2f14935479692b2ed9919155ff48c3aff181be2204fa2d792be": {
     "firstSeen": "2026-08-09T16:34:06.455Z",
     "question": "New York Mets vs. Pittsburgh Pirates: O/U 8.5",
     "side": "Under",
     "note": 7.7
+  },
+  "polymarket|0x884d8dd645901dbb85f3ff11482dd88043fb04111b4d47aa341fa945e4e6a398": {
+    "firstSeen": "2026-08-09T17:50:44.463Z",
+    "question": "CA San Lorenzo de Almagro vs. CA Huracán: O/U 1.5",
+    "side": "Under",
+    "note": 6.5
   }
 }
