@@ -50,26 +50,18 @@ const WATCHED = [
   { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496" },
   { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE" },
   { name: "meister", platform: "polymarket", address: "0xdc4f58a48ed4467743609fdce11eea483c759804" },
-  { name: "aaaaaaa9", platform: "predict", address: "0x1faa0851074eCd1Baa4744Dbb43F9b10E2EFd636" },
-  { name: "mean-slippage-run", platform: "predict", address: "0x10F75A07837E4Af8B77182383443895cA7520747" },
   { name: "sbimbg", platform: "polymarket", address: "0xf5198df69e13937a40d1c76d6f72d9aa067d906b" },
-  { name: "CandleHammerDrums", platform: "polymarket", address: "0x7c1ee865a785de4c00ee90ed86a38489fb8bbab3" },
   { name: "Boned", platform: "polymarket", address: "0x335d3dedf02b9884db93dc4c1a90cf578e598c00" },
-  { name: "juanitooo12358", platform: "polymarket", address: "0xecdb673d790f2469f1bd9b87841ff17e6b18c4c7" },
   { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14" },
   { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c" },
-  { name: "8a7sh2", platform: "polymarket", address: "0xbdb0e406400033ada6ffe03f8915b5e23873f8ba" },
   { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563" },
   { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294" },
   { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea" },
-  { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8" },
   { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add" },
   { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de" },
-  { name: "newbie", platform: "polymarket", address: "0x43011bc04df353c8092662d13b4aaacb4b62ac39" },
   { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74" },
   { name: "NM-P", platform: "polymarket", address: "0xcf7379b4b891c06d88807f6f70efa75378120215" },
   { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6" },
-  { name: "newteam", platform: "polymarket", address: "0xc46368a3374e87566eff1ffae7e6ec0163509a2f" },
   // These 8 were added to positions.html's TRADERS in earlier sessions but
   // never mirrored here — WATCHED had silently drifted out of sync with the
   // site, meaning this alert script wasn't seeing their positions at all.
@@ -87,7 +79,7 @@ const WATCHED = [
 
 // Curated "trusted" subset — same list and same purpose as positions.html's
 // RELIABLE_TRADERS, feeding the note's reliableAgreement factor.
-const RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "zaizoibele", "VeryLucky888"];
+const RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "VeryLucky888"];
 
 // ---------- note / score (ported verbatim from positions.html's unitScoreInfo,
 // recalibrated 2026-08-08 against 20 hand-scored real-shaped examples — see

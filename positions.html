@@ -1473,26 +1473,18 @@
     { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496", weight: 8 },
     { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE", weight: 6 },
     { name: "meister", platform: "polymarket", address: "0xdc4f58a48ed4467743609fdce11eea483c759804", weight: 6.5 },
-    { name: "aaaaaaa9", platform: "predict", address: "0x1faa0851074eCd1Baa4744Dbb43F9b10E2EFd636", weight: 7 },
-    { name: "mean-slippage-run", platform: "predict", address: "0x10F75A07837E4Af8B77182383443895cA7520747", weight: 7 },
     { name: "sbimbg", platform: "polymarket", address: "0xf5198df69e13937a40d1c76d6f72d9aa067d906b", weight: 7 },
-    { name: "CandleHammerDrums", platform: "polymarket", address: "0x7c1ee865a785de4c00ee90ed86a38489fb8bbab3", weight: 7 },
     { name: "Boned", platform: "polymarket", address: "0x335d3dedf02b9884db93dc4c1a90cf578e598c00", weight: 6 },
-    { name: "juanitooo12358", platform: "polymarket", address: "0xecdb673d790f2469f1bd9b87841ff17e6b18c4c7", weight: 6 },
     { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14", weight: 9.5 },
     { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c", weight: 7.5 },
-    { name: "8a7sh2", platform: "polymarket", address: "0xbdb0e406400033ada6ffe03f8915b5e23873f8ba", weight: 7.5 },
     { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563", weight: 6 },
     { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 8 },
     { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", weight: 9 },
-    { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8", weight: 8.5 },
     { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 7.5 },
     { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", weight: 9 },
-    { name: "newbie", platform: "polymarket", address: "0x43011bc04df353c8092662d13b4aaacb4b62ac39", weight: 5 },
     { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74", weight: 7 },
     { name: "NM-P", platform: "polymarket", address: "0xcf7379b4b891c06d88807f6f70efa75378120215", weight: 7 },
     { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6", weight: 7 },
-    { name: "newteam", platform: "polymarket", address: "0xc46368a3374e87566eff1ffae7e6ec0163509a2f", weight: 6 },
     // Added on request — addresses aren't in the @username profile URLs
     // given, resolved by reading each profile page's own embedded
     // proxyWallet and cross-checked against a live positions fetch.
@@ -1748,7 +1740,12 @@
   // Curated "trusted" roster used by the note formula's reliableAgreement
   // factor (see unitScoreInfo) — used to be also exposed as a "> N fiables"
   // filter row here; that control is gone, RELIABLE_TRADERS itself stays.
-  var RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "zaizoibele", "VeryLucky888"];
+  // zaizoibele was dropped from TRADERS on request (never appeared in any
+  // saved snapshot) — removed here too, not just left dangling, since this
+  // array's length is the reliableAgreement factor's normalization ceiling
+  // (SCORE_RANGES.reliableAgreement); leaving an untracked name in it would
+  // have made that max permanently unreachable instead of shrinking to match.
+  var RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "VeryLucky888"];
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
   var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart, or dragging the slider (kept in sync both ways)
