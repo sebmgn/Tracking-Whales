@@ -22,7 +22,7 @@ const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 const NOTIFY_TO = process.env.NOTIFY_TO || GMAIL_USER;
 
-const NOTE_THRESHOLD = 6; // alert when a trade's note is strictly greater than this
+const NOTE_THRESHOLD = 7; // alert when a trade's note is strictly greater than this
 // Dust floor — a position staking less than this is dropped from a side's
 // counts/totalStake entirely before scoring, mirroring positions.html's
 // own MIN_TRADER_STAKE so a handful of $10 positions can't inflate a note.
