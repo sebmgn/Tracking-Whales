@@ -1067,6 +1067,10 @@
   .tier-wr-count { flex: 0 0 auto; min-width: 78px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .tier-wr-roi { font-style: italic; font-size: 10.5px; font-weight: 400; color: var(--text-dim); }
+  .factor-attr-row { display: flex; align-items: center; gap: 12px; margin-bottom: 9px; }
+  .factor-attr-row:last-child { margin-bottom: 0; }
+  .factor-attr-label { flex: 0 0 128px; font-size: 12px; color: var(--text-dim); }
+  .factor-attr-value { flex: 0 0 44px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
   /* Same visual language as .tier-wr-* above (winrate-by-conviction), under
      its own class namespace — this gauge is keyed by cumulative note
@@ -1417,6 +1421,8 @@
     <div id="snapDashboard"></div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
+    <div id="factorAttrContent"></div>
+    <div id="noteRoiContent"></div>
     <div id="snapDistContent"></div>
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
@@ -1493,7 +1499,20 @@
     { name: "tradecraft", platform: "polymarket", address: "0xde9f7f4e77a1595623ceb58e469f776257ccd43c", weight: 8 },
     { name: "anon", platform: "polymarket", address: "0x076daa87c4fe1a85402a9b6b8e0a866224388d4c", weight: 6 },
     { name: "trmc", platform: "polymarket", address: "0x42c99f38d2b951b0dc8e8bd5371fa80c9dd19623", weight: 8 },
-    { name: "flatbarrel", platform: "polymarket", address: "0x6485f47d0344c03eb4340f985159f6eb2dcba265", weight: 6 }
+    { name: "flatbarrel", platform: "polymarket", address: "0x6485f47d0344c03eb4340f985159f6eb2dcba265", weight: 6 },
+    // Added on request — only @username URLs given, no rating supplied this
+    // time, so weight defaults to 7 (neutral) until a real one is given.
+    // Addresses resolved the same way as the batch above (embedded
+    // proxyWallet, cross-checked against a live positions fetch); the last
+    // two usernames are auto-generated from the wallet itself but don't
+    // literally equal it character-for-character, so this was worth
+    // verifying rather than assuming.
+    { name: "homerun", platform: "polymarket", address: "0x5268527977f700f9bf9b6d5cd843859e4e70135d", weight: 7 },
+    { name: "malfunction", platform: "polymarket", address: "0xfc25f141ed27bb1787338d2c4e7f51e3a15e1f7f", weight: 7 },
+    { name: "herdonia", platform: "polymarket", address: "0xd106952ebf30a3125affd8a23b6c1f30c35fc79c", weight: 7 },
+    { name: "billbenter", platform: "polymarket", address: "0x84ad9c5c547a82ec9a08547b94bd922446e5bfb7", weight: 7 },
+    { name: "0xa697", platform: "polymarket", address: "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5", weight: 7 },
+    { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2", weight: 7 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -1555,6 +1574,8 @@
   var snapDashboard = document.getElementById("snapDashboard");
   var tierWinrateContent = document.getElementById("tierWinrateContent");
   var noteWinrateContent = document.getElementById("noteWinrateContent");
+  var factorAttrContent = document.getElementById("factorAttrContent");
+  var noteRoiContent = document.getElementById("noteRoiContent");
   var snapPnlChartContent = document.getElementById("snapPnlChartContent");
   var snapDistContent = document.getElementById("snapDistContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
@@ -1710,6 +1731,8 @@
   var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
   var tierWinrateCollapsed = true; // winrate-by-conviction gauge — same optional/collapsed-by-default pattern
   var noteWinrateCollapsed = true; // winrate-by-note-threshold gauge — same optional/collapsed-by-default pattern
+  var factorAttrCollapsed = true; // factor-vs-win correlation bars — same optional/collapsed-by-default pattern
+  var noteRoiCollapsed = true; // note x realized-ROI scatter — same optional/collapsed-by-default pattern
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   // Fixed floor now (used to be an adjustable ">= N traders" filter row,
@@ -3831,6 +3854,132 @@
       '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
   }
+  // Standard Pearson correlation coefficient — used below to answer "does
+  // this factor actually predict the win", not just "how big does it look".
+  function pearsonCorrelation(xs, ys) {
+    var n = xs.length;
+    if (n < 3) return null; // too few points for a correlation to mean anything
+    var meanX = xs.reduce(function (a, b) { return a + b; }, 0) / n;
+    var meanY = ys.reduce(function (a, b) { return a + b; }, 0) / n;
+    var num = 0, denX = 0, denY = 0;
+    for (var i = 0; i < n; i++) {
+      var dx = xs[i] - meanX, dy = ys[i] - meanY;
+      num += dx * dy; denX += dx * dx; denY += dy * dy;
+    }
+    if (denX === 0 || denY === 0) return null;
+    return num / Math.sqrt(denX * denY);
+  }
+  var FACTOR_ATTRIBUTION_KEYS = [
+    { key: "consensusRatio", label: "Accord (% traders)" },
+    { key: "volumeConcentration", label: "Concentration $" },
+    { key: "reliableAgreement", label: "Accord fiables" },
+    { key: "volume", label: "Volume total" },
+    { key: "traderCount", label: "Nb traders" }
+  ];
+  // Recomputes each of unitScoreInfo's 5 normalized factors from the FROZEN
+  // snapshot fields (sides/traderCount/totalStake) — scoreFactors itself was
+  // never saved on the snapshot, but everything it's derived from was, so
+  // this reconstructs it exactly instead of needing a schema change or
+  // re-snapshotting everything already saved.
+  function snapshotFactors(snap) {
+    if (!snap.leaderName || !snap.traderCount || !snap.totalStake) return null;
+    var leaderSide = sideByName(snap.sides, snap.leaderName);
+    if (!leaderSide || !leaderSide.traders) return null;
+    var reliableAgreeing = RELIABLE_TRADERS.reduce(function (n, name) {
+      return n + (leaderSide.traders.some(function (t) { return t.trader === name; }) ? 1 : 0);
+    }, 0);
+    var consensusRatio = snap.traderCount > 0 ? leaderSide.traderCount / snap.traderCount : 0;
+    var volumeConcentration = snap.totalStake > 0 ? leaderSide.stake / snap.totalStake : 0;
+    return {
+      consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
+      volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
+      reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement),
+      volume: normLog(snap.totalStake, SCORE_RANGES.volume),
+      traderCount: normLinear(snap.traderCount, SCORE_RANGES.traderCount)
+    };
+  }
+  function computeFactorAttribution(list) {
+    var series = { consensusRatio: [], volumeConcentration: [], reliableAgreement: [], volume: [], traderCount: [] };
+    var wins = [];
+    list.forEach(function (snap) {
+      if (!snap.winningSide) return;
+      var f = snapshotFactors(snap);
+      if (!f) return;
+      FACTOR_ATTRIBUTION_KEYS.forEach(function (fk) { series[fk.key].push(f[fk.key]); });
+      wins.push(snap.leaderName === snap.winningSide ? 1 : 0);
+    });
+    var results = FACTOR_ATTRIBUTION_KEYS.map(function (fk) {
+      return { key: fk.key, label: fk.label, r: pearsonCorrelation(series[fk.key], wins) };
+    });
+    results.sort(function (a, b) { return Math.abs(b.r || 0) - Math.abs(a.r || 0); });
+    return { results: results, n: wins.length };
+  }
+  // Which of the note's own factors actually correlates with winning, on
+  // this bankroll's real history — the note formula is one fixed guess at
+  // how to weight them; this is the after-the-fact check.
+  function renderFactorAttribution(list) {
+    if (!factorAttrContent) return;
+    var data = computeFactorAttribution(list);
+    if (data.n < 5) { factorAttrContent.innerHTML = ""; return; }
+    var rows = data.results.map(function (r) {
+      var pct = r.r == null ? 0 : Math.min(100, Math.abs(r.r) * 100);
+      var color = r.r == null ? "var(--text-dim)" : (r.r >= 0 ? "var(--green)" : "var(--red)");
+      var rLabel = r.r == null ? "—" : (r.r >= 0 ? "+" : "") + r.r.toFixed(2);
+      return '<div class="factor-attr-row" title="Corrélation de Pearson entre ce facteur (normalisé 0-1) et la victoire réelle">' +
+        '<span class="factor-attr-label">' + esc(r.label) + '</span>' +
+        '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + pct.toFixed(1) + '%;background:' + color + '"></div></div>' +
+        '<span class="factor-attr-value" style="color:' + color + '">' + rLabel + '</span>' +
+      '</div>';
+    }).join("");
+    factorAttrContent.innerHTML =
+      '<button type="button" id="factorAttrToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (factorAttrCollapsed ? "▸ Afficher l'attribution par facteur" : "▾ Réduire l'attribution par facteur") + '</button>' +
+      '<div class="tier-wr-collapse-wrap' + (factorAttrCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Attribution par facteur de score</div>' +
+      '<div class="tier-wr-subtitle">Corrélation entre chaque facteur de la note (recalculé depuis les snapshots) et la victoire réelle, sur ' + data.n + ' snapshot' + (data.n > 1 ? "s" : "") + ' décidé' + (data.n > 1 ? "s" : "") + ' — proche de 0 = ce facteur ne prédit rien</div>' +
+      rows + '</div></div>';
+  }
+  // Each decided snapshot as one point — note on x, realized ROI on y,
+  // colored by actual outcome. A cloud drifting up-right says the note
+  // really does capture value; a flat cloud says the opposite, without
+  // needing to compute anything to see it.
+  function renderNoteRoiScatter(list) {
+    if (!noteRoiContent) return;
+    var points = [];
+    list.forEach(function (snap) {
+      if (!snap.winningSide || snap.noteAtSnapshot == null) return;
+      var pnl = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+      if (pnl == null) return;
+      points.push({ note: snap.noteAtSnapshot, roi: pnl / HYPOTHETICAL_FLAT_STAKE * 100, win: snap.leaderName === snap.winningSide });
+    });
+    if (points.length < 3) { noteRoiContent.innerHTML = ""; return; }
+    var W = 1000, H = 220, padL = 50, padR = 20, padT = 16, padB = 34;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var rois = points.map(function (p) { return p.roi; });
+    var minRoi = Math.min.apply(null, rois.concat([0]));
+    var maxRoi = Math.max.apply(null, rois.concat([0]));
+    if (minRoi === maxRoi) { minRoi -= 10; maxRoi += 10; }
+    function x(note) { return padL + ((note - 1) / 9) * innerW; }
+    function y(roi) { return padT + innerH - ((roi - minRoi) / (maxRoi - minRoi)) * innerH; }
+    var dots = points.map(function (p) {
+      return '<circle cx="' + x(p.note).toFixed(2) + '" cy="' + y(p.roi).toFixed(2) + '" r="5" fill="' + (p.win ? "var(--green)" : "var(--red)") + '" opacity="0.75"><title>Note ' + p.note.toFixed(1) + ' — ROI ' + (p.roi >= 0 ? '+' : '') + p.roi.toFixed(0) + '%</title></circle>';
+    }).join("");
+    var xLabels = "";
+    for (var n = 1; n <= 10; n++) {
+      xLabels += '<text x="' + x(n).toFixed(2) + '" y="' + (H - 16) + '" font-size="10" fill="var(--text-dim)" text-anchor="middle">' + n + '</text>';
+    }
+    var yLabels = '<text x="' + (padL - 8) + '" y="' + (y(maxRoi) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + maxRoi.toFixed(0) + '%</text>' +
+      '<text x="' + (padL - 8) + '" y="' + (y(minRoi) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + minRoi.toFixed(0) + '%</text>';
+    var zeroLine = (minRoi < 0 && maxRoi > 0)
+      ? '<line x1="' + padL + '" y1="' + y(0).toFixed(2) + '" x2="' + (W - padR) + '" y2="' + y(0).toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>'
+      : "";
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + zeroLine + yLabels + xLabels + dots +
+      '<text x="' + (padL + innerW / 2) + '" y="' + (H - 4) + '" font-size="9.5" fill="var(--text-dim)" text-anchor="middle">Note au moment du snapshot</text>' +
+    '</svg>';
+    noteRoiContent.innerHTML =
+      '<button type="button" id="noteRoiToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (noteRoiCollapsed ? "▸ Afficher le nuage note × ROI" : "▾ Réduire le nuage note × ROI") + '</button>' +
+      '<div class="tier-wr-collapse-wrap' + (noteRoiCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Nuage note × ROI réalisé</div>' +
+      '<div class="tier-wr-subtitle">Un point par snapshot décidé — vert si gagné, rouge si perdu, ROI simulé à mise fixe de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '</div>' +
+      svg + '</div></div>';
+  }
   // Cumulative version of the same flat-$1000-per-pari simulation, in the
   // order the snapshots were actually saved — reuses buildHistoryChartSvg
   // (already generic over any {date, value} series) instead of a second
@@ -4114,6 +4263,8 @@
     renderSnapDashboard(list);
     renderTierWinrate(list);
     renderNoteWinrate(list);
+    renderFactorAttribution(list);
+    renderNoteRoiScatter(list);
     renderSnapPnlChart(cardsList);
     renderSnapDistribution(list);
     renderSnapStats(list);
@@ -5177,6 +5328,18 @@
     if (noteWinrateToggleBtn) {
       noteWinrateCollapsed = !noteWinrateCollapsed;
       renderNoteWinrate(loadSnapshots());
+      return;
+    }
+    var factorAttrToggleBtn = e.target.closest ? e.target.closest("#factorAttrToggleBtn") : null;
+    if (factorAttrToggleBtn) {
+      factorAttrCollapsed = !factorAttrCollapsed;
+      renderFactorAttribution(loadSnapshots());
+      return;
+    }
+    var noteRoiToggleBtn = e.target.closest ? e.target.closest("#noteRoiToggleBtn") : null;
+    if (noteRoiToggleBtn) {
+      noteRoiCollapsed = !noteRoiCollapsed;
+      renderNoteRoiScatter(loadSnapshots());
       return;
     }
     var distCell = e.target.closest ? e.target.closest(".snap-dist-cell") : null;

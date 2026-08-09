@@ -69,7 +69,20 @@ const WATCHED = [
   { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74" },
   { name: "NM-P", platform: "polymarket", address: "0xcf7379b4b891c06d88807f6f70efa75378120215" },
   { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6" },
-  { name: "newteam", platform: "polymarket", address: "0xc46368a3374e87566eff1ffae7e6ec0163509a2f" }
+  { name: "newteam", platform: "polymarket", address: "0xc46368a3374e87566eff1ffae7e6ec0163509a2f" },
+  // These 8 were added to positions.html's TRADERS in earlier sessions but
+  // never mirrored here — WATCHED had silently drifted out of sync with the
+  // site, meaning this alert script wasn't seeing their positions at all.
+  { name: "tradecraft", platform: "polymarket", address: "0xde9f7f4e77a1595623ceb58e469f776257ccd43c" },
+  { name: "anon", platform: "polymarket", address: "0x076daa87c4fe1a85402a9b6b8e0a866224388d4c" },
+  { name: "trmc", platform: "polymarket", address: "0x42c99f38d2b951b0dc8e8bd5371fa80c9dd19623" },
+  { name: "flatbarrel", platform: "polymarket", address: "0x6485f47d0344c03eb4340f985159f6eb2dcba265" },
+  { name: "homerun", platform: "polymarket", address: "0x5268527977f700f9bf9b6d5cd843859e4e70135d" },
+  { name: "malfunction", platform: "polymarket", address: "0xfc25f141ed27bb1787338d2c4e7f51e3a15e1f7f" },
+  { name: "herdonia", platform: "polymarket", address: "0xd106952ebf30a3125affd8a23b6c1f30c35fc79c" },
+  { name: "billbenter", platform: "polymarket", address: "0x84ad9c5c547a82ec9a08547b94bd922446e5bfb7" },
+  { name: "0xa697", platform: "polymarket", address: "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5" },
+  { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2" }
 ];
 
 // Curated "trusted" subset — same list and same purpose as positions.html's
