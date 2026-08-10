@@ -1,5 +1,76 @@
 [
   {
+    "id": "msndz6afr9g6nn",
+    "savedAt": "2026-08-10T15:28:33.687Z",
+    "question": "Will IF Brommapojkarna win on 2026-08-10?",
+    "leaderName": "No",
+    "leaderPriceAtSnapshot": 0.885,
+    "noteAtSnapshot": 7.1,
+    "traderCount": 5,
+    "totalStake": 18345.95034371,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 5,
+        "stake": 17581.53335176,
+        "traders": [
+          {
+            "trader": "GC-P",
+            "stake": 5900.5622557199995,
+            "avgPrice": 0.8954
+          },
+          {
+            "trader": "NM-P",
+            "stake": 5275.5006887,
+            "avgPrice": 0.8965
+          },
+          {
+            "trader": "swisstony",
+            "stake": 3924.584681,
+            "avgPrice": 0.8902
+          },
+          {
+            "trader": "VeryLucky888",
+            "stake": 1942.9257263400002,
+            "avgPrice": 0.8898
+          },
+          {
+            "trader": "meister",
+            "stake": 537.9599999999999,
+            "avgPrice": 0.8966
+          }
+        ]
+      },
+      {
+        "name": "Yes",
+        "traderCount": 2,
+        "stake": 764.41699195,
+        "traders": [
+          {
+            "trader": "NM-P",
+            "stake": 430.31340505,
+            "avgPrice": 0.1007
+          },
+          {
+            "trader": "GC-P",
+            "stake": 334.1035869,
+            "avgPrice": 0.1005
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "GC-P",
+      "NM-P",
+      "swisstony",
+      "VeryLucky888",
+      "meister"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will <b>IF Brommapojkarna</b> win on 2026-08-10?</span><svg class=\"vt-spark\" viewBox=\"0 0 44 15\" title=\"Tendance approximative sur cette session (20 points, page ouverte depuis peu) — pas un historique précis, réinitialisé à chaque rechargement\"><defs><linearGradient id=\"spark-grad-1332\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"var(--red)\" stop-opacity=\".35\"/><stop offset=\"1\" stop-color=\"var(--red)\" stop-opacity=\"0\"/></linearGradient></defs><polygon points=\"1.5,1.5 3.7,1.5 5.8,1.5 8.0,1.5 10.1,1.5 12.3,1.5 14.4,1.5 16.6,1.5 18.8,1.5 20.9,1.5 23.1,1.5 25.2,1.5 27.4,1.5 29.6,1.5 31.7,1.5 33.9,1.5 36.0,1.5 38.2,13.5 40.3,13.5 42.5,13.5 42.5,15 1.5,15\" fill=\"url(#spark-grad-1332)\"/><polyline points=\"1.5,1.5 3.7,1.5 5.8,1.5 8.0,1.5 10.1,1.5 12.3,1.5 14.4,1.5 16.6,1.5 18.8,1.5 20.9,1.5 23.1,1.5 25.2,1.5 27.4,1.5 29.6,1.5 31.7,1.5 33.9,1.5 36.0,1.5 38.2,13.5 40.3,13.5 42.5,13.5\" fill=\"none\" stroke=\"var(--red)\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span class=\"vt-leader\" style=\"--leader-color:#b91c1c\">→ No <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 88.5¢</span></span><span class=\"vt-leader-roi\" title=\"ROI si le camp majoritaire gagne, à la cote actuelle\">ROI +13%</span></span><span class=\"vt-badge-group\"><button type=\"button\" class=\"vt-follow-btn\" data-follow-key=\"polymarket|0xbfae7df0395a8e3457d826775628cdf2288c67ce7b8043f02e3799c9233e2f0d\" title=\"Ajouter aux suivis — reste visible même si le trade devient inéligible\">☆</button><span class=\"vt-score-wrap\" title=\"Note du trade : 7.1/10 — volume, nb de traders, accord entre eux, accord des traders fiables\"><span class=\"vt-score-num\" style=\"color:hsl(75,75%,36%);background:color-mix(in srgb, hsl(75,75%,36%) 14%, transparent);box-shadow:0 0 12px color-mix(in srgb, hsl(75,75%,36%) 50%, transparent)\">7.1</span><div class=\"vt-score-breakdown\"><div class=\"vt-score-breakdown-title\">Note 7.1/10 — détail</div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Accord (% traders)</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:100%;background:hsl(75,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+2.3</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Concentration $</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:92%;background:hsl(75,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+2.0</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Accord fiables</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:33%;background:hsl(75,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.7</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Volume total</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:64%;background:hsl(75,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.9</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Nb traders suivis</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:20%;background:hsl(75,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.2</span></div></div></span><button type=\"button\" class=\"vt-trash-btn\" data-trash-key=\"polymarket|0xbfae7df0395a8e3457d826775628cdf2288c67ce7b8043f02e3799c9233e2f0d\" title=\"Mettre ce trade à la corbeille\">🗑</button></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/swe-sir-bro-2026-08-10\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Consensus</span><div class=\"consensus-gauge-wrap\"><div class=\"consensus-gauge\"><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg\"></div><div class=\"consensus-seg\"></div></div><span class=\"consensus-count\">5/7</span></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:95.83%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 17 581,53 $ / 18 345,95 $ (96%)</div></div><div class=\"bal-seg\" style=\"width:4.17%;background:repeating-linear-gradient(45deg, var(--red), var(--red) 5px, color-mix(in srgb, var(--red) 72%, black) 5px, color-mix(in srgb, var(--red) 72%, black) 10px)\"><div class=\"bal-tooltip\">Yes — mise 764,42 $ / 18 345,95 $ (4%)</div></div><div class=\"bal-tick\" style=\"left:95.83%\"></div></div></div></div><div class=\"vt-bottom-row\"><span class=\"vt-bottom-meta\"><span class=\"vt-bottom-traders\"><b class=\"vt-bottom-traders-num\">5</b> traders</span><span class=\"vt-badge-sep\">·</span><span class=\"vt-bottom-stake\">18 345,95 $</span></span></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#b91c1c\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span> <b>No</b> — 5 traders · 17 581,53 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 88.5¢</span> · ROI +12.99%</span><span class=\"vt-sides-legend-item\" style=\"color:#15803d\"><span class=\"vt-row-marker\" style=\"background:#15803d\">Y</span> <b>Yes</b> — 2 traders · 764,42 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 11.5¢</span> · ROI +769.57%</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#b91c1c\"></div></div><span class=\"vt-trader-row-right\"><b>5 900,56 $</b> @ 89.5¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:89.4%;background:#b91c1c\"></div></div><span class=\"vt-trader-row-right\"><b>5 275,50 $</b> @ 89.6¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:66.5%;background:#b91c1c\"></div></div><span class=\"vt-trader-row-right\"><b>3 924,58 $</b> @ 89.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:32.9%;background:#b91c1c\"></div></div><span class=\"vt-trader-row-right\"><b>1 942,93 $</b> @ 89.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"meister\">meister</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(66,62%,35%);border-color:hsl(66,62%,35%)\" title=\"Note qualite : 6.5/10\">6.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:9.1%;background:#b91c1c\"></div></div><span class=\"vt-trader-row-right\"><b>537,96 $</b> @ 89.7¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#15803d\">Y</span><span class=\"vt-trader-row-name vt-trader-row-name-marginal\"><span class=\"vt-trader-row-name-text\" title=\"NM-P — position marginale ici, camp principal sur l'autre côté\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:7.3%;background:#15803d\"></div></div><span class=\"vt-trader-row-right\"><b>430,31 $</b> @ 10.1¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#15803d\">Y</span><span class=\"vt-trader-row-name vt-trader-row-name-marginal\"><span class=\"vt-trader-row-name-text\" title=\"GC-P — position marginale ici, camp principal sur l'autre côté\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:5.7%;background:#15803d\"></div></div><span class=\"vt-trader-row-right\"><b>334,10 $</b> @ 10.1¢</span></div></div></div>",
+    "winningSide": null,
+    "confidence": null
+  },
+  {
     "id": "msn94fcc994y91",
     "savedAt": "2026-08-10T13:12:40.620Z",
     "question": "Will Djurgardens IF win on 2026-08-10?",
