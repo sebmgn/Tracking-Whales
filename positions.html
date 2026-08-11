@@ -1084,10 +1084,6 @@
   .tier-wr-count { flex: 0 0 auto; min-width: 78px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .tier-wr-roi { font-style: italic; font-size: 10.5px; font-weight: 400; color: var(--text-dim); }
-  .factor-attr-row { display: flex; align-items: center; gap: 12px; margin-bottom: 9px; }
-  .factor-attr-row:last-child { margin-bottom: 0; }
-  .factor-attr-label { flex: 0 0 128px; font-size: 12px; color: var(--text-dim); }
-  .factor-attr-value { flex: 0 0 44px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
   /* Same visual language as .tier-wr-* above (winrate-by-conviction), under
      its own class namespace — this gauge is keyed by cumulative note
@@ -1264,6 +1260,14 @@
   .chart-pt-clickable { transition: r .15s ease, stroke-width .15s ease; r: 5.5; }
   .chart-pt-clickable:hover { r: 14; stroke-width: 3; }
   .chart-hint { font-size: 10.5px; color: var(--text-dim); text-align: right; margin: 2px 2px 0; }
+  /* Three plain selects, deliberately — a full button-group per filter
+     would be wider than the chart itself once all three sit side by side. */
+  .pnl-chart-filters { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 10px; }
+  .pnl-chart-filters label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-dim); }
+  .pnl-chart-filters select {
+    font: inherit; font-size: 11.5px; color: var(--text); background: var(--panel);
+    border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 3px 6px;
+  }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
   .snap-item-highlight {
@@ -1439,7 +1443,6 @@
     <div id="snapDashboard"></div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
-    <div id="factorAttrContent"></div>
     <div id="noteRoiContent"></div>
     <div id="snapDistContent"></div>
     <div id="snapStatsContent"></div>
@@ -1588,7 +1591,6 @@
   var snapDashboard = document.getElementById("snapDashboard");
   var tierWinrateContent = document.getElementById("tierWinrateContent");
   var noteWinrateContent = document.getElementById("noteWinrateContent");
-  var factorAttrContent = document.getElementById("factorAttrContent");
   var noteRoiContent = document.getElementById("noteRoiContent");
   var snapPnlChartContent = document.getElementById("snapPnlChartContent");
   var snapDistContent = document.getElementById("snapDistContent");
@@ -1745,7 +1747,6 @@
   var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
   var tierWinrateCollapsed = true; // winrate-by-conviction gauge — same optional/collapsed-by-default pattern
   var noteWinrateCollapsed = true; // winrate-by-note-threshold gauge — same optional/collapsed-by-default pattern
-  var factorAttrCollapsed = true; // factor-vs-win correlation bars — same optional/collapsed-by-default pattern
   var noteRoiCollapsed = true; // note x realized-ROI scatter — same optional/collapsed-by-default pattern
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
@@ -3825,6 +3826,14 @@
   // multi-select combination; click the active row again to clear it, same
   // as snapDistCellFilter.
   var noteCardFilter = null;
+  // Dedicated to the "Évolution du PnL simulé" curve only — deliberately
+  // separate from tierCardFilter/snapDistCellFilter/noteCardFilter above,
+  // which narrow the snapshot CARD LIST below. Refining the curve shouldn't
+  // also hide/show cards, and vice versa — two different questions ("what
+  // does my curve look like under X" vs "show me only X's cards").
+  var pnlChartOddsFilter = null; // one of DIST_ODDS_BUCKETS, or null = all
+  var pnlChartTierFilter = null; // one of CONFIDENCE_TIERS, or null = all
+  var pnlChartDays = null; // lookback window in days (7/30/90), or null = all time
   function computeNoteWinrates(list) {
     var byBin = {};
     NOTE_WR_BINS.forEach(function (b) { byBin[b[0]] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
@@ -3879,89 +3888,6 @@
       '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
   }
-  // Standard Pearson correlation coefficient — used below to answer "does
-  // this factor actually predict the win", not just "how big does it look".
-  function pearsonCorrelation(xs, ys) {
-    var n = xs.length;
-    if (n < 3) return null; // too few points for a correlation to mean anything
-    var meanX = xs.reduce(function (a, b) { return a + b; }, 0) / n;
-    var meanY = ys.reduce(function (a, b) { return a + b; }, 0) / n;
-    var num = 0, denX = 0, denY = 0;
-    for (var i = 0; i < n; i++) {
-      var dx = xs[i] - meanX, dy = ys[i] - meanY;
-      num += dx * dy; denX += dx * dx; denY += dy * dy;
-    }
-    if (denX === 0 || denY === 0) return null;
-    return num / Math.sqrt(denX * denY);
-  }
-  var FACTOR_ATTRIBUTION_KEYS = [
-    { key: "consensusRatio", label: "Accord (% traders)" },
-    { key: "volumeConcentration", label: "Concentration $" },
-    { key: "reliableAgreement", label: "Accord fiables" },
-    { key: "volume", label: "Volume total" },
-    { key: "traderCount", label: "Nb traders" }
-  ];
-  // Recomputes each of unitScoreInfo's 5 normalized factors from the FROZEN
-  // snapshot fields (sides/traderCount/totalStake) — scoreFactors itself was
-  // never saved on the snapshot, but everything it's derived from was, so
-  // this reconstructs it exactly instead of needing a schema change or
-  // re-snapshotting everything already saved.
-  function snapshotFactors(snap) {
-    if (!snap.leaderName || !snap.traderCount || !snap.totalStake) return null;
-    var leaderSide = sideByName(snap.sides, snap.leaderName);
-    if (!leaderSide || !leaderSide.traders) return null;
-    var reliableAgreeing = RELIABLE_TRADERS.reduce(function (n, name) {
-      return n + (leaderSide.traders.some(function (t) { return t.trader === name; }) ? 1 : 0);
-    }, 0);
-    var consensusRatio = snap.traderCount > 0 ? leaderSide.traderCount / snap.traderCount : 0;
-    var volumeConcentration = snap.totalStake > 0 ? leaderSide.stake / snap.totalStake : 0;
-    return {
-      consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
-      volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
-      reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement),
-      volume: normLog(snap.totalStake, SCORE_RANGES.volume),
-      traderCount: normLinear(snap.traderCount, SCORE_RANGES.traderCount)
-    };
-  }
-  function computeFactorAttribution(list) {
-    var series = { consensusRatio: [], volumeConcentration: [], reliableAgreement: [], volume: [], traderCount: [] };
-    var wins = [];
-    list.forEach(function (snap) {
-      if (!snap.winningSide) return;
-      var f = snapshotFactors(snap);
-      if (!f) return;
-      FACTOR_ATTRIBUTION_KEYS.forEach(function (fk) { series[fk.key].push(f[fk.key]); });
-      wins.push(snap.leaderName === snap.winningSide ? 1 : 0);
-    });
-    var results = FACTOR_ATTRIBUTION_KEYS.map(function (fk) {
-      return { key: fk.key, label: fk.label, r: pearsonCorrelation(series[fk.key], wins) };
-    });
-    results.sort(function (a, b) { return Math.abs(b.r || 0) - Math.abs(a.r || 0); });
-    return { results: results, n: wins.length };
-  }
-  // Which of the note's own factors actually correlates with winning, on
-  // this bankroll's real history — the note formula is one fixed guess at
-  // how to weight them; this is the after-the-fact check.
-  function renderFactorAttribution(list) {
-    if (!factorAttrContent) return;
-    var data = computeFactorAttribution(list);
-    if (data.n < 5) { factorAttrContent.innerHTML = ""; return; }
-    var rows = data.results.map(function (r) {
-      var pct = r.r == null ? 0 : Math.min(100, Math.abs(r.r) * 100);
-      var color = r.r == null ? "var(--text-dim)" : (r.r >= 0 ? "var(--green)" : "var(--red)");
-      var rLabel = r.r == null ? "—" : (r.r >= 0 ? "+" : "") + r.r.toFixed(2);
-      return '<div class="factor-attr-row" title="Corrélation de Pearson entre ce facteur (normalisé 0-1) et la victoire réelle">' +
-        '<span class="factor-attr-label">' + esc(r.label) + '</span>' +
-        '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + pct.toFixed(1) + '%;background:' + color + '"></div></div>' +
-        '<span class="factor-attr-value" style="color:' + color + '">' + rLabel + '</span>' +
-      '</div>';
-    }).join("");
-    factorAttrContent.innerHTML =
-      '<button type="button" id="factorAttrToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (factorAttrCollapsed ? "▸ Afficher l'attribution par facteur" : "▾ Réduire l'attribution par facteur") + '</button>' +
-      '<div class="tier-wr-collapse-wrap' + (factorAttrCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Attribution par facteur de score</div>' +
-      '<div class="tier-wr-subtitle">Corrélation entre chaque facteur de la note (recalculé depuis les snapshots) et la victoire réelle, sur ' + data.n + ' snapshot' + (data.n > 1 ? "s" : "") + ' décidé' + (data.n > 1 ? "s" : "") + ' — proche de 0 = ce facteur ne prédit rien</div>' +
-      rows + '</div></div>';
-  }
   // Each decided snapshot as one point — note on x, realized ROI on y,
   // colored by actual outcome. A cloud drifting up-right says the note
   // really does capture value; a flat cloud says the opposite, without
@@ -4013,11 +3939,27 @@
   // isolates this curve to that tier exactly like it does the card list
   // below, rather than the tier gauge above (which deliberately always
   // shows every tier so its own bars don't collapse to 100% on click).
+  // "Tout" (null) plus the fixed lookback windows offered on the curve's
+  // own time control — kept short since this is meant to be a quick,
+  // low-friction toggle, not a full date-range picker.
+  var PNL_CHART_DAY_OPTIONS = [7, 30, 90];
   function renderSnapPnlChart(cardsList) {
     if (!snapPnlChartContent) return;
-    var decided = cardsList.filter(function (s) { return !!s.winningSide; })
-      .slice()
-      .sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    var decidedAll = cardsList.filter(function (s) { return !!s.winningSide; });
+    // Independent of tierCardFilter/snapDistCellFilter/noteCardFilter above
+    // (those narrow the card list below) — these three only ever touch this
+    // curve, so exploring "what did my football-tier-A bets do in the last
+    // 30 days" never hides/shows anything in the list underneath.
+    var decidedFiltered = decidedAll.filter(function (s) {
+      if (pnlChartTierFilter && s.confidence !== pnlChartTierFilter) return false;
+      if (pnlChartOddsFilter && !snapMatchesDistCell(s, pnlChartOddsFilter, null)) return false;
+      if (pnlChartDays != null) {
+        var cutoff = Date.now() - pnlChartDays * 86400000;
+        if (new Date(s.savedAt).getTime() < cutoff) return false;
+      }
+      return true;
+    });
+    var decided = decidedFiltered.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
     var cum = 0;
     var series = [];
     decided.forEach(function (snap) {
@@ -4035,13 +3977,59 @@
       // flashy win/loss read at a glance.
       series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#00e676" : "#ff1744" });
     });
-    if (series.length < 2) { snapPnlChartContent.innerHTML = ""; return; }
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
+    var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
+      var sel = pnlChartOddsFilter && pnlChartOddsFilter[0] === b[0] && pnlChartOddsFilter[1] === b[1] ? ' selected' : '';
+      return '<option value="' + b[0] + '-' + b[1] + '"' + sel + '>' + b[0] + '–' + b[1] + '¢</option>';
+    }).join("");
+    var tierOptionsHtml = '<option value="">Toutes</option>' + CONFIDENCE_TIERS.map(function (t) {
+      return '<option value="' + esc(t) + '"' + (pnlChartTierFilter === t ? ' selected' : '') + '>' + esc(t) + '</option>';
+    }).join("");
+    var timeOptionsHtml = '<option value=""' + (pnlChartDays == null ? ' selected' : '') + '>Tout</option>' + PNL_CHART_DAY_OPTIONS.map(function (d) {
+      return '<option value="' + d + '"' + (pnlChartDays === d ? ' selected' : '') + '>' + d + ' j</option>';
+    }).join("");
+    var controlsHtml = '<div class="pnl-chart-filters">' +
+      '<label>Cote <select id="pnlChartOddsSelect">' + oddsOptionsHtml + '</select></label>' +
+      '<label>Confiance <select id="pnlChartTierSelect">' + tierOptionsHtml + '</select></label>' +
+      '<label>Période <select id="pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
+    '</div>';
+    if (series.length < 2) {
+      snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
+        '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + controlsHtml +
+        '<div class="empty-note" style="padding:14px 0;">Pas assez de snapshots décidés pour ces critères.</div></div>';
+      wirePnlChartFilterControls(cardsList);
+      return;
+    }
     snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
-      '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' +
+      '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + controlsHtml +
       buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div></div>';
+    wirePnlChartFilterControls(cardsList);
     var box = document.getElementById("snapPnlChartBox");
     if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box); }
+  }
+  // Re-attached on every render (the selects are rebuilt from scratch each
+  // time, same as everything else in this box) — plain `change` listeners,
+  // no delegation needed since there's only ever one of each on the page.
+  // Re-renders with the SAME cardsList the current chart was built from
+  // (captured via closure, not re-derived), since these three filters only
+  // narrow within that pool, never change what pool it is.
+  function wirePnlChartFilterControls(cardsList) {
+    var oddsSelect = document.getElementById("pnlChartOddsSelect");
+    var tierSelect = document.getElementById("pnlChartTierSelect");
+    var timeSelect = document.getElementById("pnlChartTimeSelect");
+    if (oddsSelect) oddsSelect.addEventListener("change", function () {
+      var v = oddsSelect.value;
+      pnlChartOddsFilter = v ? v.split("-").map(Number) : null;
+      renderSnapPnlChart(cardsList);
+    });
+    if (tierSelect) tierSelect.addEventListener("change", function () {
+      pnlChartTierFilter = tierSelect.value || null;
+      renderSnapPnlChart(cardsList);
+    });
+    if (timeSelect) timeSelect.addEventListener("change", function () {
+      pnlChartDays = timeSelect.value ? Number(timeSelect.value) : null;
+      renderSnapPnlChart(cardsList);
+    });
   }
   // Clicking a point jumps to (and highlights) the matching snapshot card
   // below; clicking that same point again undoes it — removes the
@@ -4288,7 +4276,6 @@
     renderSnapDashboard(list);
     renderTierWinrate(list);
     renderNoteWinrate(list);
-    renderFactorAttribution(list);
     renderNoteRoiScatter(list);
     renderSnapPnlChart(cardsList);
     renderSnapDistribution(list);
@@ -5428,12 +5415,6 @@
     if (noteWinrateToggleBtn) {
       noteWinrateCollapsed = !noteWinrateCollapsed;
       renderNoteWinrate(loadSnapshots());
-      return;
-    }
-    var factorAttrToggleBtn = e.target.closest ? e.target.closest("#factorAttrToggleBtn") : null;
-    if (factorAttrToggleBtn) {
-      factorAttrCollapsed = !factorAttrCollapsed;
-      renderFactorAttribution(loadSnapshots());
       return;
     }
     var noteRoiToggleBtn = e.target.closest ? e.target.closest("#noteRoiToggleBtn") : null;
