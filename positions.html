@@ -1268,6 +1268,15 @@
     font: inherit; font-size: 11.5px; color: var(--text); background: var(--panel);
     border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 3px 6px;
   }
+  /* Realized PnL + avg ROI for whatever the 4 selects above currently
+     narrow the curve to — lives beside the title so it reads as "here's
+     the number for the view you just set", not a separate stat block. */
+  .pnl-chart-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .pnl-chart-header .tier-wr-title { margin-bottom: 0; }
+  .pnl-chart-stats { display: flex; gap: 20px; }
+  .pnl-chart-stat { text-align: right; }
+  .pnl-chart-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); margin-bottom: 2px; }
+  .pnl-chart-stat-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
   .snap-item-highlight {
@@ -3834,6 +3843,7 @@
   var pnlChartOddsFilter = null; // one of DIST_ODDS_BUCKETS, or null = all
   var pnlChartTierFilter = null; // one of CONFIDENCE_TIERS, or null = all
   var pnlChartDays = null; // lookback window in days (7/30/90), or null = all time
+  var pnlChartNoteFilter = null; // one of NOTE_WR_BINS' bin-min values, or null = all
   function computeNoteWinrates(list) {
     var byBin = {};
     NOTE_WR_BINS.forEach(function (b) { byBin[b[0]] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
@@ -3950,9 +3960,12 @@
     // (those narrow the card list below) — these three only ever touch this
     // curve, so exploring "what did my football-tier-A bets do in the last
     // 30 days" never hides/shows anything in the list underneath.
+    var activeNoteBin = pnlChartNoteFilter != null ? NOTE_WR_BINS.filter(function (b) { return b[0] === pnlChartNoteFilter; })[0] : null;
+    var activeNoteBinIsLast = pnlChartNoteFilter != null && NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === pnlChartNoteFilter;
     var decidedFiltered = decidedAll.filter(function (s) {
       if (pnlChartTierFilter && s.confidence !== pnlChartTierFilter) return false;
       if (pnlChartOddsFilter && !snapMatchesDistCell(s, pnlChartOddsFilter, null)) return false;
+      if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
       if (pnlChartDays != null) {
         var cutoff = Date.now() - pnlChartDays * 86400000;
         if (new Date(s.savedAt).getTime() < cutoff) return false;
@@ -3985,23 +3998,39 @@
     var tierOptionsHtml = '<option value="">Toutes</option>' + CONFIDENCE_TIERS.map(function (t) {
       return '<option value="' + esc(t) + '"' + (pnlChartTierFilter === t ? ' selected' : '') + '>' + esc(t) + '</option>';
     }).join("");
+    var noteOptionsHtml = '<option value="">Toutes</option>' + NOTE_WR_BINS.map(function (b) {
+      var sel = pnlChartNoteFilter === b[0] ? ' selected' : '';
+      return '<option value="' + b[0] + '"' + sel + '>' + b[0] + '–' + b[1] + '</option>';
+    }).join("");
     var timeOptionsHtml = '<option value=""' + (pnlChartDays == null ? ' selected' : '') + '>Tout</option>' + PNL_CHART_DAY_OPTIONS.map(function (d) {
       return '<option value="' + d + '"' + (pnlChartDays === d ? ' selected' : '') + '>' + d + ' j</option>';
     }).join("");
     var controlsHtml = '<div class="pnl-chart-filters">' +
       '<label>Cote <select id="pnlChartOddsSelect">' + oddsOptionsHtml + '</select></label>' +
       '<label>Confiance <select id="pnlChartTierSelect">' + tierOptionsHtml + '</select></label>' +
+      '<label>Note <select id="pnlChartNoteSelect">' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
     '</div>';
+    // Realized PnL / avg ROI for the exact subset the 4 selects above
+    // currently resolve to — same cumulative total already plotted
+    // (series' last point) and the same avg-ROI formula used everywhere
+    // else (globalRoi in renderSnapDashboard, cellRoi in the odds table).
+    var statsTotalPnl = series.length ? series[series.length - 1].value : null;
+    var statsAvgRoi = series.length ? (statsTotalPnl / (series.length * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+    var statsHtml = '<div class="pnl-chart-stats">' +
+      '<div class="pnl-chart-stat"><div class="pnl-chart-stat-label">PnL réalisé</div><div class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</div></div>' +
+      '<div class="pnl-chart-stat"><div class="pnl-chart-stat-label">ROI moyen / pari</div><div class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</div></div>' +
+    '</div>';
+    var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     if (series.length < 2) {
       snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
-        '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + controlsHtml +
+        headerHtml + controlsHtml +
         '<div class="empty-note" style="padding:14px 0;">Pas assez de snapshots décidés pour ces critères.</div></div>';
       wirePnlChartFilterControls(cardsList);
       return;
     }
     snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
-      '<div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + controlsHtml +
+      headerHtml + controlsHtml +
       buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div></div>';
     wirePnlChartFilterControls(cardsList);
     var box = document.getElementById("snapPnlChartBox");
@@ -4016,6 +4045,7 @@
   function wirePnlChartFilterControls(cardsList) {
     var oddsSelect = document.getElementById("pnlChartOddsSelect");
     var tierSelect = document.getElementById("pnlChartTierSelect");
+    var noteSelect = document.getElementById("pnlChartNoteSelect");
     var timeSelect = document.getElementById("pnlChartTimeSelect");
     if (oddsSelect) oddsSelect.addEventListener("change", function () {
       var v = oddsSelect.value;
@@ -4024,6 +4054,10 @@
     });
     if (tierSelect) tierSelect.addEventListener("change", function () {
       pnlChartTierFilter = tierSelect.value || null;
+      renderSnapPnlChart(cardsList);
+    });
+    if (noteSelect) noteSelect.addEventListener("change", function () {
+      pnlChartNoteFilter = noteSelect.value ? Number(noteSelect.value) : null;
       renderSnapPnlChart(cardsList);
     });
     if (timeSelect) timeSelect.addEventListener("change", function () {
