@@ -1268,15 +1268,24 @@
     font: inherit; font-size: 11.5px; color: var(--text); background: var(--panel);
     border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 3px 6px;
   }
-  /* Realized PnL + avg ROI for whatever the 4 selects above currently
-     narrow the curve to — lives beside the title so it reads as "here's
-     the number for the view you just set", not a separate stat block. */
+  /* Realized PnL / avg ROI / trade count for whatever the 4 selects above
+     currently narrow the curve to — lives beside the title so it reads as
+     "here's the numbers for the view you just set". A small table rather
+     than side-by-side tiles so the 3 figures read as one consolidated
+     readout, same header/value rhythm as the rest of the panel (uppercase
+     dim labels, bold tabular-nums values). */
   .pnl-chart-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
   .pnl-chart-header .tier-wr-title { margin-bottom: 0; }
-  .pnl-chart-stats { display: flex; gap: 20px; }
-  .pnl-chart-stat { text-align: right; }
-  .pnl-chart-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); margin-bottom: 2px; }
-  .pnl-chart-stat-value { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pnl-chart-stats-table { border-collapse: collapse; }
+  .pnl-chart-stats-table th {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim);
+    font-weight: 600; text-align: right; white-space: nowrap; padding: 0 0 3px 16px;
+  }
+  .pnl-chart-stats-table td {
+    font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
+    white-space: nowrap; padding: 3px 0 0 16px; border-top: 1px solid var(--panel-border);
+  }
+  .pnl-chart-stats-table th:first-child, .pnl-chart-stats-table td:first-child { padding-left: 0; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
   .snap-item-highlight {
@@ -4015,12 +4024,16 @@
     // currently resolve to — same cumulative total already plotted
     // (series' last point) and the same avg-ROI formula used everywhere
     // else (globalRoi in renderSnapDashboard, cellRoi in the odds table).
-    var statsTotalPnl = series.length ? series[series.length - 1].value : null;
-    var statsAvgRoi = series.length ? (statsTotalPnl / (series.length * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
-    var statsHtml = '<div class="pnl-chart-stats">' +
-      '<div class="pnl-chart-stat"><div class="pnl-chart-stat-label">PnL réalisé</div><div class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</div></div>' +
-      '<div class="pnl-chart-stat"><div class="pnl-chart-stat-label">ROI moyen / pari</div><div class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</div></div>' +
-    '</div>';
+    var statsCount = series.length;
+    var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
+    var statsAvgRoi = statsCount ? (statsTotalPnl / (statsCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+    var statsHtml = '<table class="pnl-chart-stats-table"><thead><tr>' +
+      '<th>Nb de trades</th><th>PnL réalisé</th><th>ROI moyen / pari</th>' +
+      '</tr></thead><tbody><tr>' +
+      '<td>' + (statsCount || "—") + '</td>' +
+      '<td class="' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</td>' +
+      '<td class="' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</td>' +
+    '</tr></tbody></table>';
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     if (series.length < 2) {
       snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
