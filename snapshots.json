@@ -1,5 +1,65 @@
 [
   {
+    "id": "msp6r7ijf78fk2",
+    "savedAt": "2026-08-11T21:41:57.067Z",
+    "question": "Fluminense FC vs. CS Independiente Rivadavia: O/U 2.5",
+    "leaderName": "Under",
+    "leaderPriceAtSnapshot": 0.635,
+    "noteAtSnapshot": 7.5,
+    "traderCount": 5,
+    "totalStake": 26197.054808779998,
+    "sides": [
+      {
+        "name": "Under",
+        "traderCount": 5,
+        "stake": 26197.054808779998,
+        "traders": [
+          {
+            "trader": "uptheblues",
+            "stake": 13264.59568,
+            "avgPrice": 0.6298
+          },
+          {
+            "trader": "RN1",
+            "stake": 6299,
+            "avgPrice": 0.6299
+          },
+          {
+            "trader": "swisstony",
+            "stake": 4052.29831693,
+            "avgPrice": 0.6299
+          },
+          {
+            "trader": "GC-P",
+            "stake": 1311.1608118499998,
+            "avgPrice": 0.6345
+          },
+          {
+            "trader": "NM-P",
+            "stake": 1270,
+            "avgPrice": 0.635
+          }
+        ]
+      },
+      {
+        "name": "Over",
+        "traderCount": 0,
+        "stake": 0,
+        "traders": []
+      }
+    ],
+    "traderNames": [
+      "uptheblues",
+      "RN1",
+      "swisstony",
+      "GC-P",
+      "NM-P"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Fluminense FC vs. CS Independiente Rivadavia: O/U 2.5</span><svg class=\"vt-spark\" viewBox=\"0 0 44 15\" title=\"Tendance approximative sur cette session (5 points, page ouverte depuis peu) — pas un historique précis, réinitialisé à chaque rechargement\"><defs><linearGradient id=\"spark-grad-1100\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"var(--green)\" stop-opacity=\".35\"/><stop offset=\"1\" stop-color=\"var(--green)\" stop-opacity=\"0\"/></linearGradient></defs><polygon points=\"1.5,13.5 11.8,13.5 22.0,1.5 32.3,1.5 42.5,1.5 42.5,15 1.5,15\" fill=\"url(#spark-grad-1100)\"/><polyline points=\"1.5,13.5 11.8,13.5 22.0,1.5 32.3,1.5 42.5,1.5\" fill=\"none\" stroke=\"var(--green)\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span class=\"vt-leader\" style=\"--leader-color:#96742c\">→ Under <span class=\"vt-leader-price\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">@ 63.5¢</span></span><span class=\"vt-leader-roi\" title=\"ROI si le camp majoritaire gagne, à la cote actuelle\">ROI +57%</span></span><span class=\"vt-badge-group\"><button type=\"button\" class=\"vt-follow-btn\" data-follow-key=\"polymarket|0xee8c57fa406c94bc6f326c9d278e4333f4542bc3d7c45bca981c6db6c7b3f9f9\" title=\"Ajouter aux suivis — reste visible même si le trade devient inéligible\">☆</button><span class=\"vt-score-wrap\" title=\"Note du trade : 7.5/10 — volume, nb de traders, accord entre eux, accord des traders fiables\"><span class=\"vt-score-num\" style=\"color:hsl(84,75%,36%);background:color-mix(in srgb, hsl(84,75%,36%) 14%, transparent);box-shadow:0 0 12px color-mix(in srgb, hsl(84,75%,36%) 50%, transparent)\">7.5</span><div class=\"vt-score-breakdown\"><div class=\"vt-score-breakdown-title\">Note 7.5/10 — détail</div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Accord (% traders)</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:100%;background:hsl(84,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+2.3</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Concentration $</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:100%;background:hsl(84,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+2.2</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Accord fiables</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:33%;background:hsl(84,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.7</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Volume total</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:77%;background:hsl(84,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+1.1</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Nb traders suivis</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:20%;background:hsl(84,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.2</span></div></div></span><button type=\"button\" class=\"vt-trash-btn\" data-trash-key=\"polymarket|0xee8c57fa406c94bc6f326c9d278e4333f4542bc3d7c45bca981c6db6c7b3f9f9\" title=\"Mettre ce trade à la corbeille\">🗑</button></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/lib-flu-cir-2026-08-11-more-markets\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Consensus</span><div class=\"consensus-gauge-wrap\"><div class=\"consensus-gauge\"><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div></div><span class=\"consensus-count\">5/5</span></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:100.00%;background:var(--green)\"><div class=\"bal-tooltip\">Under — mise 26 197,05 $ / 26 197,05 $ (100%)</div></div><div class=\"bal-seg\" style=\"width:0.00%;background:repeating-linear-gradient(45deg, var(--red), var(--red) 5px, color-mix(in srgb, var(--red) 72%, black) 5px, color-mix(in srgb, var(--red) 72%, black) 10px)\"><div class=\"bal-tooltip\">Over — mise 0,00 $ / 26 197,05 $ (0%)</div></div></div></div></div><div class=\"vt-bottom-row\"><span class=\"vt-bottom-meta\"><span class=\"vt-bottom-traders\"><b class=\"vt-bottom-traders-num\">5</b> traders</span><span class=\"vt-badge-sep\">·</span><span class=\"vt-bottom-stake\">26 197,05 $</span></span></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#96742c\"><span class=\"vt-row-marker\" style=\"background:#96742c\">U</span> <b>Under</b> — 5 traders · 26 197,05 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 63.5¢</span> · ROI +57.48%</span><span class=\"vt-sides-legend-item\" style=\"color:#5b3a8f\"><span class=\"vt-row-marker\" style=\"background:#5b3a8f\">O</span> <b>Over</b> — 0 trader · 0,00 $</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"uptheblues\">uptheblues</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(56,62%,35%);border-color:hsl(56,62%,35%)\" title=\"Note qualite : 6/10\">6</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>13 264,60 $</b> @ 63.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"RN1\">RN1</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(119,62%,35%);border-color:hsl(119,62%,35%)\" title=\"Note qualite : 9/10\">9</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:47.5%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>6 299,00 $</b> @ 63.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"swisstony\">swisstony</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(129,62%,35%);border-color:hsl(129,62%,35%)\" title=\"Note qualite : 9.5/10\">9.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:30.5%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>4 052,30 $</b> @ 63.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:9.9%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>1 311,16 $</b> @ 63.4¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#96742c\">U</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"NM-P\">NM-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:9.6%;background:#96742c\"></div></div><span class=\"vt-trader-row-right\"><b>1 270,00 $</b> @ 63.5¢</span></div></div></div>",
+    "winningSide": null,
+    "confidence": null
+  },
+  {
     "id": "msp6d8fl0jhzt1",
     "savedAt": "2026-08-11T21:31:05.073Z",
     "question": "Will FC Juárez win on 2026-08-11?",
