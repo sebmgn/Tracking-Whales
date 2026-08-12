@@ -11,6 +11,12 @@
     "side": "No",
     "note": 7.2
   },
+  "polymarket|0xb2afb6bb007692670d002c490417505911317633dbd354c692b0950cfea1302c": {
+    "firstSeen": "2026-08-12T00:01:33.778Z",
+    "question": "Will Club Bolívar win on 2026-08-11?",
+    "side": "Yes",
+    "note": 7.6
+  },
   "polymarket|0xee8c57fa406c94bc6f326c9d278e4333f4542bc3d7c45bca981c6db6c7b3f9f9": {
     "firstSeen": "2026-08-11T21:30:35.924Z",
     "question": "Fluminense FC vs. CS Independiente Rivadavia: O/U 2.5",
