@@ -448,12 +448,18 @@
   /* Cote + ROI as two fixed-width columns (see statsHtml in
      computeUnitCardParts) — the whole point is that these line up down the
      list regardless of question/leader-name length, so the width is a hard
-     flex-basis, not content-driven. Right-aligned so the digits themselves
-     line up too, not just the boxes. */
-  .vt-top-stats { display: flex; align-items: center; gap: 10px; flex: none; }
+     flex-basis, not content-driven. Pulled in close to the leader badge
+     (negative margin, see below) since cote is really an extension of "what
+     that badge is telling you", not an unrelated stat living way off to
+     the side. */
+  .vt-top-stats { display: flex; align-items: center; gap: 10px; flex: none; margin-left: -6px; }
+  /* Same "mini-card" treatment as .vt-leader just above it (light panel
+     fill, hairline border, tight radius) — cote reads as a continuation of
+     that badge rather than a disconnected number. */
   .vt-stat-odds {
-    flex: 0 0 50px; text-align: right; font-size: 12px; color: var(--text-dim);
+    flex: 0 0 54px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text);
     font-variant-numeric: tabular-nums; white-space: nowrap;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 6px; padding: 3px 4px;
   }
   .vt-stat-roi {
     flex: 0 0 52px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text);
@@ -791,7 +797,7 @@
   .vt-score-num {
     font-family: "Times New Roman", Times, Georgia, serif;
     font-style: italic;
-    font-size: 22px;
+    font-size: 30px;
     font-weight: 900;
     line-height: 1;
     font-variant-numeric: tabular-nums;
