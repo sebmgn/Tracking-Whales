@@ -859,6 +859,8 @@
     font-size: 12.5px; color: var(--text);
   }
   .vt-dense-live { flex: none; font-size: 10px; }
+  .vt-dense-odds { flex: none; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .vt-dense-roi { color: var(--text); font-weight: 700; }
   .vt-dense-meta { flex: none; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .vt-dense-score {
     flex: none; font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 900;
@@ -1000,7 +1002,7 @@
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn {
+  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-restore-btn, .snap-purge-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     padding: 5px 12px;
@@ -1010,7 +1012,7 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover { border-color: var(--accent); }
+  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover { border-color: var(--accent); }
   .snap-side-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
   /* Generic fallback when no tracked trader ever held the other side, so
      its real name is unknown — dashed + italic marks it as "not a real
@@ -1018,6 +1020,9 @@
   .snap-side-btn.snap-side-other { border-style: dashed; font-style: italic; font-weight: 600; color: var(--text-dim); }
   .snap-side-btn.snap-side-other.active { background: var(--red); color: #fff; border-color: var(--red); border-style: dashed; font-style: normal; }
   .snap-delete-btn { color: var(--red); }
+  .snap-restore-btn { color: var(--green); }
+  .snap-purge-btn { color: var(--red); }
+  .snap-purge-btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
   .snap-stats-wrap { margin-bottom: 16px; }
   .snap-stats-toggle-btn { display: block; margin-bottom: 8px; }
   .snap-stats-row { cursor: pointer; }
@@ -1457,6 +1462,8 @@
       <span id="snapSyncStatus" class="snap-sync-status">—</span>
       <button type="button" id="snapSyncRefreshBtn" class="snap-sync-link" title="Resynchroniser maintenant">🔄 Resynchro</button>
       <button type="button" id="snapSyncConfigBtn" class="snap-sync-link">⚙️ Config. synchro</button>
+      <button type="button" id="snapExportBtn" class="snap-sync-link" title="Télécharger toutes les données de snapshots (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button id="snapTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots mis à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
     </div>
     <div id="snapSyncSetup" class="snap-sync-setup" style="display:none;">
       <input type="password" id="snapSyncTokenInput" placeholder="Token GitHub (fine-grained, repo Tracking-Whales, permission Contents: Read and write)" autocomplete="off" />
@@ -1769,6 +1776,9 @@
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
   var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
+  // Same toggle pattern as vtTrashMode (Value Trades) — swaps the whole
+  // Mes Snapshots list for the trashed-only view instead of filtering in place.
+  var snapTrashMode = false;
   var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
   var tierWinrateCollapsed = true; // winrate-by-conviction gauge — same optional/collapsed-by-default pattern
   var noteWinrateCollapsed = true; // winrate-by-note-threshold gauge — same optional/collapsed-by-default pattern
@@ -3373,6 +3383,15 @@
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
     var isLive = unitTimingStatus(u) === "live";
     var color = u.score != null ? scoreColor(u.score) : "var(--text-dim)";
+    // Same leaderPriceText/leaderRoi computeUnitCardParts already builds for
+    // the full card's header badge — reused here rather than recomputed, so
+    // the compact view carries the same "what would a bet actually pay out"
+    // read the full card gives, just squeezed onto one line.
+    var oddsRoiHtml = parts.leaderPriceText
+      ? '<span class="vt-dense-odds">' + esc(parts.leaderPriceText) +
+        (parts.leaderRoi != null ? ' <span class="vt-dense-roi">ROI ' + (parts.leaderRoi >= 0 ? '+' : '') + parts.leaderRoi.toFixed(0) + '%</span>' : '') +
+        '</span>'
+      : '';
     return '<details class="value-trade-item vt-dense" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="border-left-width:3px' +
       (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
@@ -3381,6 +3400,7 @@
         '<span class="vt-dense-sport" title="Type de pari">' + sportEmoji + '</span>' +
         '<span class="vt-dense-question">' + esc(primary.question) + '</span>' +
         (isLive ? '<span class="vt-dense-live" title="En cours">🔴</span>' : '') +
+        oddsRoiHtml +
         '<span class="vt-dense-meta">' + u.traderCount + ' tr · ' + fmtUSD(u.totalStake) + '</span>' +
         '<span class="vt-dense-score" style="color:' + color + '">' + (u.score != null ? u.score.toFixed(1) : '—') + '</span>' +
         '<span class="vt-dense-actions">' + parts.followBtnHtml + parts.trashBtnHtml + '</span>' +
@@ -3430,8 +3450,16 @@
   // for whichever side WAS tracked, without needing to know who actually won.
   var OTHER_SIDE_SENTINEL = "__OTHER_SIDE__";
 
-  function loadSnapshots() {
+  function loadSnapshotsRaw() {
     try { return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
+  }
+  // The default reader everywhere except the trash view, the export button,
+  // and op-application (all three need the trashed ones too) — trashed
+  // snapshots are excluded here so every dashboard/chart/list/toggle call
+  // site gets correct behavior automatically, without each one needing its
+  // own deletedAt filter.
+  function loadSnapshots() {
+    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt; });
   }
   function saveSnapshotsToStorage(list) {
     try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
@@ -3453,7 +3481,31 @@
   // list it was originally queued against.
   function applyOpToList(list, op) {
     if (op.type === "add") return [op.snapshot].concat(list);
+    // The ONLY truly destructive op — real removal from the list, gone from
+    // every device on next sync. Left in place for "delete definitively"
+    // from inside the trash view; the normal 🗑 on a snapshot now dispatches
+    // "trash" instead (see below), never this directly.
     if (op.type === "delete") return list.filter(function (s) { return s.id !== op.id; });
+    // Soft delete: flags the snapshot instead of removing it, so it stays in
+    // the synced list (and therefore in snapshots.json's git history) —
+    // hidden from the normal view but always recoverable from the Corbeille
+    // until someone explicitly empties it there.
+    if (op.type === "trash") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        var copy = Object.assign({}, s);
+        copy.deletedAt = op.at || new Date().toISOString();
+        return copy;
+      });
+    }
+    if (op.type === "restore") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        var copy = Object.assign({}, s);
+        delete copy.deletedAt;
+        return copy;
+      });
+    }
     if (op.type === "toggleSide") {
       return list.map(function (s) {
         if (s.id !== op.id) return s;
@@ -3545,8 +3597,8 @@
         // and there's nothing already queued: seed the shared file from
         // this device's current local list instead of silently adopting an
         // empty remote and wiping local history.
-        var bootstrapping = hasToken && remote.sha === null && !queue.length && localStorage.getItem(SNAPSHOTS_MIGRATED_KEY) !== "1" && loadSnapshots().length > 0;
-        if (bootstrapping) queue = [{ type: "seed", list: loadSnapshots() }];
+        var bootstrapping = hasToken && remote.sha === null && !queue.length && localStorage.getItem(SNAPSHOTS_MIGRATED_KEY) !== "1" && loadSnapshotsRaw().length > 0;
+        if (bootstrapping) queue = [{ type: "seed", list: loadSnapshotsRaw() }];
 
         if (!queue.length) {
           saveSnapshotsToStorage(remote.list);
@@ -3591,7 +3643,7 @@
   // Applies an op immediately to the local cache (instant UI, works
   // offline), queues it, then kicks off a sync attempt in the background.
   function enqueueSnapshotOp(op) {
-    saveSnapshotsToStorage(applyOpToList(loadSnapshots(), op));
+    saveSnapshotsToStorage(applyOpToList(loadSnapshotsRaw(), op));
     var q = loadSyncQueue();
     q.push(op);
     saveSyncQueue(q);
@@ -4352,12 +4404,122 @@
       headCells +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
+  // Shared by the normal list and the trash view below — only the toolbar
+  // (camp/confiance/delete vs. mis-à-la-corbeille-le/restaurer/purger)
+  // differs; everything else about how a frozen snapshot renders is identical.
+  function snapCardHtml(snap, isTrash) {
+    var d = new Date(snap.savedAt);
+    var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    // Border stays tied to which side was leading when saved (not to the
+    // later result) — a snapshot can hold traders on both sides, so there
+    // is no single win/loss color for the card as a whole anymore.
+    var borderColor = snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)";
+    // Whole-card background instead just reads the bet-level verdict —
+    // leaderName (the side the group was leaning towards when saved) vs.
+    // winningSide, the same "one win/loss per snapshot" call the global
+    // dashboard tiles use — so it's an unambiguous win/lose regardless of
+    // whether individual traders hedged both sides underneath.
+    var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
+    // Same flat-$1000-per-bet simulation as the tier winrate chart, but
+    // per snapshot here — a bold standalone pill (not just colored text)
+    // so the number is impossible to miss scanning down the list.
+    var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+    var hypCardHtml = hyp == null ? "" :
+      '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '/pari : ' + esc(fmtUSDSigned(hyp)) +
+      ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / HYPOTHETICAL_FLAT_STAKE * 100).toFixed(0) + '% ROI)</span></div>';
+    var resultsHtml = snap.winningSide ? '<div class="snap-trader-results">' +
+      (snap.traderNames || []).map(function (name) {
+        return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
+      }).join("") +
+    '</div>' : '';
+    // Fully frozen, no exceptions: cardHtml is a snapshot of the card
+    // exactly as it looked the moment this was saved (see
+    // buildSnapshotFromUnit) — title, price, traders, stakes, all of it —
+    // and it must stay that way forever after. A live-tracking version of
+    // this (traders/stakes updating while the price stayed pinned) was
+    // tried and reverted: it read as "the snapshot is changing" even
+    // though only the trader list was ever meant to move, so the whole
+    // idea is out. Split at the same detail-section marker Value Trades
+    // collapses at, so the trader-by-trader breakdown hides behind the
+    // same click-to-expand affordance instead of always being shown.
+    // Checks both the current marker and the pre-merge one so snapshots
+    // frozen before the side-by-side layout was replaced keep collapsing
+    // correctly too.
+    var splitIdx = snap.cardHtml.indexOf('<div class="vt-unit-detail">');
+    if (splitIdx === -1) splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
+    var cardHeadHtml = splitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, splitIdx);
+    var cardDetailHtml = splitIdx === -1 ? "" : snap.cardHtml.slice(splitIdx);
+    var toolbarHtml;
+    if (isTrash) {
+      var dd = new Date(snap.deletedAt);
+      var deletedLabel = isNaN(dd.getTime()) ? snap.deletedAt : dd.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      toolbarHtml = '<div class="snap-toolbar">' +
+        '<span class="dim">Mis à la corbeille le ' + esc(deletedLabel) + '</span>' +
+        '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '">↺ Restaurer</button>' +
+        '<button type="button" class="snap-purge-btn" data-snap-id="' + esc(snap.id) + '" title="Suppression définitive — pas de retour en arrière possible">🗑 Supprimer définitivement</button>' +
+      '</div>';
+    } else {
+      var sideButtonsHtml = (snap.sides || []).map(function (side) {
+        var isWinner = snap.winningSide === side.name;
+        return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
+      }).join("");
+      if ((snap.sides || []).length < 2) {
+        var isOtherWinner = snap.winningSide === OTHER_SIDE_SENTINEL;
+        sideButtonsHtml += '<button type="button" class="snap-side-btn snap-side-other' + (isOtherWinner ? ' active' : '') +
+          '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(OTHER_SIDE_SENTINEL) +
+          '" title="Aucun trader suivi n\'a pris l\'autre camp sur ce marché précis — son nom exact n\'est pas connu, mais ça suffit pour enregistrer que ce camp a gagné.">Camp adverse</button>';
+      }
+      var confidenceButtonsHtml = CONFIDENCE_TIERS.map(function (tier) {
+        var isActive = snap.confidence === tier;
+        var color = CONFIDENCE_COLORS[tier];
+        var style = isActive ? "background:" + color + ";border-color:" + color + ";color:#fff" : "color:" + color + ";border-color:" + color;
+        return '<button type="button" class="snap-confidence-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-tier="' + esc(tier) + '" style="' + style + '">' + esc(tier) + '</button>';
+      }).join("");
+      toolbarHtml = '<div class="snap-toolbar">' +
+        '<span class="dim">Sauvegardé le ' + esc(dateLabel) + '</span>' +
+        '<span class="snap-side-label">Camp gagnant :</span>' +
+        sideButtonsHtml +
+        '<span class="snap-side-label">Confiance :</span>' +
+        confidenceButtonsHtml +
+        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
+      '</div>';
+    }
+    return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (expandedSnapshots[snap.id] ? " open" : "") +
+      ' style="border-left-color:' + borderColor + '">' +
+      '<summary class="vt-summary">' +
+        toolbarHtml +
+        hypCardHtml +
+        resultsHtml +
+        cardHeadHtml +
+      '</summary>' +
+      '<div class="vt-detail">' + cardDetailHtml + '</div>' +
+    '</details>';
+  }
+  // Never a hard delete from here — "trash" only flags deletedAt, so a
+  // snapshot mistakenly cleared out of the main list is always one
+  // "Restaurer" click away, and it's still present in the synced
+  // snapshots.json (and its git history) the whole time it sits here.
+  function renderSnapTrashView(fullList) {
+    var trashed = fullList.filter(function (s) { return !!s.deletedAt; });
+    trashed.sort(function (a, b) { return new Date(b.deletedAt) - new Date(a.deletedAt); });
+    snapCountEl.textContent = trashed.length + ' snapshot' + (trashed.length > 1 ? "s" : "") + ' à la corbeille';
+    if (!trashed.length) {
+      snapshotsContent.innerHTML = '<div class="empty-note">Corbeille vide — rien à restaurer.</div>';
+      return;
+    }
+    snapshotsContent.innerHTML = trashed.map(function (snap) { return snapCardHtml(snap, true); }).join("");
+  }
   function renderSnapshots() {
-    var list = loadSnapshots();
-    // Dashboard/tier-gauge/recap table always reflect every snapshot — only
-    // the card list below is narrowed by tierCardFilter / snapDistCellFilter,
-    // otherwise clicking a tier badge or a distribution cell would make its
-    // own gauge/table trivially collapse to 100%.
+    var fullList = loadSnapshotsRaw();
+    if (snapTrashMode) { renderSnapTrashView(fullList); return; }
+    // Trashed snapshots never feed the dashboard/charts/card list below —
+    // only the Corbeille view (above) shows them, until restored.
+    var list = fullList.filter(function (s) { return !s.deletedAt; });
+    // Dashboard/tier-gauge/recap table always reflect every (non-trashed)
+    // snapshot — only the card list below is narrowed by
+    // tierCardFilter / snapDistCellFilter, otherwise clicking a tier badge
+    // or a distribution cell would make its own gauge/table trivially
+    // collapse to 100%.
     var cardsList = tierCardFilter.length ? list.filter(function (s) { return tierCardFilter.indexOf(s.confidence) !== -1; }) : list;
     if (snapDistCellFilter) cardsList = cardsList.filter(function (s) { return snapMatchesDistCell(s, snapDistCellFilter.bracket, snapDistCellFilter.tier); });
     if (noteCardFilter != null) {
@@ -4384,82 +4546,7 @@
         : "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.") + '</div>';
       return;
     }
-    snapshotsContent.innerHTML = cardsList.map(function (snap) {
-      var d = new Date(snap.savedAt);
-      var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-      // Border stays tied to which side was leading when saved (not to the
-      // later result) — a snapshot can hold traders on both sides, so there
-      // is no single win/loss color for the card as a whole anymore.
-      var borderColor = snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)";
-      // Whole-card background instead just reads the bet-level verdict —
-      // leaderName (the side the group was leaning towards when saved) vs.
-      // winningSide, the same "one win/loss per snapshot" call the global
-      // dashboard tiles use — so it's an unambiguous win/lose regardless of
-      // whether individual traders hedged both sides underneath.
-      var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
-      // Same flat-$1000-per-bet simulation as the tier winrate chart, but
-      // per snapshot here — a bold standalone pill (not just colored text)
-      // so the number is impossible to miss scanning down the list.
-      var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
-      var hypCardHtml = hyp == null ? "" :
-        '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '/pari : ' + esc(fmtUSDSigned(hyp)) +
-        ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / HYPOTHETICAL_FLAT_STAKE * 100).toFixed(0) + '% ROI)</span></div>';
-      var sideButtonsHtml = (snap.sides || []).map(function (side) {
-        var isWinner = snap.winningSide === side.name;
-        return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
-      }).join("");
-      if ((snap.sides || []).length < 2) {
-        var isOtherWinner = snap.winningSide === OTHER_SIDE_SENTINEL;
-        sideButtonsHtml += '<button type="button" class="snap-side-btn snap-side-other' + (isOtherWinner ? ' active' : '') +
-          '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(OTHER_SIDE_SENTINEL) +
-          '" title="Aucun trader suivi n\'a pris l\'autre camp sur ce marché précis — son nom exact n\'est pas connu, mais ça suffit pour enregistrer que ce camp a gagné.">Camp adverse</button>';
-      }
-      var confidenceButtonsHtml = CONFIDENCE_TIERS.map(function (tier) {
-        var isActive = snap.confidence === tier;
-        var color = CONFIDENCE_COLORS[tier];
-        var style = isActive ? "background:" + color + ";border-color:" + color + ";color:#fff" : "color:" + color + ";border-color:" + color;
-        return '<button type="button" class="snap-confidence-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-tier="' + esc(tier) + '" style="' + style + '">' + esc(tier) + '</button>';
-      }).join("");
-      var resultsHtml = snap.winningSide ? '<div class="snap-trader-results">' +
-        (snap.traderNames || []).map(function (name) {
-          return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
-        }).join("") +
-      '</div>' : '';
-      // Fully frozen, no exceptions: cardHtml is a snapshot of the card
-      // exactly as it looked the moment this was saved (see
-      // buildSnapshotFromUnit) — title, price, traders, stakes, all of it —
-      // and it must stay that way forever after. A live-tracking version of
-      // this (traders/stakes updating while the price stayed pinned) was
-      // tried and reverted: it read as "the snapshot is changing" even
-      // though only the trader list was ever meant to move, so the whole
-      // idea is out. Split at the same detail-section marker Value Trades
-      // collapses at, so the trader-by-trader breakdown hides behind the
-      // same click-to-expand affordance instead of always being shown.
-      // Checks both the current marker and the pre-merge one so snapshots
-      // frozen before the side-by-side layout was replaced keep collapsing
-      // correctly too.
-      var splitIdx = snap.cardHtml.indexOf('<div class="vt-unit-detail">');
-      if (splitIdx === -1) splitIdx = snap.cardHtml.indexOf('<div class="vt-side-grid">');
-      var cardHeadHtml = splitIdx === -1 ? snap.cardHtml : snap.cardHtml.slice(0, splitIdx);
-      var cardDetailHtml = splitIdx === -1 ? "" : snap.cardHtml.slice(splitIdx);
-      return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (expandedSnapshots[snap.id] ? " open" : "") +
-        ' style="border-left-color:' + borderColor + '">' +
-        '<summary class="vt-summary">' +
-          '<div class="snap-toolbar">' +
-            '<span class="dim">Sauvegardé le ' + esc(dateLabel) + '</span>' +
-            '<span class="snap-side-label">Camp gagnant :</span>' +
-            sideButtonsHtml +
-            '<span class="snap-side-label">Confiance :</span>' +
-            confidenceButtonsHtml +
-            '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '">🗑 Supprimer</button>' +
-          '</div>' +
-          hypCardHtml +
-          resultsHtml +
-          cardHeadHtml +
-        '</summary>' +
-        '<div class="vt-detail">' + cardDetailHtml + '</div>' +
-      '</details>';
-    }).join("");
+    snapshotsContent.innerHTML = cardsList.map(function (snap) { return snapCardHtml(snap, false); }).join("");
   }
 
   // Every criterion the Value Trades list applies EXCEPT the min-traders
@@ -5488,7 +5575,23 @@
       e.preventDefault();
       e.stopPropagation();
       var did = delBtn.getAttribute("data-snap-id");
-      enqueueSnapshotOp({ type: "delete", id: did });
+      enqueueSnapshotOp({ type: "trash", id: did, at: new Date().toISOString() });
+      return;
+    }
+    var restoreBtn = e.target.closest ? e.target.closest(".snap-restore-btn") : null;
+    if (restoreBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var rid = restoreBtn.getAttribute("data-snap-id");
+      enqueueSnapshotOp({ type: "restore", id: rid });
+      return;
+    }
+    var purgeBtn = e.target.closest ? e.target.closest(".snap-purge-btn") : null;
+    if (purgeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var pid = purgeBtn.getAttribute("data-snap-id");
+      enqueueSnapshotOp({ type: "delete", id: pid });
       return;
     }
     var statsToggleBtn = e.target.closest ? e.target.closest("#snapStatsToggleBtn") : null;
@@ -5571,6 +5674,35 @@
     snapSyncTokenInput.value = "";
   });
   snapSyncRefreshBtn.addEventListener("click", function () { syncNow(); });
+  var snapTrashToggleBtn = document.getElementById("snapTrashToggleBtn");
+  function syncSnapTrashToggleBtn() {
+    snapTrashToggleBtn.classList.toggle("active", snapTrashMode);
+    snapTrashToggleBtn.textContent = snapTrashMode ? "← Retour" : "🗑 Corbeille";
+  }
+  syncSnapTrashToggleBtn();
+  snapTrashToggleBtn.addEventListener("click", function () {
+    snapTrashMode = !snapTrashMode;
+    syncSnapTrashToggleBtn();
+    renderSnapshots();
+  });
+  // Full local backup, independent of the GitHub sync — every field as
+  // stored, trashed snapshots included (deletedAt and all), so a download
+  // taken here can restore an entirely wiped list. Plain client-side blob
+  // download, no server round-trip.
+  var snapExportBtn = document.getElementById("snapExportBtn");
+  snapExportBtn.addEventListener("click", function () {
+    var list = loadSnapshotsRaw();
+    var blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = url;
+    a.download = "snapshots-export-" + stamp + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
   snapSyncTokenSave.addEventListener("click", function () {
     var v = snapSyncTokenInput.value.trim();
     if (!v) return;
