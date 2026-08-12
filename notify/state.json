@@ -10,5 +10,11 @@
     "question": "Will Paris Saint-Germain vs. Aston Villa end in a draw?",
     "side": "No",
     "note": 7.2
+  },
+  "polymarket|0xae2cf3494b29591dd4b5307f299144b14bd2074c50e1304f3e6c5f6f2cbcfac8": {
+    "firstSeen": "2026-08-12T18:38:35.835Z",
+    "question": "Exact Score: Paris Saint-Germain 0 - 0 Aston Villa?",
+    "side": "No",
+    "note": 7.4
   }
 }
