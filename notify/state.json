@@ -1,14 +1,14 @@
 {
+  "polymarket|0x83477c8757f0a33df79a31f93a65162807991c0037389f360b01ce7645bcab47": {
+    "firstSeen": "2026-08-12T23:10:45.305Z",
+    "question": "Will CF Monterrey win on 2026-08-12?",
+    "side": "No",
+    "note": 7.7
+  },
   "polymarket|0x3445b4727e5e92769f9c86ae151c2359ca4ff18f55b313d9a5768237a931ac4f": {
     "firstSeen": "2026-08-12T21:29:20.174Z",
     "question": "SE Palmeiras vs. Club Cerro Porteño: O/U 2.5",
     "side": "Under",
     "note": 7.7
-  },
-  "polymarket|0xae2cf3494b29591dd4b5307f299144b14bd2074c50e1304f3e6c5f6f2cbcfac8": {
-    "firstSeen": "2026-08-12T18:38:35.835Z",
-    "question": "Exact Score: Paris Saint-Germain 0 - 0 Aston Villa?",
-    "side": "No",
-    "note": 7.4
   }
 }
