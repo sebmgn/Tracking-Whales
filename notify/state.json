@@ -1,16 +1,4 @@
 {
-  "polymarket|0xa390f8871f025c2f86861d56cde9ac26fa5a6453076d7ea861ec08f39e5d7482+predict|1064340": {
-    "firstSeen": "2026-08-12T14:36:31.922Z",
-    "question": "Will Aston Villa win on 2026-08-12?",
-    "side": "No",
-    "note": 7.1
-  },
-  "polymarket|0x43c71634902a981780b695ad2358ebf0b4dd348817db4b5d70ca3f42bf43c723": {
-    "firstSeen": "2026-08-12T16:37:01.492Z",
-    "question": "Will Paris Saint-Germain vs. Aston Villa end in a draw?",
-    "side": "No",
-    "note": 7.2
-  },
   "polymarket|0xae2cf3494b29591dd4b5307f299144b14bd2074c50e1304f3e6c5f6f2cbcfac8": {
     "firstSeen": "2026-08-12T18:38:35.835Z",
     "question": "Exact Score: Paris Saint-Germain 0 - 0 Aston Villa?",
