@@ -399,9 +399,12 @@
      actually matters for "feels abrupt"). */
   details.value-trade-item[open] > .vt-detail { animation: vtDetailReveal .22s ease; }
   @keyframes vtDetailReveal { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+  /* No justify-content:space-between — with 3 children now (.vt-top-left,
+     .vt-top-stats, .vt-badge-group) that would space them apart equally
+     instead of packing the two fixed-width ones snug against the right
+     edge. .vt-top-left's own flex:1 already absorbs all the slack. */
   .vt-top {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: 12px;
     flex-wrap: nowrap;
@@ -438,12 +441,24 @@
     border: 1px solid var(--panel-border);
     border-left: 3px solid var(--leader-color, var(--accent));
   }
-  .vt-leader-price { font-weight: 500; font-size: 10.5px; opacity: .82; margin-left: 2px; }
   /* Inherits the badge's own ink color now that the fill is a light tint
      instead of a solid semantic color — no more same-hue-on-same-hue risk
      to dodge with a forced white. */
   .vt-price-arrow { font-size: 9px; margin-left: 2px; color: var(--text); }
-  .vt-leader-roi { font-size: 11px; font-weight: 700; color: var(--text); flex: none; margin-left: 8px; }
+  /* Cote + ROI as two fixed-width columns (see statsHtml in
+     computeUnitCardParts) — the whole point is that these line up down the
+     list regardless of question/leader-name length, so the width is a hard
+     flex-basis, not content-driven. Right-aligned so the digits themselves
+     line up too, not just the boxes. */
+  .vt-top-stats { display: flex; align-items: center; gap: 10px; flex: none; }
+  .vt-stat-odds {
+    flex: 0 0 50px; text-align: right; font-size: 12px; color: var(--text-dim);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .vt-stat-roi {
+    flex: 0 0 52px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
   /* Sized up from the original 44×15 — same SVG (viewBox stays 44×15,
      coordinates just stretch to fill), so the line itself also reads
      thicker at the bigger size instead of looking like a stray hairline
@@ -858,10 +873,15 @@
     flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     font-size: 12.5px; color: var(--text);
   }
-  .vt-dense-live { flex: none; font-size: 10px; }
-  .vt-dense-odds { flex: none; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .vt-dense-roi { color: var(--text); font-weight: 700; }
-  .vt-dense-meta { flex: none; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Fixed-width flex:none slots, always rendered — see the comment on
+     renderUnitCardDense. .vt-dense-question is the one flex:1 item in this
+     row, so every one of these needs a hard width (not just flex:none) or
+     its own content length ends up dictating where every column after it lands. */
+  .vt-dense-live { flex: 0 0 14px; font-size: 10px; text-align: center; }
+  .vt-dense-odds { flex: 0 0 46px; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .vt-dense-roi { flex: 0 0 44px; font-size: 11px; color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .vt-dense-traders { flex: 0 0 30px; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .vt-dense-stake { flex: 0 0 84px; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
   .vt-dense-score {
     flex: none; font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 900;
     font-size: 15px; width: 34px; text-align: right; font-variant-numeric: tabular-nums;
@@ -1282,22 +1302,25 @@
   }
   /* Realized PnL / avg ROI / trade count for whatever the 4 selects above
      currently narrow the curve to — lives beside the title so it reads as
-     "here's the numbers for the view you just set". A small table rather
-     than side-by-side tiles so the 3 figures read as one consolidated
-     readout, same header/value rhythm as the rest of the panel (uppercase
-     dim labels, bold tabular-nums values). */
+     "here's the numbers for the view you just set". Three small chips
+     (gold top edge, like a miniature stat-tile) instead of a plain table —
+     reads as a consolidated readout without looking like a spreadsheet row. */
   .pnl-chart-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
   .pnl-chart-header .tier-wr-title { margin-bottom: 0; }
-  .pnl-chart-stats-table { border-collapse: collapse; }
-  .pnl-chart-stats-table th {
-    font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim);
-    font-weight: 600; text-align: right; white-space: nowrap; padding: 0 0 3px 16px;
+  .pnl-chart-stats { display: flex; gap: 8px; }
+  .pnl-chart-stat {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    min-width: 58px; padding: 4px 10px 5px;
+    background: color-mix(in srgb, var(--gold) 7%, var(--panel));
+    border: 1px solid var(--panel-border);
+    border-top: 2px solid var(--gold);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   }
-  .pnl-chart-stats-table td {
-    font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right;
-    white-space: nowrap; padding: 3px 0 0 16px; border-top: 1px solid var(--panel-border);
+  .pnl-chart-stat-label {
+    font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim);
+    white-space: nowrap;
   }
-  .pnl-chart-stats-table th:first-child, .pnl-chart-stats-table td:first-child { padding-left: 0; }
+  .pnl-chart-stat-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
   .snap-item-highlight {
@@ -2192,6 +2215,12 @@
     // match needed (the sides here are usually just Yes/No).
     var m = question.match(WILL_WIN_RE);
     if (m) return esc(m[1]) + '<b>' + esc(m[2]) + '</b>' + esc(m[3]);
+    // "TeamA vs. TeamB: O/U 2.5" / "...: BTTS" / "...: Spread -1.5" — every
+    // sub-market on the same match shares the exact same "TeamA vs. TeamB"
+    // prefix, so THAT'S not what distinguishes this card from its siblings;
+    // the label after the colon (which line/prop this one actually is) is.
+    var m2 = question.match(/^(.*:\s*)([^:]+)$/);
+    if (m2) return esc(m2[1]) + '<b>' + esc(m2[2]) + '</b>';
     // Unrecognized phrasing — don't guess at what's distinctive, leave it
     // all at normal weight rather than falling back to bolding everything.
     return esc(question);
@@ -3185,8 +3214,14 @@
       }
       lastRenderedPrice[stableKey] = leaderAvgPrice;
     }
-    var leaderBadge = leaderName ? '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(leaderName) +
-      (leaderPriceText ? ' <span class="vt-leader-price" title="Prix actuel du marché, pas le prix d\'entrée des traders">@ ' + leaderPriceText + '</span>' + priceArrowHtml : '') + '</span>' : "";
+    // Price/arrow deliberately NOT inside this badge (see vt-top-stats
+    // below) — leaderName's length varies card to card (a team name vs.
+    // "Yes"/"No"), and it sits inside the flexible/shrinking part of the
+    // header, so anything glued to its end would land at a different x
+    // position on every card. Cote and ROI need to line up as columns
+    // across the whole list, so they live in their own fixed-width slot
+    // instead, entirely outside that flexible region.
+    var leaderBadge = leaderName ? '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(leaderName) + '</span>' : "";
     recordPricePoint(stableKey, leaderAvgPrice);
     var sparkHtml = sparklineHtml(stableKey);
 
@@ -3256,12 +3291,20 @@
     // (a favorite's ROI is legitimately small and positive same as a
     // longshot's is large and positive; color here would just repeat the
     // win/lose coding already carried elsewhere on the card).
-    var roiHtml = leaderRoi != null
-      ? '<span class="vt-leader-roi" title="ROI si le camp majoritaire gagne, à la cote actuelle">ROI ' + (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + '%</span>'
-      : '';
+    // Cote and ROI, each its own fixed-width column — sits between
+    // .vt-top-left (the flexible/shrinking region: emoji, question, leader
+    // name) and .vt-badge-group (also fixed-width), so both numbers line up
+    // vertically down the whole list regardless of how long the question or
+    // leader name happens to be on any given card. Always rendered (even
+    // empty) so every card reserves the same width here.
+    var statsHtml = '<span class="vt-top-stats">' +
+      '<span class="vt-stat-odds" title="Prix actuel du marché, pas le prix d\'entrée des traders">' + (leaderPriceText ? esc(leaderPriceText) + priceArrowHtml : '') + '</span>' +
+      '<span class="vt-stat-roi" title="ROI si le camp majoritaire gagne, à la cote actuelle">' + (leaderRoi != null ? (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + '%' : '') + '</span>' +
+    '</span>';
     var headerHtml =
       '<div class="vt-top">' +
-        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + roiHtml + '</span>' +
+        '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + '</span>' +
+        statsHtml +
         '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + trashBtnHtml + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
@@ -3383,15 +3426,15 @@
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
     var isLive = unitTimingStatus(u) === "live";
     var color = u.score != null ? scoreColor(u.score) : "var(--text-dim)";
-    // Same leaderPriceText/leaderRoi computeUnitCardParts already builds for
-    // the full card's header badge — reused here rather than recomputed, so
-    // the compact view carries the same "what would a bet actually pay out"
-    // read the full card gives, just squeezed onto one line.
-    var oddsRoiHtml = parts.leaderPriceText
-      ? '<span class="vt-dense-odds">' + esc(parts.leaderPriceText) +
-        (parts.leaderRoi != null ? ' <span class="vt-dense-roi">ROI ' + (parts.leaderRoi >= 0 ? '+' : '') + parts.leaderRoi.toFixed(0) + '%</span>' : '') +
-        '</span>'
-      : '';
+    // Every column below is a fixed-width flex:none slot, always rendered
+    // (empty if not applicable) — same reasoning as convictionStarsHtml and
+    // the detailed card's .vt-top-stats: with .vt-dense-question as the only
+    // flex-grow/shrink item absorbing all the slack, any OTHER item whose
+    // own width varies by content (live dot present/absent, digit counts,
+    // "Under" vs "No") throws off every column after it, for every row.
+    // Splitting odds/ROI/traders/stake into their own fixed slots — instead
+    // of the combined variable-width strings this used to build — is what
+    // makes them actually line up scrolling down the list.
     return '<details class="value-trade-item vt-dense" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="border-left-width:3px' +
       (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
@@ -3399,9 +3442,11 @@
       '<summary class="vt-summary-dense">' +
         '<span class="vt-dense-sport" title="Type de pari">' + sportEmoji + '</span>' +
         '<span class="vt-dense-question">' + esc(primary.question) + '</span>' +
-        (isLive ? '<span class="vt-dense-live" title="En cours">🔴</span>' : '') +
-        oddsRoiHtml +
-        '<span class="vt-dense-meta">' + u.traderCount + ' tr · ' + fmtUSD(u.totalStake) + '</span>' +
+        '<span class="vt-dense-live"' + (isLive ? ' title="En cours"' : '') + '>' + (isLive ? '🔴' : '') + '</span>' +
+        '<span class="vt-dense-odds">' + (parts.leaderPriceText ? esc(parts.leaderPriceText) : '') + '</span>' +
+        '<span class="vt-dense-roi">' + (parts.leaderRoi != null ? (parts.leaderRoi >= 0 ? '+' : '') + parts.leaderRoi.toFixed(0) + '%' : '') + '</span>' +
+        '<span class="vt-dense-traders">' + u.traderCount + ' tr</span>' +
+        '<span class="vt-dense-stake">' + fmtUSD(u.totalStake) + '</span>' +
         '<span class="vt-dense-score" style="color:' + color + '">' + (u.score != null ? u.score.toFixed(1) : '—') + '</span>' +
         '<span class="vt-dense-actions">' + parts.followBtnHtml + parts.trashBtnHtml + '</span>' +
       '</summary>' +
@@ -4130,13 +4175,11 @@
     var statsCount = series.length;
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsCount ? (statsTotalPnl / (statsCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
-    var statsHtml = '<table class="pnl-chart-stats-table"><thead><tr>' +
-      '<th>Nb de trades</th><th>PnL réalisé</th><th>ROI moyen / pari</th>' +
-      '</tr></thead><tbody><tr>' +
-      '<td>' + (statsCount || "—") + '</td>' +
-      '<td class="' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</td>' +
-      '<td class="' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</td>' +
-    '</tr></tbody></table>';
+    var statsHtml = '<div class="pnl-chart-stats">' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">Nb de trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI moyen / pari</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
+    '</div>';
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     if (series.length < 2) {
       snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
@@ -4619,9 +4662,9 @@
     scoreSlider.value = vtMinScore == null ? 1 : vtMinScore;
     agreementSlider.value = vtMinAgreement;
     volumeSlider.value = Math.min(vtMinVolume, 100000);
-    document.getElementById("vtMinScoreVal").textContent = vtMinScore == null ? "1 (aucun filtre)" : vtMinScore.toFixed(1);
-    document.getElementById("vtMinAgreementVal").textContent = vtMinAgreement > 0 ? String(vtMinAgreement) : "0 (aucun filtre)";
-    document.getElementById("vtMinVolumeVal").textContent = vtMinVolume > 0 ? fmtUSD(vtMinVolume) : "0 $ (aucun filtre)";
+    document.getElementById("vtMinScoreVal").textContent = vtMinScore == null ? "1" : vtMinScore.toFixed(1);
+    document.getElementById("vtMinAgreementVal").textContent = vtMinAgreement > 0 ? String(vtMinAgreement) : "0";
+    document.getElementById("vtMinVolumeVal").textContent = vtMinVolume > 0 ? fmtUSD(vtMinVolume) : "0 $";
 
     var scoreThreshold = scoreSlider.value <= 1 ? null : Number(scoreSlider.value);
     var scoreCount = base.filter(function (u) {
