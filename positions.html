@@ -599,6 +599,11 @@
      length a slightly dishonest stake comparison between traders. */
   .vt-trader-row-right { flex: 0 0 148px; text-align: right; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .vt-trader-row-right b { color: var(--text); }
+  /* Fixed-width like .vt-trader-row-right just above, for the same reason —
+     see convictionStarsHtml. 1-3★ = this trader's stake here vs. their own
+     usual size ("il se mouille"); empty when it's at or below their average. */
+  .vt-conviction { flex: 0 0 34px; text-align: center; font-size: 11px; letter-spacing: 1px; color: var(--gold); white-space: nowrap; cursor: default; }
+  .vt-conviction-empty { color: var(--panel-border); }
   /* Legacy — the "% de son book" note was dropped from the trader row; kept
      only so snapshots frozen before that change still render correctly. */
   .vt-book-pct { font-size: 9.5px; opacity: .75; margin-left: 6px; }
@@ -766,6 +771,11 @@
      across a long list, deliberately not paired with a glow or background
      on top. Hovering still reveals which factors drove the score. */
   .vt-score-wrap { position: relative; display: inline-flex; align-items: center; cursor: default; vertical-align: middle; }
+  /* Note + its exact kickoff date/time stacked as one column, so the two
+     read as "this score, for this exact moment" instead of two unrelated
+     badges competing in the same row. */
+  .vt-score-stack { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .vt-exact-time { font-size: 9.5px; font-style: italic; color: var(--text-dim); white-space: nowrap; }
   .vt-score-num {
     font-family: "Times New Roman", Times, Georgia, serif;
     font-style: italic;
@@ -2668,6 +2678,43 @@
       '</span>';
     }).join("") + '</div>';
   }
+  // A trader's "usual" stake — mean cost basis across all their currently
+  // tracked open positions (same MIN_TRADER_STAKE dust floor used
+  // everywhere else) — the baseline a single row's own stake gets measured
+  // against to tell a real outlier bet from a routine one.
+  function traderAvgStake(name) {
+    var positions = tradersData[name] || [];
+    var stakes = [];
+    positions.forEach(function (p) {
+      var s = p.avgPrice * p.shares;
+      if (s >= MIN_TRADER_STAKE) stakes.push(s);
+    });
+    if (!stakes.length) return null;
+    return stakes.reduce(function (a, b) { return a + b; }, 0) / stakes.length;
+  }
+  // 1-3 stars only once a trader's stake on THIS trade runs well above
+  // their own usual size — "il se mouille". Nothing shown at or below their
+  // average: a $10k bet from someone who usually puts $100k isn't actually
+  // a strong signal, even though $10k sounds big taken in isolation.
+  var CONVICTION_THRESHOLDS = [1.5, 3, 6]; // stake/avg ratio needed for 1★ / 2★ / 3★
+  // Always returns a fixed-width span, filled or not — same reasoning as
+  // .vt-trader-row-right's own fixed width just below: leaving it out
+  // entirely on rows with 0 stars would let .vt-trader-row-track's flex:1
+  // steal that space, making bar length a dishonest stake comparison
+  // between traders depending on who happened to get a star.
+  function convictionStarsHtml(stake, avgStake) {
+    var stars = 0;
+    var title = "";
+    if (avgStake != null && avgStake > 0) {
+      var ratio = stake / avgStake;
+      CONVICTION_THRESHOLDS.forEach(function (t) { if (ratio >= t) stars++; });
+      if (stars) title = "Mise " + ratio.toFixed(1) + "× sa moyenne habituelle (" + fmtUSD(avgStake) + " / trade) — il se mouille sur ce coup";
+    }
+    if (!stars) return '<span class="vt-conviction"></span>';
+    return '<span class="vt-conviction" title="' + esc(title) + '">' +
+      "★".repeat(stars) + '<span class="vt-conviction-empty">' + "★".repeat(3 - stars) + '</span>' +
+    '</span>';
+  }
   // Every trader across every camp (and every linked platform — no more
   // Predict/Poly split either) pooled into ONE list sorted by stake, instead
   // of two side-by-side columns. Every bar now shares the same x-origin and
@@ -2707,6 +2754,7 @@
         '<div class="vt-trader-row-track">' +
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
         '</div>' +
+        convictionStarsHtml(e.stake, traderAvgStake(e.trader)) +
         '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b> @ ' + fmtCents(e.avgPrice) + '</span>' +
       '</div>';
     }).join("") + '</div>';
@@ -3206,10 +3254,18 @@
     var roiHtml = leaderRoi != null
       ? '<span class="vt-leader-roi" title="ROI si le camp majoritaire gagne, à la cote actuelle">ROI ' + (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + '%</span>'
       : '';
+    // Same preciseKickoff already computed above for the countdown badge's
+    // tooltip — surfaced here as actual text (not just hover-only) right
+    // under the note, so the exact date/time is visible at a glance instead
+    // of requiring a hover. Snapshots freeze whatever this read at save
+    // time, same as everything else on the card.
+    var exactTimeHtml = preciseKickoff
+      ? '<span class="vt-exact-time">' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '</span>'
+      : '';
     var headerHtml =
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + roiHtml + '</span>' +
-        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + trashBtnHtml + '</span>' +
+        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + '<span class="vt-score-stack">' + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + exactTimeHtml + '</span>' + trashBtnHtml + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
     // group) — sits on the card's real bottom row, in normal flow so it
