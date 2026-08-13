@@ -1,5 +1,83 @@
 [
   {
+    "id": "msrxnobhv1fkdt",
+    "savedAt": "2026-08-13T19:50:34.205Z",
+    "question": "Will CF América win on 2026-08-13?",
+    "leaderName": "No",
+    "leaderPriceAtSnapshot": 0.555,
+    "noteAtSnapshot": 7,
+    "traderCount": 7,
+    "totalStake": 18147.515911439998,
+    "sides": [
+      {
+        "name": "No",
+        "traderCount": 7,
+        "stake": 16824.510711439998,
+        "traders": [
+          {
+            "trader": "uptheblues",
+            "stake": 6621.524688,
+            "avgPrice": 0.5546
+          },
+          {
+            "trader": "GC-P",
+            "stake": 4015.72263148,
+            "avgPrice": 0.5516
+          },
+          {
+            "trader": "snakeball",
+            "stake": 1916.3850135,
+            "avgPrice": 0.5475
+          },
+          {
+            "trader": "meister",
+            "stake": 1446.95494831,
+            "avgPrice": 0.5527
+          },
+          {
+            "trader": "VeryLucky888",
+            "stake": 1313.33872096,
+            "avgPrice": 0.5474
+          },
+          {
+            "trader": "emacron",
+            "stake": 818.695286,
+            "avgPrice": 0.548
+          },
+          {
+            "trader": "anon",
+            "stake": 691.8894231900001,
+            "avgPrice": 0.5299
+          }
+        ]
+      },
+      {
+        "name": "Yes",
+        "traderCount": 1,
+        "stake": 1323.0052,
+        "traders": [
+          {
+            "trader": "GC-P",
+            "stake": 1323.0052,
+            "avgPrice": 0.44
+          }
+        ]
+      }
+    ],
+    "traderNames": [
+      "uptheblues",
+      "GC-P",
+      "snakeball",
+      "meister",
+      "VeryLucky888",
+      "emacron",
+      "anon"
+    ],
+    "cardHtml": "<div class=\"vt-top\"><span class=\"vt-top-left\"><span class=\"vt-sport-emoji\" title=\"Type de pari\">⚽</span><span class=\"vt-question\">Will <b>CF América</b> win on 2026-08-13?</span><svg class=\"vt-spark\" viewBox=\"0 0 44 15\" title=\"Tendance approximative sur cette session (8 points, page ouverte depuis peu) — pas un historique précis, réinitialisé à chaque rechargement\"><defs><linearGradient id=\"spark-grad-1442\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"var(--red)\" stop-opacity=\".35\"/><stop offset=\"1\" stop-color=\"var(--red)\" stop-opacity=\"0\"/></linearGradient></defs><polygon points=\"1.5,1.5 7.4,1.5 13.2,1.5 19.1,13.5 24.9,13.5 30.8,13.5 36.6,13.5 42.5,13.5 42.5,15 1.5,15\" fill=\"url(#spark-grad-1442)\"/><polyline points=\"1.5,1.5 7.4,1.5 13.2,1.5 19.1,13.5 24.9,13.5 30.8,13.5 36.6,13.5 42.5,13.5\" fill=\"none\" stroke=\"var(--red)\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span class=\"vt-leader\" style=\"--leader-color:#b91c1c\">→ No</span></span><span class=\"vt-top-stats\"><span class=\"vt-stat-odds\" title=\"Prix actuel du marché, pas le prix d'entrée des traders\">55.5¢</span><span class=\"vt-stat-divider\"></span><span class=\"vt-stat-roi\" title=\"ROI si le camp majoritaire gagne, à la cote actuelle\">+80%</span></span><span class=\"vt-badge-group\"><button type=\"button\" class=\"vt-follow-btn\" data-follow-key=\"polymarket|0x258b7478bbc5bd518ed41dc5c52fc493945125753cda05801abd93f5bc3142ad\" title=\"Ajouter aux suivis — reste visible même si le trade devient inéligible\">☆</button><span class=\"vt-score-wrap\" title=\"Note du trade : 7.0/10 — volume, nb de traders, accord entre eux, accord des traders fiables, répartition du volume entre eux\"><span class=\"vt-score-num\" style=\"color:hsl(73,75%,36%);background:color-mix(in srgb, hsl(73,75%,36%) 14%, transparent);box-shadow:0 0 12px color-mix(in srgb, hsl(73,75%,36%) 50%, transparent)\">7.0</span><div class=\"vt-score-breakdown\"><div class=\"vt-score-breakdown-title\">Note 7.0/10 — détail</div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Accord (% traders)</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:100%;background:hsl(73,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+2.3</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Concentration $</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:85%;background:hsl(73,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+1.8</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Accord fiables</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:17%;background:hsl(73,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.4</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Volume total</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:64%;background:hsl(73,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.9</span></div><div class=\"vt-score-factor-row\"><span class=\"vt-score-factor-label\">Nb traders suivis</span><div class=\"vt-score-factor-track\"><div class=\"vt-score-factor-fill\" style=\"width:60%;background:hsl(73,75%,36%)\"></div></div><span class=\"vt-score-factor-pts\">+0.5</span></div></div></span><button type=\"button\" class=\"vt-trash-btn\" data-trash-key=\"polymarket|0x258b7478bbc5bd518ed41dc5c52fc493945125753cda05801abd93f5bc3142ad\" title=\"Mettre ce trade à la corbeille\">🗑</button></span></div><div class=\"vt-market-links\"><a class=\"vt-market-link\" href=\"https://polymarket.com/fr/event/lec-ame-aus-2026-08-13\" target=\"_blank\" rel=\"noopener\" title=\"Ouvrir sur Polymarket\">Poly ↗</a></div><div class=\"balance-group\"><div class=\"balance-row\"><span class=\"balance-label\">Consensus</span><div class=\"consensus-gauge-wrap\"><div class=\"consensus-gauge\"><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg filled\"></div><div class=\"consensus-seg\"></div></div><span class=\"consensus-count\">7/8</span></div></div><div class=\"balance-row\"><span class=\"balance-label\">Mises</span><div class=\"balance-bar bar-dollars\"><div class=\"bal-seg\" style=\"width:92.71%;background:var(--green)\"><div class=\"bal-tooltip\">No — mise 16 824,51 $ / 18 147,52 $ (93%)</div></div><div class=\"bal-seg\" style=\"width:7.29%;background:repeating-linear-gradient(45deg, var(--red), var(--red) 5px, color-mix(in srgb, var(--red) 72%, black) 5px, color-mix(in srgb, var(--red) 72%, black) 10px)\"><div class=\"bal-tooltip\">Yes — mise 1 323,01 $ / 18 147,52 $ (7%)</div></div><div class=\"bal-tick\" style=\"left:92.71%\"></div></div></div></div><div class=\"vt-bottom-row\"><span class=\"vt-bottom-meta\"><span class=\"vt-bottom-traders\"><b class=\"vt-bottom-traders-num\">7</b> traders</span><span class=\"vt-badge-sep\">·</span><span class=\"vt-bottom-stake\">18 147,52 $</span></span><span class=\"vt-exact-time\">14/08/2026 02:30</span></div><div class=\"vt-unit-detail\"><div class=\"vt-sides-legend\"><span class=\"vt-sides-legend-item\" style=\"color:#b91c1c\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span> <b>No</b> — 7 traders · 16 824,51 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 55.5¢</span> · ROI +80.18%</span><span class=\"vt-sides-legend-item\" style=\"color:#15803d\"><span class=\"vt-row-marker\" style=\"background:#15803d\">Y</span> <b>Yes</b> — 1 trader · 1 323,01 $ · <span title=\"Prix actuel du marché — peut différer beaucoup du prix d'entrée de chaque trader affiché plus bas si le marché a bougé depuis leur mise\">cote actuelle 44.5¢</span> · ROI +124.72%</span></div><div class=\"vt-traders\"><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"uptheblues\">uptheblues</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(56,62%,35%);border-color:hsl(56,62%,35%)\" title=\"Note qualite : 6/10\">6</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:100.0%;background:#b91c1c\"></div></div><span class=\"vt-conviction\" title=\"Mise 4.7× sa moyenne habituelle (1 416,76 $ / trade) — il se mouille sur ce coup\">★★</span><span class=\"vt-trader-row-right\"><b>6 621,52 $</b> @ 55.5¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"GC-P\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:60.6%;background:#b91c1c\"></div></div><span class=\"vt-conviction\" title=\"Mise 4.5× sa moyenne habituelle (891,16 $ / trade) — il se mouille sur ce coup\">★★</span><span class=\"vt-trader-row-right\"><b>4 015,72 $</b> @ 55.2¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"snakeball\">snakeball</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:28.9%;background:#b91c1c\"></div></div><span class=\"vt-conviction\" title=\"Mise 2.9× sa moyenne habituelle (670,01 $ / trade) — il se mouille sur ce coup\">★</span><span class=\"vt-trader-row-right\"><b>1 916,39 $</b> @ 54.8¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"meister\">meister</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(66,62%,35%);border-color:hsl(66,62%,35%)\" title=\"Note qualite : 6.5/10\">6.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:21.9%;background:#b91c1c\"></div></div><span class=\"vt-conviction\" title=\"Mise 1.6× sa moyenne habituelle (886,01 $ / trade) — il se mouille sur ce coup\">★</span><span class=\"vt-trader-row-right\"><b>1 446,95 $</b> @ 55.3¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#15803d\">Y</span><span class=\"vt-trader-row-name vt-trader-row-name-marginal\"><span class=\"vt-trader-row-name-text\" title=\"GC-P — position marginale ici, camp principal sur l'autre côté\">GC-P</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(87,62%,35%);border-color:hsl(87,62%,35%)\" title=\"Note qualite : 7.5/10\">7.5</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:20.0%;background:#15803d\"></div></div><span class=\"vt-conviction\"></span><span class=\"vt-trader-row-right\"><b>1 323,01 $</b> @ 44.0¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"VeryLucky888\">VeryLucky888</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(98,62%,35%);border-color:hsl(98,62%,35%)\" title=\"Note qualite : 8/10\">8</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:19.8%;background:#b91c1c\"></div></div><span class=\"vt-conviction\"></span><span class=\"vt-trader-row-right\"><b>1 313,34 $</b> @ 54.7¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"emacron\">emacron</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(77,62%,35%);border-color:hsl(77,62%,35%)\" title=\"Note qualite : 7/10\">7</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:12.4%;background:#b91c1c\"></div></div><span class=\"vt-conviction\" title=\"Mise 1.9× sa moyenne habituelle (426,95 $ / trade) — il se mouille sur ce coup\">★</span><span class=\"vt-trader-row-right\"><b>818,70 $</b> @ 54.8¢</span></div><div class=\"vt-trader-row\"><span class=\"vt-row-marker\" style=\"background:#b91c1c\">N</span><span class=\"vt-trader-row-name\"><span class=\"vt-trader-row-name-text\" title=\"anon\">anon</span><span class=\"w-badge\" style=\"color:#fff;background:hsl(56,62%,35%);border-color:hsl(56,62%,35%)\" title=\"Note qualite : 6/10\">6</span></span><div class=\"vt-trader-row-track\"><div class=\"vt-trader-row-fill\" style=\"width:10.4%;background:#b91c1c\"></div></div><span class=\"vt-conviction\"></span><span class=\"vt-trader-row-right\"><b>691,89 $</b> @ 53.0¢</span></div></div></div>",
+    "winningSide": null,
+    "confidence": null
+  },
+  {
     "id": "msrxkzmhm7reml",
     "savedAt": "2026-08-13T19:48:28.889Z",
     "question": "Will CF Cruz Azul win on 2026-08-13?",
