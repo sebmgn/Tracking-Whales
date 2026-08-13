@@ -1058,24 +1058,30 @@
   .snap-toggle-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .snap-toggle-bar .collapse-btn { margin-left: 0; }
   @keyframes snapNeonPulse {
-    0%, 100% { box-shadow: 0 0 5px color-mix(in srgb, var(--gold) 30%, transparent), inset 0 0 5px color-mix(in srgb, var(--gold) 8%, transparent); }
-    50% { box-shadow: 0 0 11px color-mix(in srgb, var(--gold) 55%, transparent), inset 0 0 7px color-mix(in srgb, var(--gold) 16%, transparent); }
+    0%, 100% { box-shadow: 0 0 5px color-mix(in srgb, var(--neon) 35%, transparent), inset 0 0 5px color-mix(in srgb, var(--neon) 9%, transparent); }
+    50% { box-shadow: 0 0 12px color-mix(in srgb, var(--neon) 65%, transparent), inset 0 0 7px color-mix(in srgb, var(--neon) 18%, transparent); }
   }
+  /* Each button gets its own neon hue — pure glow (box-shadow), no
+     text-shadow, so the label itself stays crisp and only the button's
+     outline lights up. */
+  #tierWinrateToggleBtn { --neon: var(--gold); }
+  #noteWinrateToggleBtn { --neon: #22d3ee; }
+  #noteRoiToggleBtn { --neon: #ec4899; }
+  #snapDistToggleBtn { --neon: #a78bfa; }
+  #snapStatsToggleBtn { --neon: #fb923c; }
   .snap-stats-toggle-btn {
     white-space: nowrap;
-    background: color-mix(in srgb, var(--gold) 9%, var(--panel));
-    border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
-    color: var(--gold);
+    background: color-mix(in srgb, var(--neon) 9%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--neon) 60%, transparent);
+    color: var(--text);
     font-weight: 600;
-    text-shadow: 0 0 6px color-mix(in srgb, var(--gold) 45%, transparent);
     animation: snapNeonPulse 3.2s ease-in-out infinite;
-    transition: box-shadow .2s ease, text-shadow .2s ease, border-color .2s ease, color .2s ease;
+    transition: box-shadow .2s ease, border-color .2s ease;
   }
   .snap-stats-toggle-btn:hover {
-    border-color: var(--gold);
-    color: var(--gold);
-    box-shadow: 0 0 16px color-mix(in srgb, var(--gold) 60%, transparent), 0 0 30px color-mix(in srgb, var(--gold) 25%, transparent);
-    text-shadow: 0 0 10px color-mix(in srgb, var(--gold) 80%, transparent), 0 0 18px color-mix(in srgb, var(--gold) 40%, transparent);
+    border-color: var(--neon);
+    color: var(--text);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--neon) 70%, transparent), 0 0 32px color-mix(in srgb, var(--neon) 30%, transparent);
     animation-play-state: paused;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -1320,6 +1326,32 @@
     box-shadow: 0 4px 14px rgba(51,43,30,.25);
   }
   .chart-tooltip.show { opacity: 1; }
+  /* Proposal #5 ("Avec icône de résultat") from the 10-tooltip gallery —
+     only the PnL history chart's tooltip (wireHistoryChartTooltip); the
+     legacy .vt-scatter-pt tooltip below keeps the plain baseline look
+     since it has no per-point win/loss to show an icon for. */
+  .chart-tooltip-result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+  }
+  .chart-tooltip-result-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chart-tooltip-result-value { font-weight: 700; }
+  .chart-tooltip-result-date { color: var(--text-dim); }
   .chart-pt { cursor: pointer; }
   /* A bit bigger than a plain chart-pt at rest, and much bigger on hover —
      these are the ones you can click through to the underlying trade, so
@@ -4260,7 +4292,8 @@
       // apart (small dots, red-green color vision deficiency, glare).
       // Pushed to near-neon (Material A400) on request for a bigger, more
       // flashy win/loss read at a glance.
-      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, pointColor: snap.leaderName === snap.winningSide ? "#00e676" : "#ff1744" });
+      var won = snap.leaderName === snap.winningSide;
+      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, win: won, pointColor: won ? "#00e676" : "#ff1744" });
     });
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
     var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
@@ -5337,7 +5370,7 @@
       // stays crisp once the dot grows on hover.
       var strokeAttr = p.pointColor ? ' stroke="var(--panel)" stroke-width="1.5"' : '';
       return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + (p.pointColor || lineColor) + '"' + strokeAttr + ' ' +
-        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
+        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
     }).join("");
 
     historyChartGradSeq++;
@@ -5383,11 +5416,21 @@
 
   function wireHistoryChartTooltip(box) {
     var tip = document.createElement("div");
-    tip.className = "chart-tooltip";
+    tip.className = "chart-tooltip chart-tooltip-result";
     box.appendChild(tip);
     box.querySelectorAll(".chart-pt").forEach(function (pt) {
       pt.addEventListener("mouseenter", function () {
-        tip.textContent = pt.getAttribute("data-date") + " : " + pt.getAttribute("data-value");
+        // Redundant win/loss cue (icon, not just color) for colorblind
+        // users or low-contrast screens — every point on this chart is a
+        // decided snapshot (see decidedAll in renderSnapPnlChart), so
+        // data-win is always present here.
+        var win = pt.getAttribute("data-win") === "1";
+        var color = win ? "var(--green)" : "var(--red)";
+        tip.style.borderColor = color;
+        tip.innerHTML =
+          '<span class="chart-tooltip-result-icon" style="background:' + color + '">' + (win ? "✓" : "✗") + '</span>' +
+          '<span class="chart-tooltip-result-value">' + esc(pt.getAttribute("data-value")) + '</span>' +
+          '<span class="chart-tooltip-result-date">' + esc(pt.getAttribute("data-date")) + '</span>';
         tip.classList.add("show");
       });
       pt.addEventListener("mousemove", function (ev) {
