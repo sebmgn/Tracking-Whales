@@ -5453,6 +5453,13 @@
       if (minIdx !== 0 && minIdx !== n - 1 && minIdx !== maxIdx) extremaLabels += extremumLabel(minIdx, "var(--red)");
     }
 
+    // Straight trend line from the first point to the last — recomputed
+    // from whatever `series` this call got, so it follows the same
+    // cote/confiance/note/période filters as the curve itself instead of
+    // being fixed to one dataset.
+    var firstPt = linePts[0];
+    var trendLine = '<line x1="' + firstPt.x.toFixed(2) + '" y1="' + firstPt.y.toFixed(2) + '" x2="' + lastPt.x.toFixed(2) + '" y2="' + lastPt.y.toFixed(2) + '" stroke="var(--gold)" stroke-width="1.6" stroke-dasharray="6,4" stroke-linecap="round" opacity="0.55"/>';
+
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
           '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.4"/>' +
@@ -5460,6 +5467,7 @@
         '</linearGradient></defs>' +
         '<path d="' + areaD + '" fill="url(#' + gradId + ')" stroke="none"/>' +
         zeroLine +
+        trendLine +
         '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2" stroke-linecap="round"/>' +
         // Soft halo behind the final point — the running total as of right
         // now — so the eye lands there first regardless of how the curve
