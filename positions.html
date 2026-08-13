@@ -2032,15 +2032,24 @@
     }
     return all;
   }
-  // Polymarket's data-api has no isResolved filter; "redeemable" marks a
-  // position whose market has already settled, so exclude those to mirror
-  // Predict.fun's isResolved=false (open positions only).
+  // REAL root cause of the stale-cote bug (2026-08-13, second pass): this
+  // used to fetch EVERY position ever held — including thousands of
+  // long-settled, already-redeemed ones — and only drop them client-side
+  // afterward. An active whale (e.g. RN1) can have 3000+ historical
+  // positions behind their handful of open ones, which meant 7-10
+  // sequential throttled requests just to fetch ONE trader's data, every
+  // ~10s refresh cycle, for every trader. That's what actually starved live
+  // markets of fresh curPrice — not just 429s. data-api DOES support
+  // filtering server-side (confirmed live: same result set as the old
+  // client-side `redeemable !== true` filter, just without paging through
+  // the settled positions to get there) — RN1 alone went from 3500 fetched
+  // rows across 7 requests down to 361 rows in a single request.
   async function fetchAllPolyPositions(address) {
     var all = [];
     var offset = 0, pageSize = 500;
     for (var i = 0; i < 10; i++) {
       var url = POLY_POSITIONS_BASE + "?user=" + encodeURIComponent(address) +
-        "&limit=" + pageSize + "&offset=" + offset + "&sizeThreshold=0.01";
+        "&limit=" + pageSize + "&offset=" + offset + "&sizeThreshold=0.01&redeemable=false";
       var res = await throttledFetch(url);
       if (!res.ok) {
         var body = "";
@@ -2052,6 +2061,8 @@
       if (!page || page.length < pageSize) break;
       offset += pageSize;
     }
+    // Safety net, not the primary filter anymore — the server-side param
+    // above does the real work now.
     return all.filter(function (p) { return p.redeemable !== true; });
   }
   function normalizePredictPosition(p, t) {

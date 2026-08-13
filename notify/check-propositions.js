@@ -228,13 +228,17 @@ async function fetchAllPredict(address) {
   return all;
 }
 
+// redeemable=false is a server-side filter, not just the client-side one
+// below — without it, an active trader's thousands of long-settled
+// positions get paged through every run just to be dropped afterward (see
+// the matching fix in positions.html's fetchAllPolyPositions).
 async function fetchAllPoly(address) {
   const all = [];
   let offset = 0;
   const pageSize = 500;
   for (let i = 0; i < 10; i++) {
     const url = POLY_POSITIONS_BASE + "?user=" + encodeURIComponent(address) +
-      "&limit=" + pageSize + "&offset=" + offset + "&sizeThreshold=0.01";
+      "&limit=" + pageSize + "&offset=" + offset + "&sizeThreshold=0.01&redeemable=false";
     const page = await fetchJson(url);
     all.push(...(page || []));
     if (!page || page.length < pageSize) break;
