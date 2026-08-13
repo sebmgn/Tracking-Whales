@@ -445,25 +445,27 @@
      instead of a solid semantic color — no more same-hue-on-same-hue risk
      to dodge with a forced white. */
   .vt-price-arrow { font-size: 9px; margin-left: 2px; color: var(--text); }
-  /* Cote + ROI as two fixed-width columns (see statsHtml in
-     computeUnitCardParts) — the whole point is that these line up down the
-     list regardless of question/leader-name length, so the width is a hard
-     flex-basis, not content-driven. Pulled in close to the leader badge
-     (negative margin, see below) since cote is really an extension of "what
-     that badge is telling you", not an unrelated stat living way off to
-     the side. */
-  .vt-top-stats { display: flex; align-items: center; gap: 10px; flex: none; margin-left: -6px; }
-  /* Same "mini-card" treatment as .vt-leader just above it (light panel
-     fill, hairline border, tight radius) — cote reads as a continuation of
-     that badge rather than a disconnected number. */
-  .vt-stat-odds {
-    flex: 0 0 54px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text);
-    font-variant-numeric: tabular-nums; white-space: nowrap;
-    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 6px; padding: 3px 4px;
+  /* Cote + ROI as one shared pill (mini-card treatment, same as .vt-leader
+     just before it) split by a hairline divider — one "market stats" unit
+     instead of two disconnected numbers. Each side keeps a fixed-width
+     column (hard flex-basis, not content-driven) so both numbers still
+     line up down the whole list regardless of question/leader-name
+     length. Pulled in close to the leader badge (negative margin) since
+     cote/ROI are really an extension of "what that badge is telling you". */
+  .vt-top-stats {
+    display: flex; align-items: stretch; flex: none; margin-left: -6px;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden;
   }
+  .vt-stat-odds {
+    flex: 0 0 54px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums; white-space: nowrap; padding: 3px 4px;
+  }
+  .vt-stat-divider { flex: none; width: 1px; background: var(--panel-border); }
   .vt-stat-roi {
-    flex: 0 0 52px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text);
-    font-variant-numeric: tabular-nums; white-space: nowrap;
+    flex: 0 0 52px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums; white-space: nowrap; padding: 3px 4px;
   }
   /* Sized up from the original 44×15 — same SVG (viewBox stays 44×15,
      coordinates just stretch to fill), so the line itself also reads
@@ -3297,14 +3299,17 @@
     // (a favorite's ROI is legitimately small and positive same as a
     // longshot's is large and positive; color here would just repeat the
     // win/lose coding already carried elsewhere on the card).
-    // Cote and ROI, each its own fixed-width column — sits between
-    // .vt-top-left (the flexible/shrinking region: emoji, question, leader
-    // name) and .vt-badge-group (also fixed-width), so both numbers line up
-    // vertically down the whole list regardless of how long the question or
-    // leader name happens to be on any given card. Always rendered (even
-    // empty) so every card reserves the same width here.
+    // Cote and ROI, one shared pill split by a hairline divider — reads as
+    // one "market stats" unit instead of two disconnected numbers. Each
+    // side keeps its own fixed-width column inside the pill (see CSS) so
+    // both numbers still line up vertically down the whole list regardless
+    // of how long the question or leader name happens to be on any given
+    // card. Sits between .vt-top-left (the flexible/shrinking region) and
+    // .vt-badge-group (also fixed-width). Always rendered (even empty) so
+    // every card reserves the same width here.
     var statsHtml = '<span class="vt-top-stats">' +
       '<span class="vt-stat-odds" title="Prix actuel du marché, pas le prix d\'entrée des traders">' + (leaderPriceText ? esc(leaderPriceText) + priceArrowHtml : '') + '</span>' +
+      '<span class="vt-stat-divider"></span>' +
       '<span class="vt-stat-roi" title="ROI si le camp majoritaire gagne, à la cote actuelle">' + (leaderRoi != null ? (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + '%' : '') + '</span>' +
     '</span>';
     var headerHtml =
