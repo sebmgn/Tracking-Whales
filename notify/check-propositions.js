@@ -76,7 +76,9 @@ const WATCHED = [
   { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2" },
   { name: "uptheblues", platform: "polymarket", address: "0x2a69660046d7acc4ab204d7cc5ba78b0776cd2f7" },
   { name: "emacron", platform: "polymarket", address: "0x1f624696c102b99bea92c75a502fa7e4a6d676f6" },
-  { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8" }
+  { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8" },
+  { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8" },
+  { name: "wagerwizard", platform: "polymarket", address: "0x2c46ffe86ee500875db3c679e52f6e64854cdac9" }
 ];
 
 // Curated "trusted" subset — same list and same purpose as positions.html's

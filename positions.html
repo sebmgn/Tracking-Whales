@@ -1604,7 +1604,9 @@
     // proxyWallet, cross-checked against a live positions fetch.
     { name: "uptheblues", platform: "polymarket", address: "0x2a69660046d7acc4ab204d7cc5ba78b0776cd2f7", weight: 6 },
     { name: "emacron", platform: "polymarket", address: "0x1f624696c102b99bea92c75a502fa7e4a6d676f6", weight: 7 },
-    { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8", weight: 6.5 }
+    { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8", weight: 6.5 },
+    { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8", weight: 7 },
+    { name: "wagerwizard", platform: "polymarket", address: "0x2c46ffe86ee500875db3c679e52f6e64854cdac9", weight: 6 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -2881,7 +2883,8 @@
     volumeConcentration: [0.5, 1],                 // leaderStake / totalStake — 0.5 = split evenly, 1 = all the money on one side
     volume: [3000, 50000],                         // $, log scale between the two
     traderCount: [4, 9],                           // traders, linear
-    reliableAgreement: [0, RELIABLE_TRADERS.length] // fiables traders agreeing, linear
+    reliableAgreement: [0, RELIABLE_TRADERS.length], // fiables traders agreeing, linear
+    topTraderShare: [0.35, 0.85]                   // biggest single trader's $ / leading side's $ — 0.35 = spread out, 0.85 = one whale alone
   };
   // Calibrated 2026-08-08 against 20 hand-scored real-shaped examples (see
   // notify/SCORE_CALIBRATION.md) after the additive-only formula badly
@@ -2900,6 +2903,23 @@
   //    money than the dissenting minority (a real, if rare, case) needs its
   //    own veto even when the headcount split looks convincing — hence
   //    gateMoney, independent of gateHeadcount.
+  // Calibrated 2026-08-13 after a user-flagged case: 6 traders unanimous on
+  // one side, near-max consensusRatio/volumeConcentration → scored 8.0, but
+  // one trader held 90% of that side's $ and the other 5 were along for the
+  // ride with a few hundred dollars each. volumeConcentration only measures
+  // money-vs-OTHER-sides, so it was blind to concentration WITHIN the
+  // leading side — hence gateWhale below, using that same case to land the
+  // corrected score at 7.0.
+  function leaderTopTraderShare(leaderGroup) {
+    if (!leaderGroup || !leaderGroup.stake || leaderGroup.traderCount < 2) return 0;
+    var byTrader = {};
+    leaderGroup.items.forEach(function (it) {
+      it.s.entries.forEach(function (e) { byTrader[e.trader] = (byTrader[e.trader] || 0) + e.stake; });
+    });
+    var maxStake = 0;
+    Object.keys(byTrader).forEach(function (name) { if (byTrader[name] > maxStake) maxStake = byTrader[name]; });
+    return maxStake / leaderGroup.stake;
+  }
   function normLinear(value, range) {
     var lo = range[0], hi = range[1];
     if (hi <= lo) return 0;
@@ -2933,6 +2953,7 @@
     // MONEY on one camp even though "agreement" (a trader headcount) would
     // call that a near-even split.
     var volumeConcentration = u.totalStake > 0 && leaderGroup ? (leaderGroup.stake / u.totalStake) : 0;
+    var topTraderShare = leaderTopTraderShare(leaderGroup);
 
     var consensusRatio = u.traderCount > 0 ? leaderCount / u.traderCount : 0;
     var factors = {
@@ -2946,11 +2967,13 @@
       factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
       factors.volume * SCORE_WEIGHTS.volume + factors.traderCount * SCORE_WEIGHTS.traderCount +
       factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
-    // Weak consensus — by headcount OR by money — sinks the whole trade,
-    // not just a handful of additive points; see the calibration note above.
+    // Weak consensus — by headcount OR by money OR by ONE WHALE carrying
+    // the whole leading side alone — sinks the whole trade, not just a
+    // handful of additive points; see the calibration notes above.
     var gateHeadcount = consensusGate(factors.consensusRatio, 0.65, 0.45);
     var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
-    var gate = gateHeadcount * gateMoney;
+    var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
+    var gate = gateHeadcount * gateMoney * gateWhale;
     var score = Math.round((1 + raw * 9 * gate) * 10) / 10;
     return {
       score: score,
@@ -2958,6 +2981,7 @@
       factors: factors,
       gate: gate,
       volumeConcentration: volumeConcentration,
+      topTraderShare: topTraderShare,
       reliableAgreeing: reliableAgreeing,
       agreeingCount: leaderCount
     };
@@ -3160,7 +3184,7 @@
       }
       breakdownHtml = '<div class="vt-score-breakdown"><div class="vt-score-breakdown-title">Note ' + score.toFixed(1) + '/10 — détail</div>' + rows + penaltyRow + '</div>';
     }
-    return '<span class="vt-score-wrap' + (extraClass ? " " + extraClass : "") + '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables">' + scoreNumHtml + breakdownHtml + '</span>';
+    return '<span class="vt-score-wrap' + (extraClass ? " " + extraClass : "") + '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables, répartition du volume entre eux">' + scoreNumHtml + breakdownHtml + '</span>';
   }
   // Computes everything renderUnitCard needs, split into header (question +
   // leader badge) and body (balance bars + trader breakdown) so the header
