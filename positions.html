@@ -886,7 +886,7 @@
      row, so every one of these needs a hard width (not just flex:none) or
      its own content length ends up dictating where every column after it lands. */
   .vt-dense-live { flex: 0 0 14px; font-size: 10px; text-align: center; }
-  .vt-dense-odds { flex: 0 0 46px; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .vt-dense-odds { flex: 0 0 46px; font-size: 11px; color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
   .vt-dense-roi { flex: 0 0 44px; font-size: 11px; color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
   .vt-dense-traders { flex: 0 0 30px; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
   .vt-dense-stake { flex: 0 0 84px; font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
@@ -1052,7 +1052,12 @@
   .snap-purge-btn { color: var(--red); }
   .snap-purge-btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
   .snap-stats-wrap { margin-bottom: 16px; }
-  .snap-stats-toggle-btn { display: block; margin-bottom: 8px; }
+  /* The 5 winrate/récap toggles as one row instead of stacked lines — each
+     button keeps its own text on one line (white-space:nowrap), the row
+     itself wraps as a whole if the panel gets too narrow for all 5. */
+  .snap-toggle-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .snap-toggle-bar .collapse-btn { margin-left: 0; }
+  .snap-stats-toggle-btn { white-space: nowrap; }
   .snap-stats-row { cursor: pointer; }
   .snap-stats-row:hover { background: var(--row-hover); }
   .snap-stats-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
@@ -1317,7 +1322,7 @@
   .pnl-chart-header .tier-wr-title { margin-bottom: 0; }
   .pnl-chart-stats { display: flex; gap: 8px; }
   .pnl-chart-stat {
-    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
     min-width: 58px; padding: 4px 10px 5px;
     background: color-mix(in srgb, var(--gold) 7%, var(--panel));
     border: 1px solid var(--panel-border);
@@ -1326,7 +1331,7 @@
   }
   .pnl-chart-stat-label {
     font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim);
-    white-space: nowrap;
+    white-space: nowrap; text-align: center;
   }
   .pnl-chart-stat-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
@@ -1504,6 +1509,13 @@
     </div>
     <div id="snapPnlChartContent"></div>
     <div id="snapDashboard"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher le winrate par conviction</button>
+      <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher l'analyse winrate × note</button>
+      <button type="button" id="noteRoiToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher le nuage note × ROI</button>
+      <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher l'analyse cote × confiance</button>
+      <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher le récap par trader</button>
+    </div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
     <div id="noteRoiContent"></div>
@@ -3939,6 +3951,16 @@
     if (tier && s.confidence !== tier) return false;
     return true;
   }
+  // The 5 winrate/récap panel toggle buttons live together in one shared
+  // row (#snapshots' .snap-toggle-bar in the static HTML) instead of each
+  // being rebuilt inline above its own panel — this just syncs an existing
+  // button's label/collapsed state instead of re-creating it, so moving
+  // the row doesn't touch the delegated click handlers (they still find
+  // the same #id wherever it sits in the DOM).
+  function syncSnapToggleLabel(id, collapsed, label) {
+    var btn = document.getElementById(id);
+    if (btn) btn.textContent = (collapsed ? "▸ Afficher " : "▾ Réduire ") + label;
+  }
   function renderTierWinrate(list) {
     if (!tierWinrateContent) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
@@ -3981,8 +4003,8 @@
     var filterNoteHtml = tierCardFilter.length
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
+    syncSnapToggleLabel("tierWinrateToggleBtn", tierWinrateCollapsed, "le winrate par conviction");
     tierWinrateContent.innerHTML =
-      '<button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (tierWinrateCollapsed ? "▸ Afficher le winrate par conviction" : "▾ Réduire le winrate par conviction") + '</button>' +
       '<div class="tier-wr-collapse-wrap' + (tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
       '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
@@ -4060,8 +4082,8 @@
     var filterNoteHtml = noteCardFilter != null
       ? '<div class="tier-wr-note">Filtré sur <b>note ' + noteCardFilter + '-' + (noteCardFilter + 1) + '</b> — reclique le seuil actif pour l\'enlever.</div>'
       : '';
+    syncSnapToggleLabel("noteWinrateToggleBtn", noteWinrateCollapsed, "l'analyse winrate × note");
     noteWinrateContent.innerHTML =
-      '<button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (noteWinrateCollapsed ? "▸ Afficher l'analyse winrate × note" : "▾ Réduire l'analyse winrate × note") + '</button>' +
       '<div class="tier-wr-collapse-wrap' + (noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par tranche de note</div>' +
       '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
@@ -4103,8 +4125,8 @@
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + zeroLine + yLabels + xLabels + dots +
       '<text x="' + (padL + innerW / 2) + '" y="' + (H - 4) + '" font-size="9.5" fill="var(--text-dim)" text-anchor="middle">Note au moment du snapshot</text>' +
     '</svg>';
+    syncSnapToggleLabel("noteRoiToggleBtn", noteRoiCollapsed, "le nuage note × ROI");
     noteRoiContent.innerHTML =
-      '<button type="button" id="noteRoiToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (noteRoiCollapsed ? "▸ Afficher le nuage note × ROI" : "▾ Réduire le nuage note × ROI") + '</button>' +
       '<div class="tier-wr-collapse-wrap' + (noteRoiCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Nuage note × ROI réalisé</div>' +
       '<div class="tier-wr-subtitle">Un point par snapshot décidé — vert si gagné, rouge si perdu, ROI simulé à mise fixe de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '</div>' +
       svg + '</div></div>';
@@ -4187,9 +4209,9 @@
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsCount ? (statsTotalPnl / (statsCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
     var statsHtml = '<div class="pnl-chart-stats">' +
-      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">Nb de trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
-      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI moyen / pari</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
     '</div>';
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     if (series.length < 2) {
@@ -4369,8 +4391,8 @@
     var cellFilterNoteHtml = snapDistCellFilter
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(snapDistCellFilter.tier || "Tous") + ' · ' + snapDistCellFilter.bracket[0] + '–' + snapDistCellFilter.bracket[1] + '¢</b> — reclique la cellule active pour l\'enlever.</div>'
       : '';
+    syncSnapToggleLabel("snapDistToggleBtn", snapDistCollapsed, "l'analyse cote × confiance");
     snapDistContent.innerHTML =
-      '<button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapDistCollapsed ? "▸ Afficher l'analyse cote × confiance" : "▾ Réduire l'analyse cote × confiance") + '</button>' +
       '<div class="snap-dist-wrap table-scroll' + (snapDistCollapsed ? " collapsed" : "") + '">' +
       '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction. Clique une cellule pour filtrer les snapshots ci-dessous sur cette tranche.</div>' +
       '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table>' + cellFilterNoteHtml + '</div>';
@@ -4452,8 +4474,8 @@
       var arrow = isActive ? '<span class="sort-arrow">' + (snapStatsSort.dir === "asc" ? "▲" : "▼") + '</span>' : "";
       return '<th class="sortable' + (col.numeric ? " num" : "") + (isActive ? " sorted" : "") + '" data-sort-key="' + col.key + '">' + esc(col.label) + arrow + '</th>';
     }).join("") + '<th>Tendance</th>';
+    syncSnapToggleLabel("snapStatsToggleBtn", snapStatsCollapsed, "le récap par trader");
     snapStatsContent.innerHTML =
-      '<button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">' + (snapStatsCollapsed ? "▸ Afficher le récap par trader" : "▾ Réduire le récap par trader") + '</button>' +
       '<div class="snap-stats-wrap table-scroll' + (snapStatsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
       headCells +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
