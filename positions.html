@@ -1057,7 +1057,30 @@
      itself wraps as a whole if the panel gets too narrow for all 5. */
   .snap-toggle-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .snap-toggle-bar .collapse-btn { margin-left: 0; }
-  .snap-stats-toggle-btn { white-space: nowrap; }
+  @keyframes snapNeonPulse {
+    0%, 100% { box-shadow: 0 0 5px color-mix(in srgb, var(--gold) 30%, transparent), inset 0 0 5px color-mix(in srgb, var(--gold) 8%, transparent); }
+    50% { box-shadow: 0 0 11px color-mix(in srgb, var(--gold) 55%, transparent), inset 0 0 7px color-mix(in srgb, var(--gold) 16%, transparent); }
+  }
+  .snap-stats-toggle-btn {
+    white-space: nowrap;
+    background: color-mix(in srgb, var(--gold) 9%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
+    color: var(--gold);
+    font-weight: 600;
+    text-shadow: 0 0 6px color-mix(in srgb, var(--gold) 45%, transparent);
+    animation: snapNeonPulse 3.2s ease-in-out infinite;
+    transition: box-shadow .2s ease, text-shadow .2s ease, border-color .2s ease, color .2s ease;
+  }
+  .snap-stats-toggle-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--gold) 60%, transparent), 0 0 30px color-mix(in srgb, var(--gold) 25%, transparent);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--gold) 80%, transparent), 0 0 18px color-mix(in srgb, var(--gold) 40%, transparent);
+    animation-play-state: paused;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .snap-stats-toggle-btn { animation: none; }
+  }
   .snap-stats-row { cursor: pointer; }
   .snap-stats-row:hover { background: var(--row-hover); }
   .snap-stats-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
@@ -1454,6 +1477,7 @@
         <div class="vt-title-row">
           <h2 class="section-title">Value Trades</h2>
           <button id="vtDenseToggleBtn" type="button" class="vt-dense-toggle-btn" title="Bascule vers une ligne par trade, sans les jauges">☰ Vue compacte</button>
+          <button id="vtExtremeOddsToggleBtn" type="button" class="vt-dense-toggle-btn" title="Masque les trades dont la cote dépasse 99¢ ou est sous 5¢ — déjà quasi joués, plus vraiment un pari">🎯 Masquer cotes extrêmes</button>
           <button id="vtTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
         </div>
         <div class="vt-filters" id="sportFilters">
@@ -1858,6 +1882,11 @@
   // long list fast. Remembered across reloads since it's a reading
   // preference, not a filter.
   var vtDenseMode = (function () { try { return localStorage.getItem("vtDenseMode") === "1"; } catch (e) { return false; } })();
+  // A trade priced above 99¢ or below 5¢ is basically already decided — not
+  // really a "value trade" anymore, just noise crowding out the ones that
+  // still are. On by default (a reading preference, remembered like
+  // vtDenseMode) since that's the whole point of the toggle existing.
+  var vtHideExtremeOdds = (function () { try { var v = localStorage.getItem("vtHideExtremeOdds"); return v === null ? true : v === "1"; } catch (e) { return true; } })();
   // Persisted per-market flags, keyed by unitStableKey — deliberately
   // separate from Mes Snapshots (which freezes a copy at bet time for
   // win/loss tracking): these two just tag a LIVE unit, still recomputed
@@ -4890,7 +4919,10 @@
     var allUnits = allUnitsRaw.filter(function (u) {
       if (trashedKeys[unitStableKey(u)]) return false;
       if (unitTimingStatus(u, true) === "over") return false;
-      return u.leaderPrice == null || u.leaderPrice < 0.9995;
+      if (u.leaderPrice == null) return true;
+      if (u.leaderPrice >= 0.9995) return false; // already happened, no matter the toggle below
+      if (vtHideExtremeOdds && (u.leaderPrice > 0.99 || u.leaderPrice < 0.05)) return false;
+      return true;
     });
     if (vtTrashMode) { renderTrashView(allUnitsRaw); return; }
     var traderFiltered = allUnits.filter(function (u) {
@@ -5484,6 +5516,18 @@
     vtDenseMode = !vtDenseMode;
     try { localStorage.setItem("vtDenseMode", vtDenseMode ? "1" : "0"); } catch (e) { /* won't persist this time */ }
     syncDenseToggleBtn();
+    renderValueTrades();
+  });
+  var vtExtremeOddsToggleBtn = document.getElementById("vtExtremeOddsToggleBtn");
+  function syncExtremeOddsToggleBtn() {
+    vtExtremeOddsToggleBtn.classList.toggle("active", vtHideExtremeOdds);
+    vtExtremeOddsToggleBtn.textContent = vtHideExtremeOdds ? "🎯 Afficher les cotes extrêmes" : "🎯 Masquer cotes extrêmes";
+  }
+  syncExtremeOddsToggleBtn();
+  vtExtremeOddsToggleBtn.addEventListener("click", function () {
+    vtHideExtremeOdds = !vtHideExtremeOdds;
+    try { localStorage.setItem("vtHideExtremeOdds", vtHideExtremeOdds ? "1" : "0"); } catch (e) { /* won't persist this time */ }
+    syncExtremeOddsToggleBtn();
     renderValueTrades();
   });
   var vtTrashToggleBtn = document.getElementById("vtTrashToggleBtn");
