@@ -1971,7 +1971,17 @@
   var __rqGate = Promise.resolve();
   var __rqBatchGate = __rqGate;
   var __rqBatchCount = 0;
-  function throttledFetch(url, options) {
+  // A 429 here used to just propagate straight to fetchPositionsForTrader's
+  // .catch, which drops that trader's whole update for the cycle and keeps
+  // showing whatever price was cached from their last SUCCESSFUL fetch —
+  // that can be several cycles old, which is exactly how a card ends up
+  // showing a cote that's meaningfully behind the real market (reported:
+  // 65.5¢ shown vs 71¢ live) while the status bar still says "Live", since
+  // renderAll() runs regardless of how many individual traders failed this
+  // cycle. One quick retry after a short pause absorbs a single rate-limit
+  // blip instead of silently living with stale data until the NEXT cycle
+  // happens to succeed for that trader.
+  function throttledFetch(url, options, _retried) {
     if (__rqBatchCount === 0) {
       __rqBatchGate = __rqGate.then(function () {
         return new Promise(function (resolve) { setTimeout(resolve, __RQ_BATCH_INTERVAL_MS); });
@@ -1985,6 +1995,14 @@
       var timer = setTimeout(function () { controller.abort(); }, __RQ_TIMEOUT_MS);
       var opts = Object.assign({}, options, { signal: controller.signal });
       return fetch(url, opts).finally(function () { clearTimeout(timer); });
+    }).then(function (res) {
+      if (res.status === 429 && !_retried) {
+        var retryAfter = Number(res.headers.get("retry-after"));
+        var waitMs = retryAfter > 0 ? Math.min(5000, retryAfter * 1000) : 1200;
+        return new Promise(function (resolve) { setTimeout(resolve, waitMs); })
+          .then(function () { return throttledFetch(url, options, true); });
+      }
+      return res;
     });
   }
 
@@ -5349,6 +5367,18 @@
     vtScatterTooltip.classList.remove("show");
   });
 
+  // Recent-match history is now only fetched while this tab is active (see
+  // refresh()) — this covers the moment the tab is FIRST opened, where the
+  // regular cycle hasn't had a chance to notice it's active yet, so the tab
+  // isn't left showing empty/stale data until the next refresh happens to run.
+  function ensureRecentMatchesFresh() {
+    Promise.all(TRADERS.map(function (t) {
+      return fetchRecentMatchesForTrader(t, 20).then(function (matches) { return { name: t.name, matches: matches }; });
+    })).then(function (matchResults) {
+      matchResults.forEach(function (r) { if (r.matches) recentMatches[r.name] = r.matches; });
+      renderRecentTrades();
+    }).catch(function (err) { console.error("Recent matches fetch:", err); });
+  }
   // ---------- tabs ----------
   document.querySelectorAll(".tab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -5365,6 +5395,7 @@
       // the live match was right there the entire time. Render immediately
       // on the click itself instead of waiting on that.
       if (btn.getAttribute("data-tab") === "snapshots") renderSnapshots();
+      if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
     });
   });
   rtFilters.querySelectorAll("button").forEach(function (btn) {
@@ -5466,13 +5497,24 @@
     errorMsgEl.textContent = "";
     var discard = false;
     try {
+      // Recent-match history (Trades récents) used to be re-fetched for all
+      // ~30 traders on EVERY cycle regardless of whether anyone was even
+      // looking at that tab — roughly doubling the request volume sharing
+      // the SAME global throttle queue as the positions fetch that the
+      // cote/note actually depend on. Under sustained load that meant the
+      // price-critical fetch took longer to clear the queue and was more
+      // likely to land on a 429, for data most cycles never displayed.
+      // Skipping it while the tab isn't active gives positions the full
+      // request budget — same "only when that tab's open" reasoning already
+      // used for snapshots below.
+      var recentTabActive = !!(document.getElementById("tab-recent-trades") && document.getElementById("tab-recent-trades").classList.contains("active"));
       var results = await Promise.all([
         Promise.all(TRADERS.map(function (t) {
           return fetchPositionsForTrader(t).then(function (positions) { return { name: t.name, positions: positions }; });
         })),
-        Promise.all(TRADERS.map(function (t) {
+        recentTabActive ? Promise.all(TRADERS.map(function (t) {
           return fetchRecentMatchesForTrader(t, 20).then(function (matches) { return { name: t.name, matches: matches }; });
-        }))
+        })) : Promise.resolve([])
       ]);
       var posResults = results[0], matchResults = results[1];
       if (paused && !isManual) { discard = true; }
@@ -5492,7 +5534,16 @@
         var snapTab = document.getElementById("tab-snapshots");
         if (snapTab && snapTab.classList.contains("active")) renderSnapshots();
         lastUpdateEl.textContent = new Date().toLocaleTimeString("fr-FR");
+        // "Live" alone used to mean this exact thing even when a chunk of
+        // traders silently failed this cycle and are showing whatever price
+        // was cached from their last success — surfacing the count here is
+        // the difference between an honest "some cotes may lag" and a flat
+        // "Live" that's actually only partially true.
+        var failedCount = posResults.filter(function (r) { return !r.positions; }).length;
         statusText.textContent = paused ? "En pause" : "Live";
+        errorMsgEl.textContent = failedCount > 0
+          ? failedCount + " profil" + (failedCount > 1 ? "s" : "") + " non actualisé" + (failedCount > 1 ? "s" : "") + " ce cycle (cotes potentiellement en retard) — nouvelle tentative au prochain refresh"
+          : "";
       }
     } catch (err) {
       if (!(paused && !isManual)) {
