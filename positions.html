@@ -1061,22 +1061,28 @@
     0%, 100% { box-shadow: 0 0 5px color-mix(in srgb, var(--neon) 35%, transparent), inset 0 0 5px color-mix(in srgb, var(--neon) 9%, transparent); }
     50% { box-shadow: 0 0 12px color-mix(in srgb, var(--neon) 65%, transparent), inset 0 0 7px color-mix(in srgb, var(--neon) 18%, transparent); }
   }
-  /* Each button gets its own neon hue — pure glow (box-shadow), no
-     text-shadow, so the label itself stays crisp and only the button's
-     outline lights up. */
-  #tierWinrateToggleBtn { --neon: var(--gold); }
-  #noteWinrateToggleBtn { --neon: #22d3ee; }
-  #noteRoiToggleBtn { --neon: #ec4899; }
-  #snapDistToggleBtn { --neon: #a78bfa; }
-  #snapStatsToggleBtn { --neon: #fb923c; }
+  /* Each button (and its own content panel below, once open) shares one
+     neon hue — pure glow (box-shadow), no text-shadow, so the label
+     itself stays crisp and only the outline lights up. */
+  #tierWinrateToggleBtn, #tierWinrateContent { --neon: var(--gold); }
+  #noteWinrateToggleBtn, #noteWinrateContent { --neon: #22d3ee; }
+  #noteRoiToggleBtn, #noteRoiContent { --neon: #ec4899; }
+  #snapDistToggleBtn, #snapDistContent { --neon: #a78bfa; }
+  #snapStatsToggleBtn, #snapStatsContent { --neon: #fb923c; }
+  /* flex:1 with a shared min width — the 5 buttons stretch evenly to fill
+     the row instead of clumping left, sized up now that dropping
+     "Afficher" leaves them short. */
   .snap-stats-toggle-btn {
-    white-space: nowrap;
+    flex: 1 1 150px;
+    text-align: center;
+    padding: 10px 14px;
+    font-size: 13.5px;
     background: color-mix(in srgb, var(--neon) 9%, var(--panel));
     border: 1px solid color-mix(in srgb, var(--neon) 60%, transparent);
     color: var(--text);
     font-weight: 600;
     animation: snapNeonPulse 3.2s ease-in-out infinite;
-    transition: box-shadow .2s ease, border-color .2s ease;
+    transition: box-shadow .2s ease, border-color .2s ease, background .2s ease, color .2s ease;
   }
   .snap-stats-toggle-btn:hover {
     border-color: var(--neon);
@@ -1084,8 +1090,27 @@
     box-shadow: 0 0 18px color-mix(in srgb, var(--neon) 70%, transparent), 0 0 32px color-mix(in srgb, var(--neon) 30%, transparent);
     animation-play-state: paused;
   }
+  /* Open panel — filled solid with the button's own neon so it's
+     unmistakable which one is active, not just a subtle outline. */
+  .snap-stats-toggle-btn.active {
+    background: var(--neon);
+    border-color: var(--neon);
+    color: #fff;
+  }
+  .snap-stats-toggle-btn.active:hover {
+    color: #fff;
+    box-shadow: 0 0 22px color-mix(in srgb, var(--neon) 80%, transparent), 0 0 38px color-mix(in srgb, var(--neon) 40%, transparent);
+  }
   @media (prefers-reduced-motion: reduce) {
     .snap-stats-toggle-btn { animation: none; }
+  }
+  #tierWinrateContent .chart-box,
+  #noteWinrateContent .chart-box,
+  #noteRoiContent .chart-box,
+  #snapDistContent .table-scroll,
+  #snapStatsContent .table-scroll {
+    border-color: var(--neon);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--neon) 28%, transparent);
   }
   .snap-stats-row { cursor: pointer; }
   .snap-stats-row:hover { background: var(--row-hover); }
@@ -1272,6 +1297,15 @@
   tfoot td.num { text-align: right; }
 
   .empty-state, .loading-state { text-align: center; color: var(--text-dim); padding: 40px 20px; }
+  /* Skeleton loading state — proposal #1 of the 20-visuals gallery. Shows
+     the shape of what's coming instead of a bare "loading" sentence, so
+     the wait reads as shorter. */
+  @keyframes skeletonShimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
+  .skeleton-card { background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 13px 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .skeleton-line { height: 11px; border-radius: 4px; background: linear-gradient(90deg, var(--panel-border) 25%, color-mix(in srgb, var(--gold) 30%, var(--panel-border)) 50%, var(--panel-border) 75%); background-size: 600px 100%; animation: skeletonShimmer 1.6s linear infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-line { animation: none; }
+  }
 
   .stat-grid {
     display: grid;
@@ -1544,7 +1578,10 @@
     </div>
     <div id="vtFollowedContent"></div>
     <div id="valueTradesContent" class="value-trades-box">
-      <div class="loading-state">Analyse des positions communes…</div>
+      <div class="skeleton-card"><div class="skeleton-line" style="width:62%;height:13px"></div><div class="skeleton-line" style="width:88%"></div><div class="skeleton-line" style="width:42%"></div></div>
+      <div class="skeleton-card"><div class="skeleton-line" style="width:48%;height:13px"></div><div class="skeleton-line" style="width:78%"></div><div class="skeleton-line" style="width:55%"></div></div>
+      <div class="skeleton-card"><div class="skeleton-line" style="width:70%;height:13px"></div><div class="skeleton-line" style="width:90%"></div><div class="skeleton-line" style="width:35%"></div></div>
+      <div class="skeleton-card"><div class="skeleton-line" style="width:55%;height:13px"></div><div class="skeleton-line" style="width:82%"></div><div class="skeleton-line" style="width:46%"></div></div>
     </div>
   </div>
 
@@ -1566,11 +1603,11 @@
     <div id="snapPnlChartContent"></div>
     <div id="snapDashboard"></div>
     <div class="snap-toggle-bar">
-      <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher le winrate par conviction</button>
-      <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher l'analyse winrate × note</button>
-      <button type="button" id="noteRoiToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher le nuage note × ROI</button>
-      <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher l'analyse cote × confiance</button>
-      <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Afficher le récap par trader</button>
+      <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le winrate par conviction</button>
+      <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ L'analyse winrate × note</button>
+      <button type="button" id="noteRoiToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le nuage note × ROI</button>
+      <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ L'analyse cote × confiance</button>
+      <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le récap par trader</button>
     </div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
@@ -4073,7 +4110,12 @@
   // the same #id wherever it sits in the DOM).
   function syncSnapToggleLabel(id, collapsed, label) {
     var btn = document.getElementById(id);
-    if (btn) btn.textContent = (collapsed ? "▸ Afficher " : "▾ Réduire ") + label;
+    if (!btn) return;
+    // "Afficher" dropped to keep these short enough to fill the row (see
+    // .snap-stats-toggle-btn); collapsed state capitalizes the label to
+    // read naturally without it ("Le winrate…" not "le winrate…").
+    btn.textContent = collapsed ? "▸ " + label.charAt(0).toUpperCase() + label.slice(1) : "▾ Réduire " + label;
+    btn.classList.toggle("active", !collapsed);
   }
   function renderTierWinrate(list) {
     if (!tierWinrateContent) return;
@@ -4912,6 +4954,19 @@
       followed.map(cardFn).join("") +
     '</div>';
   }
+  function skeletonCardsHtml(n) {
+    var widths = [[62, 88, 42], [48, 78, 55], [70, 90, 35], [55, 82, 46]];
+    var out = "";
+    for (var i = 0; i < n; i++) {
+      var w = widths[i % widths.length];
+      out += '<div class="skeleton-card">' +
+        '<div class="skeleton-line" style="width:' + w[0] + '%;height:13px"></div>' +
+        '<div class="skeleton-line" style="width:' + w[1] + '%"></div>' +
+        '<div class="skeleton-line" style="width:' + w[2] + '%"></div>' +
+      '</div>';
+    }
+    return out;
+  }
   // Corbeille — swaps the main list for whatever's been trashed, same
   // unfiltered allUnitsRaw source as Suivis (a trashed match can be past
   // its normal eligibility too), each card's 🗑 button already reads as ↺
@@ -4986,7 +5041,7 @@
       // site on every fresh page load, right up until the first refresh
       // resolved a few seconds later.
       if (!hasLoadedOnce) {
-        valueTradesContent.innerHTML = '<div class="loading-state">Analyse des positions communes…</div>';
+        valueTradesContent.innerHTML = skeletonCardsHtml(4);
         return;
       }
       // The headline (whale + "Aucun trade") is the at-a-glance read; the
