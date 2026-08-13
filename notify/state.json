@@ -1,14 +1,1 @@
-{
-  "polymarket|0x83477c8757f0a33df79a31f93a65162807991c0037389f360b01ce7645bcab47": {
-    "firstSeen": "2026-08-12T23:10:45.305Z",
-    "question": "Will CF Monterrey win on 2026-08-12?",
-    "side": "No",
-    "note": 7.7
-  },
-  "polymarket|0xc9c9a6ebf2840a93c56e26ecb0b8e9059d68ad3418c6542858794859ab05e97e": {
-    "firstSeen": "2026-08-12T23:58:15.292Z",
-    "question": "Cruzeiro EC vs. CR Flamengo: O/U 2.5",
-    "side": "Under",
-    "note": 8.4
-  }
-}
+{}
