@@ -60,7 +60,6 @@ const WATCHED = [
   { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add" },
   { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de" },
   { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74" },
-  { name: "NM-P", platform: "polymarket", address: "0xcf7379b4b891c06d88807f6f70efa75378120215" },
   { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6" },
   // These 8 were added to positions.html's TRADERS in earlier sessions but
   // never mirrored here — WATCHED had silently drifted out of sync with the
@@ -76,7 +75,8 @@ const WATCHED = [
   { name: "0xa697", platform: "polymarket", address: "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5" },
   { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2" },
   { name: "uptheblues", platform: "polymarket", address: "0x2a69660046d7acc4ab204d7cc5ba78b0776cd2f7" },
-  { name: "emacron", platform: "polymarket", address: "0x1f624696c102b99bea92c75a502fa7e4a6d676f6" }
+  { name: "emacron", platform: "polymarket", address: "0x1f624696c102b99bea92c75a502fa7e4a6d676f6" },
+  { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8" }
 ];
 
 // Curated "trusted" subset — same list and same purpose as positions.html's
