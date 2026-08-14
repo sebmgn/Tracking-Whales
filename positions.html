@@ -1378,12 +1378,23 @@
      since it has no per-point win/loss to show an icon for. */
   .chart-tooltip-result {
     display: flex;
-    align-items: center;
-    gap: 6px;
+    flex-direction: column;
+    gap: 4px;
     background: var(--panel);
     color: var(--text);
     border: 1px solid var(--panel-border);
   }
+  /* Cumulative running total as of this exact point — sits above the
+     per-trade row so "where am I overall" reads before "what did this one
+     trade do", which is otherwise easy to mistake for the total itself. */
+  .chart-tooltip-result-total {
+    font-size: 10px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 3px;
+  }
+  .chart-tooltip-result-total b { color: var(--text); font-size: 12px; }
+  .chart-tooltip-result-row { display: flex; align-items: center; gap: 6px; }
   .chart-tooltip-result-icon {
     flex: none;
     width: 16px;
@@ -4302,7 +4313,7 @@
       // Pushed to near-neon (Material A400) on request for a bigger, more
       // flashy win/loss read at a glance.
       var won = snap.leaderName === snap.winningSide;
-      series.push({ date: new Date(snap.savedAt), value: cum, id: snap.id, win: won, pointColor: won ? "#00e676" : "#ff1744" });
+      series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, pointColor: won ? "#00e676" : "#ff1744" });
     });
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
     var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
@@ -4426,7 +4437,7 @@
     { key: "loss", label: "Perdus", numeric: true },
     { key: "gainNuance", label: "Gain nuancé", numeric: true },
     { key: "perteNuance", label: "Perte nuancée", numeric: true },
-    { key: "wr", label: "% réussite", numeric: true }
+    { key: "roi", label: "ROI/trade", numeric: true }
   ];
   var snapStatsSort = { key: "total", dir: "desc" };
   // Trader name -> bool, survives re-renders the same way expandedValueTrades
@@ -4525,10 +4536,17 @@
     var byTrader = {};
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
-        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, trend: [], entries: [] };
+        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, flatPnl: 0, flatPnlCount: 0, trend: [], entries: [] };
         byTrader[name].total++;
         var pnlResult = traderNetPnlInSnapshot(snap, name);
         if (pnlResult) byTrader[name].pnl += pnlResult.net;
+        // Same flat-stake ROI simulation used everywhere else (tier winrate,
+        // odds distribution) — lets this column compare apples to apples with
+        // those, instead of a raw win/loss percentage that ignores the price
+        // paid (a trader winning mostly heavy favorites and one losing mostly
+        // longshots can share the same % réussite despite very different ROI).
+        var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+        if (hyp != null) { byTrader[name].flatPnl += hyp; byTrader[name].flatPnlCount++; }
         var cls = classifyTraderInSnapshot(snap, name);
         if (cls === "win") byTrader[name].win++;
         else if (cls === "loss") byTrader[name].loss++;
@@ -4556,7 +4574,7 @@
       var st = byTrader[n];
       var decided = st.win + st.loss + st.gainNuance + st.perteNuance;
       st.decided = decided;
-      st.wr = decided > 0 ? ((st.win + st.gainNuance) / decided * 100) : null;
+      st.roi = st.flatPnlCount > 0 ? (st.flatPnl / (st.flatPnlCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
       // Raw st.pnl stays a number (0 when nothing decided yet) for display;
       // this separate field is what sorting uses so "—" rows sink to the
       // bottom instead of racing 0-PNL traders for last place.
@@ -4590,7 +4608,7 @@
         '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
         '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
-        '<td class="num">' + (st.wr == null ? '—' : st.wr.toFixed(0) + '%') + '</td>' +
+        '<td class="num ' + (st.roi == null ? '' : (st.roi >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + (st.roi == null ? '—' : (st.roi >= 0 ? '+' : '') + st.roi.toFixed(0) + '%') + '</td>' +
         '<td>' + traderTrendSparkline(st.trend) + '</td></tr>' + traderDetailRowHtml(st);
     }).join("");
     var headCells = SNAP_STATS_COLUMNS.map(function (col) {
@@ -5406,7 +5424,7 @@
       // stays crisp once the dot grows on hover.
       var strokeAttr = p.pointColor ? ' stroke="var(--panel)" stroke-width="1.5"' : '';
       return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + (p.pointColor || lineColor) + '"' + strokeAttr + ' ' +
-        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
+        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
     }).join("");
 
     historyChartGradSeq++;
@@ -5470,11 +5488,15 @@
         // data-win is always present here.
         var win = pt.getAttribute("data-win") === "1";
         var color = win ? "var(--green)" : "var(--red)";
+        var delta = pt.getAttribute("data-delta") || pt.getAttribute("data-value");
         tip.style.borderColor = color;
         tip.innerHTML =
-          '<span class="chart-tooltip-result-icon" style="background:' + color + '">' + (win ? "✓" : "✗") + '</span>' +
-          '<span class="chart-tooltip-result-value">' + esc(pt.getAttribute("data-value")) + '</span>' +
-          '<span class="chart-tooltip-result-date">' + esc(pt.getAttribute("data-date")) + '</span>';
+          '<span class="chart-tooltip-result-total">Total à ce moment : <b>' + esc(pt.getAttribute("data-value")) + '</b></span>' +
+          '<span class="chart-tooltip-result-row">' +
+            '<span class="chart-tooltip-result-icon" style="background:' + color + '">' + (win ? "✓" : "✗") + '</span>' +
+            '<span class="chart-tooltip-result-value">' + esc(delta) + '</span>' +
+            '<span class="chart-tooltip-result-date">' + esc(pt.getAttribute("data-date")) + '</span>' +
+          '</span>';
         tip.classList.add("show");
       });
       pt.addEventListener("mousemove", function (ev) {
