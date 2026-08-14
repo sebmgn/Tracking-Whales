@@ -1057,13 +1057,13 @@
      itself wraps as a whole if the panel gets too narrow for all 5. */
   .snap-toggle-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .snap-toggle-bar .collapse-btn { margin-left: 0; }
-  @keyframes snapNeonPulse {
-    0%, 100% { box-shadow: 0 0 5px color-mix(in srgb, var(--neon) 35%, transparent), inset 0 0 5px color-mix(in srgb, var(--neon) 9%, transparent); }
-    50% { box-shadow: 0 0 12px color-mix(in srgb, var(--neon) 65%, transparent), inset 0 0 7px color-mix(in srgb, var(--neon) 18%, transparent); }
-  }
   /* Each button (and its own content panel below, once open) shares one
      neon hue — pure glow (box-shadow), no text-shadow, so the label
-     itself stays crisp and only the outline lights up. */
+     itself stays crisp and only the outline lights up. Static, not
+     animated — an infinite box-shadow keyframe forces a repaint every
+     frame forever (box-shadow isn't compositor-only like transform/
+     opacity), which was measurably slowing down clicks elsewhere on the
+     page even when this panel wasn't being looked at. */
   #tierWinrateToggleBtn, #tierWinrateContent { --neon: var(--gold); }
   #noteWinrateToggleBtn, #noteWinrateContent { --neon: #22d3ee; }
   #noteRoiToggleBtn, #noteRoiContent { --neon: #ec4899; }
@@ -1081,14 +1081,13 @@
     border: 1px solid color-mix(in srgb, var(--neon) 60%, transparent);
     color: var(--text);
     font-weight: 600;
-    animation: snapNeonPulse 3.2s ease-in-out infinite;
+    box-shadow: 0 0 7px color-mix(in srgb, var(--neon) 40%, transparent), inset 0 0 6px color-mix(in srgb, var(--neon) 10%, transparent);
     transition: box-shadow .2s ease, border-color .2s ease, background .2s ease, color .2s ease;
   }
   .snap-stats-toggle-btn:hover {
     border-color: var(--neon);
     color: var(--text);
     box-shadow: 0 0 18px color-mix(in srgb, var(--neon) 70%, transparent), 0 0 32px color-mix(in srgb, var(--neon) 30%, transparent);
-    animation-play-state: paused;
   }
   /* Open panel — filled solid with the button's own neon so it's
      unmistakable which one is active, not just a subtle outline. */
@@ -1100,9 +1099,6 @@
   .snap-stats-toggle-btn.active:hover {
     color: #fff;
     box-shadow: 0 0 22px color-mix(in srgb, var(--neon) 80%, transparent), 0 0 38px color-mix(in srgb, var(--neon) 40%, transparent);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .snap-stats-toggle-btn { animation: none; }
   }
   #tierWinrateContent .chart-box,
   #noteWinrateContent .chart-box,
