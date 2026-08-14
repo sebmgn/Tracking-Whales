@@ -1201,7 +1201,7 @@
   .snap-sync-status.snap-sync-error { color: var(--red); }
   .snap-sync-status.snap-sync-syncing { color: var(--accent); }
   .snap-sync-status.snap-sync-readonly { color: var(--gold); }
-  .snap-sync-status.snap-sync-pending-token { color: var(--gold); }
+  .snap-sync-status.snap-sync-pending-secret { color: var(--gold); }
   .snap-sync-link {
     background: none;
     border: none;
@@ -1591,10 +1591,10 @@
       <button id="snapTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots mis à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
     </div>
     <div id="snapSyncSetup" class="snap-sync-setup" style="display:none;">
-      <input type="password" id="snapSyncTokenInput" placeholder="Token GitHub (fine-grained, repo Tracking-Whales, permission Contents: Read and write)" autocomplete="off" />
+      <input type="password" id="snapSyncTokenInput" placeholder="Clé de synchro AWS" autocomplete="off" />
       <button type="button" id="snapSyncTokenSave">Enregistrer</button>
       <button type="button" id="snapSyncTokenClear">Déconnecter</button>
-      <div class="empty-note" style="padding:6px 0 0;">Crée un <em>fine-grained personal access token</em> sur github.com → Settings → Developer settings, limité au repo <code>Tracking-Whales</code>, avec uniquement la permission <strong>Contents: Read and write</strong>. À faire une fois par appareil/navigateur. Le token reste stocké localement dans ce navigateur — jamais écrit dans le code de la page, jamais envoyé ailleurs qu'à l'API GitHub. Connecte d'abord l'appareil qui a la liste de snapshots à jour (il servira de point de départ) ; les autres appareils s'aligneront dessus au premier lien.</div>
+      <div class="empty-note" style="padding:6px 0 0;">Clé partagée pour écrire dans le stockage AWS des snapshots (DynamoDB, via une petite fonction Lambda) — à faire une fois par appareil/navigateur. Stockée uniquement en local dans ce navigateur, jamais écrite dans le code de la page.</div>
     </div>
     <div id="snapPnlChartContent"></div>
     <div id="snapDashboard"></div>
@@ -1724,11 +1724,8 @@
   // Snapshots are synced to this repo (via the GitHub Contents API) so they
   // survive across devices/browsers instead of living only in localStorage —
   // see the sync engine near "Mes Snapshots" below.
-  var GH_OWNER = "sebmgn";
-  var GH_REPO = "Tracking-Whales";
-  var GH_BRANCH = "main";
-  var GH_SNAPSHOTS_PATH = "snapshots.json";
-  var GH_TOKEN_KEY = "ghSyncToken";
+  var AWS_LAMBDA_URL = "https://objy7aaniw6upf5ki3mh5zb7eu0jwjag.lambda-url.eu-north-1.on.aws";
+  var AWS_SECRET_KEY = "awsWriteSecret";
   var PREDICT_POSITIONS_BASE = "https://api.predict.fun/v1/positions/";
   var PREDICT_MATCHES_BASE = "https://api.predict.fun/v1/orders/matches";
   var POLY_POSITIONS_BASE = "https://data-api.polymarket.com/positions";
@@ -3631,31 +3628,21 @@
     '</details>';
   }
 
-  // ---------- Mes Snapshots (synced to GitHub, cached locally) ----------
+  // ---------- Mes Snapshots (synced via AWS Lambda + DynamoDB, cached locally) ----------
   // Lets the user pin a Value Trade at the moment they bet on it — the card
   // is frozen as-is (cardHtml) so it stays reviewable after the market
   // resolves or a trader closes out and it drops out of the live feed. The
   // point is spotting which traders' presence correlates with wins, so each
   // snapshot also keeps a plain trader list (traderNames) for the stats table.
   //
-  // Sync design: localStorage is only a fast/offline *cache* now. The real
-  // list of record is notify's sibling file snapshots.json, committed to
-  // the GitHub repo via the Contents API — same repo both phone and desktop
-  // point at, so there is exactly one source of truth instead of one
-  // localStorage per browser (that mismatch — deleting a snapshot on one
-  // device left it alive on another — was the original bug this fixes).
-  //
-  // Every add/toggle-result/delete is recorded as a small op (not a raw
-  // list snapshot) and queued. syncNow() replays the queue on top of
-  // whatever the *latest* remote list is (re-fetched right before writing),
-  // retrying on a 409 (someone else wrote first) by re-fetching and
-  // reapplying — a compare-and-swap loop, so two devices saving around the
-  // same time merge instead of one clobbering the other.
+  // Sync design: localStorage is only a fast/offline *cache*. The real list
+  // of record lives in DynamoDB, one item per snapshot, behind a small
+  // Lambda (GET /snapshots for the full list, POST /snapshots/op for a
+  // single targeted write) — replaces the old approach of committing the
+  // ENTIRE file to GitHub on every single change, which was the actual
+  // cause of the sync-related slowness this app used to have.
   var SNAPSHOTS_KEY = "vtSnapshots";
   var SNAPSHOTS_QUEUE_KEY = "vtSnapshotsQueue";
-  var SNAPSHOTS_SHA_KEY = "vtSnapshotsSha";
-  var SNAPSHOTS_MIGRATED_KEY = "vtSnapshotsMigrated";
-  var SYNC_MAX_RETRIES = 4;
   var syncInFlight = false;
   // Conviction tags a snapshot can be marked with at bet time, so backtests
   // can later check whether winrate actually correlates with confidence.
@@ -3692,31 +3679,32 @@
   function saveSyncQueue(q) {
     try { localStorage.setItem(SNAPSHOTS_QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* queue just won't persist this time */ }
   }
-  function getGhToken() {
-    try { return localStorage.getItem(GH_TOKEN_KEY) || ""; } catch (e) { return ""; }
+  function getWriteSecret() {
+    try { return localStorage.getItem(AWS_SECRET_KEY) || ""; } catch (e) { return ""; }
   }
-  function setGhToken(t) {
-    try { if (t) localStorage.setItem(GH_TOKEN_KEY, t); else localStorage.removeItem(GH_TOKEN_KEY); } catch (e) { /* ignore */ }
+  function setWriteSecret(s) {
+    try { if (s) localStorage.setItem(AWS_SECRET_KEY, s); else localStorage.removeItem(AWS_SECRET_KEY); } catch (e) { /* ignore */ }
   }
-  // Applies one queued op to a list — pure function, so it can be replayed
-  // against whatever the freshest remote list turns out to be, not just the
-  // list it was originally queued against.
+  // Applies one queued op to a list — pure function, replayed against the
+  // local cache. toggleSide/setConfidence "click the same value again to
+  // clear it" resolution happens once at the click site (see the delegated
+  // handler below), so the op arriving here always carries the final
+  // resolved value — matching what the Lambda expects to just set.
   function applyOpToList(list, op) {
     if (op.type === "add") return [op.snapshot].concat(list);
-    // The ONLY truly destructive op — real removal from the list, gone from
-    // every device on next sync. Left in place for "delete definitively"
-    // from inside the trash view; the normal 🗑 on a snapshot now dispatches
-    // "trash" instead (see below), never this directly.
+    // The ONLY truly destructive op — real removal, gone for good. Left in
+    // place for "delete definitively" from inside the trash view; the
+    // normal 🗑 on a snapshot dispatches "trash" instead (see below), never
+    // this directly.
     if (op.type === "delete") return list.filter(function (s) { return s.id !== op.id; });
-    // Soft delete: flags the snapshot instead of removing it, so it stays in
-    // the synced list (and therefore in snapshots.json's git history) —
-    // hidden from the normal view but always recoverable from the Corbeille
-    // until someone explicitly empties it there.
+    // Soft delete: flags the snapshot instead of removing it — hidden from
+    // the normal view but always recoverable from the Corbeille until
+    // someone explicitly empties it there.
     if (op.type === "trash") {
       return list.map(function (s) {
         if (s.id !== op.id) return s;
         var copy = Object.assign({}, s);
-        copy.deletedAt = op.at || new Date().toISOString();
+        copy.deletedAt = op.deletedAt || new Date().toISOString();
         return copy;
       });
     }
@@ -3728,74 +3716,50 @@
         return copy;
       });
     }
-    if (op.type === "toggleSide") {
+    if (op.type === "setSide") {
       return list.map(function (s) {
         if (s.id !== op.id) return s;
         var copy = Object.assign({}, s);
-        copy.winningSide = (s.winningSide === op.side ? null : op.side);
+        copy.winningSide = op.winningSide;
         return copy;
       });
     }
-    if (op.type === "setConfidence") {
+    if (op.type === "setConf") {
       return list.map(function (s) {
         if (s.id !== op.id) return s;
         var copy = Object.assign({}, s);
-        copy.confidence = (s.confidence === op.tier ? null : op.tier);
+        copy.confidence = op.confidence;
         return copy;
       });
     }
-    if (op.type === "seed") return op.list; // one-time: this device's pre-sync local list becomes the initial remote copy
     return list;
   }
-  function b64EncodeUtf8(str) { return btoa(unescape(encodeURIComponent(str))); }
-  function b64DecodeUtf8(str) { return decodeURIComponent(escape(atob(str))); }
-  function ghHeaders() {
-    var h = { "Accept": "application/vnd.github+json" };
-    var t = getGhToken();
-    if (t) h["Authorization"] = "Bearer " + t;
-    return h;
-  }
-  function ghContentsUrl() {
-    return "https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + "/contents/" + GH_SNAPSHOTS_PATH;
-  }
-  // Every other fetch in this app (throttledFetch) aborts after 15s — these
-  // two didn't, the only unguarded network calls left. snapshots.json is
-  // 500-600KB+ and growing (~9-14KB per snapshot, never trimmed), synced
-  // every 2 minutes AND after every snapshot action — a slow/stalled
-  // response here used to hang with nothing to time it out, leaving
-  // syncInFlight stuck true and sync silently dead for the rest of the tab's
-  // life (syncNow's own finally{} only resets it once the fetch settles).
-  var GH_FETCH_TIMEOUT_MS = 20000;
-  function ghFetch(url, options) {
+  // Every other fetch in this app (throttledFetch) aborts after 15s — match
+  // that here too instead of leaving these unguarded.
+  var AWS_FETCH_TIMEOUT_MS = 15000;
+  function awsFetch(url, options) {
     var controller = new AbortController();
-    var timer = setTimeout(function () { controller.abort(); }, GH_FETCH_TIMEOUT_MS);
+    var timer = setTimeout(function () { controller.abort(); }, AWS_FETCH_TIMEOUT_MS);
     return fetch(url, Object.assign({}, options, { signal: controller.signal })).finally(function () { clearTimeout(timer); });
   }
-  async function ghFetchSnapshots() {
-    var res = await ghFetch(ghContentsUrl() + "?ref=" + GH_BRANCH, { headers: ghHeaders() });
-    if (res.status === 404) return { list: [], sha: null }; // snapshots.json not created yet — first sync will create it
-    if (!res.ok) throw new Error("GitHub GET " + res.status);
-    var data = await res.json();
-    var list;
-    try { list = JSON.parse(b64DecodeUtf8((data.content || "").replace(/\n/g, ""))); } catch (e) { list = []; }
-    return { list: Array.isArray(list) ? list : [], sha: data.sha };
+  // Reading needs no secret — the Lambda's GET is open, so a device that
+  // never configured a write secret (or lost it) still sees the real shared
+  // list instead of an empty one; it just can't push edits until connected.
+  async function fetchRemoteSnapshots() {
+    var res = await awsFetch(AWS_LAMBDA_URL + "/snapshots");
+    if (!res.ok) throw new Error("AWS GET " + res.status);
+    var list = await res.json();
+    return Array.isArray(list) ? list : [];
   }
-  async function ghPutSnapshots(list, sha) {
-    var body = {
-      message: "snapshots: sync (" + list.length + ")",
-      content: b64EncodeUtf8(JSON.stringify(list, null, 2)),
-      branch: GH_BRANCH
-    };
-    if (sha) body.sha = sha;
-    var res = await ghFetch(ghContentsUrl(), {
-      method: "PUT",
-      headers: Object.assign({ "Content-Type": "application/json" }, ghHeaders()),
-      body: JSON.stringify(body)
+  async function pushOp(op) {
+    var res = await awsFetch(AWS_LAMBDA_URL + "/snapshots/op", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-write-secret": getWriteSecret() },
+      body: JSON.stringify(op)
     });
-    if (res.status === 409 || res.status === 422) { var conflictErr = new Error("conflict"); conflictErr.conflict = true; throw conflictErr; }
-    if (!res.ok) throw new Error("GitHub PUT " + res.status);
-    var data = await res.json();
-    return data.content.sha;
+    if (res.status === 401) { var authErr = new Error("unauthorized"); authErr.unauthorized = true; throw authErr; }
+    if (!res.ok) throw new Error("AWS POST " + res.status);
+    return res.json();
   }
   function updateSyncStatus(state) {
     if (!snapSyncStatusEl) return;
@@ -3803,76 +3767,42 @@
     var labels = {
       "syncing": "🔄 Synchronisation…",
       "synced": "✅ Synchronisé à " + now,
-      "readonly": "📖 Lecture seule à " + now + " — connecte un token pour ajouter/modifier",
-      "pending-token": "🔒 Modifications en attente — connecte un token pour les envoyer",
+      "readonly": "📖 Lecture seule à " + now + " — connecte une clé pour ajouter/modifier",
+      "pending-secret": "🔒 Modifications en attente — connecte une clé pour les envoyer",
       "error": "⚠️ Erreur de synchro — sauvegardé localement, nouvelle tentative automatique"
     };
     snapSyncStatusEl.textContent = labels[state] || "—";
     snapSyncStatusEl.className = "snap-sync-status snap-sync-" + state;
   }
-  // Compare-and-swap sync: fetch the freshest remote list, replay the local
-  // pending queue on top of it, push. On a 409 (remote moved under us)
-  // re-fetch and retry instead of overwriting the other device's write.
-  // Reading snapshots.json needs no token at all — Tracking-Whales is a
-  // public repo, so GET works unauthenticated. Only pushing a change (add/
-  // delete/toggle/confidence) needs one. This means a device that never
-  // configured a token, or lost it (browser data cleared, private window,
-  // etc.), still sees the real shared list instead of an empty one — it
-  // just can't edit until a token is connected.
+  // Each queued op is now a single, targeted DynamoDB write via the Lambda —
+  // no more "rewrite the whole file" conflict dance. Ops flush in order,
+  // one at a time, each dropped from the persisted queue only once actually
+  // confirmed sent — so an op added mid-flush (rapid clicks) just waits its
+  // turn instead of ever being silently dropped.
   async function syncNow() {
     if (syncInFlight) return;
     syncInFlight = true;
-    var hasToken = !!getGhToken();
+    var hasSecret = !!getWriteSecret();
     updateSyncStatus("syncing");
     try {
-      for (var attempt = 0; attempt < SYNC_MAX_RETRIES; attempt++) {
-        var remote = await ghFetchSnapshots();
-        var queue = loadSyncQueue();
-        // First-ever connect from a device, remote file doesn't exist yet,
-        // and there's nothing already queued: seed the shared file from
-        // this device's current local list instead of silently adopting an
-        // empty remote and wiping local history.
-        var bootstrapping = hasToken && remote.sha === null && !queue.length && localStorage.getItem(SNAPSHOTS_MIGRATED_KEY) !== "1" && loadSnapshotsRaw().length > 0;
-        if (bootstrapping) queue = [{ type: "seed", list: loadSnapshotsRaw() }];
-
-        if (!queue.length) {
-          saveSnapshotsToStorage(remote.list);
-          localStorage.setItem(SNAPSHOTS_SHA_KEY, remote.sha || "");
-          localStorage.setItem(SNAPSHOTS_MIGRATED_KEY, "1");
-          updateSyncStatus(hasToken ? "synced" : "readonly");
-          renderSnapshots();
-          return;
-        }
-        if (!hasToken) {
-          // There are local pending edits (made before a token existed, or
-          // after one was lost) but nothing to push them with. Leave both
-          // the queue and the local cache untouched — don't overwrite the
-          // user's pending changes with the plain remote list — they'll
-          // flush automatically the next time a token is connected.
-          updateSyncStatus("pending-token");
-          return;
-        }
-        var merged = queue.reduce(applyOpToList, remote.list);
-        try {
-          var newSha = await ghPutSnapshots(merged, remote.sha);
-          saveSnapshotsToStorage(merged);
-          // Only drop the ops this PUT actually included (queue.length of
-          // them, in order) — enqueueSnapshotOp can push more while this
-          // await was in flight (e.g. rapid clicks), and clearing the
-          // WHOLE queue unconditionally silently dropped those newer ops
-          // instead of leaving them for the next sync to pick up.
-          saveSyncQueue(loadSyncQueue().slice(queue.length));
-          localStorage.setItem(SNAPSHOTS_SHA_KEY, newSha);
-          localStorage.setItem(SNAPSHOTS_MIGRATED_KEY, "1");
-          updateSyncStatus("synced");
-          renderSnapshots();
-          return;
-        } catch (e) {
-          if (e && e.conflict) continue; // someone else wrote first — retry against fresh state
-          throw e;
-        }
+      var queue = loadSyncQueue();
+      if (queue.length && !hasSecret) {
+        // Local pending edits (made before a secret existed, or after one
+        // was lost) but nothing to push them with. Leave both the queue and
+        // the local cache untouched — they'll flush automatically the next
+        // time a secret is connected.
+        updateSyncStatus("pending-secret");
+        return;
       }
-      throw new Error("Trop de conflits de synchro, réessaie plus tard.");
+      while (queue.length) {
+        await pushOp(queue[0]);
+        queue = loadSyncQueue().slice(1);
+        saveSyncQueue(queue);
+      }
+      var remote = await fetchRemoteSnapshots();
+      saveSnapshotsToStorage(remote);
+      updateSyncStatus(hasSecret ? "synced" : "readonly");
+      renderSnapshots();
     } catch (e) {
       console.error("Snapshot sync error", e);
       updateSyncStatus("error");
@@ -3936,7 +3866,8 @@
     };
   }
   function saveSnapshot(u) {
-    enqueueSnapshotOp({ type: "add", snapshot: buildSnapshotFromUnit(u) });
+    var snap = buildSnapshotFromUnit(u);
+    enqueueSnapshotOp({ type: "add", id: snap.id, snapshot: snap });
   }
   // A trader's stake + estimated profit on ONE side, summed across every
   // entry they have there (they can show up more than once — e.g. linked
@@ -5906,7 +5837,12 @@
       e.stopPropagation();
       var sid = sideBtn.getAttribute("data-snap-id");
       var side = sideBtn.getAttribute("data-side");
-      enqueueSnapshotOp({ type: "toggleSide", id: sid, side: side });
+      // Resolved here (against the current local cache) instead of on the
+      // server — clicking the already-selected side clears it, same as
+      // before, but the op sent now always carries the final value.
+      var curSideSnap = loadSnapshotsRaw().filter(function (s) { return s.id === sid; })[0];
+      var newWinningSide = (curSideSnap && curSideSnap.winningSide === side) ? null : side;
+      enqueueSnapshotOp({ type: "setSide", id: sid, winningSide: newWinningSide });
       return;
     }
     var confBtn = e.target.closest ? e.target.closest(".snap-confidence-btn") : null;
@@ -5915,7 +5851,9 @@
       e.stopPropagation();
       var cid = confBtn.getAttribute("data-snap-id");
       var tier = confBtn.getAttribute("data-tier");
-      enqueueSnapshotOp({ type: "setConfidence", id: cid, tier: tier });
+      var curConfSnap = loadSnapshotsRaw().filter(function (s) { return s.id === cid; })[0];
+      var newConfidence = (curConfSnap && curConfSnap.confidence === tier) ? null : tier;
+      enqueueSnapshotOp({ type: "setConf", id: cid, confidence: newConfidence });
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
@@ -5923,7 +5861,7 @@
       e.preventDefault();
       e.stopPropagation();
       var did = delBtn.getAttribute("data-snap-id");
-      enqueueSnapshotOp({ type: "trash", id: did, at: new Date().toISOString() });
+      enqueueSnapshotOp({ type: "trash", id: did, deletedAt: new Date().toISOString() });
       return;
     }
     var restoreBtn = e.target.closest ? e.target.closest(".snap-restore-btn") : null;
@@ -6054,15 +5992,15 @@
   snapSyncTokenSave.addEventListener("click", function () {
     var v = snapSyncTokenInput.value.trim();
     if (!v) return;
-    setGhToken(v);
+    setWriteSecret(v);
     snapSyncTokenInput.value = "";
     snapSyncSetup.style.display = "none";
     syncNow();
   });
   snapSyncTokenClear.addEventListener("click", function () {
-    setGhToken("");
+    setWriteSecret("");
     saveSyncQueue([]);
-    updateSyncStatus("no-token");
+    updateSyncStatus("readonly");
   });
 
   renderSnapshots();
