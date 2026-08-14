@@ -2201,10 +2201,17 @@
       marketUrl: (p.eventSlug || p.slug) ? "https://polymarket.com/fr/event/" + (p.eventSlug || p.slug) : "https://polymarket.com/fr"
     };
   }
+  // Football-only, dropped right here — the single choke point every
+  // consumer of tradersData reads from (Value Trades, Trades par profils,
+  // Statistiques profils, snapshots, recent-trades stats…) — so non-
+  // football positions never reach any of the grouping/scoring/rendering
+  // work downstream instead of being computed and then filtered out later.
   function fetchPositionsForTrader(t) {
     var raw = t.platform === "polymarket" ? fetchAllPolyPositions(t.address) : fetchAllPredictPositions(t.address);
     var normalize = t.platform === "polymarket" ? normalizePolyPosition : normalizePredictPosition;
-    return raw.then(function (list) { return list.map(function (p) { return normalize(p, t); }); })
+    return raw.then(function (list) {
+      return list.map(function (p) { return normalize(p, t); }).filter(function (p) { return isFootball(p.question, p.slug); });
+    })
       .catch(function (err) { console.error("Positions " + t.name + " (" + t.platform + "): " + err.message); return null; });
   }
 
@@ -5348,7 +5355,14 @@
     });
     renderValueTrades();
     renderRecentTrades();
-    renderTraderSections();
+    // MEASURED: this section alone was ~147,000 DOM nodes (one row per
+    // OPEN POSITION across every tracked trader, no cap) — 94% of the
+    // page's entire DOM, rebuilt unconditionally on every refresh cycle
+    // even when this tab was never opened. Same "only when that tab's
+    // active" fix already applied to Trades récents/Mes Snapshots — the
+    // tab-click handler renders it fresh the moment it's actually opened.
+    var tradesProfilesTab = document.getElementById("tab-trades-profiles");
+    if (tradesProfilesTab && tradesProfilesTab.classList.contains("active")) renderTraderSections();
     renderStatsProfiles();
   }
 
@@ -5572,6 +5586,7 @@
       // on the click itself instead of waiting on that.
       if (btn.getAttribute("data-tab") === "snapshots") renderSnapshots();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
+      if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
     });
   });
   rtFilters.querySelectorAll("button").forEach(function (btn) {
