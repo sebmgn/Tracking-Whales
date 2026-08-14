@@ -2218,16 +2218,11 @@
       marketUrl: (p.eventSlug || p.slug) ? "https://polymarket.com/fr/event/" + (p.eventSlug || p.slug) : "https://polymarket.com/fr"
     };
   }
-  // Football-only, dropped right here — the single choke point every
-  // consumer of tradersData reads from (Value Trades, Trades par profils,
-  // Statistiques profils, snapshots, recent-trades stats…) — so non-
-  // football positions never reach any of the grouping/scoring/rendering
-  // work downstream instead of being computed and then filtered out later.
   function fetchPositionsForTrader(t) {
     var raw = t.platform === "polymarket" ? fetchAllPolyPositions(t.address) : fetchAllPredictPositions(t.address);
     var normalize = t.platform === "polymarket" ? normalizePolyPosition : normalizePredictPosition;
     return raw.then(function (list) {
-      return list.map(function (p) { return normalize(p, t); }).filter(function (p) { return isFootball(p.question, p.slug); });
+      return list.map(function (p) { return normalize(p, t); });
     })
       .catch(function (err) { console.error("Positions " + t.name + " (" + t.platform + "): " + err.message); return null; });
   }
