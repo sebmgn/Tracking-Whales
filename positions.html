@@ -3758,8 +3758,21 @@
   function ghContentsUrl() {
     return "https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + "/contents/" + GH_SNAPSHOTS_PATH;
   }
+  // Every other fetch in this app (throttledFetch) aborts after 15s — these
+  // two didn't, the only unguarded network calls left. snapshots.json is
+  // 500-600KB+ and growing (~9-14KB per snapshot, never trimmed), synced
+  // every 2 minutes AND after every snapshot action — a slow/stalled
+  // response here used to hang with nothing to time it out, leaving
+  // syncInFlight stuck true and sync silently dead for the rest of the tab's
+  // life (syncNow's own finally{} only resets it once the fetch settles).
+  var GH_FETCH_TIMEOUT_MS = 20000;
+  function ghFetch(url, options) {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, GH_FETCH_TIMEOUT_MS);
+    return fetch(url, Object.assign({}, options, { signal: controller.signal })).finally(function () { clearTimeout(timer); });
+  }
   async function ghFetchSnapshots() {
-    var res = await fetch(ghContentsUrl() + "?ref=" + GH_BRANCH, { headers: ghHeaders() });
+    var res = await ghFetch(ghContentsUrl() + "?ref=" + GH_BRANCH, { headers: ghHeaders() });
     if (res.status === 404) return { list: [], sha: null }; // snapshots.json not created yet — first sync will create it
     if (!res.ok) throw new Error("GitHub GET " + res.status);
     var data = await res.json();
@@ -3774,7 +3787,7 @@
       branch: GH_BRANCH
     };
     if (sha) body.sha = sha;
-    var res = await fetch(ghContentsUrl(), {
+    var res = await ghFetch(ghContentsUrl(), {
       method: "PUT",
       headers: Object.assign({ "Content-Type": "application/json" }, ghHeaders()),
       body: JSON.stringify(body)
