@@ -123,9 +123,25 @@
     font-size: 38px;
     font-weight: 700;
     font-style: italic;
-    letter-spacing: .01em;
+    letter-spacing: .015em;
     margin: 4px 0 0;
-    color: var(--text);
+    padding-bottom: 9px;
+    position: relative;
+    display: inline-block;
+    background: linear-gradient(120deg, var(--text) 45%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  h1::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    bottom: 0;
+    width: 92px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+    border-radius: 2px;
   }
   /* Daily-changing famous-painting reproduction, top-right — a small framed
      print, not a hero image. The specific painting is picked deterministically
