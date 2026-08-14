@@ -1509,7 +1509,7 @@
   <header>
     <h1>Analyse Whales Rentables 🐋</h1>
     <div class="artwork-frame">
-      <img id="artworkImg" src="" alt="">
+      <img id="artworkImg" src="" alt="" loading="lazy" decoding="async" fetchpriority="low">
       <div class="artwork-caption"><span id="artworkTitle"></span>, <span id="artworkArtist"></span>, <span id="artworkYear"></span></div>
     </div>
   </header>
@@ -1885,8 +1885,12 @@
     var startOfYear = new Date(now.getFullYear(), 0, 0);
     var dayOfYear = Math.floor((now - startOfYear) / 86400000);
     var pick = FAMOUS_PAINTINGS[dayOfYear % FAMOUS_PAINTINGS.length];
-    var url = "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(pick.file).replace(/%20/g, "_");
+    // width=400 makes Wikimedia redirect to a resized thumbnail instead of the
+    // original scan (some of these are 20-50MB+ full-res masters) — the frame
+    // only ever displays this at ~190px wide, so full-res was pure waste.
+    var url = "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(pick.file).replace(/%20/g, "_") + "?width=400";
     var img = document.getElementById("artworkImg");
+    img.onerror = function () { img.closest(".artwork-frame").style.display = "none"; };
     img.src = url;
     img.alt = pick.title + ", " + pick.artist + ", " + pick.year;
     document.getElementById("artworkTitle").textContent = pick.title;
