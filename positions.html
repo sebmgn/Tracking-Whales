@@ -1761,6 +1761,7 @@
   var PREDICT_MATCHES_BASE = "https://api.predict.fun/v1/orders/matches";
   var POLY_POSITIONS_BASE = "https://data-api.polymarket.com/positions";
   var POLY_TRADES_BASE = "https://data-api.polymarket.com/trades";
+  var POLY_BOOK_BASE = "https://clob.polymarket.com/book";
   // 20 traders x (positions + recent trades), with several traders paginating
   // across 2-3 pages each, adds up to ~90-100 throttled requests per cycle;
   // at the safe ~3.85 req/s ceiling below that's ~25-30s minimum, so 10s no
@@ -2222,8 +2223,16 @@
       slug: p.slug || p.eventSlug,
       outcomeName: p.outcome || "—",
       outcomeKey: String(p.outcomeIndex),
+      assetId: p.asset || null,
       shares: shares,
       avgPrice: p.avgPrice || 0,
+      // curPrice here is data-api's own mark price — a fallback only, used
+      // until refresh() patches it with the live CLOB best-ask (see
+      // fetchPolyBestAsks). data-api's curPrice can lag the real orderbook
+      // significantly on fast-moving live markets (verified: 36.5c shown vs
+      // 70c actually buyable on the same in-play position at the same
+      // moment), which is a genuinely different number from what a trader
+      // could execute at right now, not just a rounding difference.
       curPrice: typeof p.curPrice === "number" ? p.curPrice : (shares > 0 ? (p.currentValue || 0) / shares : 0),
       valueUsd: p.currentValue || 0,
       pnlUsd: p.cashPnl || 0,
@@ -2261,6 +2270,71 @@
       throw new Error("HTTP " + res.status + (body ? " — " + body.slice(0, 200) : ""));
     }
     return (await res.json()) || [];
+  }
+  // Live best-ask lookup for Polymarket, one call per DISTINCT asset (token
+  // id) held across every tracked trader — not per position — since several
+  // traders are often on the same side of the same market. Mirrors what
+  // currentPriceOf() already does for Predict.fun via bestAsk; Polymarket's
+  // data-api has no such live field, only its own mark price (see the
+  // comment on curPrice in normalizePolyPosition). A market with an empty
+  // asks book (no live liquidity) is left out of the returned map on
+  // purpose, so callers fall back to data-api's curPrice instead of a bad 0.
+  async function fetchPolyBestAsk(assetId) {
+    var url = POLY_BOOK_BASE + "?token_id=" + encodeURIComponent(assetId);
+    try {
+      var res = await throttledFetch(url);
+      if (!res.ok) return null;
+      var book = await res.json();
+      var asks = (book && book.asks) || [];
+      var best = null;
+      asks.forEach(function (a) {
+        var pr = parseFloat(a.price);
+        if (!isNaN(pr) && (best === null || pr < best)) best = pr;
+      });
+      return best;
+    } catch (e) { return null; }
+  }
+  async function fetchPolyBestAsks(assetIds) {
+    var map = {};
+    await Promise.all(assetIds.map(function (id) {
+      return fetchPolyBestAsk(id).then(function (price) { if (price != null) map[id] = price; });
+    }));
+    return map;
+  }
+  // Fetching a live book price for every open Polymarket position (400+ at
+  // last count, across all tracked traders) blew the refresh cycle out to
+  // 2+ minutes against the shared ~3.85 req/s throttle — most of those
+  // positions never even qualify to be shown as a Value Trade card at all.
+  // Scoped down instead: run the same grouping the render pass uses, keep
+  // only markets that clear the trader-count floor (4 — the lowest the
+  // Value Trades filter can be set to; see vtMinTraders), and within those
+  // fetch a live price only for the LEADING side's entries — that's the
+  // side/price actually shown on the card header. Leader-side membership
+  // only depends on traderCount/totalStake (already known pre-fetch), so
+  // this can safely run BEFORE the price patch without picking the wrong
+  // side. Requires tradersData already populated with this cycle's
+  // positions (computeMarketGroups reads it directly).
+  async function applyLivePolyPricesForDisplayedMarkets() {
+    var groups = computeMarketGroups();
+    var seen = {}, assetIds = [];
+    groups.forEach(function (g) {
+      if (g.platform !== "polymarket" || g.traderCount < 4) return;
+      var leader = g.sides[0];
+      if (!leader) return;
+      leader.entries.forEach(function (e) {
+        if (e.assetId && !seen[e.assetId]) { seen[e.assetId] = true; assetIds.push(e.assetId); }
+      });
+    });
+    if (!assetIds.length) return;
+    var bestAsks = await fetchPolyBestAsks(assetIds);
+    if (!Object.keys(bestAsks).length) return;
+    TRADERS.forEach(function (t) {
+      (tradersData[t.name] || []).forEach(function (p) {
+        if (p.platform === "polymarket" && p.assetId && bestAsks[p.assetId] != null) {
+          p.curPrice = bestAsks[p.assetId];
+        }
+      });
+    });
   }
   function matchLegForTrader(match, address) {
     var addrLower = address.toLowerCase();
@@ -2691,7 +2765,8 @@
           valueUsd: p.valueUsd,
           avgPrice: p.avgPrice,
           shares: p.shares,
-          stake: stake
+          stake: stake,
+          assetId: p.assetId || null
         });
       });
     });
@@ -5766,6 +5841,10 @@
         // logged to console) — keep its last known data instead of blanking it.
         posResults.forEach(function (r) { if (r.positions) tradersData[r.name] = r.positions; });
         matchResults.forEach(function (r) { if (r.matches) recentMatches[r.name] = r.matches; });
+        // Needs tradersData already populated above (computeMarketGroups
+        // reads it directly) — only fetches for markets that actually
+        // qualify to be shown, see the comment on the function itself.
+        await applyLivePolyPricesForDisplayedMarkets();
         hasLoadedOnce = true;
         renderAll();
         // Snapshots aren't part of renderAll (rebuilding that list every
