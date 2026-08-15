@@ -6126,6 +6126,67 @@
       statsHtml +
       '<span class="vt-badge-group">' + noteHtml + '</span>';
   }
+  // Some snapshots never had leaderPriceAtSnapshot on the top-level object
+  // at all (an even earlier era than the pill markup change) — the price
+  // still exists, just nested one level down in the per-platform detail
+  // section (.vt-side-block .vt-odds b, e.g. "88.5¢"), frozen there
+  // whether or not the top-level field was being written yet. Averages
+  // every side-block matching the leader's name (a linked unit has one
+  // per platform).
+  function extractPriceFromDetail(tmp, leaderName) {
+    if (!leaderName) return null;
+    var prices = [];
+    tmp.querySelectorAll(".vt-side-block").forEach(function (block) {
+      var outcomeEl = block.querySelector(".vt-outcome");
+      if (!outcomeEl || outcomeEl.textContent.trim() !== leaderName) return;
+      var oddsEl = block.querySelector(".vt-odds b");
+      if (!oddsEl) return;
+      var m = oddsEl.textContent.match(/([\d.]+)\s*¢/);
+      if (m) prices.push(parseFloat(m[1]) / 100);
+    });
+    if (!prices.length) return null;
+    return prices.reduce(function (s, p) { return s + p; }, 0) / prices.length;
+  }
+  // For snapshots that never had a note computed at all (predates the
+  // note-tracking feature) — re-runs the exact same formula unitScoreInfo
+  // uses live, sourced from the snapshot's own stored sides/traderCount/
+  // totalStake instead of a live "unit" object. sides[0] is the leader
+  // (buildSnapshotFromUnit stores mergedSides in that order), so no
+  // re-sorting needed.
+  function scoreFromSnapshotSides(snap) {
+    var sides = snap.sides || [];
+    if (!sides.length) return null;
+    var leaderGroup = sides[0];
+    var leaderCount = leaderGroup.traderCount || 0;
+    var leaderNames = {};
+    (leaderGroup.traders || []).forEach(function (t) { leaderNames[t.trader] = true; });
+    var reliableAgreeing = RELIABLE_TRADERS.reduce(function (n, name) { return n + (leaderNames[name] ? 1 : 0); }, 0);
+    var totalStake = snap.totalStake || 0;
+    var traderCount = snap.traderCount || 0;
+    var volumeConcentration = totalStake > 0 ? (leaderGroup.stake / totalStake) : 0;
+    var byTrader = {};
+    (leaderGroup.traders || []).forEach(function (t) { byTrader[t.trader] = (byTrader[t.trader] || 0) + t.stake; });
+    var maxStake = 0;
+    Object.keys(byTrader).forEach(function (name) { if (byTrader[name] > maxStake) maxStake = byTrader[name]; });
+    var topTraderShare = (leaderGroup.stake && leaderCount >= 2) ? maxStake / leaderGroup.stake : 0;
+    var consensusRatio = traderCount > 0 ? leaderCount / traderCount : 0;
+    var factors = {
+      consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
+      volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
+      volume: normLog(totalStake, SCORE_RANGES.volume),
+      traderCount: normLinear(traderCount, SCORE_RANGES.traderCount),
+      reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement)
+    };
+    var raw = factors.consensusRatio * SCORE_WEIGHTS.consensusRatio +
+      factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
+      factors.volume * SCORE_WEIGHTS.volume + factors.traderCount * SCORE_WEIGHTS.traderCount +
+      factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
+    var gateHeadcount = consensusGate(factors.consensusRatio, 0.65, 0.45);
+    var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
+    var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
+    var gate = gateHeadcount * gateMoney * gateWhale;
+    return Math.round((1 + raw * 9 * gate) * 10) / 10;
+  }
   snapRestyleBtn.addEventListener("click", function () {
     var list = loadSnapshotsRaw();
     if (!list.length) { alert("Aucun snapshot à mettre à jour."); return; }
@@ -6139,31 +6200,55 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    if (!confirm(list.length + " snapshot(s) vont recevoir le nouveau dégradé bleu-or sur la cote/ROI (et une reconstruction complète de l'en-tête pour les plus anciens, dont la structure a changé depuis). Une sauvegarde vient d'être téléchargée — utilise « Importer » pour annuler si le résultat ne convient pas.\n\nContinuer ?")) return;
-    var patched = 0, rebuilt = 0, skipped = 0;
+    if (!confirm(list.length + " snapshot(s) vont recevoir le nouveau dégradé bleu-or sur la cote/ROI, une reconstruction d'en-tête pour les plus anciens, et un prix/note recalculés pour ceux qui n'en ont jamais eu. Une sauvegarde vient d'être téléchargée — utilise « Importer » pour annuler si le résultat ne convient pas.\n\nContinuer ?")) return;
+    var patched = 0, rebuilt = 0, skipped = 0, priceRecovered = 0, noteComputed = 0;
     list.forEach(function (snap) {
       if (!snap.cardHtml) { skipped++; return; }
       var tmp = document.createElement("div");
       tmp.innerHTML = snap.cardHtml;
+      // Backfill the real fields first (not just the display) — this is
+      // what hypotheticalFlatPnl/the PnL chart/the trader recap's ROI
+      // column read, so a snapshot that was invisible to all of those
+      // stats becomes a normal data point everywhere, not just prettier.
+      if (snap.leaderPriceAtSnapshot == null) {
+        var recoveredPrice = extractPriceFromDetail(tmp, snap.leaderName);
+        if (recoveredPrice != null) { snap.leaderPriceAtSnapshot = recoveredPrice; priceRecovered++; }
+      }
+      if (snap.noteAtSnapshot == null) {
+        var computedNote = scoreFromSnapshotSides(snap);
+        if (computedNote != null) { snap.noteAtSnapshot = computedNote; noteComputed++; }
+      }
       var wrap = tmp.querySelector(".vt-top-stats");
       var color = oddsRoiColor(snap.leaderPriceAtSnapshot);
+      var priceText = snap.leaderPriceAtSnapshot != null ? fmtCents(snap.leaderPriceAtSnapshot) : "";
+      var roiVal = (snap.leaderPriceAtSnapshot != null && snap.leaderPriceAtSnapshot > 0) ? (1 / snap.leaderPriceAtSnapshot - 1) * 100 : null;
+      var roiText = roiVal != null ? (roiVal >= 0 ? "+" : "") + roiVal.toFixed(0) + "%" : "";
       if (wrap && color) {
-        // Current-era markup — patch the existing pill's inline styles in place.
+        // Current-era markup — patch the pill's inline styles, and also
+        // fill in the odds/ROI text itself when it was frozen blank (the
+        // Shandong/Chengdu case: the pill existed but leaderPriceAtSnapshot
+        // was never captured, so both cells rendered empty).
         wrap.style.background = "color-mix(in srgb, " + color + " 12%, var(--panel))";
         wrap.style.borderColor = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
         var odds = wrap.querySelector(".vt-stat-odds");
         var roi = wrap.querySelector(".vt-stat-roi");
         var divider = wrap.querySelector(".vt-stat-divider");
-        if (odds) odds.style.color = color;
-        if (roi) roi.style.color = color;
+        if (odds) { if (!odds.textContent.trim()) odds.textContent = priceText; odds.style.color = color; }
+        if (roi) { if (!roi.textContent.trim()) roi.textContent = roiText; roi.style.color = color; }
         if (divider) divider.style.background = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
+        // A note computed just now for a snapshot whose badge slot was
+        // empty (predates note-tracking) gets inserted the same way.
+        var badgeGroup = tmp.querySelector(".vt-badge-group");
+        if (badgeGroup && !badgeGroup.querySelector(".vt-score-wrap") && snap.noteAtSnapshot != null) {
+          badgeGroup.insertAdjacentHTML("afterbegin", scoreBadgeHtml(snap.noteAtSnapshot, null, null, null));
+        }
         snap.cardHtml = tmp.innerHTML;
         patched++;
       } else {
-        // No .vt-top-stats found — older markup era. Rebuild the whole
-        // header row fresh from the snapshot's own stored fields and
-        // splice it into .vt-top, leaving gauges/bottom-row/trader detail
-        // (everything past the header) exactly as frozen.
+        // No .vt-top-stats found at all — older markup era. Rebuild the
+        // whole header row fresh from the snapshot's own (now-backfilled)
+        // fields and splice it into .vt-top, leaving gauges/bottom-row/
+        // trader detail (everything past the header) exactly as frozen.
         var topRow = tmp.querySelector(".vt-top");
         if (!topRow) { skipped++; return; }
         topRow.innerHTML = rebuildSnapshotHeaderHtml(snap);
@@ -6173,7 +6258,8 @@
     });
     saveSnapshotsToStorage(list);
     renderSnapshots();
-    alert(patched + " mis à jour, " + rebuilt + " reconstruits (ancienne structure), " + skipped + " ignorés (structure trop ancienne ou incomplète) — sur " + list.length + " au total.");
+    alert(patched + " mis à jour, " + rebuilt + " reconstruits, " + skipped + " ignorés — sur " + list.length + " au total.\n" +
+      priceRecovered + " prix récupéré(s) depuis le détail, " + noteComputed + " note(s) recalculée(s) pour des snapshots qui n'en avaient jamais eu.");
   });
   snapSyncTokenSave.addEventListener("click", function () {
     var v = snapSyncTokenInput.value.trim();
