@@ -6104,35 +6104,14 @@
   // noteAtSnapshot have been stored on every snapshot since the feature
   // existed, regardless of which HTML era wrote the frozen card, so this
   // works uniformly no matter how old the snapshot is.
-  function rebuildSnapshotHeaderHtml(snap) {
-    var sides = snap.sides || [];
-    var distinctColors = resolveDistinctSideColors(sides);
-    var leaderColor = snap.leaderName ? (distinctColors[snap.leaderName] || sideColorFor(snap.leaderName)) : "var(--accent)";
-    var leaderBadge = snap.leaderName ? '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(snap.leaderName) + '</span>' : "";
-    var price = snap.leaderPriceAtSnapshot;
-    var priceText = price != null ? fmtCents(price) : "";
-    var roi = (price != null && price > 0) ? (1 / price - 1) * 100 : null;
-    var color = oddsRoiColor(price);
-    var statsWrapStyle = color ? ' style="background:color-mix(in srgb, ' + color + ' 12%, var(--panel));border-color:color-mix(in srgb, ' + color + ' 30%, var(--panel-border));"' : '';
-    var statsTextStyle = color ? ' style="color:' + color + ';"' : '';
-    var statsDividerStyle = color ? ' style="background:color-mix(in srgb, ' + color + ' 30%, var(--panel-border));"' : '';
-    var statsHtml = '<span class="vt-top-stats"' + statsWrapStyle + '>' +
-      '<span class="vt-stat-odds"' + statsTextStyle + '>' + esc(priceText) + '</span>' +
-      '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
-      '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roi != null ? (roi >= 0 ? '+' : '') + roi.toFixed(0) + '%' : '') + '</span>' +
-    '</span>';
-    var noteHtml = snap.noteAtSnapshot != null ? scoreBadgeHtml(snap.noteAtSnapshot, null, null, null) : '';
-    return '<span class="vt-top-left"><span class="vt-sport-emoji">⚽</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
-      statsHtml +
-      '<span class="vt-badge-group">' + noteHtml + '</span>';
-  }
   // Some snapshots never had leaderPriceAtSnapshot on the top-level object
-  // at all (an even earlier era than the pill markup change) — the price
-  // still exists, just nested one level down in the per-platform detail
-  // section (.vt-side-block .vt-odds b, e.g. "88.5¢"), frozen there
-  // whether or not the top-level field was being written yet. Averages
-  // every side-block matching the leader's name (a linked unit has one
-  // per platform).
+  // at all (an even earlier era) — the price still exists, just nested one
+  // level down in the per-platform detail section (.vt-side-block .vt-odds
+  // b, e.g. "88.5¢"), frozen there whether or not the top-level field was
+  // being written yet. Averages every side-block matching the leader's
+  // name (a linked unit has one per platform). Deliberately NOT a trader's
+  // own avgPrice (their entry price) — that can be very different from the
+  // live "current" price this field is supposed to freeze.
   function extractPriceFromDetail(tmp, leaderName) {
     if (!leaderName) return null;
     var prices = [];
@@ -6147,12 +6126,13 @@
     if (!prices.length) return null;
     return prices.reduce(function (s, p) { return s + p; }, 0) / prices.length;
   }
-  // For snapshots that never had a note computed at all (predates the
-  // note-tracking feature) — re-runs the exact same formula unitScoreInfo
-  // uses live, sourced from the snapshot's own stored sides/traderCount/
-  // totalStake instead of a live "unit" object. sides[0] is the leader
-  // (buildSnapshotFromUnit stores mergedSides in that order), so no
-  // re-sorting needed.
+  // Re-runs the exact same formula unitScoreInfo uses live, sourced from
+  // the snapshot's own stored sides/traderCount/totalStake instead of a
+  // live "unit" object. Always called AFTER dust-filtering (see
+  // rebuildFullSnapshotCardHtml) — running it against un-filtered sides
+  // would let a handful of sub-$300 positions inflate traderCount/
+  // consensusRatio and hand back a meaningfully wrong note, not just a
+  // missing one.
   function scoreFromSnapshotSides(snap) {
     var sides = snap.sides || [];
     if (!sides.length) return null;
@@ -6187,6 +6167,128 @@
     var gate = gateHeadcount * gateMoney * gateWhale;
     return Math.round((1 + raw * 9 * gate) * 10) / 10;
   }
+  // Full rebuild, not a patch — earlier attempts tried to detect and patch
+  // whichever markup era a snapshot happened to freeze, but that kept
+  // missing structural variants (old .vt-side-grid two-column layout, old
+  // "Traders" continuous bar instead of the current segmented Consensus
+  // gauge, blank pill cells, dust trades never filtered…). This instead
+  // discards the frozen HTML entirely and regenerates the whole card from
+  // the snapshot's own structured fields using TODAY's exact markup, the
+  // same way every era ultimately should have looked. oldTmp (the
+  // about-to-be-discarded frozen HTML) is only consulted once, as a last
+  // resort to recover a missing price before it's gone for good.
+  function rebuildFullSnapshotCardHtml(snap, oldTmp) {
+    // Dust filter — mirrors the live MIN_TRADER_STAKE floor, which frozen
+    // snapshots from before that filter existed never had applied. Also
+    // recomputes every aggregate (side/total trader counts and stakes,
+    // traderNames) from the filtered set so nothing downstream is still
+    // secretly counting a $1.25 position.
+    var sides = (snap.sides || []).map(function (side) {
+      var traders = (side.traders || []).filter(function (t) { return t.stake >= MIN_TRADER_STAKE; });
+      var stake = traders.reduce(function (s, t) { return s + t.stake; }, 0);
+      return { name: side.name, traderCount: traders.length, stake: stake, traders: traders };
+    }).filter(function (side) { return side.traderCount > 0; });
+    sides.sort(function (a, b) { return b.traderCount - a.traderCount || b.stake - a.stake; });
+    if (!sides.length) return null;
+
+    var traderNames = [];
+    sides.forEach(function (m) { m.traders.forEach(function (t) { if (traderNames.indexOf(t.trader) === -1) traderNames.push(t.trader); }); });
+    snap.sides = sides;
+    snap.traderCount = sides.reduce(function (s, m) { return s + m.traderCount; }, 0);
+    snap.totalStake = sides.reduce(function (s, m) { return s + m.stake; }, 0);
+    snap.traderNames = traderNames;
+    snap.leaderName = sides[0].name;
+
+    if (snap.leaderPriceAtSnapshot == null && oldTmp) {
+      snap.leaderPriceAtSnapshot = extractPriceFromDetail(oldTmp, snap.leaderName);
+    }
+    // Always recomputed against the now-cleaned data (see comment on
+    // scoreFromSnapshotSides above) — not just filled in when missing.
+    snap.noteAtSnapshot = scoreFromSnapshotSides(snap);
+
+    var distinctColors = resolveDistinctSideColors(sides);
+
+    // ---- header ----
+    var leaderColor = distinctColors[snap.leaderName] || sideColorFor(snap.leaderName);
+    var leaderBadge = '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(snap.leaderName) + '</span>';
+    var price = snap.leaderPriceAtSnapshot;
+    var priceText = price != null ? fmtCents(price) : "";
+    var roiVal = (price != null && price > 0) ? (1 / price - 1) * 100 : null;
+    var color = oddsRoiColor(price);
+    var statsWrapStyle = color ? ' style="background:color-mix(in srgb, ' + color + ' 12%, var(--panel));border-color:color-mix(in srgb, ' + color + ' 30%, var(--panel-border));"' : '';
+    var statsTextStyle = color ? ' style="color:' + color + ';"' : '';
+    var statsDividerStyle = color ? ' style="background:color-mix(in srgb, ' + color + ' 30%, var(--panel-border));"' : '';
+    var statsHtml = '<span class="vt-top-stats"' + statsWrapStyle + '>' +
+      '<span class="vt-stat-odds"' + statsTextStyle + '>' + esc(priceText) + '</span>' +
+      '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
+      '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roiVal != null ? (roiVal >= 0 ? '+' : '') + roiVal.toFixed(0) + '%' : '') + '</span>' +
+    '</span>';
+    var noteHtml = snap.noteAtSnapshot != null ? scoreBadgeHtml(snap.noteAtSnapshot, null, null, null) : '';
+    var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">⚽</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
+      statsHtml + '<span class="vt-badge-group">' + noteHtml + '</span></div>';
+
+    // ---- gauges (Consensus = current segmented gauge, Mises = balance bar) ----
+    var totalTraders = snap.traderCount || 1;
+    var filled = sides[0].traderCount;
+    var consensusSegs = Array.from({ length: totalTraders }, function (_, i) {
+      return '<div class="consensus-seg' + (i < filled ? ' filled' : '') + '"></div>';
+    }).join("");
+    var consensusHtml = '<div class="balance-row"><span class="balance-label">Consensus</span><div class="consensus-gauge-wrap"><div class="consensus-gauge">' + consensusSegs + '</div><span class="consensus-count">' + filled + '/' + totalTraders + '</span></div></div>';
+    function gaugeBg(i) {
+      if (i === 0) return "var(--green)";
+      return "repeating-linear-gradient(45deg, var(--red), var(--red) 5px, color-mix(in srgb, var(--red) 72%, black) 5px, color-mix(in srgb, var(--red) 72%, black) 10px)";
+    }
+    function tick(pct) { return (pct > 0 && pct < 100) ? '<div class="bal-tick" style="left:' + pct.toFixed(2) + '%"></div>' : ''; }
+    var totalStakeAll = snap.totalStake || 0;
+    var stakeLeadPct = totalStakeAll > 0 ? (sides[0].stake / totalStakeAll * 100) : 0;
+    var dollarSegs = sides.map(function (m, i) {
+      var pct = totalStakeAll > 0 ? (m.stake / totalStakeAll * 100) : 0;
+      var label = esc(m.name) + " — mise " + fmtUSD(m.stake) + " / " + fmtUSD(totalStakeAll) + " (" + pct.toFixed(0) + "%)";
+      return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeBg(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
+    }).join("") + tick(stakeLeadPct);
+    var balanceHtml = '<div class="balance-group">' + consensusHtml +
+      '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegs + '</div></div></div>';
+
+    // ---- bottom row ----
+    var bottomHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders"><b class="vt-bottom-traders-num">' + snap.traderCount + '</b> traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(snap.totalStake) + '</span></span></div>';
+
+    // ---- detail: sides legend + trader rows (dust already excluded above) ----
+    var legendHtml = '<div class="vt-sides-legend">' + sides.map(function (m) {
+      var c = distinctColors[m.name];
+      var pricedStake = 0, weighted = 0;
+      (m.traders || []).forEach(function (t) { if (typeof t.avgPrice === "number" && t.avgPrice > 0) { pricedStake += t.stake; weighted += t.avgPrice * t.stake; } });
+      var avgPrice = pricedStake > 0 ? weighted / pricedStake : null;
+      var sideRoi = avgPrice != null && avgPrice > 0 ? (1 - avgPrice) / avgPrice * 100 : null;
+      return '<span class="vt-sides-legend-item" style="color:' + c + '">' +
+        '<span class="vt-row-marker" style="background:' + c + '">' + esc(sideInitial(m.name)) + '</span> <b>' + esc(m.name) + '</b>' +
+        ' — ' + m.traderCount + ' trader' + (m.traderCount > 1 ? "s" : "") + ' · ' + fmtUSD(m.stake) +
+        (avgPrice != null ? ' · cote actuelle ' + fmtCents(avgPrice) : '') +
+        (sideRoi != null ? ' · ROI ' + fmtPct(sideRoi) : '') +
+      '</span>';
+    }).join("") + '</div>';
+    var maxStakeInUnit = 0;
+    sides.forEach(function (m) { (m.traders || []).forEach(function (t) { if (t.stake > maxStakeInUnit) maxStakeInUnit = t.stake; }); });
+    var rows = [];
+    sides.forEach(function (m) {
+      var c = distinctColors[m.name];
+      var initial = sideInitial(m.name);
+      (m.traders || []).forEach(function (t) { rows.push({ trader: t.trader, stake: t.stake, avgPrice: t.avgPrice, color: c, initial: initial }); });
+    });
+    rows.sort(function (a, b) { return b.stake - a.stake; });
+    var traderRowsHtml = '<div class="vt-traders">' + rows.map(function (e) {
+      var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
+      return '<div class="vt-trader-row">' +
+        '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
+        '<span class="vt-trader-row-name"><span class="vt-trader-row-name-text">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<div class="vt-trader-row-track"><div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div></div>' +
+        '<span class="vt-conviction"></span>' +
+        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b>' + (typeof e.avgPrice === "number" ? ' @ ' + fmtCents(e.avgPrice) : '') + '</span>' +
+      '</div>';
+    }).join("") + '</div>';
+    var detailHtml = '<div class="vt-unit-detail">' + legendHtml + traderRowsHtml + '</div>';
+
+    return headerHtml + balanceHtml + bottomHtml + detailHtml;
+  }
   snapRestyleBtn.addEventListener("click", function () {
     var list = loadSnapshotsRaw();
     if (!list.length) { alert("Aucun snapshot à mettre à jour."); return; }
@@ -6200,66 +6302,20 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    if (!confirm(list.length + " snapshot(s) vont recevoir le nouveau dégradé bleu-or sur la cote/ROI, une reconstruction d'en-tête pour les plus anciens, et un prix/note recalculés pour ceux qui n'en ont jamais eu. Une sauvegarde vient d'être téléchargée — utilise « Importer » pour annuler si le résultat ne convient pas.\n\nContinuer ?")) return;
-    var patched = 0, rebuilt = 0, skipped = 0, priceRecovered = 0, noteComputed = 0;
+    if (!confirm(list.length + " snapshot(s) vont être entièrement reconstruits avec la structure et les règles actuelles (dégradé bleu-or, jauge Consensus, mises < " + fmtUSD(MIN_TRADER_STAKE) + " filtrées, note recalculée). Une sauvegarde vient d'être téléchargée — utilise « Importer » pour annuler si le résultat ne convient pas.\n\nContinuer ?")) return;
+    var rebuiltCount = 0, skipped = 0;
     list.forEach(function (snap) {
-      if (!snap.cardHtml) { skipped++; return; }
-      var tmp = document.createElement("div");
-      tmp.innerHTML = snap.cardHtml;
-      // Backfill the real fields first (not just the display) — this is
-      // what hypotheticalFlatPnl/the PnL chart/the trader recap's ROI
-      // column read, so a snapshot that was invisible to all of those
-      // stats becomes a normal data point everywhere, not just prettier.
-      if (snap.leaderPriceAtSnapshot == null) {
-        var recoveredPrice = extractPriceFromDetail(tmp, snap.leaderName);
-        if (recoveredPrice != null) { snap.leaderPriceAtSnapshot = recoveredPrice; priceRecovered++; }
-      }
-      if (snap.noteAtSnapshot == null) {
-        var computedNote = scoreFromSnapshotSides(snap);
-        if (computedNote != null) { snap.noteAtSnapshot = computedNote; noteComputed++; }
-      }
-      var wrap = tmp.querySelector(".vt-top-stats");
-      var color = oddsRoiColor(snap.leaderPriceAtSnapshot);
-      var priceText = snap.leaderPriceAtSnapshot != null ? fmtCents(snap.leaderPriceAtSnapshot) : "";
-      var roiVal = (snap.leaderPriceAtSnapshot != null && snap.leaderPriceAtSnapshot > 0) ? (1 / snap.leaderPriceAtSnapshot - 1) * 100 : null;
-      var roiText = roiVal != null ? (roiVal >= 0 ? "+" : "") + roiVal.toFixed(0) + "%" : "";
-      if (wrap && color) {
-        // Current-era markup — patch the pill's inline styles, and also
-        // fill in the odds/ROI text itself when it was frozen blank (the
-        // Shandong/Chengdu case: the pill existed but leaderPriceAtSnapshot
-        // was never captured, so both cells rendered empty).
-        wrap.style.background = "color-mix(in srgb, " + color + " 12%, var(--panel))";
-        wrap.style.borderColor = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
-        var odds = wrap.querySelector(".vt-stat-odds");
-        var roi = wrap.querySelector(".vt-stat-roi");
-        var divider = wrap.querySelector(".vt-stat-divider");
-        if (odds) { if (!odds.textContent.trim()) odds.textContent = priceText; odds.style.color = color; }
-        if (roi) { if (!roi.textContent.trim()) roi.textContent = roiText; roi.style.color = color; }
-        if (divider) divider.style.background = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
-        // A note computed just now for a snapshot whose badge slot was
-        // empty (predates note-tracking) gets inserted the same way.
-        var badgeGroup = tmp.querySelector(".vt-badge-group");
-        if (badgeGroup && !badgeGroup.querySelector(".vt-score-wrap") && snap.noteAtSnapshot != null) {
-          badgeGroup.insertAdjacentHTML("afterbegin", scoreBadgeHtml(snap.noteAtSnapshot, null, null, null));
-        }
-        snap.cardHtml = tmp.innerHTML;
-        patched++;
-      } else {
-        // No .vt-top-stats found at all — older markup era. Rebuild the
-        // whole header row fresh from the snapshot's own (now-backfilled)
-        // fields and splice it into .vt-top, leaving gauges/bottom-row/
-        // trader detail (everything past the header) exactly as frozen.
-        var topRow = tmp.querySelector(".vt-top");
-        if (!topRow) { skipped++; return; }
-        topRow.innerHTML = rebuildSnapshotHeaderHtml(snap);
-        snap.cardHtml = tmp.innerHTML;
-        rebuilt++;
-      }
+      if (!snap.cardHtml || !snap.sides || !snap.sides.length) { skipped++; return; }
+      var oldTmp = document.createElement("div");
+      oldTmp.innerHTML = snap.cardHtml;
+      var newHtml = rebuildFullSnapshotCardHtml(snap, oldTmp);
+      if (newHtml == null) { skipped++; return; }
+      snap.cardHtml = newHtml;
+      rebuiltCount++;
     });
     saveSnapshotsToStorage(list);
     renderSnapshots();
-    alert(patched + " mis à jour, " + rebuilt + " reconstruits, " + skipped + " ignorés — sur " + list.length + " au total.\n" +
-      priceRecovered + " prix récupéré(s) depuis le détail, " + noteComputed + " note(s) recalculée(s) pour des snapshots qui n'en avaient jamais eu.");
+    alert(rebuiltCount + " snapshot(s) entièrement reconstruits, " + skipped + " ignorés (données insuffisantes) — sur " + list.length + " au total.");
   });
   snapSyncTokenSave.addEventListener("click", function () {
     var v = snapSyncTokenInput.value.trim();
