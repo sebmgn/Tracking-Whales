@@ -4127,7 +4127,12 @@
       // Strip the live 📌 button out of the frozen copy — re-clicking it from
       // inside Mes Snapshots would just re-save the same trade (or silently
       // no-op once the market's gone from the live feed), neither useful here.
-      cardHtml: (parts.headerHtml + parts.bodyHtml).replace(/<button[^>]*class="vt-snap-btn"[\s\S]*?<\/button>/, ""),
+      // Same for the ☆ follow button — "suivi" is a Value Trades concept
+      // (keeps a trade visible once it'd otherwise drop out of the live
+      // list), meaningless on an already-frozen snapshot.
+      cardHtml: (parts.headerHtml + parts.bodyHtml)
+        .replace(/<button[^>]*class="vt-snap-btn"[\s\S]*?<\/button>/, "")
+        .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, ""),
       winningSide: null, // side name (e.g. "No") once marked, or null = result not known yet
       confidence: null // "S" | "A+" | "A" | "B" conviction tag, set once the bet is placed — lets backtests correlate tier with winrate
     };
@@ -4904,10 +4909,14 @@
     // The frozen cardHtml still carries the live card's own top-right 🗑
     // (vt-trash-btn — toggles trashedKeys for the LIVE unit, meaningless on
     // a frozen snapshot) — a second, redundant/wrong-target trash icon
-    // alongside the toolbar's own snap-delete-btn below. Stripped at render
-    // time (not just in buildSnapshotFromUnit) so it disappears from
-    // snapshots saved before this fix too, not just new ones.
-    cardHeadHtml = cardHeadHtml.replace(/<button[^>]*class="vt-trash-btn[^"]*"[\s\S]*?<\/button>/, "");
+    // alongside the toolbar's own snap-delete-btn below. Same for the ☆
+    // follow star (vt-follow-btn) — "suivi" is a Value Trades concept, not
+    // applicable to a frozen card. Both stripped at render time (not just in
+    // buildSnapshotFromUnit) so they disappear from snapshots/positions
+    // saved before this fix too, not just new ones.
+    cardHeadHtml = cardHeadHtml
+      .replace(/<button[^>]*class="vt-trash-btn[^"]*"[\s\S]*?<\/button>/, "")
+      .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, "");
     var toolbarHtml;
     if (isTrash) {
       var dd = new Date(snap.deletedAt);
@@ -5812,8 +5821,23 @@
     }).catch(function (err) { console.error("Recent matches fetch:", err); });
   }
   // ---------- tabs ----------
+  // Not real security (it's a client-side prompt in a public static page —
+  // anyone with devtools can bypass it trivially), just a speed bump so
+  // Mes Positions doesn't show on a casual glance. Resets on every page
+  // load (in-memory only, nothing persisted) — one prompt per visit, not
+  // one per tab click within that visit.
+  var positionsUnlocked = false;
+  var POSITIONS_PASSWORD = "ooo";
   document.querySelectorAll(".tab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
+      if (btn.getAttribute("data-tab") === "positions" && !positionsUnlocked) {
+        var pwd = prompt("Mot de passe pour Mes Positions :");
+        if (pwd !== POSITIONS_PASSWORD) {
+          if (pwd !== null) alert("Mot de passe incorrect.");
+          return; // wrong or cancelled — stay on whatever tab was already active
+        }
+        positionsUnlocked = true;
+      }
       document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
       document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
       btn.classList.add("active");
