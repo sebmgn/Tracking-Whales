@@ -6132,6 +6132,20 @@
       if (raw === null) return; // cancelled
       var stakeAmount = parseFloat(String(raw).replace(",", "."));
       if (!isFinite(stakeAmount) || stakeAmount <= 0) { alert("Montant invalide — entre un nombre positif."); return; }
+      // The cote actually obtained can differ slightly from the snapshot's
+      // frozen price (market moved between saving the snapshot and placing
+      // the real bet) — defaults to the snapshot's own price so leaving it
+      // untouched changes nothing, but lets it be corrected since it feeds
+      // straight into this position's PnL/ROI.
+      var defaultCote = srcSnap.leaderPriceAtSnapshot != null ? (srcSnap.leaderPriceAtSnapshot * 100).toFixed(1) : "";
+      var rawCote = prompt("Cote obtenue (¢) :", defaultCote);
+      if (rawCote === null) return; // cancelled
+      var cotePrice = null;
+      if (String(rawCote).trim() !== "") {
+        var coteCents = parseFloat(String(rawCote).replace(",", "."));
+        if (!isFinite(coteCents) || coteCents <= 0 || coteCents > 100) { alert("Cote invalide — entre un nombre entre 0 et 100 (¢)."); return; }
+        cotePrice = coteCents / 100;
+      }
       // Deep clone via JSON round-trip — snapshot objects are plain JSON
       // data (ISO date strings, no functions), so this is safe and gives
       // the position its own independent sides/traderNames arrays instead
@@ -6144,6 +6158,19 @@
       pos.savedAt = new Date().toISOString(); // "taken at" — reuses the same field name every render/sort/chart function already reads
       pos.stakeUsd = stakeAmount;
       delete pos.deletedAt;
+      // Rebuilding the card (not just patching leaderPriceAtSnapshot) keeps
+      // the displayed cote/ROI pill in the card header in sync with the
+      // price actually used for this position's PnL — otherwise the header
+      // would keep showing the snapshot's old price while the simulation
+      // pill below it quietly used the new one. Reuses the exact same
+      // rebuild the restyle tool uses, so the markup stays current.
+      if (cotePrice != null && cotePrice !== srcSnap.leaderPriceAtSnapshot) {
+        pos.leaderPriceAtSnapshot = cotePrice;
+        var tmp = document.createElement("div");
+        tmp.innerHTML = pos.cardHtml;
+        var rebuilt = rebuildFullSnapshotCardHtml(pos, tmp);
+        if (rebuilt != null) pos.cardHtml = rebuilt;
+      }
       savePositionsToStorage([pos].concat(loadPositionsRaw()));
       renderPositions();
       takePosBtn.textContent = "✅ Position prise";
