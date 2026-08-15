@@ -1082,7 +1082,6 @@
      page even when this panel wasn't being looked at. */
   #tierWinrateToggleBtn, #tierWinrateContent { --neon: var(--gold); }
   #noteWinrateToggleBtn, #noteWinrateContent { --neon: #22d3ee; }
-  #noteRoiToggleBtn, #noteRoiContent { --neon: #ec4899; }
   #snapDistToggleBtn, #snapDistContent { --neon: #a78bfa; }
   #snapStatsToggleBtn, #snapStatsContent { --neon: #fb923c; }
   /* flex:1 with a shared min width — the 5 buttons stretch evenly to fill
@@ -1118,7 +1117,6 @@
   }
   #tierWinrateContent .chart-box,
   #noteWinrateContent .chart-box,
-  #noteRoiContent .chart-box,
   #snapDistContent .table-scroll,
   #snapStatsContent .table-scroll {
     border-color: var(--neon);
@@ -1408,6 +1406,11 @@
     justify-content: center;
   }
   .chart-tooltip-result-value { font-weight: 700; }
+  .chart-tooltip-result-note {
+    font-weight: 700; font-size: 10px; color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 16%, transparent);
+    border-radius: 4px; padding: 1px 5px;
+  }
   .chart-tooltip-result-date { color: var(--text-dim); }
   .chart-pt { cursor: pointer; }
   /* A bit bigger than a plain chart-pt at rest, and much bigger on hover —
@@ -1628,13 +1631,11 @@
     <div class="snap-toggle-bar">
       <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le winrate par conviction</button>
       <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ L'analyse winrate × note</button>
-      <button type="button" id="noteRoiToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le nuage note × ROI</button>
       <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ L'analyse cote × confiance</button>
       <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le récap par trader</button>
     </div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
-    <div id="noteRoiContent"></div>
     <div id="snapDistContent"></div>
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
@@ -1781,7 +1782,6 @@
   var snapDashboard = document.getElementById("snapDashboard");
   var tierWinrateContent = document.getElementById("tierWinrateContent");
   var noteWinrateContent = document.getElementById("noteWinrateContent");
-  var noteRoiContent = document.getElementById("noteRoiContent");
   var snapPnlChartContent = document.getElementById("snapPnlChartContent");
   var snapDistContent = document.getElementById("snapDistContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
@@ -1944,7 +1944,6 @@
   var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
   var tierWinrateCollapsed = true; // winrate-by-conviction gauge — same optional/collapsed-by-default pattern
   var noteWinrateCollapsed = true; // winrate-by-note-threshold gauge — same optional/collapsed-by-default pattern
-  var noteRoiCollapsed = true; // note x realized-ROI scatter — same optional/collapsed-by-default pattern
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   // Fixed floor now (used to be an adjustable ">= N traders" filter row,
@@ -4300,49 +4299,6 @@
       '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
   }
-  // Each decided snapshot as one point — note on x, realized ROI on y,
-  // colored by actual outcome. A cloud drifting up-right says the note
-  // really does capture value; a flat cloud says the opposite, without
-  // needing to compute anything to see it.
-  function renderNoteRoiScatter(list) {
-    if (!noteRoiContent) return;
-    var points = [];
-    list.forEach(function (snap) {
-      if (!snap.winningSide || snap.noteAtSnapshot == null) return;
-      var pnl = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
-      if (pnl == null) return;
-      points.push({ note: snap.noteAtSnapshot, roi: pnl / HYPOTHETICAL_FLAT_STAKE * 100, win: snap.leaderName === snap.winningSide });
-    });
-    if (points.length < 3) { noteRoiContent.innerHTML = ""; return; }
-    var W = 1000, H = 220, padL = 50, padR = 20, padT = 16, padB = 34;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var rois = points.map(function (p) { return p.roi; });
-    var minRoi = Math.min.apply(null, rois.concat([0]));
-    var maxRoi = Math.max.apply(null, rois.concat([0]));
-    if (minRoi === maxRoi) { minRoi -= 10; maxRoi += 10; }
-    function x(note) { return padL + ((note - 1) / 9) * innerW; }
-    function y(roi) { return padT + innerH - ((roi - minRoi) / (maxRoi - minRoi)) * innerH; }
-    var dots = points.map(function (p) {
-      return '<circle cx="' + x(p.note).toFixed(2) + '" cy="' + y(p.roi).toFixed(2) + '" r="5" fill="' + (p.win ? "var(--green)" : "var(--red)") + '" opacity="0.75"><title>Note ' + p.note.toFixed(1) + ' — ROI ' + (p.roi >= 0 ? '+' : '') + p.roi.toFixed(0) + '%</title></circle>';
-    }).join("");
-    var xLabels = "";
-    for (var n = 1; n <= 10; n++) {
-      xLabels += '<text x="' + x(n).toFixed(2) + '" y="' + (H - 16) + '" font-size="10" fill="var(--text-dim)" text-anchor="middle">' + n + '</text>';
-    }
-    var yLabels = '<text x="' + (padL - 8) + '" y="' + (y(maxRoi) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + maxRoi.toFixed(0) + '%</text>' +
-      '<text x="' + (padL - 8) + '" y="' + (y(minRoi) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + minRoi.toFixed(0) + '%</text>';
-    var zeroLine = (minRoi < 0 && maxRoi > 0)
-      ? '<line x1="' + padL + '" y1="' + y(0).toFixed(2) + '" x2="' + (W - padR) + '" y2="' + y(0).toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>'
-      : "";
-    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + zeroLine + yLabels + xLabels + dots +
-      '<text x="' + (padL + innerW / 2) + '" y="' + (H - 4) + '" font-size="9.5" fill="var(--text-dim)" text-anchor="middle">Note au moment du snapshot</text>' +
-    '</svg>';
-    syncSnapToggleLabel("noteRoiToggleBtn", noteRoiCollapsed, "le nuage note × ROI");
-    noteRoiContent.innerHTML =
-      '<div class="tier-wr-collapse-wrap' + (noteRoiCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Nuage note × ROI réalisé</div>' +
-      '<div class="tier-wr-subtitle">Un point par snapshot décidé — vert si gagné, rouge si perdu, ROI simulé à mise fixe de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '</div>' +
-      svg + '</div></div>';
-  }
   // Cumulative version of the same flat-$1000-per-pari simulation, in the
   // order the snapshots were actually saved — reuses buildHistoryChartSvg
   // (already generic over any {date, value} series) instead of a second
@@ -4391,7 +4347,7 @@
       // Pushed to near-neon (Material A400) on request for a bigger, more
       // flashy win/loss read at a glance.
       var won = snap.leaderName === snap.winningSide;
-      series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, pointColor: won ? "#00e676" : "#ff1744" });
+      series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
     });
     var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
     var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
@@ -4839,7 +4795,6 @@
     renderSnapDashboard(list);
     renderTierWinrate(list);
     renderNoteWinrate(list);
-    renderNoteRoiScatter(list);
     renderSnapPnlChart(cardsList);
     renderSnapDistribution(list);
     renderSnapStats(list);
@@ -5502,7 +5457,7 @@
       // stays crisp once the dot grows on hover.
       var strokeAttr = p.pointColor ? ' stroke="var(--panel)" stroke-width="1.5"' : '';
       return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + (p.pointColor || lineColor) + '"' + strokeAttr + ' ' +
-        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
+        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
     }).join("");
 
     historyChartGradSeq++;
@@ -5567,12 +5522,14 @@
         var win = pt.getAttribute("data-win") === "1";
         var color = win ? "var(--green)" : "var(--red)";
         var delta = pt.getAttribute("data-delta") || pt.getAttribute("data-value");
+        var note = pt.getAttribute("data-note");
         tip.style.borderColor = color;
         tip.innerHTML =
           '<span class="chart-tooltip-result-total">Total à ce moment : <b>' + esc(pt.getAttribute("data-value")) + '</b></span>' +
           '<span class="chart-tooltip-result-row">' +
             '<span class="chart-tooltip-result-icon" style="background:' + color + '">' + (win ? "✓" : "✗") + '</span>' +
             '<span class="chart-tooltip-result-value">' + esc(delta) + '</span>' +
+            (note ? '<span class="chart-tooltip-result-note">Note ' + esc(note) + '</span>' : '') +
             '<span class="chart-tooltip-result-date">' + esc(pt.getAttribute("data-date")) + '</span>' +
           '</span>';
         tip.classList.add("show");
@@ -6017,12 +5974,6 @@
     if (noteWinrateToggleBtn) {
       noteWinrateCollapsed = !noteWinrateCollapsed;
       renderNoteWinrate(loadSnapshots());
-      return;
-    }
-    var noteRoiToggleBtn = e.target.closest ? e.target.closest("#noteRoiToggleBtn") : null;
-    if (noteRoiToggleBtn) {
-      noteRoiCollapsed = !noteRoiCollapsed;
-      renderNoteRoiScatter(loadSnapshots());
       return;
     }
     var distCell = e.target.closest ? e.target.closest(".snap-dist-cell") : null;
