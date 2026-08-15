@@ -3232,7 +3232,23 @@
     var volumeConcentration = u.totalStake > 0 && leaderGroup ? (leaderGroup.stake / u.totalStake) : 0;
     var topTraderShare = leaderTopTraderShare(leaderGroup);
 
-    var consensusRatio = u.traderCount > 0 ? leaderCount / u.traderCount : 0;
+    // BUG FIXED (2026-08-15, user-reported): a trader who HEDGES — holds a
+    // position on both the leading side and another side — was invisible to
+    // this ratio. u.traderCount is the UNIQUE headcount across the whole
+    // market, so a hedger is credited to leaderCount (they do have a
+    // position on the leader side) but only ever counted ONCE in the
+    // denominator too, since it's the same person — netting out to zero
+    // signal of their contrary bet ever existing. A market with 6 unique
+    // traders where 2 of them ALSO hedged a real position on the other side
+    // scored consensusRatio 6/6 = 1.0 (literally "unanimous"), while the
+    // Consensus gauge shown on the same card already correctly read 6/8 —
+    // this was two different, disagreeing definitions of "consensus" on the
+    // same card. Fixed by using the same denominator the gauge already
+    // uses: the sum of each SIDE's own trader count (mergedSides' own
+    // .traderCount), which counts a hedger once per side they're actually
+    // on, not once total.
+    var totalSideTraders = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
+    var consensusRatio = totalSideTraders > 0 ? leaderCount / totalSideTraders : 0;
     var factors = {
       consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
       volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
