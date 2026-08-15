@@ -6096,6 +6096,36 @@
   // everything else in the frozen card (traders, gauges, question…) is
   // left exactly as it was.
   var snapRestyleBtn = document.getElementById("snapRestyleBtn");
+  // Rebuilds just the header row (emoji/question/leader badge/cote-ROI
+  // pill/note) from a snapshot's own stored structured fields — used when
+  // the frozen cardHtml predates .vt-top-stats entirely (older markup eras
+  // than the one patchOddsRoiPill below already handles), so there's no
+  // pill to patch in place. sides/leaderName/leaderPriceAtSnapshot/
+  // noteAtSnapshot have been stored on every snapshot since the feature
+  // existed, regardless of which HTML era wrote the frozen card, so this
+  // works uniformly no matter how old the snapshot is.
+  function rebuildSnapshotHeaderHtml(snap) {
+    var sides = snap.sides || [];
+    var distinctColors = resolveDistinctSideColors(sides);
+    var leaderColor = snap.leaderName ? (distinctColors[snap.leaderName] || sideColorFor(snap.leaderName)) : "var(--accent)";
+    var leaderBadge = snap.leaderName ? '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(snap.leaderName) + '</span>' : "";
+    var price = snap.leaderPriceAtSnapshot;
+    var priceText = price != null ? fmtCents(price) : "";
+    var roi = (price != null && price > 0) ? (1 / price - 1) * 100 : null;
+    var color = oddsRoiColor(price);
+    var statsWrapStyle = color ? ' style="background:color-mix(in srgb, ' + color + ' 12%, var(--panel));border-color:color-mix(in srgb, ' + color + ' 30%, var(--panel-border));"' : '';
+    var statsTextStyle = color ? ' style="color:' + color + ';"' : '';
+    var statsDividerStyle = color ? ' style="background:color-mix(in srgb, ' + color + ' 30%, var(--panel-border));"' : '';
+    var statsHtml = '<span class="vt-top-stats"' + statsWrapStyle + '>' +
+      '<span class="vt-stat-odds"' + statsTextStyle + '>' + esc(priceText) + '</span>' +
+      '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
+      '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roi != null ? (roi >= 0 ? '+' : '') + roi.toFixed(0) + '%' : '') + '</span>' +
+    '</span>';
+    var noteHtml = snap.noteAtSnapshot != null ? scoreBadgeHtml(snap.noteAtSnapshot, null, null, null) : '';
+    return '<span class="vt-top-left"><span class="vt-sport-emoji">⚽</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
+      statsHtml +
+      '<span class="vt-badge-group">' + noteHtml + '</span>';
+  }
   snapRestyleBtn.addEventListener("click", function () {
     var list = loadSnapshotsRaw();
     if (!list.length) { alert("Aucun snapshot à mettre à jour."); return; }
@@ -6109,30 +6139,41 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    if (!confirm(list.length + " snapshot(s) vont recevoir le nouveau dégradé bleu-or sur la cote/ROI. Une sauvegarde vient d'être téléchargée — utilise « Importer » pour annuler si le résultat ne convient pas.\n\nContinuer ?")) return;
-    var updated = 0;
+    if (!confirm(list.length + " snapshot(s) vont recevoir le nouveau dégradé bleu-or sur la cote/ROI (et une reconstruction complète de l'en-tête pour les plus anciens, dont la structure a changé depuis). Une sauvegarde vient d'être téléchargée — utilise « Importer » pour annuler si le résultat ne convient pas.\n\nContinuer ?")) return;
+    var patched = 0, rebuilt = 0, skipped = 0;
     list.forEach(function (snap) {
-      if (!snap.cardHtml) return;
-      var color = oddsRoiColor(snap.leaderPriceAtSnapshot);
-      if (!color) return;
+      if (!snap.cardHtml) { skipped++; return; }
       var tmp = document.createElement("div");
       tmp.innerHTML = snap.cardHtml;
       var wrap = tmp.querySelector(".vt-top-stats");
-      if (!wrap) return;
-      wrap.style.background = "color-mix(in srgb, " + color + " 12%, var(--panel))";
-      wrap.style.borderColor = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
-      var odds = wrap.querySelector(".vt-stat-odds");
-      var roi = wrap.querySelector(".vt-stat-roi");
-      var divider = wrap.querySelector(".vt-stat-divider");
-      if (odds) odds.style.color = color;
-      if (roi) roi.style.color = color;
-      if (divider) divider.style.background = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
-      snap.cardHtml = tmp.innerHTML;
-      updated++;
+      var color = oddsRoiColor(snap.leaderPriceAtSnapshot);
+      if (wrap && color) {
+        // Current-era markup — patch the existing pill's inline styles in place.
+        wrap.style.background = "color-mix(in srgb, " + color + " 12%, var(--panel))";
+        wrap.style.borderColor = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
+        var odds = wrap.querySelector(".vt-stat-odds");
+        var roi = wrap.querySelector(".vt-stat-roi");
+        var divider = wrap.querySelector(".vt-stat-divider");
+        if (odds) odds.style.color = color;
+        if (roi) roi.style.color = color;
+        if (divider) divider.style.background = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
+        snap.cardHtml = tmp.innerHTML;
+        patched++;
+      } else {
+        // No .vt-top-stats found — older markup era. Rebuild the whole
+        // header row fresh from the snapshot's own stored fields and
+        // splice it into .vt-top, leaving gauges/bottom-row/trader detail
+        // (everything past the header) exactly as frozen.
+        var topRow = tmp.querySelector(".vt-top");
+        if (!topRow) { skipped++; return; }
+        topRow.innerHTML = rebuildSnapshotHeaderHtml(snap);
+        snap.cardHtml = tmp.innerHTML;
+        rebuilt++;
+      }
     });
     saveSnapshotsToStorage(list);
     renderSnapshots();
-    alert(updated + " snapshot(s) mis à jour sur " + list.length + ".");
+    alert(patched + " mis à jour, " + rebuilt + " reconstruits (ancienne structure), " + skipped + " ignorés (structure trop ancienne ou incomplète) — sur " + list.length + " au total.");
   });
   snapSyncTokenSave.addEventListener("click", function () {
     var v = snapSyncTokenInput.value.trim();
