@@ -1080,10 +1080,10 @@
      frame forever (box-shadow isn't compositor-only like transform/
      opacity), which was measurably slowing down clicks elsewhere on the
      page even when this panel wasn't being looked at. */
-  #tierWinrateToggleBtn, #tierWinrateContent { --neon: var(--gold); }
-  #noteWinrateToggleBtn, #noteWinrateContent { --neon: #22d3ee; }
-  #snapDistToggleBtn, #snapDistContent { --neon: #a78bfa; }
-  #snapStatsToggleBtn, #snapStatsContent { --neon: #fb923c; }
+  #tierWinrateToggleBtn, #tierWinrateContent, #posTierWinrateToggleBtn, #posTierWinrateContent { --neon: var(--gold); }
+  #noteWinrateToggleBtn, #noteWinrateContent, #posNoteWinrateToggleBtn, #posNoteWinrateContent { --neon: #22d3ee; }
+  #snapDistToggleBtn, #snapDistContent, #posDistToggleBtn, #posDistContent { --neon: #a78bfa; }
+  #snapStatsToggleBtn, #snapStatsContent, #posStatsToggleBtn, #posStatsContent { --neon: #fb923c; }
   /* flex:1 with a shared min width — the 5 buttons stretch evenly to fill
      the row instead of clumping left, sized up now that dropping
      "Afficher" leaves them short. */
@@ -1118,7 +1118,11 @@
   #tierWinrateContent .chart-box,
   #noteWinrateContent .chart-box,
   #snapDistContent .table-scroll,
-  #snapStatsContent .table-scroll {
+  #snapStatsContent .table-scroll,
+  #posTierWinrateContent .chart-box,
+  #posNoteWinrateContent .chart-box,
+  #posDistContent .table-scroll,
+  #posStatsContent .table-scroll {
     border-color: var(--neon);
     box-shadow: 0 0 16px color-mix(in srgb, var(--neon) 28%, transparent);
   }
@@ -1326,7 +1330,7 @@
   /* Snapshots tab only: the PnL chart right above these tiles has no
      margin-bottom of its own, so without this the gap above the tiles
      reads noticeably tighter than the 20px gap below them. */
-  #snapDashboard { margin-top: 16px; }
+  #snapDashboard, #posDashboard { margin-top: 16px; }
   .stat-tile {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -1558,6 +1562,7 @@
   <div class="tab-bar">
     <button class="tab-btn tab-btn-primary active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
+    <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-quiet" data-tab="stats-profiles" type="button">Statistiques profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
@@ -1632,10 +1637,10 @@
     <div id="snapPnlChartContent"></div>
     <div id="snapDashboard"></div>
     <div class="snap-toggle-bar">
-      <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le winrate par conviction</button>
-      <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ L'analyse winrate × note</button>
-      <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ L'analyse cote × confiance</button>
-      <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le récap par trader</button>
+      <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="snapshots">▸ Le winrate par conviction</button>
+      <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="snapshots">▸ L'analyse winrate × note</button>
+      <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="snapshots">▸ L'analyse cote × confiance</button>
+      <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="snapshots">▸ Le récap par trader</button>
     </div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
@@ -1643,6 +1648,31 @@
     <div id="snapStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-positions">
+    <h2 class="section-title">Mes Positions <span class="count-pill" id="posCount">—</span></h2>
+    <div class="snap-sync-bar">
+      <button type="button" id="posExportBtn" class="snap-sync-link" title="Télécharger toutes les données de positions (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button type="button" id="posImportBtn" class="snap-sync-link" title="Restaurer une sauvegarde JSON exportée précédemment — remplace entièrement les positions actuelles de cet appareil">⬆️ Importer</button>
+      <input type="file" id="posImportInput" accept="application/json" style="display:none;">
+      <button id="posTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les positions mises à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
+    </div>
+    <div id="posPnlChartContent"></div>
+    <div id="posDashboard"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="posTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="positions">▸ Le winrate par conviction</button>
+      <button type="button" id="posNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="positions">▸ L'analyse winrate × note</button>
+      <button type="button" id="posDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="positions">▸ L'analyse cote × confiance</button>
+      <button type="button" id="posStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="positions">▸ Le récap par trader</button>
+    </div>
+    <div id="posTierWinrateContent"></div>
+    <div id="posNoteWinrateContent"></div>
+    <div id="posDistContent"></div>
+    <div id="posStatsContent"></div>
+    <div id="positionsContent" class="value-trades-box">
+      <div class="empty-note">Aucune position pour l'instant — clique sur 🎯 Prendre position sur une carte dans Mes Snapshots pour l'enregistrer ici.</div>
     </div>
   </div>
 
@@ -1795,6 +1825,14 @@
   var snapSyncTokenClear = document.getElementById("snapSyncTokenClear");
   var snapSyncConfigBtn = document.getElementById("snapSyncConfigBtn");
   var snapSyncRefreshBtn = document.getElementById("snapSyncRefreshBtn");
+  var positionsContent = document.getElementById("positionsContent");
+  var posCountEl = document.getElementById("posCount");
+  var posStatsContent = document.getElementById("posStatsContent");
+  var posDashboard = document.getElementById("posDashboard");
+  var posTierWinrateContent = document.getElementById("posTierWinrateContent");
+  var posNoteWinrateContent = document.getElementById("posNoteWinrateContent");
+  var posPnlChartContent = document.getElementById("posPnlChartContent");
+  var posDistContent = document.getElementById("posDistContent");
   var tradersContent = document.getElementById("tradersContent");
   var recentTradesContent = document.getElementById("recentTradesContent");
   var rtCountEl = document.getElementById("rtCount");
@@ -1940,14 +1978,25 @@
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
-  var expandedSnapshots = {}; // snapshot id -> bool, same collapsed-by-default pattern as expandedValueTrades but keyed separately (snapshot ids, not market keys)
-  var snapStatsCollapsed = true; // per-trader recap table starts collapsed — same table-scroll/collapse-btn pattern as Trades par profils
-  // Same toggle pattern as vtTrashMode (Value Trades) — swaps the whole
-  // Mes Snapshots list for the trashed-only view instead of filtering in place.
-  var snapTrashMode = false;
-  var snapDistCollapsed = true; // odds x conviction-tier distribution table — same optional/collapsed-by-default pattern
-  var tierWinrateCollapsed = true; // winrate-by-conviction gauge — same optional/collapsed-by-default pattern
-  var noteWinrateCollapsed = true; // winrate-by-note-threshold gauge — same optional/collapsed-by-default pattern
+  // Every bit of mutable UI state that used to be its own bare module-level
+  // var (one collapsed-flag/filter/sort per concept) now lives per-store
+  // instead, so Mes Snapshots and Mes Positions each keep their own filters/
+  // sort/collapsed-sections independently — see SNAPSHOTS_STORE/POSITIONS_STORE
+  // below. Shape shared by both stores' `state`:
+  //   tierCardFilter, snapDistCellFilter, noteCardFilter,
+  //   pnlChartOddsFilter, pnlChartTierFilter, pnlChartDays, pnlChartNoteFilter,
+  //   chartSelectedId, chartPrevScrollY, statsSort, expandedTraderStats,
+  //   expandedItems, trashMode, statsCollapsed, distCollapsed,
+  //   tierWinrateCollapsed, noteWinrateCollapsed
+  function freshStoreState() {
+    return {
+      tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null,
+      pnlChartOddsFilter: null, pnlChartTierFilter: null, pnlChartDays: null, pnlChartNoteFilter: null,
+      chartSelectedId: null, chartPrevScrollY: null,
+      statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
+      trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true
+    };
+  }
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   // Fixed floor now (used to be an adjustable ">= N traders" filter row,
@@ -3870,6 +3919,27 @@
   function saveSnapshotsToStorage(list) {
     try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
   }
+  // Positions are local-only, deliberately — the AWS sync backing snapshots
+  // has an unresolved public-access bug (see snapSyncStatus history), and
+  // adding a second Lambda route on top of an already-broken one isn't
+  // worth it for what's really just "snapshots with a custom stake". No
+  // queue, no op replay — a position is mutated and saved in one step.
+  var POSITIONS_KEY = "vtPositions";
+  function loadPositionsRaw() {
+    try { return JSON.parse(localStorage.getItem(POSITIONS_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function loadPositions() {
+    return loadPositionsRaw().filter(function (s) { return !s.deletedAt; });
+  }
+  function savePositionsToStorage(list) {
+    try { localStorage.setItem(POSITIONS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
+  }
+  // Local-only analogue of enqueueSnapshotOp — same applyOpToList reused as-is
+  // (it's already AWS-agnostic), just no queue/syncNow.
+  function applyPositionOp(op) {
+    savePositionsToStorage(applyOpToList(loadPositionsRaw(), op));
+    renderPositions();
+  }
   function loadSyncQueue() {
     try { return JSON.parse(localStorage.getItem(SNAPSHOTS_QUEUE_KEY) || "[]"); } catch (e) { return []; }
   }
@@ -4116,8 +4186,10 @@
   // Marking a snapshot's winning side (renderSnapshots below) feeds straight
   // into this, and into the per-trader table (renderSnapStats) — both just
   // aggregate classifyTraderInSnapshot across every trader in every snapshot.
-  function renderSnapDashboard(list) {
-    if (!list.length) { snapDashboard.innerHTML = ""; return; }
+  function renderSnapDashboard(list, store) {
+    var el = store.els.dashboard;
+    if (!el) return;
+    if (!list.length) { el.innerHTML = ""; return; }
     var decided = list.filter(function (s) { return !!s.winningSide; }).length;
     var pending = list.length - decided;
     // Bet-level verdict: one win/loss per snapshot (was the side the whales
@@ -4143,25 +4215,22 @@
       if (p != null) { priceSum += p * 100; priceCount++; }
     });
     var avgCote = priceCount > 0 ? (priceSum / priceCount) : null;
-    // Same flat HYPOTHETICAL_FLAT_STAKE-per-bet simulation used everywhere
-    // else on this tab (tier gauge, odds table), rolled up across every
-    // decided snapshot — the headline number for "is this actually profitable".
-    var globalFlatPnl = 0, globalFlatCount = 0;
-    list.forEach(function (snap) {
-      var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
-      if (hyp != null) { globalFlatPnl += hyp; globalFlatCount++; }
-    });
-    var globalRoi = globalFlatCount > 0 ? (globalFlatPnl / (globalFlatCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+    // Same flat-stake-per-bet simulation used everywhere else on this tab
+    // (tier gauge, odds table), rolled up across every decided snapshot —
+    // the headline number for "is this actually profitable".
+    var globalAgg = aggregateFlatPnl(list, store);
+    var globalRoi = globalAgg.roi;
+    var roiTitle = store.name === "positions"
+      ? "Moyenne du ROI de chaque position, chacune à sa propre mise. Le gain cumulé réel est affiché sur le graphique ci-dessus."
+      : "Moyenne du ROI de chaque pari pris isolément (mise à plat de " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " à chaque fois), pas un pourcentage d'un total misé cumulé. Le gain cumulé réel est affiché sur le graphique ci-dessus.";
     var globalTiles = [
       { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
       { label: "Cote moyenne", value: avgCote == null ? "—" : avgCote.toFixed(1) + "¢", title: "Prix moyen du camp leader au moment du snapshot, sur les snapshots décidés." },
       // "ROI moyen par pari", not "ROI global" — this is the AVERAGE return
-      // of one flat HYPOTHETICAL_FLAT_STAKE bet, not a % of some pooled
-      // total stake. Reads as "20% of $1000 = $200" otherwise, which is
-      // wrong by an order of magnitude once there are 19 bets, not 1 — the
-      // actual cumulative $ total is on the chart above.
-      { label: "ROI moyen par pari", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + "%", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg"),
-        title: "Moyenne du ROI de chaque pari pris isolément (mise à plat de " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " à chaque fois), pas un pourcentage d'un total misé cumulé. Le gain cumulé réel est affiché sur le graphique ci-dessus." }
+      // per bet, not a % of some pooled total stake. Reads as "20% of $1000
+      // = $200" otherwise, which is wrong by an order of magnitude once
+      // there are 19 bets, not 1.
+      { label: "ROI moyen par pari", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + "%", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg"), title: roiTitle }
     ];
     function tilesHtml(tiles) {
       return '<div class="stat-grid">' + tiles.map(function (t) {
@@ -4170,7 +4239,7 @@
           '</div>';
       }).join("") + '</div>';
     }
-    snapDashboard.innerHTML = tilesHtml(globalTiles);
+    el.innerHTML = tilesHtml(globalTiles);
   }
   // Bet-level winrate broken down by the confidence tag set on the snapshot
   // at bet time (CONFIDENCE_TIERS) — the whole point of tagging S/A+/A/B is
@@ -4219,29 +4288,74 @@
     if (!avgPrice || avgPrice <= 0) return null;
     return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
   }
-  function computeTierWinrates(list) {
+  // Everything that differs between "Mes Snapshots" and "Mes Positions" —
+  // both tabs share the entire dashboard/chart/stats/card rendering suite
+  // below, parameterized by one of these two descriptors, rather than
+  // duplicating ~1000 lines that would only ever drift apart. `stakeFor` is
+  // the crux: snapshots simulate a flat HYPOTHETICAL_FLAT_STAKE on every
+  // bet, positions use each entry's own chosen stakeUsd.
+  var SNAPSHOTS_STORE = {
+    name: "snapshots",
+    loadRaw: loadSnapshotsRaw, load: loadSnapshots, save: saveSnapshotsToStorage,
+    stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
+    allowTakePosition: true,
+    itemNoun: "snapshot",
+    emptyHint: "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.",
+    dateLabelPrefix: "Sauvegardé le",
+    simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment du snapshot"; },
+    cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
+    els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
+      tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
+      stats: snapStatsContent, list: snapshotsContent },
+    ids: { statsToggle: "snapStatsToggleBtn", distToggle: "snapDistToggleBtn",
+      tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn" },
+    state: freshStoreState()
+  };
+  var POSITIONS_STORE = {
+    name: "positions",
+    loadRaw: loadPositionsRaw, load: loadPositions, save: savePositionsToStorage,
+    stakeFor: function (snap) { return snap.stakeUsd; },
+    allowTakePosition: false,
+    itemNoun: "position",
+    emptyHint: "Aucune position pour l\'instant — clique sur 🎯 Prendre position sur une carte dans Mes Snapshots pour l\'enregistrer ici.",
+    dateLabelPrefix: "Prise le",
+    simSubtitle: function () { return "PnL basé sur la mise réellement choisie pour cette position, au prix du marché au moment du snapshot d'origine"; },
+    cardHypLabel: function (stake) { return "Ta position (" + fmtUSD(stake) + ") : "; },
+    els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
+      tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
+      stats: posStatsContent, list: positionsContent },
+    ids: { statsToggle: "posStatsToggleBtn", distToggle: "posDistToggleBtn",
+      tierToggle: "posTierWinrateToggleBtn", noteToggle: "posNoteWinrateToggleBtn" },
+    state: freshStoreState()
+  };
+  // Replaces the old `pnl / (count * HYPOTHETICAL_FLAT_STAKE)` formula
+  // everywhere an aggregate ROI is shown — that only worked because every
+  // item's stake was the same constant. Once stake varies per item
+  // (positions), the denominator has to be the sum of what was ACTUALLY
+  // staked, not count*constant. For the snapshots store this collapses back
+  // to the exact old formula (stakeFor always returns the same constant, so
+  // stakeSum === count*HYPOTHETICAL_FLAT_STAKE identically) — zero change in
+  // any number Mes Snapshots already shows.
+  function aggregateFlatPnl(items, store) {
+    var pnl = 0, stakeSum = 0, count = 0;
+    items.forEach(function (s) {
+      var stake = store.stakeFor(s);
+      var hyp = hypotheticalFlatPnl(s, stake);
+      if (hyp != null) { pnl += hyp; stakeSum += stake; count++; }
+    });
+    return { pnl: pnl, stakeSum: stakeSum, count: count, roi: stakeSum > 0 ? (pnl / stakeSum * 100) : null };
+  }
+  function computeTierWinrates(list, store) {
     var byTier = {};
-    CONFIDENCE_TIERS.forEach(function (t) { byTier[t] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
+    CONFIDENCE_TIERS.forEach(function (t) { byTier[t] = { decided: 0, win: 0, items: [] }; });
     list.forEach(function (snap) {
       if (!snap.winningSide || !snap.confidence || !byTier[snap.confidence]) return;
       byTier[snap.confidence].decided++;
       if (snap.leaderName === snap.winningSide) byTier[snap.confidence].win++;
-      var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
-      if (hyp != null) { byTier[snap.confidence].flatPnl += hyp; byTier[snap.confidence].flatPnlCount++; }
+      byTier[snap.confidence].items.push(snap);
     });
     return byTier;
   }
-  // Tiers currently toggled on to filter the snapshot cards below (click a
-  // badge in the winrate gauge to isolate that tier, click again to drop it;
-  // several can be active at once). Empty = show every snapshot, the default.
-  var tierCardFilter = [];
-  // Single cote-bracket (+ optional tier) cell clicked in the odds x
-  // conviction table below — { bracket: [min,max], tier: tierName|null },
-  // tier null meaning the bracket's "Tous" column. Only one active at a
-  // time (unlike tierCardFilter above, which is multi-select) since a cell
-  // is already a precise intersection. Clicking the same active cell again
-  // clears it. Combined with tierCardFilter via AND, not replacing it.
-  var snapDistCellFilter = null;
   function snapMatchesDistCell(s, bracket, tier) {
     if (!s.winningSide || !s.leaderName) return false;
     var p = snapLeaderPrice(s);
@@ -4266,18 +4380,19 @@
     btn.textContent = collapsed ? "▸ " + label.charAt(0).toUpperCase() + label.slice(1) : "▾ Réduire " + label;
     btn.classList.toggle("active", !collapsed);
   }
-  function renderTierWinrate(list) {
-    if (!tierWinrateContent) return;
+  function renderTierWinrate(list, store) {
+    var el = store.els.tierWinrate;
+    if (!el) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
-    if (!decidedAll.length) { tierWinrateContent.innerHTML = ""; return; }
-    var byTier = computeTierWinrates(list);
+    if (!decidedAll.length) { el.innerHTML = ""; return; }
+    var byTier = computeTierWinrates(list, store);
     var untagged = decidedAll.filter(function (s) { return !s.confidence; }).length;
     var rows = CONFIDENCE_TIERS.map(function (tier) {
       var st = byTier[tier];
       var wr = st.decided > 0 ? (st.win / st.decided * 100) : null;
       var color = CONFIDENCE_COLORS[tier];
       var countLabel = st.decided > 0 ? (st.win + " / " + st.decided) : "aucun résultat";
-      var isActive = tierCardFilter.indexOf(tier) !== -1;
+      var isActive = store.state.tierCardFilter.indexOf(tier) !== -1;
       var badgeStyle = isActive
         ? "background:" + color + ";color:#fff;border-color:" + color
         : "color:" + color + ";border-color:" + color + ";background:color-mix(in srgb, " + color + " 14%, transparent)";
@@ -4285,8 +4400,9 @@
       // tier's own badge color: net-winning tiers (wr >= 50) get a green
       // wash, net-losing ones red — "aucun résultat" stays neutral.
       var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
-      var hyp = st.flatPnlCount > 0 ? st.flatPnl : null;
-      var roi = st.flatPnlCount > 0 ? (st.flatPnl / (st.flatPnlCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+      var agg = aggregateFlatPnl(st.items, store);
+      var hyp = agg.count > 0 ? agg.pnl : null;
+      var roi = agg.roi;
       var hypHtml = hyp == null ? "" :
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
         ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
@@ -4294,7 +4410,7 @@
       // badge alone was too small a target to hit reliably, so the click
       // handler below matches ".tier-wr-row" and the row gets a hover fill
       // to make the bigger hit area visible.
-      return '<div class="tier-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" title="Filtrer les snapshots sur ' + esc(tier) + '">' +
+      return '<div class="tier-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" data-store="' + store.name + '" title="Filtrer les snapshots sur ' + esc(tier) + '">' +
         '<button type="button" class="tier-wr-badge' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" style="' + badgeStyle + '">' + esc(tier) + '</button>' +
         '<div class="tier-wr-track" title="' + esc(tier + " : " + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
@@ -4305,13 +4421,13 @@
     var noteHtml = untagged > 0
       ? '<div class="tier-wr-note">' + untagged + (untagged > 1 ? ' snapshots résolus ne sont pas classés' : ' snapshot résolu n\'est pas classé') + ' — tague-le avec Confiance sur la carte ci-dessous pour l\'inclure ici.</div>'
       : '';
-    var filterNoteHtml = tierCardFilter.length
-      ? '<div class="tier-wr-note">Filtré sur <b>' + esc(tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
+    var filterNoteHtml = store.state.tierCardFilter.length
+      ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
-    syncSnapToggleLabel("tierWinrateToggleBtn", tierWinrateCollapsed, "le winrate par conviction");
-    tierWinrateContent.innerHTML =
-      '<div class="tier-wr-collapse-wrap' + (tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
-      '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
+    syncSnapToggleLabel(store.ids.tierToggle, store.state.tierWinrateCollapsed, "le winrate par conviction");
+    el.innerHTML =
+      '<div class="tier-wr-collapse-wrap' + (store.state.tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
+      '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + '</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
   }
   // Same winrate/ROI read as the conviction gauge above, but cut by the
@@ -4325,39 +4441,25 @@
   function noteInBin(note, bin, isLast) {
     return note >= bin[0] && (isLast ? note <= bin[1] : note < bin[1]);
   }
-  // Single active bin (its min value) or null — bins are mutually
-  // exclusive, so unlike tierCardFilter above there's no sensible
-  // multi-select combination; click the active row again to clear it, same
-  // as snapDistCellFilter.
-  var noteCardFilter = null;
-  // Dedicated to the "Évolution du PnL simulé" curve only — deliberately
-  // separate from tierCardFilter/snapDistCellFilter/noteCardFilter above,
-  // which narrow the snapshot CARD LIST below. Refining the curve shouldn't
-  // also hide/show cards, and vice versa — two different questions ("what
-  // does my curve look like under X" vs "show me only X's cards").
-  var pnlChartOddsFilter = null; // one of DIST_ODDS_BUCKETS, or null = all
-  var pnlChartTierFilter = null; // one of CONFIDENCE_TIERS, or null = all
-  var pnlChartDays = null; // lookback window in days (7/30/90), or null = all time
-  var pnlChartNoteFilter = null; // one of NOTE_WR_BINS' bin-min values, or null = all
   function computeNoteWinrates(list) {
     var byBin = {};
-    NOTE_WR_BINS.forEach(function (b) { byBin[b[0]] = { decided: 0, win: 0, flatPnl: 0, flatPnlCount: 0 }; });
+    NOTE_WR_BINS.forEach(function (b) { byBin[b[0]] = { decided: 0, win: 0, items: [] }; });
     list.forEach(function (snap) {
       if (!snap.winningSide || snap.noteAtSnapshot == null) return;
       NOTE_WR_BINS.forEach(function (b, i) {
         if (!noteInBin(snap.noteAtSnapshot, b, i === NOTE_WR_BINS.length - 1)) return;
         byBin[b[0]].decided++;
         if (snap.leaderName === snap.winningSide) byBin[b[0]].win++;
-        var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
-        if (hyp != null) { byBin[b[0]].flatPnl += hyp; byBin[b[0]].flatPnlCount++; }
+        byBin[b[0]].items.push(snap);
       });
     });
     return byBin;
   }
-  function renderNoteWinrate(list) {
-    if (!noteWinrateContent) return;
+  function renderNoteWinrate(list, store) {
+    var el = store.els.noteWinrate;
+    if (!el) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
-    if (!decidedAll.length) { noteWinrateContent.innerHTML = ""; return; }
+    if (!decidedAll.length) { el.innerHTML = ""; return; }
     var byBin = computeNoteWinrates(list);
     var untagged = decidedAll.filter(function (s) { return s.noteAtSnapshot == null; }).length;
     var rows = NOTE_WR_BINS.map(function (b) {
@@ -4367,13 +4469,14 @@
       var color = scoreColor((b[0] + b[1]) / 2);
       var countLabel = st.decided > 0 ? (st.win + " / " + st.decided) : "aucun résultat";
       var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
-      var isActive = noteCardFilter === b[0];
-      var hyp = st.flatPnlCount > 0 ? st.flatPnl : null;
-      var roi = st.flatPnlCount > 0 ? (st.flatPnl / (st.flatPnlCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+      var isActive = store.state.noteCardFilter === b[0];
+      var agg = aggregateFlatPnl(st.items, store);
+      var hyp = agg.count > 0 ? agg.pnl : null;
+      var roi = agg.roi;
       var hypHtml = hyp == null ? "" :
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
         ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
-      return '<div class="note-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-note-bin-min="' + b[0] + '" title="Filtrer les snapshots sur note ' + label + '">' +
+      return '<div class="note-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-note-bin-min="' + b[0] + '" data-store="' + store.name + '" title="Filtrer les snapshots sur note ' + label + '">' +
         '<button type="button" class="note-wr-badge" data-note-bin-min="' + b[0] + '" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">' + label + '</button>' +
         '<div class="tier-wr-track" title="' + esc('Note ' + label + ' : ' + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
@@ -4384,13 +4487,13 @@
     var noteHtml = untagged > 0
       ? '<div class="tier-wr-note">' + untagged + (untagged > 1 ? ' snapshots résolus ont été enregistrés avant le suivi de la note' : ' snapshot résolu a été enregistré avant le suivi de la note') + ' — pas d\'assez de recul pour les inclure ici.</div>'
       : '';
-    var filterNoteHtml = noteCardFilter != null
-      ? '<div class="tier-wr-note">Filtré sur <b>note ' + noteCardFilter + '-' + (noteCardFilter + 1) + '</b> — reclique le seuil actif pour l\'enlever.</div>'
+    var filterNoteHtml = store.state.noteCardFilter != null
+      ? '<div class="tier-wr-note">Filtré sur <b>note ' + store.state.noteCardFilter + '-' + (store.state.noteCardFilter + 1) + '</b> — reclique le seuil actif pour l\'enlever.</div>'
       : '';
-    syncSnapToggleLabel("noteWinrateToggleBtn", noteWinrateCollapsed, "l'analyse winrate × note");
-    noteWinrateContent.innerHTML =
-      '<div class="tier-wr-collapse-wrap' + (noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par tranche de note</div>' +
-      '<div class="tier-wr-subtitle">PnL simulé si chaque pari avait été misé à ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' au prix du marché au moment du snapshot</div>' +
+    syncSnapToggleLabel(store.ids.noteToggle, store.state.noteWinrateCollapsed, "l'analyse winrate × note");
+    el.innerHTML =
+      '<div class="tier-wr-collapse-wrap' + (store.state.noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par tranche de note</div>' +
+      '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + '</div>' +
       rows + noteHtml + filterNoteHtml + '</div></div>';
   }
   // Cumulative version of the same flat-$1000-per-pari simulation, in the
@@ -4405,21 +4508,23 @@
   // own time control — kept short since this is meant to be a quick,
   // low-friction toggle, not a full date-range picker.
   var PNL_CHART_DAY_OPTIONS = [7, 30, 90];
-  function renderSnapPnlChart(cardsList) {
-    if (!snapPnlChartContent) return;
+  function renderSnapPnlChart(cardsList, store) {
+    var el = store.els.pnlChart;
+    if (!el) return;
+    var st = store.state;
     var decidedAll = cardsList.filter(function (s) { return !!s.winningSide; });
     // Independent of tierCardFilter/snapDistCellFilter/noteCardFilter above
     // (those narrow the card list below) — these three only ever touch this
     // curve, so exploring "what did my football-tier-A bets do in the last
     // 30 days" never hides/shows anything in the list underneath.
-    var activeNoteBin = pnlChartNoteFilter != null ? NOTE_WR_BINS.filter(function (b) { return b[0] === pnlChartNoteFilter; })[0] : null;
-    var activeNoteBinIsLast = pnlChartNoteFilter != null && NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === pnlChartNoteFilter;
+    var activeNoteBin = st.pnlChartNoteFilter != null ? NOTE_WR_BINS.filter(function (b) { return b[0] === st.pnlChartNoteFilter; })[0] : null;
+    var activeNoteBinIsLast = st.pnlChartNoteFilter != null && NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === st.pnlChartNoteFilter;
     var decidedFiltered = decidedAll.filter(function (s) {
-      if (pnlChartTierFilter && s.confidence !== pnlChartTierFilter) return false;
-      if (pnlChartOddsFilter && !snapMatchesDistCell(s, pnlChartOddsFilter, null)) return false;
+      if (st.pnlChartTierFilter && s.confidence !== st.pnlChartTierFilter) return false;
+      if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
       if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
-      if (pnlChartDays != null) {
-        var cutoff = Date.now() - pnlChartDays * 86400000;
+      if (st.pnlChartDays != null) {
+        var cutoff = Date.now() - st.pnlChartDays * 86400000;
         if (new Date(s.savedAt).getTime() < cutoff) return false;
       }
       return true;
@@ -4428,7 +4533,7 @@
     var cum = 0;
     var series = [];
     decided.forEach(function (snap) {
-      var pnl = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+      var pnl = hypotheticalFlatPnl(snap, store.stakeFor(snap));
       if (pnl == null) return;
       cum += pnl;
       // Each dot is colored by ITS OWN outcome (won that bet or not), not
@@ -4443,53 +4548,62 @@
       var won = snap.leaderName === snap.winningSide;
       series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
     });
-    var filterNote = tierCardFilter.length ? ' — <b>' + esc(tierCardFilter.join(", ")) + '</b> uniquement' : '';
+    var filterNote = st.tierCardFilter.length ? ' — <b>' + esc(st.tierCardFilter.join(", ")) + '</b> uniquement' : '';
     var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
-      var sel = pnlChartOddsFilter && pnlChartOddsFilter[0] === b[0] && pnlChartOddsFilter[1] === b[1] ? ' selected' : '';
+      var sel = st.pnlChartOddsFilter && st.pnlChartOddsFilter[0] === b[0] && st.pnlChartOddsFilter[1] === b[1] ? ' selected' : '';
       return '<option value="' + b[0] + '-' + b[1] + '"' + sel + '>' + b[0] + '–' + b[1] + '¢</option>';
     }).join("");
     var tierOptionsHtml = '<option value="">Toutes</option>' + CONFIDENCE_TIERS.map(function (t) {
-      return '<option value="' + esc(t) + '"' + (pnlChartTierFilter === t ? ' selected' : '') + '>' + esc(t) + '</option>';
+      return '<option value="' + esc(t) + '"' + (st.pnlChartTierFilter === t ? ' selected' : '') + '>' + esc(t) + '</option>';
     }).join("");
     var noteOptionsHtml = '<option value="">Toutes</option>' + NOTE_WR_BINS.map(function (b) {
-      var sel = pnlChartNoteFilter === b[0] ? ' selected' : '';
+      var sel = st.pnlChartNoteFilter === b[0] ? ' selected' : '';
       return '<option value="' + b[0] + '"' + sel + '>' + b[0] + '–' + b[1] + '</option>';
     }).join("");
-    var timeOptionsHtml = '<option value=""' + (pnlChartDays == null ? ' selected' : '') + '>Tout</option>' + PNL_CHART_DAY_OPTIONS.map(function (d) {
-      return '<option value="' + d + '"' + (pnlChartDays === d ? ' selected' : '') + '>' + d + ' j</option>';
+    var timeOptionsHtml = '<option value=""' + (st.pnlChartDays == null ? ' selected' : '') + '>Tout</option>' + PNL_CHART_DAY_OPTIONS.map(function (d) {
+      return '<option value="' + d + '"' + (st.pnlChartDays === d ? ' selected' : '') + '>' + d + ' j</option>';
     }).join("");
+    // Select ids are prefixed per-store — both panels' chart boxes exist in
+    // the DOM at once (hidden, not removed, when their tab isn't active), so
+    // a bare id would let getElementById silently grab the wrong store's select.
+    var idp = store.name + "-";
     var controlsHtml = '<div class="pnl-chart-filters">' +
-      '<label>Cote <select id="pnlChartOddsSelect">' + oddsOptionsHtml + '</select></label>' +
-      '<label>Confiance <select id="pnlChartTierSelect">' + tierOptionsHtml + '</select></label>' +
-      '<label>Note <select id="pnlChartNoteSelect">' + noteOptionsHtml + '</select></label>' +
-      '<label>Période <select id="pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
+      '<label>Cote <select id="' + idp + 'pnlChartOddsSelect">' + oddsOptionsHtml + '</select></label>' +
+      '<label>Confiance <select id="' + idp + 'pnlChartTierSelect">' + tierOptionsHtml + '</select></label>' +
+      '<label>Note <select id="' + idp + 'pnlChartNoteSelect">' + noteOptionsHtml + '</select></label>' +
+      '<label>Période <select id="' + idp + 'pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
     '</div>';
     // Realized PnL / avg ROI for the exact subset the 4 selects above
     // currently resolve to — same cumulative total already plotted
     // (series' last point) and the same avg-ROI formula used everywhere
     // else (globalRoi in renderSnapDashboard, cellRoi in the odds table).
+    // aggregateFlatPnl needs full snap objects (it calls hypotheticalFlatPnl
+    // itself) — `decided` still has those, series is just their derived
+    // points, so aggregate over `decided` and take the ROI from there.
+    var statsRoiAgg = aggregateFlatPnl(decided, store);
     var statsCount = series.length;
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
-    var statsAvgRoi = statsCount ? (statsTotalPnl / (statsCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+    var statsAvgRoi = statsRoiAgg.roi;
     var statsHtml = '<div class="pnl-chart-stats">' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
     '</div>';
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
+    var boxId = store.name + "-snapPnlChartBox";
     if (series.length < 2) {
-      snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
+      el.innerHTML = '<div class="chart-box" id="' + boxId + '">' +
         headerHtml + controlsHtml +
         '<div class="empty-note" style="padding:14px 0;">Pas assez de snapshots décidés pour ces critères.</div></div>';
-      wirePnlChartFilterControls(cardsList);
+      wirePnlChartFilterControls(cardsList, store);
       return;
     }
-    snapPnlChartContent.innerHTML = '<div class="chart-box" id="snapPnlChartBox">' +
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' +
       headerHtml + controlsHtml +
       buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div></div>';
-    wirePnlChartFilterControls(cardsList);
-    var box = document.getElementById("snapPnlChartBox");
-    if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box); }
+    wirePnlChartFilterControls(cardsList, store);
+    var box = document.getElementById(boxId);
+    if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box, store); }
   }
   // Re-attached on every render (the selects are rebuilt from scratch each
   // time, same as everything else in this box) — plain `change` listeners,
@@ -4497,55 +4611,54 @@
   // Re-renders with the SAME cardsList the current chart was built from
   // (captured via closure, not re-derived), since these three filters only
   // narrow within that pool, never change what pool it is.
-  function wirePnlChartFilterControls(cardsList) {
-    var oddsSelect = document.getElementById("pnlChartOddsSelect");
-    var tierSelect = document.getElementById("pnlChartTierSelect");
-    var noteSelect = document.getElementById("pnlChartNoteSelect");
-    var timeSelect = document.getElementById("pnlChartTimeSelect");
+  function wirePnlChartFilterControls(cardsList, store) {
+    var idp = store.name + "-";
+    var oddsSelect = document.getElementById(idp + "pnlChartOddsSelect");
+    var tierSelect = document.getElementById(idp + "pnlChartTierSelect");
+    var noteSelect = document.getElementById(idp + "pnlChartNoteSelect");
+    var timeSelect = document.getElementById(idp + "pnlChartTimeSelect");
     if (oddsSelect) oddsSelect.addEventListener("change", function () {
       var v = oddsSelect.value;
-      pnlChartOddsFilter = v ? v.split("-").map(Number) : null;
-      renderSnapPnlChart(cardsList);
+      store.state.pnlChartOddsFilter = v ? v.split("-").map(Number) : null;
+      renderSnapPnlChart(cardsList, store);
     });
     if (tierSelect) tierSelect.addEventListener("change", function () {
-      pnlChartTierFilter = tierSelect.value || null;
-      renderSnapPnlChart(cardsList);
+      store.state.pnlChartTierFilter = tierSelect.value || null;
+      renderSnapPnlChart(cardsList, store);
     });
     if (noteSelect) noteSelect.addEventListener("change", function () {
-      pnlChartNoteFilter = noteSelect.value ? Number(noteSelect.value) : null;
-      renderSnapPnlChart(cardsList);
+      store.state.pnlChartNoteFilter = noteSelect.value ? Number(noteSelect.value) : null;
+      renderSnapPnlChart(cardsList, store);
     });
     if (timeSelect) timeSelect.addEventListener("change", function () {
-      pnlChartDays = timeSelect.value ? Number(timeSelect.value) : null;
-      renderSnapPnlChart(cardsList);
+      store.state.pnlChartDays = timeSelect.value ? Number(timeSelect.value) : null;
+      renderSnapPnlChart(cardsList, store);
     });
   }
   // Clicking a point jumps to (and highlights) the matching snapshot card
   // below; clicking that same point again undoes it — removes the
   // highlight and scrolls back to wherever the page was before the first
   // jump, instead of leaving the user stranded down in the card list.
-  var snapChartSelectedId = null;
-  var snapChartPrevScrollY = null;
-  function wireSnapPnlChartClicks(box) {
+  function wireSnapPnlChartClicks(box, store) {
     box.querySelectorAll(".chart-pt[data-id]").forEach(function (pt) {
       pt.addEventListener("click", function () {
         var id = pt.getAttribute("data-id");
-        var card = document.querySelector('.snap-item[data-key="' + id + '"]');
+        var card = store.els.list ? store.els.list.querySelector('.snap-item[data-key="' + id + '"]') : null;
         if (!card) return;
-        if (snapChartSelectedId === id) {
+        if (store.state.chartSelectedId === id) {
           card.classList.remove("snap-item-highlight");
-          snapChartSelectedId = null;
-          if (snapChartPrevScrollY != null) window.scrollTo({ top: snapChartPrevScrollY, behavior: "smooth" });
-          snapChartPrevScrollY = null;
+          store.state.chartSelectedId = null;
+          if (store.state.chartPrevScrollY != null) window.scrollTo({ top: store.state.chartPrevScrollY, behavior: "smooth" });
+          store.state.chartPrevScrollY = null;
           return;
         }
-        if (snapChartSelectedId) {
-          var prevCard = document.querySelector('.snap-item[data-key="' + snapChartSelectedId + '"]');
+        if (store.state.chartSelectedId) {
+          var prevCard = store.els.list.querySelector('.snap-item[data-key="' + store.state.chartSelectedId + '"]');
           if (prevCard) prevCard.classList.remove("snap-item-highlight");
         } else {
-          snapChartPrevScrollY = window.scrollY;
+          store.state.chartPrevScrollY = window.scrollY;
         }
-        snapChartSelectedId = id;
+        store.state.chartSelectedId = id;
         card.classList.add("snap-item-highlight");
         card.scrollIntoView({ behavior: "smooth", block: "center" });
       });
@@ -4567,11 +4680,6 @@
     { key: "perteNuance", label: "Perte nuancée", numeric: true },
     { key: "roi", label: "ROI/trade", numeric: true }
   ];
-  var snapStatsSort = { key: "total", dir: "desc" };
-  // Trader name -> bool, survives re-renders the same way expandedValueTrades
-  // does — clicking a row in the recap table reveals its snapshot-by-snapshot
-  // detail inline instead of navigating away.
-  var expandedTraderStats = {};
   // Rows with a null sort value (no decided snapshot yet, so PNL/% réussite
   // show "—") always sink to the bottom regardless of direction — they
   // aren't meaningfully comparable, so flipping the sort shouldn't surface
@@ -4592,26 +4700,19 @@
   // default) since it's a deeper cut than the tier gauge above, not
   // something to parse on every visit.
   var DIST_ODDS_BUCKETS = [[0, 40], [40, 65], [65, 80], [80, 90], [90, 95], [95, 100]];
-  function renderSnapDistribution(list) {
-    if (!snapDistContent) return;
+  function renderSnapDistribution(list, store) {
+    var el = store.els.dist;
+    if (!el) return;
     var decided = list.filter(function (s) { return !!s.winningSide && s.leaderName; });
     // Each non-empty win/loss cell doubles as a filter trigger — click it to
     // narrow the snapshot cards below to exactly that bracket (+ tier, for
     // anything but the "Tous" column); click the now-active cell again to
     // clear it. Empty cells ("—", nothing to isolate) stay inert.
-    // Same flat HYPOTHETICAL_FLAT_STAKE-per-bet simulation as the tier
-    // winrate gauge above, cut by cote bracket instead of by conviction —
-    // lets a bracket with a decent win/loss split still show up as a net
-    // loser (or vice versa) once the stake-weighted payout is accounted for.
-    function cellRoi(items) {
-      var flatPnl = 0, flatCount = 0;
-      items.forEach(function (s) {
-        var hyp = hypotheticalFlatPnl(s, HYPOTHETICAL_FLAT_STAKE);
-        if (hyp != null) { flatPnl += hyp; flatCount++; }
-      });
-      if (!flatCount) return null;
-      return flatPnl / (flatCount * HYPOTHETICAL_FLAT_STAKE) * 100;
-    }
+    // Same flat-stake-per-bet simulation as the tier winrate gauge above,
+    // cut by cote bracket instead of by conviction — lets a bracket with a
+    // decent win/loss split still show up as a net loser (or vice versa)
+    // once the stake-weighted payout is accounted for.
+    function cellRoi(items) { return aggregateFlatPnl(items, store).roi; }
     // Every win/loss cell doubles as a mini heatmap of its own ROI — green
     // for a net-positive bracket, red for net-negative, saturation scaled by
     // |ROI| (capped at 60% so one outlier cell doesn't wash the rest of the
@@ -4628,8 +4729,9 @@
       if (!items.length) return '<td class="num"><span class="snap-dist-empty">—</span></td>';
       var win = items.filter(function (s) { return s.leaderName === s.winningSide; }).length;
       var roi = cellRoi(items);
-      var isActive = !!snapDistCellFilter && snapDistCellFilter.bracket[0] === bracket[0] && snapDistCellFilter.bracket[1] === bracket[1] && snapDistCellFilter.tier === tier;
-      return '<td class="num snap-dist-cell' + (isActive ? ' active' : '') + '"' + roiHeatStyle(roi) + ' data-odds-min="' + bracket[0] + '" data-odds-max="' + bracket[1] + '" data-tier="' + esc(tier || "") + '" title="' + esc(roi == null ? '' : 'ROI simulé ' + (roi >= 0 ? '+' : '') + roi.toFixed(0) + '% · ') + 'Filtrer les snapshots sur ' + esc(tier || "toutes conviction") + ' · ' + bracket[0] + '–' + bracket[1] + '¢">' +
+      var f = store.state.snapDistCellFilter;
+      var isActive = !!f && f.bracket[0] === bracket[0] && f.bracket[1] === bracket[1] && f.tier === tier;
+      return '<td class="num snap-dist-cell' + (isActive ? ' active' : '') + '" data-store="' + store.name + '"' + roiHeatStyle(roi) + ' data-odds-min="' + bracket[0] + '" data-odds-max="' + bracket[1] + '" data-tier="' + esc(tier || "") + '" title="' + esc(roi == null ? '' : 'ROI simulé ' + (roi >= 0 ? '+' : '') + roi.toFixed(0) + '% · ') + 'Filtrer les snapshots sur ' + esc(tier || "toutes conviction") + ' · ' + bracket[0] + '–' + bracket[1] + '¢">' +
         '<span class="pnl-pos">' + win + '</span> / <span class="pnl-neg">' + (items.length - win) + '</span></td>';
     }
     function roiCell(items) {
@@ -4649,22 +4751,26 @@
       }).join("");
       return '<tr><td>' + b[0] + '–' + b[1] + '¢</td>' + cell(inBucket, b, null) + tierCells + '<td class="num">' + roiCell(inBucket) + '</td></tr>';
     }).join("");
+    var roiTitle = store.name === "positions"
+      ? "Simulation basée sur la mise choisie pour chaque position de la tranche, au prix du camp leader au moment du snapshot d'origine"
+      : "Simulation " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " misés à plat sur chaque snapshot décidé de la tranche, au prix du camp leader au moment du snapshot";
     var headCells = '<th>Cote</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("") +
-      '<th class="num" title="Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' misés à plat sur chaque snapshot décidé de la tranche, au prix du camp leader au moment du snapshot">ROI</th>';
-    var cellFilterNoteHtml = snapDistCellFilter
-      ? '<div class="tier-wr-note">Filtré sur <b>' + esc(snapDistCellFilter.tier || "Tous") + ' · ' + snapDistCellFilter.bracket[0] + '–' + snapDistCellFilter.bracket[1] + '¢</b> — reclique la cellule active pour l\'enlever.</div>'
+      '<th class="num" title="' + esc(roiTitle) + '">ROI</th>';
+    var cellFilterNoteHtml = store.state.snapDistCellFilter
+      ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.snapDistCellFilter.tier || "Tous") + ' · ' + store.state.snapDistCellFilter.bracket[0] + '–' + store.state.snapDistCellFilter.bracket[1] + '¢</b> — reclique la cellule active pour l\'enlever.</div>'
       : '';
-    syncSnapToggleLabel("snapDistToggleBtn", snapDistCollapsed, "l'analyse cote × confiance");
-    snapDistContent.innerHTML =
-      '<div class="snap-dist-wrap table-scroll' + (snapDistCollapsed ? " collapsed" : "") + '">' +
+    syncSnapToggleLabel(store.ids.distToggle, store.state.distCollapsed, "l'analyse cote × confiance");
+    el.innerHTML =
+      '<div class="snap-dist-wrap table-scroll' + (store.state.distCollapsed ? " collapsed" : "") + '">' +
       '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction. Clique une cellule pour filtrer les snapshots ci-dessous sur cette tranche.</div>' +
       '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table>' + cellFilterNoteHtml + '</div>';
   }
-  function renderSnapStats(list) {
+  function renderSnapStats(list, store) {
+    var el = store.els.stats;
     var byTrader = {};
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
-        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, flatPnl: 0, flatPnlCount: 0, trend: [], entries: [] };
+        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, items: [], trend: [], entries: [] };
         byTrader[name].total++;
         var pnlResult = traderNetPnlInSnapshot(snap, name);
         if (pnlResult) byTrader[name].pnl += pnlResult.net;
@@ -4673,8 +4779,7 @@
         // those, instead of a raw win/loss percentage that ignores the price
         // paid (a trader winning mostly heavy favorites and one losing mostly
         // longshots can share the same % réussite despite very different ROI).
-        var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
-        if (hyp != null) { byTrader[name].flatPnl += hyp; byTrader[name].flatPnlCount++; }
+        byTrader[name].items.push(snap);
         var cls = classifyTraderInSnapshot(snap, name);
         if (cls === "win") byTrader[name].win++;
         else if (cls === "loss") byTrader[name].loss++;
@@ -4702,21 +4807,21 @@
       var st = byTrader[n];
       var decided = st.win + st.loss + st.gainNuance + st.perteNuance;
       st.decided = decided;
-      st.roi = st.flatPnlCount > 0 ? (st.flatPnl / (st.flatPnlCount * HYPOTHETICAL_FLAT_STAKE) * 100) : null;
+      st.roi = aggregateFlatPnl(st.items, store).roi;
       // Raw st.pnl stays a number (0 when nothing decided yet) for display;
       // this separate field is what sorting uses so "—" rows sink to the
       // bottom instead of racing 0-PNL traders for last place.
       st.pnlForSort = decided > 0 ? st.pnl : null;
       return st;
     });
-    if (!rowsData.length) { snapStatsContent.innerHTML = ""; return; }
-    var sortField = snapStatsSort.key === "pnl" ? "pnlForSort" : snapStatsSort.key;
-    rowsData.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, snapStatsSort.dir); });
+    if (!rowsData.length) { el.innerHTML = ""; return; }
+    var sortField = store.state.statsSort.key === "pnl" ? "pnlForSort" : store.state.statsSort.key;
+    rowsData.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, store.state.statsSort.dir); });
     // One snapshot-by-snapshot line per row, newest first — same
     // date/question/result-badge vocabulary as the snapshot cards above, just
     // condensed to one line each since this is scoped to a single trader.
     function traderDetailRowHtml(st) {
-      if (!expandedTraderStats[st.name]) return '';
+      if (!store.state.expandedTraderStats[st.name]) return '';
       var sortedEntries = st.entries.slice().sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
       var itemsHtml = sortedEntries.map(function (en) {
         var d = new Date(en.snap.savedAt);
@@ -4731,8 +4836,8 @@
     }
     var rows = rowsData.map(function (st) {
       var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
-      var isOpen = !!expandedTraderStats[st.name];
-      return '<tr class="snap-stats-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(st.name) + '"><td><span class="snap-stats-caret">' + (isOpen ? '▾' : '▸') + '</span> ' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
+      var isOpen = !!store.state.expandedTraderStats[st.name];
+      return '<tr class="snap-stats-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '"><td><span class="snap-stats-caret">' + (isOpen ? '▾' : '▸') + '</span> ' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
         '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
         '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
@@ -4740,20 +4845,20 @@
         '<td>' + traderTrendSparkline(st.trend) + '</td></tr>' + traderDetailRowHtml(st);
     }).join("");
     var headCells = SNAP_STATS_COLUMNS.map(function (col) {
-      var isActive = snapStatsSort.key === col.key;
-      var arrow = isActive ? '<span class="sort-arrow">' + (snapStatsSort.dir === "asc" ? "▲" : "▼") + '</span>' : "";
-      return '<th class="sortable' + (col.numeric ? " num" : "") + (isActive ? " sorted" : "") + '" data-sort-key="' + col.key + '">' + esc(col.label) + arrow + '</th>';
+      var isActive = store.state.statsSort.key === col.key;
+      var arrow = isActive ? '<span class="sort-arrow">' + (store.state.statsSort.dir === "asc" ? "▲" : "▼") + '</span>' : "";
+      return '<th class="sortable' + (col.numeric ? " num" : "") + (isActive ? " sorted" : "") + '" data-sort-key="' + col.key + '" data-store="' + store.name + '">' + esc(col.label) + arrow + '</th>';
     }).join("") + '<th>Tendance</th>';
-    syncSnapToggleLabel("snapStatsToggleBtn", snapStatsCollapsed, "le récap par trader");
-    snapStatsContent.innerHTML =
-      '<div class="snap-stats-wrap table-scroll' + (snapStatsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
+    syncSnapToggleLabel(store.ids.statsToggle, store.state.statsCollapsed, "le récap par trader");
+    el.innerHTML =
+      '<div class="snap-stats-wrap table-scroll' + (store.state.statsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
       headCells +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   // Shared by the normal list and the trash view below — only the toolbar
   // (camp/confiance/delete vs. mis-à-la-corbeille-le/restaurer/purger)
   // differs; everything else about how a frozen snapshot renders is identical.
-  function snapCardHtml(snap, isTrash) {
+  function snapCardHtml(snap, isTrash, store) {
     var d = new Date(snap.savedAt);
     var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
     // Border stays tied to which side was leading when saved (not to the
@@ -4766,13 +4871,14 @@
     // dashboard tiles use — so it's an unambiguous win/lose regardless of
     // whether individual traders hedged both sides underneath.
     var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
-    // Same flat-$1000-per-bet simulation as the tier winrate chart, but
+    // Same flat-stake-per-bet simulation as the tier winrate chart, but
     // per snapshot here — a bold standalone pill (not just colored text)
     // so the number is impossible to miss scanning down the list.
-    var hyp = hypotheticalFlatPnl(snap, HYPOTHETICAL_FLAT_STAKE);
+    var stake = store.stakeFor(snap);
+    var hyp = stake ? hypotheticalFlatPnl(snap, stake) : null;
     var hypCardHtml = hyp == null ? "" :
-      '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">Simulation ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '/pari : ' + esc(fmtUSDSigned(hyp)) +
-      ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / HYPOTHETICAL_FLAT_STAKE * 100).toFixed(0) + '% ROI)</span></div>';
+      '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(store.cardHypLabel(stake)) + esc(fmtUSDSigned(hyp)) +
+      ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / stake * 100).toFixed(0) + '% ROI)</span></div>';
     var resultsHtml = snap.winningSide ? '<div class="snap-trader-results">' +
       (snap.traderNames || []).map(function (name) {
         return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
@@ -4808,36 +4914,43 @@
       var deletedLabel = isNaN(dd.getTime()) ? snap.deletedAt : dd.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
       toolbarHtml = '<div class="snap-toolbar">' +
         '<span class="dim">Mis à la corbeille le ' + esc(deletedLabel) + '</span>' +
-        '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '">↺ Restaurer</button>' +
-        '<button type="button" class="snap-purge-btn" data-snap-id="' + esc(snap.id) + '" title="Suppression définitive — pas de retour en arrière possible">🗑 Supprimer définitivement</button>' +
+        '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '">↺ Restaurer</button>' +
+        '<button type="button" class="snap-purge-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Suppression définitive — pas de retour en arrière possible">🗑 Supprimer définitivement</button>' +
       '</div>';
     } else {
       var sideButtonsHtml = (snap.sides || []).map(function (side) {
         var isWinner = snap.winningSide === side.name;
-        return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
+        return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
       }).join("");
       if ((snap.sides || []).length < 2) {
         var isOtherWinner = snap.winningSide === OTHER_SIDE_SENTINEL;
         sideButtonsHtml += '<button type="button" class="snap-side-btn snap-side-other' + (isOtherWinner ? ' active' : '') +
-          '" data-snap-id="' + esc(snap.id) + '" data-side="' + esc(OTHER_SIDE_SENTINEL) +
+          '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-side="' + esc(OTHER_SIDE_SENTINEL) +
           '" title="Aucun trader suivi n\'a pris l\'autre camp sur ce marché précis — son nom exact n\'est pas connu, mais ça suffit pour enregistrer que ce camp a gagné.">Camp adverse</button>';
       }
       var confidenceButtonsHtml = CONFIDENCE_TIERS.map(function (tier) {
         var isActive = snap.confidence === tier;
         var color = CONFIDENCE_COLORS[tier];
         var style = isActive ? "background:" + color + ";border-color:" + color + ";color:#fff" : "color:" + color + ";border-color:" + color;
-        return '<button type="button" class="snap-confidence-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-tier="' + esc(tier) + '" style="' + style + '">' + esc(tier) + '</button>';
+        return '<button type="button" class="snap-confidence-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-tier="' + esc(tier) + '" style="' + style + '">' + esc(tier) + '</button>';
       }).join("");
+      // "Prendre position" only makes sense copying FROM a snapshot — taking
+      // a position on a position is meaningless, hence store.allowTakePosition
+      // (false for POSITIONS_STORE) gating this out entirely there.
+      var takePositionHtml = store.allowTakePosition
+        ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce snapshot dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
+        : '';
       toolbarHtml = '<div class="snap-toolbar">' +
-        '<span class="dim">Sauvegardé le ' + esc(dateLabel) + '</span>' +
+        '<span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + '</span>' +
         '<span class="snap-side-label">Camp gagnant :</span>' +
         sideButtonsHtml +
         '<span class="snap-side-label">Confiance :</span>' +
         confidenceButtonsHtml +
-        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
+        takePositionHtml +
+        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
       '</div>';
     }
-    return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (expandedSnapshots[snap.id] ? " open" : "") +
+    return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (store.state.expandedItems[snap.id] ? " open" : "") +
       ' style="border-left-color:' + borderColor + '">' +
       '<summary class="vt-summary">' +
         toolbarHtml +
@@ -4852,54 +4965,68 @@
   // snapshot mistakenly cleared out of the main list is always one
   // "Restaurer" click away, and it's still present in the synced
   // snapshots.json (and its git history) the whole time it sits here.
-  function renderSnapTrashView(fullList) {
+  // NOTE: deliberately NOT named renderTrashView — that name is already
+  // used below (~line 5200s) for Value Trades' own, unrelated trash view.
+  // Function declarations with the same name silently overwrite each other
+  // in JS (last one in source order wins), so reusing that name here would
+  // have made THIS function invisible under its own name — this bit, caught
+  // live: trashMode toggled correctly but the card list quietly kept
+  // whatever stale HTML was already in it, since calls actually resolved to
+  // the other renderTrashView, which writes into valueTradesContent instead.
+  function renderSnapPosTrashView(fullList, store) {
     var trashed = fullList.filter(function (s) { return !!s.deletedAt; });
     trashed.sort(function (a, b) { return new Date(b.deletedAt) - new Date(a.deletedAt); });
-    snapCountEl.textContent = trashed.length + ' snapshot' + (trashed.length > 1 ? "s" : "") + ' à la corbeille';
+    store.els.count.textContent = trashed.length + ' ' + store.itemNoun + (trashed.length > 1 ? "s" : "") + ' à la corbeille';
     if (!trashed.length) {
-      snapshotsContent.innerHTML = '<div class="empty-note">Corbeille vide — rien à restaurer.</div>';
+      store.els.list.innerHTML = '<div class="empty-note">Corbeille vide — rien à restaurer.</div>';
       return;
     }
-    snapshotsContent.innerHTML = trashed.map(function (snap) { return snapCardHtml(snap, true); }).join("");
+    store.els.list.innerHTML = trashed.map(function (snap) { return snapCardHtml(snap, true, store); }).join("");
   }
-  function renderSnapshots() {
-    var fullList = loadSnapshotsRaw();
-    if (snapTrashMode) { renderSnapTrashView(fullList); return; }
-    // Trashed snapshots never feed the dashboard/charts/card list below —
-    // only the Corbeille view (above) shows them, until restored.
+  // The single render path both Mes Snapshots and Mes Positions use —
+  // renderSnapshots()/renderPositions() below are 1-line wrappers so every
+  // existing call site (sync engine, tab-switch, live-refresh hook, filter/
+  // sort click handlers) keeps calling the same bare function it always did.
+  function renderStoreView(store) {
+    var fullList = store.loadRaw();
+    if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
+    // Trashed items never feed the dashboard/charts/card list below — only
+    // the Corbeille view (above) shows them, until restored.
     var list = fullList.filter(function (s) { return !s.deletedAt; });
     // Dashboard/tier-gauge/recap table always reflect every (non-trashed)
-    // snapshot — only the card list below is narrowed by
-    // tierCardFilter / snapDistCellFilter, otherwise clicking a tier badge
-    // or a distribution cell would make its own gauge/table trivially
-    // collapse to 100%.
-    var cardsList = tierCardFilter.length ? list.filter(function (s) { return tierCardFilter.indexOf(s.confidence) !== -1; }) : list;
-    if (snapDistCellFilter) cardsList = cardsList.filter(function (s) { return snapMatchesDistCell(s, snapDistCellFilter.bracket, snapDistCellFilter.tier); });
-    if (noteCardFilter != null) {
-      var activeNoteBin = NOTE_WR_BINS.filter(function (b) { return b[0] === noteCardFilter; })[0];
-      var activeNoteBinIsLast = NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === noteCardFilter;
+    // item — only the card list below is narrowed by tierCardFilter /
+    // snapDistCellFilter, otherwise clicking a tier badge or a distribution
+    // cell would make its own gauge/table trivially collapse to 100%.
+    var st = store.state;
+    var cardsList = st.tierCardFilter.length ? list.filter(function (s) { return st.tierCardFilter.indexOf(s.confidence) !== -1; }) : list;
+    if (st.snapDistCellFilter) cardsList = cardsList.filter(function (s) { return snapMatchesDistCell(s, st.snapDistCellFilter.bracket, st.snapDistCellFilter.tier); });
+    if (st.noteCardFilter != null) {
+      var activeNoteBin = NOTE_WR_BINS.filter(function (b) { return b[0] === st.noteCardFilter; })[0];
+      var activeNoteBinIsLast = NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === st.noteCardFilter;
       cardsList = cardsList.filter(function (s) { return s.noteAtSnapshot != null && noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast); });
     }
-    var activeFilterLabels = tierCardFilter.slice();
-    if (snapDistCellFilter) activeFilterLabels.push((snapDistCellFilter.tier || "Tous") + " " + snapDistCellFilter.bracket[0] + "–" + snapDistCellFilter.bracket[1] + "¢");
-    if (noteCardFilter != null) activeFilterLabels.push("note " + noteCardFilter + "-" + (noteCardFilter + 1));
-    snapCountEl.textContent = activeFilterLabels.length
-      ? cardsList.length + ' / ' + list.length + ' snapshots (filtré ' + activeFilterLabels.join(", ") + ')'
-      : list.length + ' snapshot' + (list.length > 1 ? 's' : '');
-    renderSnapDashboard(list);
-    renderTierWinrate(list);
-    renderNoteWinrate(list);
-    renderSnapPnlChart(cardsList);
-    renderSnapDistribution(list);
-    renderSnapStats(list);
+    var activeFilterLabels = st.tierCardFilter.slice();
+    if (st.snapDistCellFilter) activeFilterLabels.push((st.snapDistCellFilter.tier || "Tous") + " " + st.snapDistCellFilter.bracket[0] + "–" + st.snapDistCellFilter.bracket[1] + "¢");
+    if (st.noteCardFilter != null) activeFilterLabels.push("note " + st.noteCardFilter + "-" + (st.noteCardFilter + 1));
+    store.els.count.textContent = activeFilterLabels.length
+      ? cardsList.length + ' / ' + list.length + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
+      : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
+    renderSnapDashboard(list, store);
+    renderTierWinrate(list, store);
+    renderNoteWinrate(list, store);
+    renderSnapPnlChart(cardsList, store);
+    renderSnapDistribution(list, store);
+    renderSnapStats(list, store);
     if (!cardsList.length) {
-      snapshotsContent.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
-        ? "Aucun snapshot dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
-        : "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.") + '</div>';
+      store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
+        ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
+        : store.emptyHint) + '</div>';
       return;
     }
-    snapshotsContent.innerHTML = cardsList.map(function (snap) { return snapCardHtml(snap, false); }).join("");
+    store.els.list.innerHTML = cardsList.map(function (snap) { return snapCardHtml(snap, false, store); }).join("");
   }
+  function renderSnapshots() { renderStoreView(SNAPSHOTS_STORE); }
+  function renderPositions() { renderStoreView(POSITIONS_STORE); }
 
   // Every criterion the Value Trades list applies EXCEPT the min-traders
   // threshold — shared by the real filter chain below and the tier
@@ -5700,6 +5827,7 @@
       // the live match was right there the entire time. Render immediately
       // on the click itself instead of waiting on that.
       if (btn.getAttribute("data-tab") === "snapshots") renderSnapshots();
+      if (btn.getAttribute("data-tab") === "positions") renderPositions();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
     });
@@ -5855,6 +5983,8 @@
         // ever mean "current as of whenever the tab happened to load."
         var snapTab = document.getElementById("tab-snapshots");
         if (snapTab && snapTab.classList.contains("active")) renderSnapshots();
+        var posTab = document.getElementById("tab-positions");
+        if (posTab && posTab.classList.contains("active")) renderPositions();
         lastUpdateEl.textContent = new Date().toLocaleTimeString("fr-FR");
         // "Live" alone used to mean this exact thing even when a chunk of
         // traders silently failed this cycle and are showing whatever price
@@ -5925,10 +6055,16 @@
   tradersContent.addEventListener("toggle", trackValueTradeToggle, true);
   function trackSnapshotToggle(e) {
     if (e.target && e.target.classList.contains("value-trade-item")) {
-      expandedSnapshots[e.target.getAttribute("data-key")] = e.target.open;
+      SNAPSHOTS_STORE.state.expandedItems[e.target.getAttribute("data-key")] = e.target.open;
     }
   }
   snapshotsContent.addEventListener("toggle", trackSnapshotToggle, true);
+  function trackPositionToggle(e) {
+    if (e.target && e.target.classList.contains("value-trade-item")) {
+      POSITIONS_STORE.state.expandedItems[e.target.getAttribute("data-key")] = e.target.open;
+    }
+  }
+  positionsContent.addEventListener("toggle", trackPositionToggle, true);
   collapseAllBtn.addEventListener("click", function () {
     var anyExpanded = TRADERS.some(function (t) { return !traderCollapsed[t.name]; });
     TRADERS.forEach(function (t) { traderCollapsed[t.name] = anyExpanded; });
@@ -5959,6 +6095,15 @@
   // Snapshot button is rendered wherever a value-trade-item card appears —
   // Value Trades, and the "Autres traders" peer panel in Trades par profils —
   // and both get their innerHTML fully rebuilt every refresh cycle.
+  // Resolves which store (snapshots vs positions) a clicked card control
+  // belongs to, from the data-store attribute snapCardHtml/renderTierWinrate/
+  // renderNoteWinrate/renderSnapDistribution/renderSnapStats all stamp on
+  // their output — defaults to snapshots for anything that predates the
+  // attribute (there isn't any left, but a stray click target failing to
+  // resolve should degrade to the original single-store behavior, not throw).
+  function resolveStoreFromEl(el) {
+    return el.getAttribute("data-store") === "positions" ? POSITIONS_STORE : SNAPSHOTS_STORE;
+  }
   document.addEventListener("click", function (e) {
     var snapBtn = e.target.closest ? e.target.closest(".vt-snap-btn") : null;
     if (snapBtn) {
@@ -5974,6 +6119,35 @@
         snapBtn.textContent = "✅ Sauvegardé";
         snapBtn.disabled = true;
       }
+      return;
+    }
+    var takePosBtn = e.target.closest ? e.target.closest(".snap-take-position-btn") : null;
+    if (takePosBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var srcId = takePosBtn.getAttribute("data-snap-id");
+      var srcSnap = loadSnapshotsRaw().filter(function (s) { return s.id === srcId; })[0];
+      if (!srcSnap) return;
+      var raw = prompt("Mise pour cette position ($) :", String(HYPOTHETICAL_FLAT_STAKE));
+      if (raw === null) return; // cancelled
+      var stakeAmount = parseFloat(String(raw).replace(",", "."));
+      if (!isFinite(stakeAmount) || stakeAmount <= 0) { alert("Montant invalide — entre un nombre positif."); return; }
+      // Deep clone via JSON round-trip — snapshot objects are plain JSON
+      // data (ISO date strings, no functions), so this is safe and gives
+      // the position its own independent sides/traderNames arrays instead
+      // of sharing references with the source snapshot (editing the
+      // position's side/confidence later must never mutate the original).
+      var pos = JSON.parse(JSON.stringify(srcSnap));
+      pos.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      pos.sourceSnapshotId = srcSnap.id;
+      pos.snapshotSavedAt = srcSnap.savedAt;
+      pos.savedAt = new Date().toISOString(); // "taken at" — reuses the same field name every render/sort/chart function already reads
+      pos.stakeUsd = stakeAmount;
+      delete pos.deletedAt;
+      savePositionsToStorage([pos].concat(loadPositionsRaw()));
+      renderPositions();
+      takePosBtn.textContent = "✅ Position prise";
+      takePosBtn.disabled = true;
       return;
     }
     var followBtn = e.target.closest ? e.target.closest(".vt-follow-btn") : null;
@@ -6005,116 +6179,136 @@
       // <details> open/closed.
       e.preventDefault();
       e.stopPropagation();
+      var sStore = resolveStoreFromEl(sideBtn);
       var sid = sideBtn.getAttribute("data-snap-id");
       var side = sideBtn.getAttribute("data-side");
       // Resolved here (against the current local cache) instead of on the
       // server — clicking the already-selected side clears it, same as
       // before, but the op sent now always carries the final value.
-      var curSideSnap = loadSnapshotsRaw().filter(function (s) { return s.id === sid; })[0];
+      var curSideSnap = sStore.loadRaw().filter(function (s) { return s.id === sid; })[0];
       var newWinningSide = (curSideSnap && curSideSnap.winningSide === side) ? null : side;
-      enqueueSnapshotOp({ type: "setSide", id: sid, winningSide: newWinningSide });
+      var sideOp = { type: "setSide", id: sid, winningSide: newWinningSide };
+      if (sStore === SNAPSHOTS_STORE) enqueueSnapshotOp(sideOp); else applyPositionOp(sideOp);
       return;
     }
     var confBtn = e.target.closest ? e.target.closest(".snap-confidence-btn") : null;
     if (confBtn) {
       e.preventDefault();
       e.stopPropagation();
+      var cStore = resolveStoreFromEl(confBtn);
       var cid = confBtn.getAttribute("data-snap-id");
       var tier = confBtn.getAttribute("data-tier");
-      var curConfSnap = loadSnapshotsRaw().filter(function (s) { return s.id === cid; })[0];
+      var curConfSnap = cStore.loadRaw().filter(function (s) { return s.id === cid; })[0];
       var newConfidence = (curConfSnap && curConfSnap.confidence === tier) ? null : tier;
-      enqueueSnapshotOp({ type: "setConf", id: cid, confidence: newConfidence });
+      var confOp = { type: "setConf", id: cid, confidence: newConfidence };
+      if (cStore === SNAPSHOTS_STORE) enqueueSnapshotOp(confOp); else applyPositionOp(confOp);
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
     if (delBtn) {
       e.preventDefault();
       e.stopPropagation();
+      var dStore = resolveStoreFromEl(delBtn);
       var did = delBtn.getAttribute("data-snap-id");
-      enqueueSnapshotOp({ type: "trash", id: did, deletedAt: new Date().toISOString() });
+      var delOp = { type: "trash", id: did, deletedAt: new Date().toISOString() };
+      if (dStore === SNAPSHOTS_STORE) enqueueSnapshotOp(delOp); else applyPositionOp(delOp);
       return;
     }
     var restoreBtn = e.target.closest ? e.target.closest(".snap-restore-btn") : null;
     if (restoreBtn) {
       e.preventDefault();
       e.stopPropagation();
+      var rStore = resolveStoreFromEl(restoreBtn);
       var rid = restoreBtn.getAttribute("data-snap-id");
-      enqueueSnapshotOp({ type: "restore", id: rid });
+      var restoreOp = { type: "restore", id: rid };
+      if (rStore === SNAPSHOTS_STORE) enqueueSnapshotOp(restoreOp); else applyPositionOp(restoreOp);
       return;
     }
     var purgeBtn = e.target.closest ? e.target.closest(".snap-purge-btn") : null;
     if (purgeBtn) {
       e.preventDefault();
       e.stopPropagation();
+      var pStore = resolveStoreFromEl(purgeBtn);
       var pid = purgeBtn.getAttribute("data-snap-id");
-      enqueueSnapshotOp({ type: "delete", id: pid });
+      var purgeOp = { type: "delete", id: pid };
+      if (pStore === SNAPSHOTS_STORE) enqueueSnapshotOp(purgeOp); else applyPositionOp(purgeOp);
       return;
     }
-    var statsToggleBtn = e.target.closest ? e.target.closest("#snapStatsToggleBtn") : null;
+    var statsToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='stats']") : null;
     if (statsToggleBtn) {
-      snapStatsCollapsed = !snapStatsCollapsed;
-      renderSnapStats(loadSnapshots());
+      var statsStore = resolveStoreFromEl(statsToggleBtn);
+      statsStore.state.statsCollapsed = !statsStore.state.statsCollapsed;
+      renderSnapStats(statsStore.load(), statsStore);
       return;
     }
-    var distToggleBtn = e.target.closest ? e.target.closest("#snapDistToggleBtn") : null;
+    var distToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='dist']") : null;
     if (distToggleBtn) {
-      snapDistCollapsed = !snapDistCollapsed;
-      renderSnapDistribution(loadSnapshots());
+      var distStore = resolveStoreFromEl(distToggleBtn);
+      distStore.state.distCollapsed = !distStore.state.distCollapsed;
+      renderSnapDistribution(distStore.load(), distStore);
       return;
     }
-    var tierWinrateToggleBtn = e.target.closest ? e.target.closest("#tierWinrateToggleBtn") : null;
+    var tierWinrateToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='tier']") : null;
     if (tierWinrateToggleBtn) {
-      tierWinrateCollapsed = !tierWinrateCollapsed;
-      renderTierWinrate(loadSnapshots());
+      var tierToggleStore = resolveStoreFromEl(tierWinrateToggleBtn);
+      tierToggleStore.state.tierWinrateCollapsed = !tierToggleStore.state.tierWinrateCollapsed;
+      renderTierWinrate(tierToggleStore.load(), tierToggleStore);
       return;
     }
-    var noteWinrateToggleBtn = e.target.closest ? e.target.closest("#noteWinrateToggleBtn") : null;
+    var noteWinrateToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='note']") : null;
     if (noteWinrateToggleBtn) {
-      noteWinrateCollapsed = !noteWinrateCollapsed;
-      renderNoteWinrate(loadSnapshots());
+      var noteToggleStore = resolveStoreFromEl(noteWinrateToggleBtn);
+      noteToggleStore.state.noteWinrateCollapsed = !noteToggleStore.state.noteWinrateCollapsed;
+      renderNoteWinrate(noteToggleStore.load(), noteToggleStore);
       return;
     }
     var distCell = e.target.closest ? e.target.closest(".snap-dist-cell") : null;
     if (distCell) {
+      var distCellStore = resolveStoreFromEl(distCell);
       var cellBracket = [Number(distCell.getAttribute("data-odds-min")), Number(distCell.getAttribute("data-odds-max"))];
       var cellTier = distCell.getAttribute("data-tier") || null;
-      var sameCell = snapDistCellFilter && snapDistCellFilter.bracket[0] === cellBracket[0] && snapDistCellFilter.bracket[1] === cellBracket[1] && snapDistCellFilter.tier === cellTier;
-      snapDistCellFilter = sameCell ? null : { bracket: cellBracket, tier: cellTier };
-      renderSnapshots();
+      var curFilter = distCellStore.state.snapDistCellFilter;
+      var sameCell = curFilter && curFilter.bracket[0] === cellBracket[0] && curFilter.bracket[1] === cellBracket[1] && curFilter.tier === cellTier;
+      distCellStore.state.snapDistCellFilter = sameCell ? null : { bracket: cellBracket, tier: cellTier };
+      renderStoreView(distCellStore);
       return;
     }
-    var sortTh = e.target.closest ? e.target.closest("#snapStatsContent th.sortable") : null;
+    var sortTh = e.target.closest ? e.target.closest("th.sortable[data-store]") : null;
     if (sortTh) {
+      var sortStore = resolveStoreFromEl(sortTh);
       var sortKey = sortTh.getAttribute("data-sort-key");
-      if (snapStatsSort.key === sortKey) {
-        snapStatsSort.dir = snapStatsSort.dir === "asc" ? "desc" : "asc";
+      if (sortStore.state.statsSort.key === sortKey) {
+        sortStore.state.statsSort.dir = sortStore.state.statsSort.dir === "asc" ? "desc" : "asc";
       } else {
-        snapStatsSort.key = sortKey;
-        snapStatsSort.dir = sortKey === "name" ? "asc" : "desc";
+        sortStore.state.statsSort.key = sortKey;
+        sortStore.state.statsSort.dir = sortKey === "name" ? "asc" : "desc";
       }
-      renderSnapStats(loadSnapshots());
+      renderSnapStats(sortStore.load(), sortStore);
       return;
     }
     var statsRow = e.target.closest ? e.target.closest(".snap-stats-row") : null;
     if (statsRow) {
+      var statsRowStore = resolveStoreFromEl(statsRow);
       var statsTrader = statsRow.getAttribute("data-trader");
-      expandedTraderStats[statsTrader] = !expandedTraderStats[statsTrader];
-      renderSnapStats(loadSnapshots());
+      statsRowStore.state.expandedTraderStats[statsTrader] = !statsRowStore.state.expandedTraderStats[statsTrader];
+      renderSnapStats(statsRowStore.load(), statsRowStore);
       return;
     }
     var tierRow = e.target.closest ? e.target.closest(".tier-wr-row") : null;
     if (tierRow) {
+      var tierRowStore = resolveStoreFromEl(tierRow);
       var rowTier = tierRow.getAttribute("data-tier");
-      var tierIdx = tierCardFilter.indexOf(rowTier);
-      if (tierIdx === -1) tierCardFilter.push(rowTier); else tierCardFilter.splice(tierIdx, 1);
-      renderSnapshots();
+      var tierIdx = tierRowStore.state.tierCardFilter.indexOf(rowTier);
+      if (tierIdx === -1) tierRowStore.state.tierCardFilter.push(rowTier); else tierRowStore.state.tierCardFilter.splice(tierIdx, 1);
+      renderStoreView(tierRowStore);
       return;
     }
     var noteRow = e.target.closest ? e.target.closest(".note-wr-row") : null;
     if (noteRow) {
+      var noteRowStore = resolveStoreFromEl(noteRow);
       var rowBinMin = Number(noteRow.getAttribute("data-note-bin-min"));
-      noteCardFilter = noteCardFilter === rowBinMin ? null : rowBinMin;
-      renderSnapshots();
+      noteRowStore.state.noteCardFilter = noteRowStore.state.noteCardFilter === rowBinMin ? null : rowBinMin;
+      renderStoreView(noteRowStore);
       return;
     }
   });
@@ -6124,63 +6318,82 @@
     snapSyncTokenInput.value = "";
   });
   snapSyncRefreshBtn.addEventListener("click", function () { syncNow(); });
-  var snapTrashToggleBtn = document.getElementById("snapTrashToggleBtn");
-  function syncSnapTrashToggleBtn() {
-    snapTrashToggleBtn.classList.toggle("active", snapTrashMode);
-    snapTrashToggleBtn.textContent = snapTrashMode ? "← Retour" : "🗑 Corbeille";
+  // Trash toggle / export / import are the same three behaviors for both
+  // stores — wired generically here and called once per store below, rather
+  // than duplicated (positions just skips the AWS sync bits, which stay
+  // snapshot-only and are wired separately further down).
+  function wireTrashToggle(store, btnId, render) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    function sync() {
+      btn.classList.toggle("active", store.state.trashMode);
+      btn.textContent = store.state.trashMode ? "← Retour" : "🗑 Corbeille";
+    }
+    sync();
+    btn.addEventListener("click", function () {
+      store.state.trashMode = !store.state.trashMode;
+      sync();
+      render();
+    });
   }
-  syncSnapTrashToggleBtn();
-  snapTrashToggleBtn.addEventListener("click", function () {
-    snapTrashMode = !snapTrashMode;
-    syncSnapTrashToggleBtn();
-    renderSnapshots();
-  });
-  // Full local backup, independent of the GitHub sync — every field as
-  // stored, trashed snapshots included (deletedAt and all), so a download
-  // taken here can restore an entirely wiped list. Plain client-side blob
-  // download, no server round-trip.
-  var snapExportBtn = document.getElementById("snapExportBtn");
-  snapExportBtn.addEventListener("click", function () {
-    var list = loadSnapshotsRaw();
-    var blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    a.href = url;
-    a.download = "snapshots-export-" + stamp + ".json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
+  // Full local backup — every field as stored, trashed items included
+  // (deletedAt and all), so a download taken here can restore an entirely
+  // wiped list. Plain client-side blob download, no server round-trip.
+  function wireExport(store, btnId) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var list = store.loadRaw();
+      var blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      a.href = url;
+      a.download = store.name + "-export-" + stamp + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
   // Local rollback, not a sync operation — replaces this device's own
-  // snapshot storage from a previously exported JSON file and re-renders.
-  // Deliberately does NOT re-queue every item as an AWS sync op (that would
-  // conflate "undo a local change" with "push this device's data to every
-  // other device"), so a restore only affects the browser it's run in.
-  var snapImportBtn = document.getElementById("snapImportBtn");
-  var snapImportInput = document.getElementById("snapImportInput");
-  snapImportBtn.addEventListener("click", function () { snapImportInput.click(); });
-  snapImportInput.addEventListener("change", function () {
-    var file = snapImportInput.files && snapImportInput.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      var parsed;
-      try { parsed = JSON.parse(reader.result); } catch (e) { alert("Fichier invalide — ce n'est pas un JSON lisible."); snapImportInput.value = ""; return; }
-      if (!Array.isArray(parsed)) { alert("Fichier invalide — attendu une liste de snapshots."); snapImportInput.value = ""; return; }
-      var current = loadSnapshotsRaw();
-      if (!confirm("Remplacer les " + current.length + " snapshot(s) actuel(s) de cet appareil par les " + parsed.length + " du fichier importé ?\n\nCette action ne touche que ce navigateur — rien n'est envoyé aux autres appareils.")) {
-        snapImportInput.value = "";
-        return;
-      }
-      saveSnapshotsToStorage(parsed);
-      snapImportInput.value = "";
-      renderSnapshots();
-      alert(parsed.length + " snapshot(s) restauré(s).");
-    };
-    reader.readAsText(file);
-  });
+  // storage from a previously exported JSON file and re-renders. For
+  // snapshots this deliberately does NOT re-queue every item as an AWS sync
+  // op (that would conflate "undo a local change" with "push this device's
+  // data to every other device"), so a restore only affects the browser
+  // it's run in; positions have no sync at all so this is simply its save.
+  function wireImport(store, btnId, inputId, render) {
+    var btn = document.getElementById(btnId);
+    var input = document.getElementById(inputId);
+    if (!btn || !input) return;
+    btn.addEventListener("click", function () { input.click(); });
+    input.addEventListener("change", function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var parsed;
+        try { parsed = JSON.parse(reader.result); } catch (e) { alert("Fichier invalide — ce n'est pas un JSON lisible."); input.value = ""; return; }
+        if (!Array.isArray(parsed)) { alert("Fichier invalide — attendu une liste de " + store.itemNoun + "s."); input.value = ""; return; }
+        var current = store.loadRaw();
+        if (!confirm("Remplacer les " + current.length + " " + store.itemNoun + "(s) actuel(s) de cet appareil par les " + parsed.length + " du fichier importé ?\n\nCette action ne touche que ce navigateur — rien n'est envoyé aux autres appareils.")) {
+          input.value = "";
+          return;
+        }
+        store.save(parsed);
+        input.value = "";
+        render();
+        alert(parsed.length + " " + store.itemNoun + "(s) restauré(s).");
+      };
+      reader.readAsText(file);
+    });
+  }
+  wireTrashToggle(SNAPSHOTS_STORE, "snapTrashToggleBtn", renderSnapshots);
+  wireExport(SNAPSHOTS_STORE, "snapExportBtn");
+  wireImport(SNAPSHOTS_STORE, "snapImportBtn", "snapImportInput", renderSnapshots);
+  wireTrashToggle(POSITIONS_STORE, "posTrashToggleBtn", renderPositions);
+  wireExport(POSITIONS_STORE, "posExportBtn");
+  wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
   // Old snapshots freeze cardHtml as a static string at save time — CSS
   // class rules (like the leader/cote/ROI font-size bump) still apply to
   // them automatically since those are just stylesheet rules, but the
