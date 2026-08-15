@@ -3142,6 +3142,23 @@
   function scoreColor(score) {
     return "hsl(" + noteHue(score).toFixed(0) + ",75%,36%)";
   }
+  // Blue (favorite, high price, low ROI) -> gold (outsider, low price, high
+  // ROI) — the leader's price already tells this story numerically (cote +
+  // ROI are two readings of the same number), this just makes it scannable
+  // at a glance across a long list without reading the digits. Clamped to
+  // the 40-90¢ band where nearly every real trade actually falls; anything
+  // outside it just pins to the nearest end instead of extrapolating into
+  // implausible colors.
+  var ODDS_ROI_BLUE = [47, 111, 237]; // #2f6fed
+  var ODDS_ROI_GOLD = [178, 143, 63]; // var(--gold) #b28f3f
+  function oddsRoiColor(price) {
+    if (price == null || price <= 0) return null;
+    var t = Math.max(0, Math.min(1, (0.90 - price) / (0.90 - 0.40)));
+    var r = Math.round(ODDS_ROI_BLUE[0] + (ODDS_ROI_GOLD[0] - ODDS_ROI_BLUE[0]) * t);
+    var g = Math.round(ODDS_ROI_BLUE[1] + (ODDS_ROI_GOLD[1] - ODDS_ROI_BLUE[1]) * t);
+    var b = Math.round(ODDS_ROI_BLUE[2] + (ODDS_ROI_GOLD[2] - ODDS_ROI_BLUE[2]) * t);
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
   // 3px at note 1 up to 10px at note 10 — a "weight" cue readable before
   // the number itself: a thicker edge means a stronger trade, scanning
   // down a list of cards top to bottom.
@@ -3496,10 +3513,18 @@
     // card. Sits between .vt-top-left (the flexible/shrinking region) and
     // .vt-badge-group (also fixed-width). Always rendered (even empty) so
     // every card reserves the same width here.
-    var statsHtml = '<span class="vt-top-stats">' +
-      '<span class="vt-stat-odds" title="Prix actuel du marché, pas le prix d\'entrée des traders">' + (leaderPriceText ? esc(leaderPriceText) + priceArrowHtml : '') + '</span>' +
-      '<span class="vt-stat-divider"></span>' +
-      '<span class="vt-stat-roi" title="ROI si le camp majoritaire gagne, à la cote actuelle">' + (leaderRoi != null ? (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + '%' : '') + '</span>' +
+    // Tinted-pill treatment (option 2 of the 20-proposal color gallery) —
+    // background/border at low opacity, text at full color, all three
+    // derived from the same oddsRoiColor so the pill reads as one unit
+    // rather than odds/ROI each doing their own thing.
+    var statsColor = oddsRoiColor(leaderAvgPrice);
+    var statsWrapStyle = statsColor ? ' style="background:color-mix(in srgb, ' + statsColor + ' 12%, var(--panel));border-color:color-mix(in srgb, ' + statsColor + ' 30%, var(--panel-border));"' : '';
+    var statsTextStyle = statsColor ? ' style="color:' + statsColor + ';"' : '';
+    var statsDividerStyle = statsColor ? ' style="background:color-mix(in srgb, ' + statsColor + ' 30%, var(--panel-border));"' : '';
+    var statsHtml = '<span class="vt-top-stats"' + statsWrapStyle + '>' +
+      '<span class="vt-stat-odds"' + statsTextStyle + ' title="Prix actuel du marché, pas le prix d\'entrée des traders">' + (leaderPriceText ? esc(leaderPriceText) + priceArrowHtml : '') + '</span>' +
+      '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
+      '<span class="vt-stat-roi"' + statsTextStyle + ' title="ROI si le camp majoritaire gagne, à la cote actuelle">' + (leaderRoi != null ? (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + '%' : '') + '</span>' +
     '</span>';
     var headerHtml =
       '<div class="vt-top">' +
