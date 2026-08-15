@@ -1574,7 +1574,6 @@
         <div class="vt-title-row">
           <h2 class="section-title">Value Trades</h2>
           <button id="vtDenseToggleBtn" type="button" class="vt-dense-toggle-btn" title="Bascule vers une ligne par trade, sans les jauges">☰ Vue compacte</button>
-          <button id="vtExtremeOddsToggleBtn" type="button" class="vt-dense-toggle-btn" title="Masque les trades dont la cote dépasse 99¢ ou est sous 5¢ — déjà quasi joués, plus vraiment un pari">🎯 Masquer cotes extrêmes</button>
           <button id="vtTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
         </div>
         <div class="vt-filters" id="sportFilters">
@@ -1756,7 +1755,9 @@
     { name: "emacron", platform: "polymarket", address: "0x1f624696c102b99bea92c75a502fa7e4a6d676f6", weight: 7 },
     { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8", weight: 6.5 },
     { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8", weight: 7 },
-    { name: "wagerwizard", platform: "polymarket", address: "0x2c46ffe86ee500875db3c679e52f6e64854cdac9", weight: 6 }
+    { name: "wagerwizard", platform: "polymarket", address: "0x2c46ffe86ee500875db3c679e52f6e64854cdac9", weight: 6 },
+    { name: "sulumos", platform: "polymarket", address: "0x9db82de5a71ae539bc82f4d9ac3a007c7d742eff", weight: 7 },
+    { name: "mk756", platform: "polymarket", address: "0x15096a93fb86ea8a782574536ce3bab88e6cca95", weight: 6 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -2027,11 +2028,6 @@
   // long list fast. Remembered across reloads since it's a reading
   // preference, not a filter.
   var vtDenseMode = (function () { try { return localStorage.getItem("vtDenseMode") === "1"; } catch (e) { return false; } })();
-  // A trade priced above 99¢ or below 5¢ is basically already decided — not
-  // really a "value trade" anymore, just noise crowding out the ones that
-  // still are. On by default (a reading preference, remembered like
-  // vtDenseMode) since that's the whole point of the toggle existing.
-  var vtHideExtremeOdds = (function () { try { var v = localStorage.getItem("vtHideExtremeOdds"); return v === null ? true : v === "1"; } catch (e) { return true; } })();
   // Persisted per-market flags, keyed by unitStableKey — deliberately
   // separate from Mes Snapshots (which freezes a copy at bet time for
   // win/loss tracking): these two just tag a LIVE unit, still recomputed
@@ -2370,6 +2366,11 @@
       if (g.platform !== "polymarket" || g.traderCount < 4) return;
       var leader = g.sides[0];
       if (!leader) return;
+      // A market already outside 5-99¢ on data-api's own (pre-live) price
+      // never gets shown anyway (see the extreme-odds filter in
+      // renderValueTrades) — skip its live book fetch entirely rather than
+      // spending a request confirming what's already decided.
+      if (leader.price != null && (leader.price > 0.99 || leader.price < 0.05)) return;
       leader.entries.forEach(function (e) {
         if (e.assetId && !seen[e.assetId]) { seen[e.assetId] = true; assetIds.push(e.assetId); }
       });
@@ -5279,8 +5280,13 @@
       if (trashedKeys[unitStableKey(u)]) return false;
       if (unitTimingStatus(u, true) === "over") return false;
       if (u.leaderPrice == null) return true;
-      if (u.leaderPrice >= 0.9995) return false; // already happened, no matter the toggle below
-      if (vtHideExtremeOdds && (u.leaderPrice > 0.99 || u.leaderPrice < 0.05)) return false;
+      if (u.leaderPrice >= 0.9995) return false; // already happened
+      // A trade priced above 99¢ or below 5¢ is basically already decided —
+      // not really a "value trade" anymore, just noise crowding out the
+      // ones that still are. Always excluded now, not an optional toggle —
+      // also means these never need a live CLOB price fetch (see
+      // applyLivePolyPricesForDisplayedMarkets), since they'd never be shown.
+      if (u.leaderPrice > 0.99 || u.leaderPrice < 0.05) return false;
       return true;
     });
     if (vtTrashMode) { renderTrashView(allUnitsRaw); return; }
@@ -5923,18 +5929,6 @@
     vtDenseMode = !vtDenseMode;
     try { localStorage.setItem("vtDenseMode", vtDenseMode ? "1" : "0"); } catch (e) { /* won't persist this time */ }
     syncDenseToggleBtn();
-    renderValueTrades();
-  });
-  var vtExtremeOddsToggleBtn = document.getElementById("vtExtremeOddsToggleBtn");
-  function syncExtremeOddsToggleBtn() {
-    vtExtremeOddsToggleBtn.classList.toggle("active", vtHideExtremeOdds);
-    vtExtremeOddsToggleBtn.textContent = vtHideExtremeOdds ? "🎯 Afficher les cotes extrêmes" : "🎯 Masquer cotes extrêmes";
-  }
-  syncExtremeOddsToggleBtn();
-  vtExtremeOddsToggleBtn.addEventListener("click", function () {
-    vtHideExtremeOdds = !vtHideExtremeOdds;
-    try { localStorage.setItem("vtHideExtremeOdds", vtHideExtremeOdds ? "1" : "0"); } catch (e) { /* won't persist this time */ }
-    syncExtremeOddsToggleBtn();
     renderValueTrades();
   });
   var vtTrashToggleBtn = document.getElementById("vtTrashToggleBtn");
