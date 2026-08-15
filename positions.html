@@ -1618,6 +1618,9 @@
       <button type="button" id="snapSyncRefreshBtn" class="snap-sync-link" title="Resynchroniser maintenant">🔄 Resynchro</button>
       <button type="button" id="snapSyncConfigBtn" class="snap-sync-link">⚙️ Config. synchro</button>
       <button type="button" id="snapExportBtn" class="snap-sync-link" title="Télécharger toutes les données de snapshots (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button type="button" id="snapImportBtn" class="snap-sync-link" title="Restaurer une sauvegarde JSON exportée précédemment — remplace entièrement les snapshots actuels de cet appareil">⬆️ Importer</button>
+      <input type="file" id="snapImportInput" accept="application/json" style="display:none;">
+      <button type="button" id="snapRestyleBtn" class="snap-sync-link" title="Applique le dégradé bleu-or cote/ROI aux anciens snapshots enregistrés avant son introduction — télécharge une sauvegarde automatiquement avant de toucher à quoi que ce soit">🎨 Mettre à jour le style</button>
       <button id="snapTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots mis à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
     </div>
     <div id="snapSyncSetup" class="snap-sync-setup" style="display:none;">
@@ -1691,9 +1694,9 @@
     { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14", weight: 9.5 },
     { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c", weight: 7.5 },
     { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563", weight: 6 },
-    { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 8 },
-    { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", weight: 9 },
-    { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 7.5 },
+    { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 8.5 },
+    { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", weight: 9.5 },
+    { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 8.5 },
     { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", weight: 9 },
     { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74", weight: 7 },
     { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6", weight: 7 },
@@ -6054,6 +6057,82 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  });
+  // Local rollback, not a sync operation — replaces this device's own
+  // snapshot storage from a previously exported JSON file and re-renders.
+  // Deliberately does NOT re-queue every item as an AWS sync op (that would
+  // conflate "undo a local change" with "push this device's data to every
+  // other device"), so a restore only affects the browser it's run in.
+  var snapImportBtn = document.getElementById("snapImportBtn");
+  var snapImportInput = document.getElementById("snapImportInput");
+  snapImportBtn.addEventListener("click", function () { snapImportInput.click(); });
+  snapImportInput.addEventListener("change", function () {
+    var file = snapImportInput.files && snapImportInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed;
+      try { parsed = JSON.parse(reader.result); } catch (e) { alert("Fichier invalide — ce n'est pas un JSON lisible."); snapImportInput.value = ""; return; }
+      if (!Array.isArray(parsed)) { alert("Fichier invalide — attendu une liste de snapshots."); snapImportInput.value = ""; return; }
+      var current = loadSnapshotsRaw();
+      if (!confirm("Remplacer les " + current.length + " snapshot(s) actuel(s) de cet appareil par les " + parsed.length + " du fichier importé ?\n\nCette action ne touche que ce navigateur — rien n'est envoyé aux autres appareils.")) {
+        snapImportInput.value = "";
+        return;
+      }
+      saveSnapshotsToStorage(parsed);
+      snapImportInput.value = "";
+      renderSnapshots();
+      alert(parsed.length + " snapshot(s) restauré(s).");
+    };
+    reader.readAsText(file);
+  });
+  // Old snapshots freeze cardHtml as a static string at save time — CSS
+  // class rules (like the leader/cote/ROI font-size bump) still apply to
+  // them automatically since those are just stylesheet rules, but the
+  // cote/ROI color-coding is computed per-instance as inline styles at
+  // render time, so anything saved before that code existed never got
+  // them baked in. This patches those specific inline styles into each
+  // snapshot's frozen HTML using its own stored leaderPriceAtSnapshot —
+  // everything else in the frozen card (traders, gauges, question…) is
+  // left exactly as it was.
+  var snapRestyleBtn = document.getElementById("snapRestyleBtn");
+  snapRestyleBtn.addEventListener("click", function () {
+    var list = loadSnapshotsRaw();
+    if (!list.length) { alert("Aucun snapshot à mettre à jour."); return; }
+    var blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = url;
+    a.download = "snapshots-backup-avant-restyle-" + stamp + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (!confirm(list.length + " snapshot(s) vont recevoir le nouveau dégradé bleu-or sur la cote/ROI. Une sauvegarde vient d'être téléchargée — utilise « Importer » pour annuler si le résultat ne convient pas.\n\nContinuer ?")) return;
+    var updated = 0;
+    list.forEach(function (snap) {
+      if (!snap.cardHtml) return;
+      var color = oddsRoiColor(snap.leaderPriceAtSnapshot);
+      if (!color) return;
+      var tmp = document.createElement("div");
+      tmp.innerHTML = snap.cardHtml;
+      var wrap = tmp.querySelector(".vt-top-stats");
+      if (!wrap) return;
+      wrap.style.background = "color-mix(in srgb, " + color + " 12%, var(--panel))";
+      wrap.style.borderColor = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
+      var odds = wrap.querySelector(".vt-stat-odds");
+      var roi = wrap.querySelector(".vt-stat-roi");
+      var divider = wrap.querySelector(".vt-stat-divider");
+      if (odds) odds.style.color = color;
+      if (roi) roi.style.color = color;
+      if (divider) divider.style.background = "color-mix(in srgb, " + color + " 30%, var(--panel-border))";
+      snap.cardHtml = tmp.innerHTML;
+      updated++;
+    });
+    saveSnapshotsToStorage(list);
+    renderSnapshots();
+    alert(updated + " snapshot(s) mis à jour sur " + list.length + ".");
   });
   snapSyncTokenSave.addEventListener("click", function () {
     var v = snapSyncTokenInput.value.trim();
