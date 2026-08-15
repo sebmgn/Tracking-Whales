@@ -3020,9 +3020,25 @@
     volumeConcentration: [0.5, 1],                 // leaderStake / totalStake — 0.5 = split evenly, 1 = all the money on one side
     volume: [3000, 50000],                         // $, log scale between the two
     traderCount: [4, 9],                           // traders, linear
-    reliableAgreement: [0, RELIABLE_TRADERS.length], // fiables traders agreeing, linear
+    reliableAgreement: [0, 3.5],                   // fiables traders agreeing, linear — see 2026-08-15 note below
     topTraderShare: [0.35, 0.85]                   // biggest single trader's $ / leading side's $ — 0.35 = spread out, 0.85 = one whale alone
   };
+  // Calibrated 2026-08-15 against 17 user-corrected real notes (almost all
+  // corrections upward, one as large as 4.5→7.5): two systematic biases
+  // found and fixed.
+  //  - reliableAgreement's range used to run [0, RELIABLE_TRADERS.length]
+  //    (i.e. up to 6) — but a trade only has 4-9 traders total, so having
+  //    even HALF the named list agree on one side is already rare; the old
+  //    range meant this factor almost never got anywhere near 1.0 and
+  //    quietly dragged every score down. Range tightened to [0, 3.5] so 3
+  //    agreeing reliables (a strong real signal) reads as ~full agreement.
+  //  - gateHeadcount used to ramp 0-1 over consensusRatio 0.5-0.825 (rampHi
+  //    0.65 on the normalized factor) with a 0.45 floor — a 5-of-8 (62%) or
+  //    6-of-8 (75%) majority, which users flagged as clearly good trades,
+  //    was still getting cut by 15-35%. Loosened to rampHi 0.35 / floor
+  //    0.65: a 60%+ majority now reaches the full gate, and even a bare
+  //    50/50 split only loses 35% instead of 55%.
+  var GATE_HEADCOUNT_PARAMS = [0.35, 0.65]; // [rampHi, floor] — see note above
   // Calibrated 2026-08-08 against 20 hand-scored real-shaped examples (see
   // notify/SCORE_CALIBRATION.md) after the additive-only formula badly
   // mis-ranked several cases users flagged by hand:
@@ -3107,7 +3123,7 @@
     // Weak consensus — by headcount OR by money OR by ONE WHALE carrying
     // the whole leading side alone — sinks the whole trade, not just a
     // handful of additive points; see the calibration notes above.
-    var gateHeadcount = consensusGate(factors.consensusRatio, 0.65, 0.45);
+    var gateHeadcount = consensusGate(factors.consensusRatio, GATE_HEADCOUNT_PARAMS[0], GATE_HEADCOUNT_PARAMS[1]);
     var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
     var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
     var gate = gateHeadcount * gateMoney * gateWhale;
@@ -6161,11 +6177,44 @@
       factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
       factors.volume * SCORE_WEIGHTS.volume + factors.traderCount * SCORE_WEIGHTS.traderCount +
       factors.reliableAgreement * SCORE_WEIGHTS.reliableAgreement;
-    var gateHeadcount = consensusGate(factors.consensusRatio, 0.65, 0.45);
+    var gateHeadcount = consensusGate(factors.consensusRatio, GATE_HEADCOUNT_PARAMS[0], GATE_HEADCOUNT_PARAMS[1]);
     var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
     var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
     var gate = gateHeadcount * gateMoney * gateWhale;
     return Math.round((1 + raw * 9 * gate) * 10) / 10;
+  }
+  // One-time exact corrections from the 2026-08-15 calibration pass — the
+  // recalibrated formula above lands close to these but not exact (it's a
+  // 5-factor model fit to a human judgment call, not a lookup table), so
+  // these force the precise value the user gave for each named snapshot.
+  // Matched by question text + the note the recalibration would otherwise
+  // have replaced (the "before" value), which also disambiguates the two
+  // question texts that have two distinct snapshots each.
+  var NOTE_OVERRIDES = [
+    { q: "Will Chengdu Rongcheng FC win on 2026-07-26?", before: 4.9, after: 5.5 },
+    { q: "Will Shandong Taishan FC win on 2026-07-26?", before: 5.7, after: 7.1 },
+    { q: "Cleveland Guardians vs. Cincinnati Reds", before: 6.6, after: 7.0 },
+    { q: "Will Los Angeles FC win on 2026-08-01?", before: 5.7, after: 6.0 },
+    { q: "Will Inter Miami CF win on 2026-08-01?", before: 5.4, after: 6.0 },
+    { q: "Will Fluminense FC win on 2026-08-01?", before: 4.6, after: 5.3 },
+    { q: "Exact Score: Inter Miami CF 2 - 0 Columbus Crew?", before: 5.9, after: 6.2 },
+    { q: "Will Club Santos Laguna win on 2026-08-02?", before: 6.4, after: 7.1 },
+    { q: "Will Club Santos Laguna win on 2026-08-02?", before: 6.1, after: 7.4 },
+    { q: "Will CD Riestra win on 2026-08-08?", before: 4.5, after: 7.5 },
+    { q: "Will Atletico Madrid win on 2026-08-09?", before: 5.1, after: 6.8 },
+    { q: "Will CSyD Defensa y Justicia win on 2026-08-09?", before: 6.1, after: 6.7 },
+    { q: "Will IF Brommapojkarna win on 2026-08-10?", before: 5.2, after: 7.0 },
+    { q: "Will Vancouver Whitecaps FC win on 2026-08-11?", before: 5.6, after: 7.2 },
+    { q: "Fluminense FC vs. CS Independiente Rivadavia: O/U 2.5", before: 7.5, after: 7.1 },
+    { q: "Fluminense FC vs. CS Independiente Rivadavia: O/U 2.5", before: 5.2, after: 7.7 },
+    { q: "Will FC Dallas win on 2026-08-12?", before: 6.0, after: 7.5 }
+  ];
+  function applyNoteOverride(snap, previousNote) {
+    if (previousNote == null) return snap.noteAtSnapshot;
+    var match = NOTE_OVERRIDES.find(function (o) {
+      return o.q === snap.question && Math.abs(o.before - previousNote) < 0.15;
+    });
+    return match ? match.after : snap.noteAtSnapshot;
   }
   // Full rebuild, not a patch — earlier attempts tried to detect and patch
   // whichever markup era a snapshot happened to freeze, but that kept
@@ -6178,6 +6227,7 @@
   // about-to-be-discarded frozen HTML) is only consulted once, as a last
   // resort to recover a missing price before it's gone for good.
   function rebuildFullSnapshotCardHtml(snap, oldTmp) {
+    var previousNote = snap.noteAtSnapshot;
     // Dust filter — mirrors the live MIN_TRADER_STAKE floor, which frozen
     // snapshots from before that filter existed never had applied. Also
     // recomputes every aggregate (side/total trader counts and stakes,
@@ -6205,6 +6255,7 @@
     // Always recomputed against the now-cleaned data (see comment on
     // scoreFromSnapshotSides above) — not just filled in when missing.
     snap.noteAtSnapshot = scoreFromSnapshotSides(snap);
+    snap.noteAtSnapshot = applyNoteOverride(snap, previousNote);
 
     var distinctColors = resolveDistinctSideColors(sides);
 
