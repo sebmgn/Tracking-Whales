@@ -3926,15 +3926,30 @@
   // for whichever side WAS tracked, without needing to know who actually won.
   var OTHER_SIDE_SENTINEL = "__OTHER_SIDE__";
 
+  // Self-heals a snapshot's numbers AND its card markup on every read —
+  // the same rebuild "Mettre à jour le style" applies by hand, just run
+  // automatically instead of needing a click. rebuildFullSnapshotCardHtml
+  // (defined further down) already calls normalizeSnapshotNumbers itself;
+  // it's also called directly here first so the numbers are still fixed
+  // even in the unlikely case the markup rebuild itself throws on some
+  // malformed legacy record — one bad snapshot's HTML then just stays
+  // stale instead of taking the whole list down with it.
+  function refreshSnapshotDisplay(snap) {
+    normalizeSnapshotNumbers(snap);
+    try {
+      var html = rebuildFullSnapshotCardHtml(snap);
+      if (html != null) snap.cardHtml = html;
+    } catch (e) { /* keep previous cardHtml */ }
+    return snap;
+  }
   function loadSnapshotsRaw() {
     var list;
     try { list = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
-    // Self-heals dashboard/PnL numbers on every read (see normalizeSnapshotNumbers)
-    // instead of only when "Mettre à jour le style" is clicked — otherwise a
-    // sync pulling an un-migrated copy back down from the server (or just a
-    // fresh page load before the button's ever been pressed) silently
-    // resurrects the old wrong totals every time.
-    list.forEach(normalizeSnapshotNumbers);
+    // See refreshSnapshotDisplay — otherwise a sync pulling an un-migrated
+    // copy back down from the server (or just a fresh page load before the
+    // button's ever been pressed) silently resurrects the old wrong
+    // totals/markup every time.
+    list.forEach(refreshSnapshotDisplay);
     return list;
   }
   // The default reader everywhere except the trash view, the export button,
@@ -3958,8 +3973,8 @@
     var list;
     try { list = JSON.parse(localStorage.getItem(POSITIONS_KEY) || "[]"); } catch (e) { return []; }
     // Same self-healing pass as loadSnapshotsRaw — a position cloned from an
-    // un-migrated snapshot inherited the same stale numbers.
-    list.forEach(normalizeSnapshotNumbers);
+    // un-migrated snapshot inherited the same stale numbers/markup.
+    list.forEach(refreshSnapshotDisplay);
     return list;
   }
   function loadPositions() {
