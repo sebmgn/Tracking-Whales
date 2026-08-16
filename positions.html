@@ -1252,6 +1252,35 @@
     min-width: 220px;
   }
   .snap-sync-setup input[type="password"]:focus { outline: none; border-color: var(--accent); }
+  .snap-sync-setup input[type="text"],
+  .snap-sync-setup input[type="number"],
+  .snap-sync-setup input[type="date"],
+  .snap-sync-setup select {
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 7px 9px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+  }
+  .snap-sync-setup input[type="text"]:focus,
+  .snap-sync-setup input[type="number"]:focus,
+  .snap-sync-setup input[type="date"]:focus,
+  .snap-sync-setup select:focus { outline: none; border-color: var(--accent); }
+  #manualTitleInput, #manualSideInput { flex: 1 1 160px; min-width: 120px; }
+  #manualCoteInput { flex: 0 1 90px; }
+  .snap-manual-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    white-space: nowrap;
+  }
   .snap-sync-setup button {
     background: var(--accent);
     color: #fff;
@@ -1625,6 +1654,7 @@
       <button type="button" id="snapImportBtn" class="snap-sync-link" title="Restaurer une sauvegarde JSON exportée précédemment — remplace entièrement les snapshots actuels de cet appareil">⬆️ Importer</button>
       <input type="file" id="snapImportInput" accept="application/json" style="display:none;">
       <button type="button" id="snapRestyleBtn" class="snap-sync-link" title="Applique le dégradé bleu-or cote/ROI aux anciens snapshots enregistrés avant son introduction — télécharge une sauvegarde automatiquement avant de toucher à quoi que ce soit">🎨 Mettre à jour le style</button>
+      <button type="button" id="snapAddManualBtn" class="snap-sync-link" title="Enregistrer un pari pris en dehors des traders suivis — pas de note, juste titre/camp/cote/date/confiance">✍️ Pari manuel</button>
       <button id="snapTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots mis à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
     </div>
     <div id="snapSyncSetup" class="snap-sync-setup" style="display:none;">
@@ -1632,6 +1662,22 @@
       <button type="button" id="snapSyncTokenSave">Enregistrer</button>
       <button type="button" id="snapSyncTokenClear">Déconnecter</button>
       <div class="empty-note" style="padding:6px 0 0;">Clé partagée pour écrire dans le stockage AWS des snapshots (DynamoDB, via une petite fonction Lambda) — à faire une fois par appareil/navigateur. Stockée uniquement en local dans ce navigateur, jamais écrite dans le code de la page.</div>
+    </div>
+    <div id="snapManualForm" class="snap-sync-setup" style="display:none;">
+      <input type="text" id="manualTitleInput" placeholder="Titre (ex: PSG vs Lens)" />
+      <input type="text" id="manualSideInput" placeholder="Camp (ex: PSG)" />
+      <input type="number" id="manualCoteInput" placeholder="Cote (¢)" min="0.1" max="100" step="0.1" />
+      <input type="date" id="manualDateInput" />
+      <select id="manualConfSelect">
+        <option value="">Confiance (optionnel)</option>
+        <option value="S">S</option>
+        <option value="A+">A+</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+      </select>
+      <button type="button" id="manualFormSave">Enregistrer</button>
+      <button type="button" id="manualFormCancel">Annuler</button>
+      <div class="empty-note" style="padding:6px 0 0;">Pas de note calculée pour un pari manuel — c'est juste un mémo hors traders suivis, marqué "✍️ Pari manuel" sur la carte pour ne pas le confondre avec un vrai signal.</div>
     </div>
     <div id="snapPnlChartContent"></div>
     <div id="snapDashboard"></div>
@@ -1839,6 +1885,15 @@
   var snapSyncTokenClear = document.getElementById("snapSyncTokenClear");
   var snapSyncConfigBtn = document.getElementById("snapSyncConfigBtn");
   var snapSyncRefreshBtn = document.getElementById("snapSyncRefreshBtn");
+  var snapAddManualBtn = document.getElementById("snapAddManualBtn");
+  var snapManualForm = document.getElementById("snapManualForm");
+  var manualTitleInput = document.getElementById("manualTitleInput");
+  var manualSideInput = document.getElementById("manualSideInput");
+  var manualCoteInput = document.getElementById("manualCoteInput");
+  var manualDateInput = document.getElementById("manualDateInput");
+  var manualConfSelect = document.getElementById("manualConfSelect");
+  var manualFormSave = document.getElementById("manualFormSave");
+  var manualFormCancel = document.getElementById("manualFormCancel");
   var positionsContent = document.getElementById("positionsContent");
   var posCountEl = document.getElementById("posCount");
   var posStatsContent = document.getElementById("posStatsContent");
@@ -4939,10 +4994,98 @@
       headCells +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
+  // A manual entry (see snapAddManualBtn) has none of the trader/consensus
+  // data a real snapshot carries — no sides, no cardHtml, no note — by
+  // design, never faked, so it never gets swept up in normalizeSnapshotNumbers'
+  // dust-filter or rebuildFullSnapshotCardHtml's market-card rebuild (both
+  // bail out immediately on a missing .sides, which a manual entry always
+  // has). Rendered fully dynamically from its own few structured fields
+  // every time instead of freezing an HTML string — nothing about a manual
+  // entry ever changes except side/confidence, which the shared toolbar
+  // buttons below already handle identically to a real snapshot.
+  function manualCardHtml(snap, isTrash, store) {
+    var d = new Date(snap.savedAt);
+    var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    var borderColor = snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)";
+    var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
+    var stake = store.stakeFor(snap);
+    var hyp = stake ? hypotheticalFlatPnl(snap, stake) : null;
+    var hypCardHtml = hyp == null ? "" :
+      '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(store.cardHypLabel(stake)) + esc(fmtUSDSigned(hyp)) +
+      ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / stake * 100).toFixed(0) + '% ROI)</span></div>';
+    var price = snap.leaderPriceAtSnapshot;
+    var priceText = price != null ? fmtCents(price) : "";
+    var roiVal = (price != null && price > 0) ? (1 / price - 1) * 100 : null;
+    var color = oddsRoiColor(price);
+    var statsWrapStyle = color ? ' style="background:color-mix(in srgb, ' + color + ' 12%, var(--panel));border-color:color-mix(in srgb, ' + color + ' 30%, var(--panel-border));"' : '';
+    var statsTextStyle = color ? ' style="color:' + color + ';"' : '';
+    var statsDividerStyle = color ? ' style="background:color-mix(in srgb, ' + color + ' 30%, var(--panel-border));"' : '';
+    var statsHtml = '<span class="vt-top-stats"' + statsWrapStyle + '>' +
+      '<span class="vt-stat-odds"' + statsTextStyle + '>' + esc(priceText) + '</span>' +
+      '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
+      '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roiVal != null ? (roiVal >= 0 ? '+' : '') + roiVal.toFixed(0) + '%' : '') + '</span>' +
+    '</span>';
+    var leaderColor = sideColorFor(snap.leaderName);
+    var leaderBadge = '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(snap.leaderName) + '</span>';
+    var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">✍️</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
+      statsHtml + '<span class="vt-badge-group"><span class="snap-manual-badge">✍️ Pari manuel</span></span></div>';
+    var eventDateHtml = snap.eventDate
+      ? '<div class="vt-bottom-row"><span class="vt-bottom-meta"></span><span class="vt-exact-time">' + esc(new Date(snap.eventDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })) + '</span></div>'
+      : '';
+    var toolbarHtml;
+    if (isTrash) {
+      var dd = new Date(snap.deletedAt);
+      var deletedLabel = isNaN(dd.getTime()) ? snap.deletedAt : dd.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      toolbarHtml = '<div class="snap-toolbar">' +
+        '<span class="dim">Mis à la corbeille le ' + esc(deletedLabel) + '</span>' +
+        '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '">↺ Restaurer</button>' +
+        '<button type="button" class="snap-purge-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Suppression définitive — pas de retour en arrière possible">🗑 Supprimer définitivement</button>' +
+      '</div>';
+    } else {
+      // Only two possible outcomes for a manual, single-camp bet: the named
+      // camp won, or it didn't — same OTHER_SIDE_SENTINEL "Camp adverse"
+      // convention a single-tracked-side real snapshot already uses, so the
+      // shared delegated click handler (resolveStoreFromEl + enqueueOp)
+      // needs no changes to understand either kind of card.
+      var isLeaderWinner = snap.winningSide === snap.leaderName;
+      var isOtherWinner = snap.winningSide === OTHER_SIDE_SENTINEL;
+      var sideButtonsHtml =
+        '<button type="button" class="snap-side-btn' + (isLeaderWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-side="' + esc(snap.leaderName) + '">' + esc(snap.leaderName) + '</button>' +
+        '<button type="button" class="snap-side-btn snap-side-other' + (isOtherWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-side="' + esc(OTHER_SIDE_SENTINEL) + '">Camp adverse</button>';
+      var confidenceButtonsHtml = CONFIDENCE_TIERS.map(function (tier) {
+        var isActive = snap.confidence === tier;
+        var tierColor = CONFIDENCE_COLORS[tier];
+        var style = isActive ? "background:" + tierColor + ";border-color:" + tierColor + ";color:#fff" : "color:" + tierColor + ";border-color:" + tierColor;
+        return '<button type="button" class="snap-confidence-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-tier="' + esc(tier) + '" style="' + style + '">' + esc(tier) + '</button>';
+      }).join("");
+      var takePositionHtml = store.allowTakePosition
+        ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce pari manuel dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
+        : '';
+      toolbarHtml = '<div class="snap-toolbar">' +
+        '<span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + '</span>' +
+        '<span class="snap-side-label">Camp gagnant :</span>' +
+        sideButtonsHtml +
+        '<span class="snap-side-label">Confiance :</span>' +
+        confidenceButtonsHtml +
+        takePositionHtml +
+        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
+      '</div>';
+    }
+    return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (store.state.expandedItems[snap.id] ? " open" : "") +
+      ' style="border-left-color:' + borderColor + '">' +
+      '<summary class="vt-summary">' +
+        toolbarHtml +
+        hypCardHtml +
+        headerHtml +
+        eventDateHtml +
+      '</summary>' +
+    '</details>';
+  }
   // Shared by the normal list and the trash view below — only the toolbar
   // (camp/confiance/delete vs. mis-à-la-corbeille-le/restaurer/purger)
   // differs; everything else about how a frozen snapshot renders is identical.
   function snapCardHtml(snap, isTrash, store) {
+    if (snap.isManual) return manualCardHtml(snap, isTrash, store);
     var d = new Date(snap.savedAt);
     var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
     // Border stays tied to which side was leading when saved (not to the
@@ -6458,6 +6601,46 @@
   }
   wireSyncControls(SNAPSHOTS_STORE, snapSyncConfigBtn, snapSyncRefreshBtn, snapSyncSetup, snapSyncTokenInput);
   wireSyncControls(POSITIONS_STORE, posSyncConfigBtn, posSyncRefreshBtn, posSyncSetup, posSyncTokenInput);
+  // Manual bets (see manualCardHtml) — a memo for a bet placed outside the
+  // tracked traders entirely, so there's no unit/side data to build a
+  // snapshot from the usual way. Just the handful of fields the card
+  // actually shows, no note (nothing to score it against).
+  function clearManualForm() {
+    manualTitleInput.value = "";
+    manualSideInput.value = "";
+    manualCoteInput.value = "";
+    manualDateInput.value = "";
+    manualConfSelect.value = "";
+  }
+  snapAddManualBtn.addEventListener("click", function () {
+    snapManualForm.style.display = snapManualForm.style.display === "none" ? "flex" : "none";
+  });
+  manualFormCancel.addEventListener("click", function () {
+    snapManualForm.style.display = "none";
+    clearManualForm();
+  });
+  manualFormSave.addEventListener("click", function () {
+    var title = manualTitleInput.value.trim();
+    var side = manualSideInput.value.trim();
+    var cote = parseFloat(String(manualCoteInput.value).trim().replace(",", "."));
+    if (!title) { alert("Titre manquant."); return; }
+    if (!side) { alert("Camp manquant."); return; }
+    if (!isFinite(cote) || cote <= 0 || cote > 100) { alert("Cote invalide — entre un nombre entre 0 et 100 (¢)."); return; }
+    var manualSnap = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      isManual: true,
+      question: title,
+      leaderName: side,
+      leaderPriceAtSnapshot: cote / 100,
+      eventDate: manualDateInput.value || null,
+      confidence: manualConfSelect.value || null,
+      winningSide: null,
+      savedAt: new Date().toISOString()
+    };
+    enqueueOp(SNAPSHOTS_STORE, { type: "add", id: manualSnap.id, snapshot: manualSnap });
+    clearManualForm();
+    snapManualForm.style.display = "none";
+  });
   // Trash toggle / export / import are the same three behaviors for both
   // stores — wired generically here and called once per store below, rather
   // than duplicated (positions just skips the AWS sync bits, which stay
