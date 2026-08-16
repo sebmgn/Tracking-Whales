@@ -1653,10 +1653,19 @@
   <div class="tab-panel" id="tab-positions">
     <h2 class="section-title">Mes Positions <span class="count-pill" id="posCount">—</span></h2>
     <div class="snap-sync-bar">
+      <span id="posSyncStatus" class="snap-sync-status">—</span>
+      <button type="button" id="posSyncRefreshBtn" class="snap-sync-link" title="Resynchroniser maintenant">🔄 Resynchro</button>
+      <button type="button" id="posSyncConfigBtn" class="snap-sync-link">⚙️ Config. synchro</button>
       <button type="button" id="posExportBtn" class="snap-sync-link" title="Télécharger toutes les données de positions (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button type="button" id="posImportBtn" class="snap-sync-link" title="Restaurer une sauvegarde JSON exportée précédemment — remplace entièrement les positions actuelles de cet appareil">⬆️ Importer</button>
       <input type="file" id="posImportInput" accept="application/json" style="display:none;">
       <button id="posTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les positions mises à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
+    </div>
+    <div id="posSyncSetup" class="snap-sync-setup" style="display:none;">
+      <input type="password" id="posSyncTokenInput" placeholder="Clé de synchro AWS" autocomplete="off" />
+      <button type="button" id="posSyncTokenSave">Enregistrer</button>
+      <button type="button" id="posSyncTokenClear">Déconnecter</button>
+      <div class="empty-note" style="padding:6px 0 0;">Même clé que Mes Snapshots — connecte-la une fois par appareil/navigateur pour ajouter/modifier des positions partout.</div>
     </div>
     <div id="posPnlChartContent"></div>
     <div id="posDashboard"></div>
@@ -1838,6 +1847,13 @@
   var posNoteWinrateContent = document.getElementById("posNoteWinrateContent");
   var posPnlChartContent = document.getElementById("posPnlChartContent");
   var posDistContent = document.getElementById("posDistContent");
+  var posSyncStatusEl = document.getElementById("posSyncStatus");
+  var posSyncSetup = document.getElementById("posSyncSetup");
+  var posSyncTokenInput = document.getElementById("posSyncTokenInput");
+  var posSyncTokenSave = document.getElementById("posSyncTokenSave");
+  var posSyncTokenClear = document.getElementById("posSyncTokenClear");
+  var posSyncConfigBtn = document.getElementById("posSyncConfigBtn");
+  var posSyncRefreshBtn = document.getElementById("posSyncRefreshBtn");
   var tradersContent = document.getElementById("tradersContent");
   var recentTradesContent = document.getElementById("recentTradesContent");
   var rtCountEl = document.getElementById("rtCount");
@@ -3910,7 +3926,11 @@
   // cause of the sync-related slowness this app used to have.
   var SNAPSHOTS_KEY = "vtSnapshots";
   var SNAPSHOTS_QUEUE_KEY = "vtSnapshotsQueue";
-  var syncInFlight = false;
+  var POSITIONS_QUEUE_KEY = "vtPositionsQueue";
+  // Keyed by store.name — snapshots and positions sync independently (each
+  // hits its own Lambda route/DynamoDB table), so one store mid-sync must
+  // never block or get confused with the other's in-flight state.
+  var syncInFlight = {};
   // Conviction tags a snapshot can be marked with at bet time, so backtests
   // can later check whether winrate actually correlates with confidence.
   var CONFIDENCE_TIERS = ["S", "A+", "A", "B"];
@@ -3963,11 +3983,15 @@
   function saveSnapshotsToStorage(list) {
     try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
   }
-  // Positions are local-only, deliberately — the AWS sync backing snapshots
-  // has an unresolved public-access bug (see snapSyncStatus history), and
-  // adding a second Lambda route on top of an already-broken one isn't
-  // worth it for what's really just "snapshots with a custom stake". No
-  // queue, no op replay — a position is mutated and saved in one step.
+  // Positions sync the same way snapshots do — its own Lambda route
+  // (/positions, /positions/op) and its own DynamoDB table
+  // (tracking-whales-positions), same WRITE_SECRET, so a position taken on
+  // one device shows up on every other device/browser that's connected a
+  // sync key. Used to be local-only (a position is really just "a
+  // snapshot with a custom stake"), back when the AWS Function URL itself
+  // had an unresolved 403 bug — not worth a second broken sync path on top
+  // of an already-broken one. That bug is fixed now (see AWS Support
+  // history), so positions get the same treatment.
   var POSITIONS_KEY = "vtPositions";
   function loadPositionsRaw() {
     var list;
@@ -3983,17 +4007,14 @@
   function savePositionsToStorage(list) {
     try { localStorage.setItem(POSITIONS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
   }
-  // Local-only analogue of enqueueSnapshotOp — same applyOpToList reused as-is
-  // (it's already AWS-agnostic), just no queue/syncNow.
-  function applyPositionOp(op) {
-    savePositionsToStorage(applyOpToList(loadPositionsRaw(), op));
-    renderPositions();
+  // Each store keeps its own persisted queue (store.queueKey) — snapshots
+  // and positions flush independently against different Lambda routes, so
+  // one store's pending ops must never leak into the other's.
+  function loadSyncQueue(store) {
+    try { return JSON.parse(localStorage.getItem(store.queueKey) || "[]"); } catch (e) { return []; }
   }
-  function loadSyncQueue() {
-    try { return JSON.parse(localStorage.getItem(SNAPSHOTS_QUEUE_KEY) || "[]"); } catch (e) { return []; }
-  }
-  function saveSyncQueue(q) {
-    try { localStorage.setItem(SNAPSHOTS_QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* queue just won't persist this time */ }
+  function saveSyncQueue(store, q) {
+    try { localStorage.setItem(store.queueKey, JSON.stringify(q)); } catch (e) { /* queue just won't persist this time */ }
   }
   function getWriteSecret() {
     try { return localStorage.getItem(AWS_SECRET_KEY) || ""; } catch (e) { return ""; }
@@ -4061,14 +4082,16 @@
   // Reading needs no secret — the Lambda's GET is open, so a device that
   // never configured a write secret (or lost it) still sees the real shared
   // list instead of an empty one; it just can't push edits until connected.
-  async function fetchRemoteSnapshots() {
-    var res = await awsFetch(AWS_LAMBDA_URL + "/snapshots");
+  // store.remotePath picks the route (and therefore the DynamoDB table on
+  // the Lambda side) — "snapshots" or "positions".
+  async function fetchRemoteList(store) {
+    var res = await awsFetch(AWS_LAMBDA_URL + "/" + store.remotePath);
     if (!res.ok) throw new Error("AWS GET " + res.status);
     var list = await res.json();
     return Array.isArray(list) ? list : [];
   }
-  async function pushOp(op) {
-    var res = await awsFetch(AWS_LAMBDA_URL + "/snapshots/op", {
+  async function pushOp(store, op) {
+    var res = await awsFetch(AWS_LAMBDA_URL + "/" + store.remotePath + "/op", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-write-secret": getWriteSecret() },
       body: JSON.stringify(op)
@@ -4077,8 +4100,9 @@
     if (!res.ok) throw new Error("AWS POST " + res.status);
     return res.json();
   }
-  function updateSyncStatus(state) {
-    if (!snapSyncStatusEl) return;
+  function updateSyncStatus(store, state) {
+    var el = store.els.syncStatus;
+    if (!el) return;
     var now = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     var labels = {
       "syncing": "🔄 Synchronisation…",
@@ -4087,54 +4111,58 @@
       "pending-secret": "🔒 Modifications en attente — connecte une clé pour les envoyer",
       "error": "⚠️ Erreur de synchro — sauvegardé localement, nouvelle tentative automatique"
     };
-    snapSyncStatusEl.textContent = labels[state] || "—";
-    snapSyncStatusEl.className = "snap-sync-status snap-sync-" + state;
+    el.textContent = labels[state] || "—";
+    el.className = "snap-sync-status snap-sync-" + state;
   }
   // Each queued op is now a single, targeted DynamoDB write via the Lambda —
   // no more "rewrite the whole file" conflict dance. Ops flush in order,
   // one at a time, each dropped from the persisted queue only once actually
   // confirmed sent — so an op added mid-flush (rapid clicks) just waits its
-  // turn instead of ever being silently dropped.
-  async function syncNow() {
-    if (syncInFlight) return;
-    syncInFlight = true;
+  // turn instead of ever being silently dropped. Snapshots and positions
+  // sync independently (own queue, own in-flight flag, own remote route),
+  // sharing only the one WRITE_SECRET.
+  async function syncNow(store) {
+    if (syncInFlight[store.name]) return;
+    syncInFlight[store.name] = true;
     var hasSecret = !!getWriteSecret();
-    updateSyncStatus("syncing");
+    updateSyncStatus(store, "syncing");
     try {
-      var queue = loadSyncQueue();
+      var queue = loadSyncQueue(store);
       if (queue.length && !hasSecret) {
         // Local pending edits (made before a secret existed, or after one
         // was lost) but nothing to push them with. Leave both the queue and
         // the local cache untouched — they'll flush automatically the next
         // time a secret is connected.
-        updateSyncStatus("pending-secret");
+        updateSyncStatus(store, "pending-secret");
         return;
       }
       while (queue.length) {
-        await pushOp(queue[0]);
-        queue = loadSyncQueue().slice(1);
-        saveSyncQueue(queue);
+        await pushOp(store, queue[0]);
+        queue = loadSyncQueue(store).slice(1);
+        saveSyncQueue(store, queue);
       }
-      var remote = await fetchRemoteSnapshots();
-      saveSnapshotsToStorage(remote);
-      updateSyncStatus(hasSecret ? "synced" : "readonly");
-      renderSnapshots();
+      var remote = await fetchRemoteList(store);
+      store.save(remote);
+      updateSyncStatus(store, hasSecret ? "synced" : "readonly");
+      renderStoreView(store);
     } catch (e) {
-      console.error("Snapshot sync error", e);
-      updateSyncStatus("error");
+      console.error(store.name + " sync error", e);
+      updateSyncStatus(store, "error");
     } finally {
-      syncInFlight = false;
+      syncInFlight[store.name] = false;
     }
   }
   // Applies an op immediately to the local cache (instant UI, works
   // offline), queues it, then kicks off a sync attempt in the background.
-  function enqueueSnapshotOp(op) {
-    saveSnapshotsToStorage(applyOpToList(loadSnapshotsRaw(), op));
-    var q = loadSyncQueue();
+  // Shared by both stores — replaces the old snapshots-only
+  // enqueueSnapshotOp / positions-only local-write applyPositionOp.
+  function enqueueOp(store, op) {
+    store.save(applyOpToList(store.loadRaw(), op));
+    var q = loadSyncQueue(store);
     q.push(op);
-    saveSyncQueue(q);
-    renderSnapshots();
-    syncNow();
+    saveSyncQueue(store, q);
+    renderStoreView(store);
+    syncNow(store);
   }
   function buildSnapshotFromUnit(u) {
     // computeUnitCardParts fills in u.score/.scoreFactors itself when
@@ -4188,7 +4216,7 @@
   }
   function saveSnapshot(u) {
     var snap = buildSnapshotFromUnit(u);
-    enqueueSnapshotOp({ type: "add", id: snap.id, snapshot: snap });
+    enqueueOp(SNAPSHOTS_STORE, { type: "add", id: snap.id, snapshot: snap });
   }
   // A trader's stake + estimated profit on ONE side, summed across every
   // entry they have there (they can show up more than once — e.g. linked
@@ -4358,9 +4386,10 @@
     dateLabelPrefix: "Sauvegardé le",
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment du snapshot"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
+    remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY,
     els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
       tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
-      stats: snapStatsContent, list: snapshotsContent },
+      stats: snapStatsContent, list: snapshotsContent, syncStatus: snapSyncStatusEl },
     ids: { statsToggle: "snapStatsToggleBtn", distToggle: "snapDistToggleBtn",
       tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn" },
     state: freshStoreState()
@@ -4375,9 +4404,10 @@
     dateLabelPrefix: "Prise le",
     simSubtitle: function () { return "PnL basé sur la mise réellement choisie pour cette position, au prix du marché au moment du snapshot d'origine"; },
     cardHypLabel: function (stake) { return "Ta position (" + fmtUSD(stake) + ") : "; },
+    remotePath: "positions", queueKey: POSITIONS_QUEUE_KEY,
     els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
       tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
-      stats: posStatsContent, list: positionsContent },
+      stats: posStatsContent, list: positionsContent, syncStatus: posSyncStatusEl },
     ids: { statsToggle: "posStatsToggleBtn", distToggle: "posDistToggleBtn",
       tierToggle: "posTierWinrateToggleBtn", noteToggle: "posNoteWinrateToggleBtn" },
     state: freshStoreState()
@@ -6249,8 +6279,7 @@
         var rebuilt = rebuildFullSnapshotCardHtml(pos);
         if (rebuilt != null) pos.cardHtml = rebuilt;
       }
-      savePositionsToStorage([pos].concat(loadPositionsRaw()));
-      renderPositions();
+      enqueueOp(POSITIONS_STORE, { type: "add", id: pos.id, snapshot: pos });
       takePosBtn.textContent = "✅ Position prise";
       takePosBtn.disabled = true;
       return;
@@ -6293,7 +6322,7 @@
       var curSideSnap = sStore.loadRaw().filter(function (s) { return s.id === sid; })[0];
       var newWinningSide = (curSideSnap && curSideSnap.winningSide === side) ? null : side;
       var sideOp = { type: "setSide", id: sid, winningSide: newWinningSide };
-      if (sStore === SNAPSHOTS_STORE) enqueueSnapshotOp(sideOp); else applyPositionOp(sideOp);
+      enqueueOp(sStore, sideOp);
       return;
     }
     var confBtn = e.target.closest ? e.target.closest(".snap-confidence-btn") : null;
@@ -6306,7 +6335,7 @@
       var curConfSnap = cStore.loadRaw().filter(function (s) { return s.id === cid; })[0];
       var newConfidence = (curConfSnap && curConfSnap.confidence === tier) ? null : tier;
       var confOp = { type: "setConf", id: cid, confidence: newConfidence };
-      if (cStore === SNAPSHOTS_STORE) enqueueSnapshotOp(confOp); else applyPositionOp(confOp);
+      enqueueOp(cStore, confOp);
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
@@ -6316,7 +6345,7 @@
       var dStore = resolveStoreFromEl(delBtn);
       var did = delBtn.getAttribute("data-snap-id");
       var delOp = { type: "trash", id: did, deletedAt: new Date().toISOString() };
-      if (dStore === SNAPSHOTS_STORE) enqueueSnapshotOp(delOp); else applyPositionOp(delOp);
+      enqueueOp(dStore, delOp);
       return;
     }
     var restoreBtn = e.target.closest ? e.target.closest(".snap-restore-btn") : null;
@@ -6326,7 +6355,7 @@
       var rStore = resolveStoreFromEl(restoreBtn);
       var rid = restoreBtn.getAttribute("data-snap-id");
       var restoreOp = { type: "restore", id: rid };
-      if (rStore === SNAPSHOTS_STORE) enqueueSnapshotOp(restoreOp); else applyPositionOp(restoreOp);
+      enqueueOp(rStore, restoreOp);
       return;
     }
     var purgeBtn = e.target.closest ? e.target.closest(".snap-purge-btn") : null;
@@ -6336,7 +6365,7 @@
       var pStore = resolveStoreFromEl(purgeBtn);
       var pid = purgeBtn.getAttribute("data-snap-id");
       var purgeOp = { type: "delete", id: pid };
-      if (pStore === SNAPSHOTS_STORE) enqueueSnapshotOp(purgeOp); else applyPositionOp(purgeOp);
+      enqueueOp(pStore, purgeOp);
       return;
     }
     var statsToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='stats']") : null;
@@ -6418,11 +6447,17 @@
     }
   });
 
-  snapSyncConfigBtn.addEventListener("click", function () {
-    snapSyncSetup.style.display = snapSyncSetup.style.display === "none" ? "flex" : "none";
-    snapSyncTokenInput.value = "";
-  });
-  snapSyncRefreshBtn.addEventListener("click", function () { syncNow(); });
+  // Sync config toggle + resync button — same behavior for both stores
+  // (one shared WRITE_SECRET), wired generically here.
+  function wireSyncControls(store, configBtn, refreshBtn, setup, tokenInput) {
+    configBtn.addEventListener("click", function () {
+      setup.style.display = setup.style.display === "none" ? "flex" : "none";
+      tokenInput.value = "";
+    });
+    refreshBtn.addEventListener("click", function () { syncNow(store); });
+  }
+  wireSyncControls(SNAPSHOTS_STORE, snapSyncConfigBtn, snapSyncRefreshBtn, snapSyncSetup, snapSyncTokenInput);
+  wireSyncControls(POSITIONS_STORE, posSyncConfigBtn, posSyncRefreshBtn, posSyncSetup, posSyncTokenInput);
   // Trash toggle / export / import are the same three behaviors for both
   // stores — wired generically here and called once per store below, rather
   // than duplicated (positions just skips the AWS sync bits, which stay
@@ -6775,27 +6810,41 @@
     renderSnapshots();
     alert(rebuiltCount + " snapshot(s) entièrement reconstruits, " + skipped + " ignorés (données insuffisantes) — sur " + list.length + " au total.");
   });
-  snapSyncTokenSave.addEventListener("click", function () {
-    var v = snapSyncTokenInput.value.trim();
-    if (!v) return;
-    setWriteSecret(v);
-    snapSyncTokenInput.value = "";
-    snapSyncSetup.style.display = "none";
-    syncNow();
-  });
-  snapSyncTokenClear.addEventListener("click", function () {
-    setWriteSecret("");
-    saveSyncQueue([]);
-    updateSyncStatus("readonly");
-  });
+  // One shared WRITE_SECRET for both stores — saving/clearing it here
+  // always applies to both (Config. synchro on either tab does the same
+  // thing), rather than each panel managing its own independent key.
+  function wireSyncTokenControls(saveBtn, clearBtn, input, setup) {
+    saveBtn.addEventListener("click", function () {
+      var v = input.value.trim();
+      if (!v) return;
+      setWriteSecret(v);
+      input.value = "";
+      setup.style.display = "none";
+      syncNow(SNAPSHOTS_STORE);
+      syncNow(POSITIONS_STORE);
+    });
+    clearBtn.addEventListener("click", function () {
+      setWriteSecret("");
+      saveSyncQueue(SNAPSHOTS_STORE, []);
+      saveSyncQueue(POSITIONS_STORE, []);
+      updateSyncStatus(SNAPSHOTS_STORE, "readonly");
+      updateSyncStatus(POSITIONS_STORE, "readonly");
+    });
+  }
+  wireSyncTokenControls(snapSyncTokenSave, snapSyncTokenClear, snapSyncTokenInput, snapSyncSetup);
+  wireSyncTokenControls(posSyncTokenSave, posSyncTokenClear, posSyncTokenInput, posSyncSetup);
 
   renderSnapshots();
-  updateSyncStatus("syncing");
-  syncNow();
+  renderPositions();
+  updateSyncStatus(SNAPSHOTS_STORE, "syncing");
+  updateSyncStatus(POSITIONS_STORE, "syncing");
+  syncNow(SNAPSHOTS_STORE);
+  syncNow(POSITIONS_STORE);
   // Every 2 min, not 1 — reads now happen even without a token (public repo,
   // unauthenticated GET), and GitHub's unauthenticated rate limit is a flat
   // 60 req/hour per IP, so this leaves headroom for manual resyncs too.
-  setInterval(syncNow, 120000);
+  setInterval(function () { syncNow(SNAPSHOTS_STORE); }, 120000);
+  setInterval(function () { syncNow(POSITIONS_STORE); }, 120000);
   refresh(true);
   setInterval(tick, 1000);
 })();
