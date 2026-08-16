@@ -1084,6 +1084,10 @@
   #noteWinrateToggleBtn, #noteWinrateContent, #posNoteWinrateToggleBtn, #posNoteWinrateContent { --neon: #22d3ee; }
   #snapDistToggleBtn, #snapDistContent, #posDistToggleBtn, #posDistContent { --neon: #a78bfa; }
   #snapStatsToggleBtn, #snapStatsContent, #posStatsToggleBtn, #posStatsContent { --neon: #fb923c; }
+  #noteRoiToggleBtn, #snapNoteRoiContent, #posNoteRoiToggleBtn, #posNoteRoiContent { --neon: #f472b6; }
+  #tierBoxToggleBtn, #snapTierBoxContent, #posTierBoxToggleBtn, #posTierBoxContent { --neon: #34d399; }
+  #noteViolinToggleBtn, #snapNoteViolinContent, #posNoteViolinToggleBtn, #posNoteViolinContent { --neon: #a3e635; }
+  #noteStakeToggleBtn, #snapNoteStakeContent, #posNoteStakeToggleBtn, #posNoteStakeContent { --neon: #38bdf8; }
   /* flex:1 with a shared min width — the 5 buttons stretch evenly to fill
      the row instead of clumping left, sized up now that dropping
      "Afficher" leaves them short. */
@@ -1122,7 +1126,11 @@
   #posTierWinrateContent .chart-box,
   #posNoteWinrateContent .chart-box,
   #posDistContent .table-scroll,
-  #posStatsContent .table-scroll {
+  #posStatsContent .table-scroll,
+  #snapNoteRoiContent .chart-box, #posNoteRoiContent .chart-box,
+  #snapTierBoxContent .chart-box, #posTierBoxContent .chart-box,
+  #snapNoteViolinContent .chart-box, #posNoteViolinContent .chart-box,
+  #snapNoteStakeContent .chart-box, #posNoteStakeContent .chart-box {
     border-color: var(--neon);
     box-shadow: 0 0 16px color-mix(in srgb, var(--neon) 28%, transparent);
   }
@@ -1388,6 +1396,11 @@
     position: relative;
   }
   .chart-box svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .mini-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+  .mini-legend-item { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); }
+  .mini-legend-swatch { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+  .mini-legend-swatch.mini-legend-sq { border-radius: 2px; }
+  .chart-title-note { font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: 6px; }
   .chart-tooltip {
     position: absolute;
     background: var(--text);
@@ -1687,11 +1700,19 @@
       <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="snapshots">▸ L'analyse winrate × note</button>
       <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="snapshots">▸ L'analyse cote × confiance</button>
       <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="snapshots">▸ Le récap par trader</button>
+      <button type="button" id="noteRoiToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="noteroi" data-store="snapshots">▸ Note × ROI</button>
+      <button type="button" id="tierBoxToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tierbox" data-store="snapshots">▸ ROI par confiance (boîtes)</button>
+      <button type="button" id="noteViolinToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="noteviolin" data-store="snapshots">▸ Note par résultat (violin)</button>
+      <button type="button" id="noteStakeToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="notestake" data-store="snapshots">▸ Note × Mise</button>
     </div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
     <div id="snapDistContent"></div>
     <div id="snapStatsContent"></div>
+    <div id="snapNoteRoiContent"></div>
+    <div id="snapTierBoxContent"></div>
+    <div id="snapNoteViolinContent"></div>
+    <div id="snapNoteStakeContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
     </div>
@@ -1721,11 +1742,19 @@
       <button type="button" id="posNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="positions">▸ L'analyse winrate × note</button>
       <button type="button" id="posDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="positions">▸ L'analyse cote × confiance</button>
       <button type="button" id="posStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="positions">▸ Le récap par trader</button>
+      <button type="button" id="posNoteRoiToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="noteroi" data-store="positions">▸ Note × ROI</button>
+      <button type="button" id="posTierBoxToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tierbox" data-store="positions">▸ ROI par confiance (boîtes)</button>
+      <button type="button" id="posNoteViolinToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="noteviolin" data-store="positions">▸ Note par résultat (violin)</button>
+      <button type="button" id="posNoteStakeToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="notestake" data-store="positions">▸ Note × Mise</button>
     </div>
     <div id="posTierWinrateContent"></div>
     <div id="posNoteWinrateContent"></div>
     <div id="posDistContent"></div>
     <div id="posStatsContent"></div>
+    <div id="posNoteRoiContent"></div>
+    <div id="posTierBoxContent"></div>
+    <div id="posNoteViolinContent"></div>
+    <div id="posNoteStakeContent"></div>
     <div id="positionsContent" class="value-trades-box">
       <div class="empty-note">Aucune position pour l'instant — clique sur 🎯 Prendre position sur une carte dans Mes Snapshots pour l'enregistrer ici.</div>
     </div>
@@ -1880,6 +1909,10 @@
   var noteWinrateContent = document.getElementById("noteWinrateContent");
   var snapPnlChartContent = document.getElementById("snapPnlChartContent");
   var snapDistContent = document.getElementById("snapDistContent");
+  var snapNoteRoiContent = document.getElementById("snapNoteRoiContent");
+  var snapTierBoxContent = document.getElementById("snapTierBoxContent");
+  var snapNoteViolinContent = document.getElementById("snapNoteViolinContent");
+  var snapNoteStakeContent = document.getElementById("snapNoteStakeContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -1904,6 +1937,10 @@
   var posNoteWinrateContent = document.getElementById("posNoteWinrateContent");
   var posPnlChartContent = document.getElementById("posPnlChartContent");
   var posDistContent = document.getElementById("posDistContent");
+  var posNoteRoiContent = document.getElementById("posNoteRoiContent");
+  var posTierBoxContent = document.getElementById("posTierBoxContent");
+  var posNoteViolinContent = document.getElementById("posNoteViolinContent");
+  var posNoteStakeContent = document.getElementById("posNoteStakeContent");
   var posSyncStatusEl = document.getElementById("posSyncStatus");
   var posSyncSetup = document.getElementById("posSyncSetup");
   var posSyncTokenInput = document.getElementById("posSyncTokenInput");
@@ -2070,9 +2107,11 @@
     return {
       tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null,
       pnlChartOddsFilter: null, pnlChartTierFilter: null, pnlChartDays: null, pnlChartNoteFilter: null,
+      pnlChartSplitByTier: false,
       chartSelectedId: null, chartPrevScrollY: null,
       statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
-      trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true
+      trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
+      noteRoiCollapsed: true, tierBoxCollapsed: true, noteViolinCollapsed: true, noteStakeCollapsed: true
     };
   }
   var rtMinValue = 0;
@@ -4484,9 +4523,12 @@
     remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY,
     els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
       tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
-      stats: snapStatsContent, list: snapshotsContent, syncStatus: snapSyncStatusEl },
+      stats: snapStatsContent, list: snapshotsContent, syncStatus: snapSyncStatusEl,
+      noteRoi: snapNoteRoiContent, tierBox: snapTierBoxContent, noteViolin: snapNoteViolinContent, noteStake: snapNoteStakeContent },
     ids: { statsToggle: "snapStatsToggleBtn", distToggle: "snapDistToggleBtn",
-      tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn" },
+      tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn",
+      noteRoiToggle: "noteRoiToggleBtn", tierBoxToggle: "tierBoxToggleBtn",
+      noteViolinToggle: "noteViolinToggleBtn", noteStakeToggle: "noteStakeToggleBtn" },
     state: freshStoreState()
   };
   var POSITIONS_STORE = {
@@ -4502,9 +4544,12 @@
     remotePath: "positions", queueKey: POSITIONS_QUEUE_KEY,
     els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
       tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
-      stats: posStatsContent, list: positionsContent, syncStatus: posSyncStatusEl },
+      stats: posStatsContent, list: positionsContent, syncStatus: posSyncStatusEl,
+      noteRoi: posNoteRoiContent, tierBox: posTierBoxContent, noteViolin: posNoteViolinContent, noteStake: posNoteStakeContent },
     ids: { statsToggle: "posStatsToggleBtn", distToggle: "posDistToggleBtn",
-      tierToggle: "posTierWinrateToggleBtn", noteToggle: "posNoteWinrateToggleBtn" },
+      tierToggle: "posTierWinrateToggleBtn", noteToggle: "posNoteWinrateToggleBtn",
+      noteRoiToggle: "posNoteRoiToggleBtn", tierBoxToggle: "posTierBoxToggleBtn",
+      noteViolinToggle: "posNoteViolinToggleBtn", noteStakeToggle: "posNoteStakeToggleBtn" },
     state: freshStoreState()
   };
   // Replaces the old `pnl / (count * HYPOTHETICAL_FLAT_STAKE)` formula
@@ -4524,6 +4569,253 @@
     });
     return { pnl: pnl, stakeSum: stakeSum, count: count, roi: stakeSum > 0 ? (pnl / stakeSum * 100) : null };
   }
+  // Per-item ROI% for one snapshot/position at its own store-appropriate
+  // stake — the same number hypotheticalFlatPnl/aggregateFlatPnl already
+  // compute internally, just exposed per-item for the scatter/box/violin
+  // charts below instead of only ever seeing it pre-aggregated. null for
+  // anything not decided yet (no winningSide) — nothing to plot.
+  function itemRoiPct(snap, store) {
+    var stake = store.stakeFor(snap);
+    if (!stake) return null;
+    var hyp = hypotheticalFlatPnl(snap, stake);
+    return hyp == null ? null : (hyp / stake * 100);
+  }
+  // ---------- tiny shared SVG toolkit for the 4 analysis charts below ----------
+  // Deliberately small and local (not a real charting lib) — scaleLinear,
+  // niceTicks, a gaussian KDE for the density/violin views, and a handful
+  // of draw helpers, all string-building inline SVG the same way every
+  // other chart in this file already does.
+  var VIZ_SVGNS = "http://www.w3.org/2000/svg";
+  function vizEl(tag, attrs) {
+    var s = "<" + tag;
+    for (var k in attrs) if (attrs[k] != null) s += " " + k + '="' + attrs[k] + '"';
+    return s;
+  }
+  function vizScale(domain, range) {
+    var d0 = domain[0], d1 = domain[1], r0 = range[0], r1 = range[1];
+    return function (v) { return r0 + (v - d0) / (d1 - d0 || 1) * (r1 - r0); };
+  }
+  function vizNiceTicks(min, max, count) {
+    var span = max - min || 1;
+    var step = Math.pow(10, Math.floor(Math.log10(span / count)));
+    var err = (count * step) / span;
+    if (err <= 0.15) step *= 10; else if (err <= 0.35) step *= 5; else if (err <= 0.75) step *= 2;
+    var start = Math.ceil(min / step) * step;
+    var out = [];
+    for (var v = start; v <= max + 1e-9; v += step) out.push(Math.round(v * 1000) / 1000);
+    return out;
+  }
+  function vizKde(values, bw, xMin, xMax, steps) {
+    var out = [];
+    for (var s = 0; s <= steps; s++) {
+      var x = xMin + (xMax - xMin) * s / steps, sum = 0;
+      for (var i = 0; i < values.length; i++) { var u = (x - values[i]) / bw; sum += Math.exp(-0.5 * u * u); }
+      out.push({ x: x, y: sum / (values.length * bw * Math.sqrt(2 * Math.PI)) });
+    }
+    return out;
+  }
+  function vizQuantile(sorted, q) {
+    var pos = (sorted.length - 1) * q, base = Math.floor(pos), rest = pos - base;
+    return sorted[base + 1] !== undefined ? sorted[base] + rest * (sorted[base + 1] - sorted[base]) : sorted[base];
+  }
+  function vizPath(pts) { return pts.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(2) + "," + p.y.toFixed(2); }).join(" "); }
+  function vizSmoothPath(pts) {
+    if (pts.length < 3) return vizPath(pts);
+    var d = "M" + pts[0].x.toFixed(2) + "," + pts[0].y.toFixed(2);
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i], p1 = pts[i + 1], mx = (p0.x + p1.x) / 2;
+      d += " Q" + p0.x.toFixed(2) + "," + p0.y.toFixed(2) + " " + mx.toFixed(2) + "," + ((p0.y + p1.y) / 2).toFixed(2);
+    }
+    d += " L" + pts[pts.length - 1].x.toFixed(2) + "," + pts[pts.length - 1].y.toFixed(2);
+    return d;
+  }
+  // isManual -> a small square instead of a circle, same convention the
+  // proposal mockup used — a manual bet is visually distinct from one
+  // sourced from tracked traders wherever both can appear on the same axis.
+  function vizPoint(cx, cy, r, color, isManual, title) {
+    var shape = isManual
+      ? vizEl("rect", { x: (cx - r * 0.85).toFixed(2), y: (cy - r * 0.85).toFixed(2), width: (r * 1.7).toFixed(2), height: (r * 1.7).toFixed(2), rx: 1.5, fill: color, stroke: "var(--panel)", "stroke-width": 1 }) + "/>"
+      : vizEl("circle", { cx: cx.toFixed(2), cy: cy.toFixed(2), r: r.toFixed(2), fill: color, stroke: "var(--panel)", "stroke-width": 1 }) + "/>";
+    return "<g>" + shape + (title ? "<title>" + esc(title) + "</title>" : "") + "</g>";
+  }
+  function vizAxisX(x, y0, ticks, fmt) {
+    var out = '<line x1="' + x.range0 + '" x2="' + x.range1 + '" y1="' + y0 + '" y2="' + y0 + '" stroke="var(--panel-border)"/>';
+    ticks.forEach(function (t) { out += '<text x="' + x(t).toFixed(2) + '" y="' + (y0 + 16) + '" font-size="10" fill="var(--text-dim)" text-anchor="middle">' + esc(fmt(t)) + '</text>'; });
+    return out;
+  }
+  function vizAxisY(y, x0, ticks, fmt, gridToX) {
+    var out = '<line x1="' + x0 + '" x2="' + x0 + '" y1="' + y.range0 + '" y2="' + y.range1 + '" stroke="var(--panel-border)"/>';
+    ticks.forEach(function (t) {
+      var py = y(t);
+      if (gridToX != null) out += '<line x1="' + x0 + '" x2="' + gridToX + '" y1="' + py.toFixed(2) + '" y2="' + py.toFixed(2) + '" stroke="var(--panel-border)" opacity="0.6"/>';
+      out += '<text x="' + (x0 - 8) + '" y="' + (py + 3.5).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + esc(fmt(t)) + '</text>';
+    });
+    return out;
+  }
+  function vizAxisLabel(x, y, text) {
+    return '<text x="' + x + '" y="' + y + '" font-size="10.5" fill="var(--text-dim)" text-anchor="middle">' + esc(text) + '</text>';
+  }
+  var VIZ_W = 900, VIZ_H = 320, VIZ_M = { l: 52, r: 20, t: 14, b: 34 };
+  function vizFrame() {
+    var x = vizScale([0, 1], [VIZ_M.l, VIZ_W - VIZ_M.r]); x.range0 = VIZ_M.l; x.range1 = VIZ_W - VIZ_M.r;
+    var y = vizScale([0, 1], [VIZ_H - VIZ_M.b, VIZ_M.t]); y.range0 = VIZ_H - VIZ_M.b; y.range1 = VIZ_M.t;
+    return { x: x, y: y };
+  }
+  function vizSvgOpen() { return '<svg viewBox="0 0 ' + VIZ_W + ' ' + VIZ_H + '" preserveAspectRatio="xMidYMid meet">'; }
+  function vizMiniLegend(items) {
+    return '<div class="mini-legend">' + items.map(function (it) {
+      return '<span class="mini-legend-item"><span class="mini-legend-swatch' + (it.sq ? ' mini-legend-sq' : '') + '" style="background:' + it.color + '"></span>' + esc(it.label) + '</span>';
+    }).join("") + '</div>';
+  }
+  function vizEmptyPanel(title, hint) {
+    return '<div class="chart-box"><div class="tier-wr-title">' + esc(title) + '</div><div class="empty-note" style="padding:14px 0;">' + esc(hint) + '</div></div>';
+  }
+
+  // ---------- Note × ROI scatter ----------
+  function renderNoteRoiScatter(list, store) {
+    var el = store.els.noteRoi;
+    if (!el) return;
+    syncSnapToggleLabel(store.ids.noteRoiToggle, store.state.noteRoiCollapsed, "note × ROI");
+    var items = list.filter(function (s) { return s.noteAtSnapshot != null && s.winningSide; })
+      .map(function (s) { return { s: s, roi: itemRoiPct(s, store) }; })
+      .filter(function (p) { return p.roi != null; });
+    if (store.state.noteRoiCollapsed) { el.innerHTML = collapsedPanelHtml(store.ids.noteRoiToggle); return; }
+    if (items.length < 2) { el.innerHTML = vizEmptyPanel("Note × ROI", "Pas assez de paris décidés et notés pour ce graphique."); return; }
+    var manualExcluded = list.filter(function (s) { return s.isManual && !!s.winningSide; }).length;
+    var f = vizFrame();
+    var x = vizScale([4, 10], [VIZ_M.l, VIZ_W - VIZ_M.r]); x.range0 = VIZ_M.l; x.range1 = VIZ_W - VIZ_M.r;
+    var roiVals = items.map(function (p) { return clamp01(p.roi, -100, 300); });
+    var yMax = Math.max(50, Math.max.apply(null, roiVals) * 1.08);
+    var y = vizScale([-100, yMax], [VIZ_H - VIZ_M.b, VIZ_M.t]); y.range0 = VIZ_H - VIZ_M.b; y.range1 = VIZ_M.t;
+    var svg = vizSvgOpen();
+    svg += vizAxisY(y, VIZ_M.l, vizNiceTicks(-100, yMax, 5), function (v) { return (v >= 0 ? "+" : "") + Math.round(v) + "%"; }, VIZ_W - VIZ_M.r);
+    svg += vizAxisX(x, VIZ_H - VIZ_M.b, [4, 5, 6, 7, 8, 9, 10], function (v) { return v.toFixed(0); });
+    svg += '<line x1="' + VIZ_M.l + '" x2="' + (VIZ_W - VIZ_M.r) + '" y1="' + y(0).toFixed(2) + '" y2="' + y(0).toFixed(2) + '" stroke="var(--panel-border)" stroke-dasharray="2,3"/>';
+    svg += vizAxisLabel(VIZ_W / 2, VIZ_H - 4, "Note du pari");
+    items.forEach(function (p) {
+      var color = CONFIDENCE_COLORS[p.s.confidence] || "var(--tier-b-gray)";
+      var title = p.s.question + " — note " + p.s.noteAtSnapshot.toFixed(1) + " · ROI " + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + "%";
+      svg += vizPoint(x(p.s.noteAtSnapshot), y(clamp01(p.roi, -100, yMax)), 4, color, p.s.isManual, title);
+    });
+    svg += "</svg>";
+    el.innerHTML = '<div class="chart-box">' + collapseHeaderHtml(store.ids.noteRoiToggle, "Note × ROI par pari") + svg +
+      tierLegendHtml() + (manualExcluded ? '<div class="chart-title-note">' + manualExcluded + ' pari(s) manuel(s) exclu(s) — pas de note calculée.</div>' : '') +
+      '</div>';
+  }
+
+  // ---------- ROI by confidence tier — box plot ----------
+  function renderTierBoxplot(list, store) {
+    var el = store.els.tierBox;
+    if (!el) return;
+    syncSnapToggleLabel(store.ids.tierBoxToggle, store.state.tierBoxCollapsed, "ROI par confiance (boîtes)");
+    if (store.state.tierBoxCollapsed) { el.innerHTML = collapsedPanelHtml(store.ids.tierBoxToggle); return; }
+    var byTier = {};
+    CONFIDENCE_TIERS.forEach(function (t) {
+      byTier[t] = list.filter(function (s) { return s.confidence === t && s.winningSide; })
+        .map(function (s) { return itemRoiPct(s, store); }).filter(function (v) { return v != null; }).sort(function (a, b) { return a - b; });
+    });
+    var anyData = CONFIDENCE_TIERS.some(function (t) { return byTier[t].length; });
+    if (!anyData) { el.innerHTML = vizEmptyPanel("ROI par palier de confiance", "Pas assez de paris décidés avec une confiance renseignée."); return; }
+    var ROI_CAP = 300;
+    var f = vizFrame();
+    var y = vizScale([-100, ROI_CAP], [VIZ_H - VIZ_M.b, VIZ_M.t]); y.range0 = VIZ_H - VIZ_M.b; y.range1 = VIZ_M.t;
+    var svg = vizSvgOpen();
+    svg += vizAxisY(y, VIZ_M.l, vizNiceTicks(-100, ROI_CAP, 5), function (v) { return (v >= 0 ? "+" : "") + Math.round(v) + "%"; }, VIZ_W - VIZ_M.r);
+    svg += '<line x1="' + VIZ_M.l + '" x2="' + (VIZ_W - VIZ_M.r) + '" y1="' + y(0).toFixed(2) + '" y2="' + y(0).toFixed(2) + '" stroke="var(--panel-border)" stroke-dasharray="2,3"/>';
+    var bw = (VIZ_W - VIZ_M.l - VIZ_M.r) / CONFIDENCE_TIERS.length;
+    CONFIDENCE_TIERS.forEach(function (t, i) {
+      var vals = byTier[t].map(function (v) { return clamp01(v, -100, ROI_CAP); });
+      var cx = VIZ_M.l + bw * i + bw / 2;
+      svg += '<text x="' + cx.toFixed(2) + '" y="' + (VIZ_H - VIZ_M.b + 16) + '" font-size="10" fill="var(--text-dim)" text-anchor="middle">' + esc(t) + " (n=" + vals.length + ")</text>";
+      if (!vals.length) return;
+      var color = CONFIDENCE_COLORS[t];
+      var q1 = vizQuantile(vals, 0.25), med = vizQuantile(vals, 0.5), q3 = vizQuantile(vals, 0.75);
+      var vmin = vals[0], vmax = vals[vals.length - 1];
+      svg += '<line x1="' + cx.toFixed(2) + '" x2="' + cx.toFixed(2) + '" y1="' + y(vmin).toFixed(2) + '" y2="' + y(vmax).toFixed(2) + '" stroke="' + color + '" stroke-width="1.5"/>';
+      svg += '<rect x="' + (cx - bw * 0.22).toFixed(2) + '" y="' + y(q3).toFixed(2) + '" width="' + (bw * 0.44).toFixed(2) + '" height="' + (y(q1) - y(q3)).toFixed(2) + '" fill="' + color + '" opacity="0.22" stroke="' + color + '" stroke-width="1.5" rx="2"/>';
+      svg += '<line x1="' + (cx - bw * 0.22).toFixed(2) + '" x2="' + (cx + bw * 0.22).toFixed(2) + '" y1="' + y(med).toFixed(2) + '" y2="' + y(med).toFixed(2) + '" stroke="' + color + '" stroke-width="2.5"/>';
+    });
+    svg += "</svg>";
+    el.innerHTML = '<div class="chart-box">' + collapseHeaderHtml(store.ids.tierBoxToggle, "ROI par palier de confiance") + svg +
+      '<div class="chart-title-note">ROI plafonné à +' + ROI_CAP + '% pour la lisibilité — inclut les paris manuels.</div></div>';
+  }
+
+  // ---------- Note distribution by outcome — violin ----------
+  function renderNoteViolin(list, store) {
+    var el = store.els.noteViolin;
+    if (!el) return;
+    syncSnapToggleLabel(store.ids.noteViolinToggle, store.state.noteViolinCollapsed, "note par résultat (violin)");
+    if (store.state.noteViolinCollapsed) { el.innerHTML = collapsedPanelHtml(store.ids.noteViolinToggle); return; }
+    var decided = list.filter(function (s) { return s.noteAtSnapshot != null && s.winningSide; });
+    var wins = decided.filter(function (s) { return s.leaderName === s.winningSide; }).map(function (s) { return s.noteAtSnapshot; });
+    var losses = decided.filter(function (s) { return s.leaderName !== s.winningSide; }).map(function (s) { return s.noteAtSnapshot; });
+    if (wins.length < 2 && losses.length < 2) { el.innerHTML = vizEmptyPanel("Silhouette de note par résultat", "Pas assez de paris décidés et notés pour ce graphique."); return; }
+    var y = vizScale([4, 10], [VIZ_H - VIZ_M.b, VIZ_M.t]); y.range0 = VIZ_H - VIZ_M.b; y.range1 = VIZ_M.t;
+    var svg = vizSvgOpen();
+    svg += vizAxisY(y, VIZ_M.l, [4, 5, 6, 7, 8, 9, 10], function (v) { return v.toFixed(0); }, VIZ_W - VIZ_M.r);
+    var cx = (VIZ_M.l + (VIZ_W - VIZ_M.r)) / 2, halfW = 130;
+    var kw = wins.length > 1 ? vizKde(wins, 0.5, 4, 10, 50) : [];
+    var kl = losses.length > 1 ? vizKde(losses, 0.5, 4, 10, 50) : [];
+    var maxDen = Math.max(0.02, Math.max.apply(null, kw.concat(kl).map(function (p) { return p.y; }) || [0]));
+    function side(pts, sign, color, label) {
+      if (!pts.length) return "";
+      var top = pts.map(function (p) { return { x: cx + sign * (p.y / maxDen) * halfW, y: y(p.x) }; });
+      var mirrored = top.slice().reverse().map(function (p) { return { x: cx, y: p.y }; });
+      var d = vizPath(top) + " " + vizPath(mirrored).replace("M", "L") + " Z";
+      var out = '<path d="' + d + '" fill="' + color + '" opacity="0.5"/>';
+      out += '<text x="' + (cx + sign * (halfW + 14)).toFixed(2) + '" y="' + (VIZ_M.t + 10) + '" font-size="11" font-weight="700" fill="' + color + '" text-anchor="' + (sign > 0 ? "start" : "end") + '">' + esc(label) + '</text>';
+      return out;
+    }
+    svg += side(kw, 1, "var(--green)", "Gagnés (" + wins.length + ")");
+    svg += side(kl, -1, "var(--red)", "Perdus (" + losses.length + ")");
+    svg += '<line x1="' + cx.toFixed(2) + '" x2="' + cx.toFixed(2) + '" y1="' + VIZ_M.t + '" y2="' + (VIZ_H - VIZ_M.b) + '" stroke="var(--panel-border)"/>';
+    svg += "</svg>";
+    el.innerHTML = '<div class="chart-box">' + collapseHeaderHtml(store.ids.noteViolinToggle, "Silhouette de note par résultat") + svg + '</div>';
+  }
+
+  // ---------- Note × mise engagée ----------
+  function renderNoteStakeScatter(list, store) {
+    var el = store.els.noteStake;
+    if (!el) return;
+    syncSnapToggleLabel(store.ids.noteStakeToggle, store.state.noteStakeCollapsed, "note × mise");
+    var items = list.filter(function (s) { return s.noteAtSnapshot != null; })
+      .map(function (s) { return { s: s, stake: store.stakeFor(s) }; }).filter(function (p) { return p.stake > 0; });
+    if (store.state.noteStakeCollapsed) { el.innerHTML = collapsedPanelHtml(store.ids.noteStakeToggle); return; }
+    if (items.length < 2) { el.innerHTML = vizEmptyPanel("Note × Mise engagée", "Pas assez de paris notés pour ce graphique."); return; }
+    var manualExcluded = list.filter(function (s) { return s.isManual; }).length;
+    var x = vizScale([4, 10], [VIZ_M.l, VIZ_W - VIZ_M.r]); x.range0 = VIZ_M.l; x.range1 = VIZ_W - VIZ_M.r;
+    var maxStake = Math.max.apply(null, items.map(function (p) { return p.stake; })) * 1.06;
+    var y = vizScale([0, maxStake], [VIZ_H - VIZ_M.b, VIZ_M.t]); y.range0 = VIZ_H - VIZ_M.b; y.range1 = VIZ_M.t;
+    var svg = vizSvgOpen();
+    svg += vizAxisY(y, VIZ_M.l, vizNiceTicks(0, maxStake, 5), function (v) { return fmtUSD(v); }, VIZ_W - VIZ_M.r);
+    svg += vizAxisX(x, VIZ_H - VIZ_M.b, [4, 5, 6, 7, 8, 9, 10], function (v) { return v.toFixed(0); });
+    svg += vizAxisLabel(VIZ_W / 2, VIZ_H - 4, "Note du pari");
+    items.forEach(function (p) {
+      var color = CONFIDENCE_COLORS[p.s.confidence] || "var(--tier-b-gray)";
+      var title = p.s.question + " — note " + p.s.noteAtSnapshot.toFixed(1) + " · " + fmtUSD(p.stake);
+      svg += vizPoint(x(p.s.noteAtSnapshot), y(p.stake), 4, color, p.s.isManual, title);
+    });
+    svg += "</svg>";
+    el.innerHTML = '<div class="chart-box">' + collapseHeaderHtml(store.ids.noteStakeToggle, "Note × Mise engagée") + svg +
+      tierLegendHtml() + (manualExcluded ? '<div class="chart-title-note">' + manualExcluded + ' pari(s) manuel(s) exclu(s) — pas de note calculée.</div>' : '') +
+      '</div>';
+  }
+  function tierLegendHtml() {
+    return vizMiniLegend(CONFIDENCE_TIERS.map(function (t) { return { color: CONFIDENCE_COLORS[t], label: t }; }));
+  }
+  function clamp01(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  // Toggle buttons for these 4 charts share the same .snap-toggle-bar and
+  // button-label convention as tier/note/dist/stats (syncSnapToggleLabel),
+  // but deliberately diverge on HOW collapse is implemented: those four
+  // always build their full content and hide it with a CSS class, since
+  // it's cheap aggregation either way. A box plot/violin does a KDE and a
+  // scatter walks every item building SVG markup — skipping that work
+  // entirely while collapsed (rather than building and hiding it) is a
+  // real, free saving with an identical result once expanded, since the
+  // toggle click re-renders anyway.
+  function collapseHeaderHtml(toggleId, title) { return '<div class="tier-wr-title">' + esc(title) + '</div>'; }
+  function collapsedPanelHtml(toggleId) { return ""; }
+
   function computeTierWinrates(list, store) {
     var byTier = {};
     CONFIDENCE_TIERS.forEach(function (t) { byTier[t] = { decided: 0, win: 0, items: [] }; });
@@ -4711,6 +5003,14 @@
     var decided = decidedFiltered.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
     var cum = 0;
     var series = [];
+    // Same running total, kept per-tier instead of one global sum — only
+    // built/used when pnlChartSplitByTier is on (see below), computed
+    // alongside the normal single-line series rather than as a second pass
+    // over `decided` so both stay trivially in sync with whatever
+    // cote/note/période filters are active.
+    var cumByTier = {};
+    var seriesByTier = {};
+    CONFIDENCE_TIERS.forEach(function (t) { cumByTier[t] = 0; seriesByTier[t] = []; });
     decided.forEach(function (snap) {
       var pnl = hypotheticalFlatPnl(snap, store.stakeFor(snap));
       if (pnl == null) return;
@@ -4726,6 +5026,10 @@
       // flashy win/loss read at a glance.
       var won = snap.leaderName === snap.winningSide;
       series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
+      if (snap.confidence && seriesByTier[snap.confidence]) {
+        cumByTier[snap.confidence] += pnl;
+        seriesByTier[snap.confidence].push({ date: new Date(snap.savedAt), value: cumByTier[snap.confidence], delta: pnl, win: won, note: snap.noteAtSnapshot });
+      }
     });
     var filterNote = st.tierCardFilter.length ? ' — <b>' + esc(st.tierCardFilter.join(", ")) + '</b> uniquement' : '';
     var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
@@ -4746,11 +5050,15 @@
     // the DOM at once (hidden, not removed, when their tab isn't active), so
     // a bare id would let getElementById silently grab the wrong store's select.
     var idp = store.name + "-";
+    // Splitting by tier and filtering to one tier are the same idea twice —
+    // the Confiance select is disabled (not hidden — its current value stays
+    // visible) while split mode is on, rather than letting them fight.
     var controlsHtml = '<div class="pnl-chart-filters">' +
       '<label>Cote <select id="' + idp + 'pnlChartOddsSelect">' + oddsOptionsHtml + '</select></label>' +
-      '<label>Confiance <select id="' + idp + 'pnlChartTierSelect">' + tierOptionsHtml + '</select></label>' +
+      '<label>Confiance <select id="' + idp + 'pnlChartTierSelect"' + (st.pnlChartSplitByTier ? " disabled" : "") + '>' + tierOptionsHtml + '</select></label>' +
       '<label>Note <select id="' + idp + 'pnlChartNoteSelect">' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
+      '<label class="pnl-chart-split-toggle" title="Une courbe cumulée par palier de confiance (S/A+/A/B) au lieu d\'une seule courbe globale"><input type="checkbox" id="' + idp + 'pnlChartSplitTier"' + (st.pnlChartSplitByTier ? " checked" : "") + ' /> Diviser par confiance</label>' +
     '</div>';
     // Realized PnL / avg ROI for the exact subset the 4 selects above
     // currently resolve to — same cumulative total already plotted
@@ -4777,12 +5085,27 @@
       wirePnlChartFilterControls(cardsList, store);
       return;
     }
-    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' +
-      headerHtml + controlsHtml +
-      buildHistoryChartSvg(series) + '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div></div>';
+    var chartHtml, hintHtml;
+    if (st.pnlChartSplitByTier) {
+      chartHtml = buildHistoryChartByTierSvg(seriesByTier) + tierLegendHtml();
+      hintHtml = "";
+    } else {
+      chartHtml = buildHistoryChartSvg(series);
+      hintHtml = '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div>';
+    }
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + '</div>';
     wirePnlChartFilterControls(cardsList, store);
     var box = document.getElementById(boxId);
-    if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box, store); }
+    // The split-by-tier view has no per-point data-id (4 overlapping lines,
+    // no single "the" snapshot to jump to for a given dot) — wiring click
+    // navigation there would just silently find nothing, so it's skipped
+    // outright rather than calling it to no effect. The tooltip still
+    // works either way — it only needs the data-* attributes stamped on
+    // .chart-pt, same as the single-line chart.
+    if (box) {
+      wireHistoryChartTooltip(box);
+      if (!st.pnlChartSplitByTier) wireSnapPnlChartClicks(box, store);
+    }
   }
   // Re-attached on every render (the selects are rebuilt from scratch each
   // time, same as everything else in this box) — plain `change` listeners,
@@ -4811,6 +5134,15 @@
     });
     if (timeSelect) timeSelect.addEventListener("change", function () {
       store.state.pnlChartDays = timeSelect.value ? Number(timeSelect.value) : null;
+      renderSnapPnlChart(cardsList, store);
+    });
+    var splitTierCheckbox = document.getElementById(idp + "pnlChartSplitTier");
+    if (splitTierCheckbox) splitTierCheckbox.addEventListener("change", function () {
+      store.state.pnlChartSplitByTier = splitTierCheckbox.checked;
+      // Splitting by tier while also filtered to one tier would just draw
+      // that one line — clear the (now-disabled) Confiance filter so
+      // turning split mode on always shows all of them.
+      if (splitTierCheckbox.checked) store.state.pnlChartTierFilter = null;
       renderSnapPnlChart(cardsList, store);
     });
   }
@@ -5296,6 +5628,10 @@
     renderSnapPnlChart(cardsList, store);
     renderSnapDistribution(list, store);
     renderSnapStats(list, store);
+    renderNoteRoiScatter(list, store);
+    renderTierBoxplot(list, store);
+    renderNoteViolin(list, store);
+    renderNoteStakeScatter(list, store);
     if (!cardsList.length) {
       store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
         ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
@@ -6019,6 +6355,62 @@
         yLabels + xLabels + points + extremaLabels +
       '</svg>';
   }
+  // "Diviser par confiance" variant of the chart above — up to 4 cumulative
+  // lines (one per CONFIDENCE_TIERS entry that has any decided bets), each
+  // its own independent running total, sharing one $ axis and a REAL date
+  // axis (not the index-based x() the single-line chart uses — with 4
+  // series of different lengths, index position no longer means the same
+  // date across lines, so this maps x by actual timestamp instead).
+  // Deliberately simpler than buildHistoryChartSvg: no click-to-navigate
+  // (no single snapshot "belongs" to a spot where 4 lines can overlap), no
+  // extremum callouts, no per-line area fill (4 overlapping fills would
+  // just muddy each other) — just clean lines plus the same hoverable
+  // .chart-pt dots and tooltip the single-line chart already uses.
+  function buildHistoryChartByTierSvg(seriesByTier) {
+    var tiers = CONFIDENCE_TIERS.filter(function (t) { return seriesByTier[t] && seriesByTier[t].length; });
+    if (!tiers.length) return "";
+    var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var allPts = [];
+    tiers.forEach(function (t) { allPts = allPts.concat(seriesByTier[t]); });
+    var dates = allPts.map(function (p) { return p.date.getTime(); });
+    var minDate = Math.min.apply(null, dates), maxDate = Math.max.apply(null, dates);
+    var values = allPts.map(function (p) { return p.value; }).concat([0]);
+    var minV = Math.min.apply(null, values), maxV = Math.max.apply(null, values);
+    if (minV === maxV) { minV -= 1; maxV += 1; }
+    var vRange = maxV - minV;
+    function x(t) { return padL + (maxDate === minDate ? innerW / 2 : (t - minDate) / (maxDate - minDate) * innerW); }
+    function y(v) { return padT + innerH - (v - minV) / vRange * innerH; }
+    var zeroY = y(0);
+    var zeroLine = (minV < 0 && maxV > 0)
+      ? '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>'
+      : "";
+    var xLabelCount = 6;
+    var xLabels = "";
+    for (var li = 0; li < xLabelCount; li++) {
+      var t = minDate + (maxDate - minDate) * (li / (xLabelCount - 1 || 1));
+      xLabels += '<text x="' + x(t).toFixed(2) + '" y="' + (H - 6) + '" font-size="10" fill="var(--text-dim)" text-anchor="middle">' + fmtDateShort(new Date(t)) + '</text>';
+    }
+    var yLabels =
+      '<text x="' + (padL - 8) + '" y="' + (y(maxV) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(maxV) + '</text>' +
+      '<text x="' + (padL - 8) + '" y="' + (y(minV) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(minV) + '</text>';
+    var linesHtml = "", pointsHtml = "", endLabelsHtml = "";
+    tiers.forEach(function (t) {
+      var color = CONFIDENCE_COLORS[t];
+      var pts = seriesByTier[t];
+      var linePts = pts.map(function (p) { return { x: x(p.date.getTime()), y: y(p.value) }; });
+      if (linePts.length > 1) linesHtml += '<path d="' + smoothPathD(linePts) + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round"/>';
+      pts.forEach(function (p, i) {
+        pointsHtml += '<circle class="chart-pt" cx="' + linePts[i].x.toFixed(2) + '" cy="' + linePts[i].y.toFixed(2) + '" r="2.6" fill="' + color + '" stroke="var(--panel)" stroke-width="1.5" ' +
+          'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '" data-delta="' + esc(fmtUSDSigned(p.delta)) + '" data-win="' + (p.win ? "1" : "0") + '"' + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + '></circle>';
+      });
+      var last = linePts[linePts.length - 1];
+      endLabelsHtml += '<text x="' + (last.x + 4).toFixed(2) + '" y="' + (last.y - 6).toFixed(2) + '" font-size="9.5" font-weight="700" fill="' + color + '">' + esc(t) + '</text>';
+    });
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+        zeroLine + linesHtml + yLabels + xLabels + pointsHtml + endLabelsHtml +
+      '</svg>';
+  }
 
   function wireHistoryChartTooltip(box) {
     var tip = document.createElement("div");
@@ -6577,6 +6969,34 @@
       var noteToggleStore = resolveStoreFromEl(noteWinrateToggleBtn);
       noteToggleStore.state.noteWinrateCollapsed = !noteToggleStore.state.noteWinrateCollapsed;
       renderNoteWinrate(noteToggleStore.load(), noteToggleStore);
+      return;
+    }
+    var noteRoiToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='noteroi']") : null;
+    if (noteRoiToggleBtn) {
+      var noteRoiStore = resolveStoreFromEl(noteRoiToggleBtn);
+      noteRoiStore.state.noteRoiCollapsed = !noteRoiStore.state.noteRoiCollapsed;
+      renderNoteRoiScatter(noteRoiStore.load(), noteRoiStore);
+      return;
+    }
+    var tierBoxToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='tierbox']") : null;
+    if (tierBoxToggleBtn) {
+      var tierBoxStore = resolveStoreFromEl(tierBoxToggleBtn);
+      tierBoxStore.state.tierBoxCollapsed = !tierBoxStore.state.tierBoxCollapsed;
+      renderTierBoxplot(tierBoxStore.load(), tierBoxStore);
+      return;
+    }
+    var noteViolinToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='noteviolin']") : null;
+    if (noteViolinToggleBtn) {
+      var noteViolinStore = resolveStoreFromEl(noteViolinToggleBtn);
+      noteViolinStore.state.noteViolinCollapsed = !noteViolinStore.state.noteViolinCollapsed;
+      renderNoteViolin(noteViolinStore.load(), noteViolinStore);
+      return;
+    }
+    var noteStakeToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='notestake']") : null;
+    if (noteStakeToggleBtn) {
+      var noteStakeStore = resolveStoreFromEl(noteStakeToggleBtn);
+      noteStakeStore.state.noteStakeCollapsed = !noteStakeStore.state.noteStakeCollapsed;
+      renderNoteStakeScatter(noteStakeStore.load(), noteStakeStore);
       return;
     }
     var distCell = e.target.closest ? e.target.closest(".snap-dist-cell") : null;
