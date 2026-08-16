@@ -1817,7 +1817,8 @@
     { name: "supra", platform: "polymarket", address: "0x57cd939930fd119067ca9dc42b22b3e15708a0fb", weight: 7.5 },
     { name: "frib", platform: "polymarket", address: "0x6f3e7f25baa7d2d49e15e2d2957ff3dec62cbcf8", weight: 6 },
     { name: "hvab", platform: "polymarket", address: "0x8546a601f7c7cc3dae7141f20b0e09e42bbf35b8", weight: 8 },
-    { name: "yesmate", platform: "polymarket", address: "0x5d7639ed5fd3c5ebf0fc69d548e1046acd0f9168", weight: 5.5 }
+    { name: "yesmate", platform: "polymarket", address: "0x5d7639ed5fd3c5ebf0fc69d548e1046acd0f9168", weight: 5.5 },
+    { name: "bomber", platform: "polymarket", address: "0xd776f0a066fd3014ecfac89cfd414440982bffeb", weight: 6 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -6863,7 +6864,21 @@
     { q: "Fluminense FC vs. CS Independiente Rivadavia: O/U 2.5", before: 5.2, after: 7.7 },
     { q: "Will FC Dallas win on 2026-08-12?", before: 6.0, after: 7.5 }
   ];
+  // Exact, permanent corrections keyed by the immutable snapshot id — unlike
+  // NOTE_OVERRIDES above (matched by recomputed-value proximity), these
+  // always win regardless of how the underlying formula drifts over time.
+  // That drift is real, not hypothetical: NOTE_OVERRIDES' entry for "Will
+  // CD Riestra win on 2026-08-08?" expects a recomputed value near 4.5
+  // before applying its 7.5 correction, but the hedging-consensus fix
+  // (2026-08-16) moved that snapshot's raw score to ~7.3 — the override
+  // silently stopped firing and nobody noticed until now. New one-off
+  // corrections belong here, not in NOTE_OVERRIDES.
+  var NOTE_ID_OVERRIDES = {
+    "ms0y8i3ij68ade": 6.5, // Will Inter Miami CF win on 2026-07-25?
+    "ms1stzcjqhr87w": 6.8  // Will Shandong Taishan FC win on 2026-07-26?
+  };
   function applyNoteOverride(snap, previousNote) {
+    if (Object.prototype.hasOwnProperty.call(NOTE_ID_OVERRIDES, snap.id)) return NOTE_ID_OVERRIDES[snap.id];
     if (previousNote == null) return snap.noteAtSnapshot;
     var match = NOTE_OVERRIDES.find(function (o) {
       return o.q === snap.question && Math.abs(o.before - previousNote) < 0.15;
