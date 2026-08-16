@@ -3927,7 +3927,15 @@
   var OTHER_SIDE_SENTINEL = "__OTHER_SIDE__";
 
   function loadSnapshotsRaw() {
-    try { return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
+    var list;
+    try { list = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
+    // Self-heals dashboard/PnL numbers on every read (see normalizeSnapshotNumbers)
+    // instead of only when "Mettre à jour le style" is clicked — otherwise a
+    // sync pulling an un-migrated copy back down from the server (or just a
+    // fresh page load before the button's ever been pressed) silently
+    // resurrects the old wrong totals every time.
+    list.forEach(normalizeSnapshotNumbers);
+    return list;
   }
   // The default reader everywhere except the trash view, the export button,
   // and op-application (all three need the trashed ones too) — trashed
@@ -3947,7 +3955,12 @@
   // queue, no op replay — a position is mutated and saved in one step.
   var POSITIONS_KEY = "vtPositions";
   function loadPositionsRaw() {
-    try { return JSON.parse(localStorage.getItem(POSITIONS_KEY) || "[]"); } catch (e) { return []; }
+    var list;
+    try { list = JSON.parse(localStorage.getItem(POSITIONS_KEY) || "[]"); } catch (e) { return []; }
+    // Same self-healing pass as loadSnapshotsRaw — a position cloned from an
+    // un-migrated snapshot inherited the same stale numbers.
+    list.forEach(normalizeSnapshotNumbers);
+    return list;
   }
   function loadPositions() {
     return loadPositionsRaw().filter(function (s) { return !s.deletedAt; });
@@ -6210,9 +6223,7 @@
       // rebuild the restyle tool uses, so the markup stays current.
       if (cotePrice != null && cotePrice !== srcSnap.leaderPriceAtSnapshot) {
         pos.leaderPriceAtSnapshot = cotePrice;
-        var tmp = document.createElement("div");
-        tmp.innerHTML = pos.cardHtml;
-        var rebuilt = rebuildFullSnapshotCardHtml(pos, tmp);
+        var rebuilt = rebuildFullSnapshotCardHtml(pos);
         if (rebuilt != null) pos.cardHtml = rebuilt;
       }
       savePositionsToStorage([pos].concat(loadPositionsRaw()));
@@ -6579,31 +6590,27 @@
     });
     return match ? match.after : snap.noteAtSnapshot;
   }
-  // Full rebuild, not a patch — earlier attempts tried to detect and patch
-  // whichever markup era a snapshot happened to freeze, but that kept
-  // missing structural variants (old .vt-side-grid two-column layout, old
-  // "Traders" continuous bar instead of the current segmented Consensus
-  // gauge, blank pill cells, dust trades never filtered…). This instead
-  // discards the frozen HTML entirely and regenerates the whole card from
-  // the snapshot's own structured fields using TODAY's exact markup, the
-  // same way every era ultimately should have looked. oldTmp (the
-  // about-to-be-discarded frozen HTML) is only consulted once, as a last
-  // resort to recover a missing price before it's gone for good.
-  function rebuildFullSnapshotCardHtml(snap, oldTmp) {
+  // The numeric half of a full rebuild (dust-filter sides, recompute every
+  // aggregate, recompute the note) — WITHOUT touching cardHtml. Pulled out
+  // on its own so it can run automatically on every load (see
+  // loadSnapshotsRaw/loadPositionsRaw), not just when "Mettre à jour le
+  // style" is clicked: dust trades and a stale noteAtSnapshot skew the
+  // dashboard's PnL total even though nothing about that looks broken
+  // visually, so this can't wait for a manual migration step. Mutates and
+  // returns snap; a snap that's now empty after dust-filtering (every
+  // position was dust) is left untouched rather than nulled out — the
+  // caller here (rebuildFullSnapshotCardHtml) still needs to bail in that
+  // case, callers that just want fresh numbers don't.
+  function normalizeSnapshotNumbers(snap) {
+    if (!snap.sides || !snap.sides.length) return snap;
     var previousNote = snap.noteAtSnapshot;
-    // Dust filter — mirrors the live MIN_TRADER_STAKE floor, which frozen
-    // snapshots from before that filter existed never had applied. Also
-    // recomputes every aggregate (side/total trader counts and stakes,
-    // traderNames) from the filtered set so nothing downstream is still
-    // secretly counting a $1.25 position.
-    var sides = (snap.sides || []).map(function (side) {
+    var sides = snap.sides.map(function (side) {
       var traders = (side.traders || []).filter(function (t) { return t.stake >= MIN_TRADER_STAKE; });
       var stake = traders.reduce(function (s, t) { return s + t.stake; }, 0);
       return { name: side.name, traderCount: traders.length, stake: stake, traders: traders };
     }).filter(function (side) { return side.traderCount > 0; });
+    if (!sides.length) return snap;
     sides.sort(function (a, b) { return b.traderCount - a.traderCount || b.stake - a.stake; });
-    if (!sides.length) return null;
-
     var traderNames = [];
     sides.forEach(function (m) { m.traders.forEach(function (t) { if (traderNames.indexOf(t.trader) === -1) traderNames.push(t.trader); }); });
     snap.sides = sides;
@@ -6611,14 +6618,30 @@
     snap.totalStake = sides.reduce(function (s, m) { return s + m.stake; }, 0);
     snap.traderNames = traderNames;
     snap.leaderName = sides[0].name;
-
-    if (snap.leaderPriceAtSnapshot == null && oldTmp) {
-      snap.leaderPriceAtSnapshot = extractPriceFromDetail(oldTmp, snap.leaderName);
+    if (snap.leaderPriceAtSnapshot == null && snap.cardHtml) {
+      var tmp = document.createElement("div");
+      tmp.innerHTML = snap.cardHtml;
+      snap.leaderPriceAtSnapshot = extractPriceFromDetail(tmp, snap.leaderName);
     }
-    // Always recomputed against the now-cleaned data (see comment on
-    // scoreFromSnapshotSides above) — not just filled in when missing.
     snap.noteAtSnapshot = scoreFromSnapshotSides(snap);
     snap.noteAtSnapshot = applyNoteOverride(snap, previousNote);
+    return snap;
+  }
+  // Full rebuild, not a patch — earlier attempts tried to detect and patch
+  // whichever markup era a snapshot happened to freeze, but that kept
+  // missing structural variants (old .vt-side-grid two-column layout, old
+  // "Traders" continuous bar instead of the current segmented Consensus
+  // gauge, blank pill cells, dust trades never filtered…). This instead
+  // discards the frozen HTML entirely and regenerates the whole card from
+  // the snapshot's own structured fields using TODAY's exact markup, the
+  // same way every era ultimately should have looked. The old frozen HTML
+  // (still intact in snap.cardHtml at this point, not yet overwritten) is
+  // consulted once, as a last resort to recover a missing price before
+  // it's gone for good — handled inside normalizeSnapshotNumbers.
+  function rebuildFullSnapshotCardHtml(snap) {
+    normalizeSnapshotNumbers(snap);
+    if (!snap.sides || !snap.sides.length) return null;
+    var sides = snap.sides;
 
     var distinctColors = resolveDistinctSideColors(sides);
 
@@ -6720,9 +6743,7 @@
     var rebuiltCount = 0, skipped = 0;
     list.forEach(function (snap) {
       if (!snap.cardHtml || !snap.sides || !snap.sides.length) { skipped++; return; }
-      var oldTmp = document.createElement("div");
-      oldTmp.innerHTML = snap.cardHtml;
-      var newHtml = rebuildFullSnapshotCardHtml(snap, oldTmp);
+      var newHtml = rebuildFullSnapshotCardHtml(snap);
       if (newHtml == null) { skipped++; return; }
       snap.cardHtml = newHtml;
       rebuiltCount++;
