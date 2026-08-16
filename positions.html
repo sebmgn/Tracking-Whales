@@ -1714,7 +1714,6 @@
   var TRADERS = [
     { name: "predict847", platform: "predict", address: "0x21f861D43B2E2E05F9974D1a27d0c8959e59a1F8", weight: 7.5 },
     { name: "JJJJ", platform: "predict", address: "0x8Ad2C531324567a4008D9e2BCcC59CC5C8fcFC25", weight: 9 },
-    { name: "WsCz", platform: "predict", address: "0x51925155f83E155592825b96AC5887505Af0aCD8", weight: 9 },
     { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496", weight: 8 },
     { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE", weight: 6 },
     { name: "meister", platform: "polymarket", address: "0xdc4f58a48ed4467743609fdce11eea483c759804", weight: 6.5 },
@@ -1759,7 +1758,10 @@
     { name: "sulumos", platform: "polymarket", address: "0x9db82de5a71ae539bc82f4d9ac3a007c7d742eff", weight: 7 },
     { name: "mk756", platform: "polymarket", address: "0x15096a93fb86ea8a782574536ce3bab88e6cca95", weight: 6 },
     { name: "itdo", platform: "polymarket", address: "0xc0fd3818a930ed9404e0ac6019939ea97ff5a0a9", weight: 6 },
-    { name: "supra", platform: "polymarket", address: "0x57cd939930fd119067ca9dc42b22b3e15708a0fb", weight: 7.5 }
+    { name: "supra", platform: "polymarket", address: "0x57cd939930fd119067ca9dc42b22b3e15708a0fb", weight: 7.5 },
+    { name: "frib", platform: "polymarket", address: "0x6f3e7f25baa7d2d49e15e2d2957ff3dec62cbcf8", weight: 6 },
+    { name: "hvab", platform: "polymarket", address: "0x8546a601f7c7cc3dae7141f20b0e09e42bbf35b8", weight: 8 },
+    { name: "yesmate", platform: "polymarket", address: "0x5d7639ed5fd3c5ebf0fc69d548e1046acd0f9168", weight: 5.5 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -2020,7 +2022,7 @@
   // array's length is the reliableAgreement factor's normalization ceiling
   // (SCORE_RANGES.reliableAgreement); leaving an untracked name in it would
   // have made that max permanently unreachable instead of shrinking to match.
-  var RELIABLE_TRADERS = ["JJJJ", "WsCz", "predict847", "swisstony", "RN1", "VeryLucky888"];
+  var RELIABLE_TRADERS = ["JJJJ", "predict847", "swisstony", "RN1", "VeryLucky888"];
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
   var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart, or dragging the slider (kept in sync both ways)
