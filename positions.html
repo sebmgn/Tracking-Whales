@@ -5035,7 +5035,15 @@
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
     // Trashed items never feed the dashboard/charts/card list below — only
     // the Corbeille view (above) shows them, until restored.
-    var list = fullList.filter(function (s) { return !s.deletedAt; });
+    // Explicit sort, most recent first — nothing upstream guarantees this
+    // order. Locally-added items happen to arrive newest-first (prepended
+    // in applyOpToList's "add" case), but a synced list from AWS replaces
+    // the array wholesale with the server's own scan order (effectively
+    // oldest-first, tracking DynamoDB's sort key), so without this the
+    // display order would depend on whether the last render came from a
+    // local edit or a sync.
+    var list = fullList.filter(function (s) { return !s.deletedAt; })
+      .sort(function (a, b) { return new Date(b.savedAt) - new Date(a.savedAt); });
     // Dashboard/tier-gauge/recap table always reflect every (non-trashed)
     // item — only the card list below is narrowed by tierCardFilter /
     // snapDistCellFilter, otherwise clicking a tier badge or a distribution
