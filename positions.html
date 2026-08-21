@@ -530,7 +530,7 @@
      is its OWN class, never combined with .vt-snap-btn on the same
      element, or the delegated click handler's .vt-snap-btn check (which
      runs first and returns early) would swallow their clicks too. */
-  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn {
+  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn, .vt-sibling-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     color: var(--gold);
@@ -552,6 +552,34 @@
   .vt-follow-btn:hover { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 45%, transparent); }
   .vt-trash-btn { color: var(--text-dim); }
   .vt-trash-btn:hover { color: var(--red); border-color: var(--red); box-shadow: 0 0 8px color-mix(in srgb, var(--red) 40%, transparent); }
+  /* Same family, accent instead of gold/red — this one isn't a verdict on
+     the trade (like snapshot/follow/trash), it's a lookup action. */
+  .vt-sibling-btn { color: var(--text-dim); }
+  .vt-sibling-btn:hover, .vt-sibling-btn.active { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .vt-sibling-panel {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--panel-border);
+  }
+  .vt-sibling-panel-title { font-size: 11.5px; color: var(--text-dim); margin-bottom: 10px; }
+  .vt-sibling-market {
+    background: var(--row-hover);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .vt-sibling-market:last-child { margin-bottom: 0; }
+  .vt-sibling-market-question { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+  .vt-sibling-overlap-warn {
+    font-size: 12px; font-weight: 700; color: var(--red);
+    background: color-mix(in srgb, var(--red) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--red) 30%, transparent);
+    border-radius: var(--radius-sm);
+    padding: 5px 9px;
+    margin-bottom: 8px;
+  }
+  .vt-sibling-overlap-ok { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
   .vt-trash-btn.active { color: var(--accent); } /* already trashed — showing ↺ Restaurer, not the destructive action */
   .vt-unit-detail { margin-top: 4px; }
   /* Compact per-camp summary replacing the old side-by-side blocks' own
@@ -2125,6 +2153,7 @@
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
+  var siblingPanelOpen = {}; // unit stableKey -> bool — "⇄" toggle, see findSiblingUnits
   // Every bit of mutable UI state that used to be its own bare module-level
   // var (one collapsed-flag/filter/sort per concept) now lives per-store
   // instead, so Mes Snapshots and Mes Positions each keep their own filters/
@@ -3132,6 +3161,44 @@
     var m = slug.match(/^(.*?-\d{4}-\d{2}-\d{2})/);
     return m ? m[1] : null;
   }
+  // ---------- same-match sibling markets (arbitrage/hedge check) ----------
+  // A trader who looks "confident" on one side of a match can really just be
+  // hedging across two related markets for the SAME real-world fixture —
+  // e.g. betting No on "Will Brentford win" AND No on "Will Fulham win" is a
+  // bet on a draw, not genuine conviction either team loses, and it quietly
+  // inflates the "9 traders agree" read on both cards. matchKey (see
+  // matchKeyFromSlug just above) already groups every sub-market of one
+  // confrontation together for cross-platform linking — reused here to
+  // surface siblings and flag any trader who shows up on more than one,
+  // right on the card, instead of requiring a manual cross-check.
+  // unitByMarketKey (rebuilt every refresh in renderAll) already covers
+  // every market with ANY tracked position, not just the ones passing
+  // Value Trades' own display filters — a thin sibling market still counts
+  // as a real hedge even if it wouldn't qualify as its own Value Trades card.
+  function findSiblingUnits(u) {
+    if (!u.matchKey) return [];
+    var ownKeys = {};
+    u.members.forEach(function (m) { ownKeys[m.key] = true; });
+    var seen = {};
+    var siblings = [];
+    Object.keys(unitByMarketKey).forEach(function (mk) {
+      if (ownKeys[mk]) return; // a member of THIS unit, not a sibling
+      var other = unitByMarketKey[mk];
+      if (other.matchKey !== u.matchKey) return;
+      var otherStableKey = unitStableKey(other);
+      if (seen[otherStableKey]) return;
+      seen[otherStableKey] = true;
+      siblings.push(other);
+    });
+    return siblings;
+  }
+  function unitTraderNameSet(u) {
+    var names = {};
+    mergeUnitSides(u).forEach(function (m) {
+      m.items.forEach(function (it) { it.s.entries.forEach(function (e) { names[e.trader] = true; }); });
+    });
+    return names;
+  }
   // mise/price averaged across every linked platform item for one merged
   // side — used both for the leader badge and every row of the legend
   // below, so there's exactly one place this average gets computed.
@@ -3858,6 +3925,17 @@
     var followBtnHtml = '<button type="button" class="vt-follow-btn' + (isFollowed ? ' active' : '') + '" data-follow-key="' + esc(stableKey) + '" title="' + (isFollowed ? "Retirer des suivis" : "Ajouter aux suivis — reste visible même si le trade devient inéligible") + '">' + (isFollowed ? '⭐' : '☆') + '</button>';
     var isTrashed = !!trashedKeys[stableKey];
     var trashBtnHtml = '<button type="button" class="vt-trash-btn' + (isTrashed ? ' active' : '') + '" data-trash-key="' + esc(stableKey) + '" title="' + (isTrashed ? "Restaurer ce trade" : "Mettre ce trade à la corbeille") + '">' + (isTrashed ? '↺' : '🗑') + '</button>';
+    // "⇄" — only shown when a sibling market for this same fixture actually
+    // exists (a market with no matchKey, or none of its siblings tracked,
+    // gets nothing here rather than a button that would always come up
+    // empty). Toggling forces the card open too — the panel it reveals
+    // lives inside sideGridHtml (below, in .vt-detail), so a collapsed card
+    // would otherwise hide the very thing the click was for.
+    var siblingUnits = findSiblingUnits(u);
+    var isSiblingOpen = !!siblingPanelOpen[stableKey];
+    var siblingBtnHtml = siblingUnits.length
+      ? '<button type="button" class="vt-sibling-btn' + (isSiblingOpen ? ' active' : '') + '" data-sibling-key="' + esc(stableKey) + '" data-unit-key="' + esc(primary.key) + '" title="Voir les ' + siblingUnits.length + ' autre(s) marché(s) de ce même match — vérifier si des traders sont aussi positionnés en face (arbitrage/couverture)">⇄</button>'
+      : '';
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
     // Emoji + question live in ONE flex item (.vt-top-left), not two
     // siblings of .vt-top — .vt-top uses justify-content:space-between,
@@ -3944,7 +4022,7 @@
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + '</span>' +
         statsHtml +
-        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + trashBtnHtml + '</span>' +
+        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + siblingBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + trashBtnHtml + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
     // group) — sits on the card's real bottom row, in normal flow so it
@@ -3990,7 +4068,41 @@
         consensusHtml +
         '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegments + '</div></div>' +
       '</div>';
-    var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides, distinctColors) + renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors) + '</div>';
+    // Built only while actually toggled open — same reasoning as the 4
+    // analysis charts on Mes Snapshots: skip the work entirely when hidden,
+    // the toggle click re-renders anyway so nothing stays stale.
+    var siblingPanelHtml = "";
+    if (isSiblingOpen && siblingUnits.length) {
+      var ownTraderNames = unitTraderNameSet(u);
+      siblingPanelHtml = '<div class="vt-sibling-panel">' +
+        '<div class="vt-sibling-panel-title">⇄ Autre(s) marché(s) du même match — mêmes traders des deux côtés = probable couverture/arbitrage, pas une vraie conviction</div>' +
+        siblingUnits.map(function (su) {
+          var suMerged = mergeUnitSides(su);
+          var suColors = resolveDistinctSideColors(suMerged);
+          var suMaxStake = suMerged.reduce(function (max, m) {
+            return m.items.reduce(function (mx, it) {
+              return it.s.entries.reduce(function (mx2, e) { return e.stake > mx2 ? e.stake : mx2; }, mx);
+            }, max);
+          }, 0);
+          var overlap = [];
+          suMerged.forEach(function (m) {
+            m.items.forEach(function (it) {
+              it.s.entries.forEach(function (e) { if (ownTraderNames[e.trader] && overlap.indexOf(e.trader) === -1) overlap.push(e.trader); });
+            });
+          });
+          var overlapHtml = overlap.length
+            ? '<div class="vt-sibling-overlap-warn">⚠️ ' + overlap.length + ' trader(s) aussi présent(s) sur la carte principale : ' + overlap.map(esc).join(", ") + '</div>'
+            : '<div class="vt-sibling-overlap-ok">Aucun trader en commun avec la carte principale.</div>';
+          return '<div class="vt-sibling-market">' +
+            '<div class="vt-sibling-market-question">' + esc(su.members[0].question) + '</div>' +
+            overlapHtml +
+            renderSidesLegend(suMerged, suColors) +
+            renderMergedTraderRows(suMerged, suMaxStake, suColors) +
+          '</div>';
+        }).join("") +
+      '</div>';
+    }
+    var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides, distinctColors) + renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors) + siblingPanelHtml + '</div>';
     var bodyHtml = balanceHtml + bottomBarHtml + sideGridHtml;
 
     return {
@@ -7131,6 +7243,20 @@
       if (followedKeys[followKey]) delete followedKeys[followKey];
       else followedKeys[followKey] = Date.now();
       saveFollowedKeys();
+      renderValueTrades();
+      return;
+    }
+    var siblingBtn = e.target.closest ? e.target.closest(".vt-sibling-btn") : null;
+    if (siblingBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var siblingKey = siblingBtn.getAttribute("data-sibling-key");
+      var willOpen = !siblingPanelOpen[siblingKey];
+      if (willOpen) siblingPanelOpen[siblingKey] = true; else delete siblingPanelOpen[siblingKey];
+      // Force the card open too — the panel lives inside .vt-detail, so
+      // opening it while the card itself stays collapsed would hide the
+      // very thing this click was for.
+      if (willOpen) expandedValueTrades[siblingBtn.getAttribute("data-unit-key")] = true;
       renderValueTrades();
       return;
     }
