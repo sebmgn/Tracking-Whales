@@ -4277,17 +4277,44 @@
   // taken), and this function did exactly what it always had: treat the
   // server as authoritative and overwrite local with it. The server was a
   // brand new, empty table. Silent, total, unrecoverable data loss.
-  // Never again: before ever overwriting the local cache with what the
-  // server returned, diff it against what's on THIS device. Any local item
-  // missing from the server's list — and not something this device itself
-  // just deleted (that's what the queue is for) — gets pushed back up as
-  // an "add" instead of silently dropped. Worst case this resurrects an
-  // item another device genuinely hard-deleted (rare — the normal 🗑 is a
-  // soft trash, not a removal, and doesn't hit this path — real deletion
-  // only happens from inside Corbeille with its own confirm); that's an
-  // annoyance the user can just delete again. Silently erasing someone's
-  // data because your local queue happened to be empty is not a symmetric
-  // risk — one direction is recoverable, the other isn't.
+  // Patched same day: before ever overwriting local with what the server
+  // returned, diff it against what's on THIS device, and push back
+  // anything local-only instead of silently dropping it.
+  //
+  // 2026-08-21 correction: that patch turned out to actively undo real,
+  // deliberate deletions — not a rare edge case, a routine one. Once a
+  // snapshot is hard-deleted from Corbeille on device A, it vanishes from
+  // the server; the NEXT sync on ANY device that still had a stale local
+  // copy (device B, or even device A's own next periodic sync in another
+  // tab) reads that as "local has something the server doesn't", assumes
+  // it's unsynced new data, and pushes it right back — resurrecting
+  // exactly what the user just deleted, every time, on every device that
+  // hadn't caught up yet. The queue can't help distinguish the two cases
+  // either: by the time this runs the queue has always just been fully
+  // drained, so it's empty regardless of which situation this is.
+  // The real distinguishing signal isn't the item, it's the DEVICE: the
+  // 2026-08-16 scenario is only possible the very first time a device
+  // reconciles with the server at all (pre-sync-era local data it never
+  // got a chance to queue). Any device that has already completed one
+  // successful sync has nothing left to protect this way — from then on
+  // local should always end up a faithful mirror of server + this
+  // device's own still-queued ops, and a real deletion from elsewhere
+  // must be allowed to stick. hasEverSynced (below) makes that the actual
+  // gate instead of "is there a diff right now": true after this device's
+  // first successful reconciliation, or immediately if it already has
+  // local data when this code first runs (upgrading from before this flag
+  // existed) — only a device starting from truly nothing gets the
+  // one-time protection.
+  function hasEverSynced(store) {
+    try {
+      if (localStorage.getItem(store.everSyncedKey) === "1") return true;
+      if (store.loadRaw().length > 0) { markEverSynced(store); return true; }
+      return false;
+    } catch (e) { return false; }
+  }
+  function markEverSynced(store) {
+    try { localStorage.setItem(store.everSyncedKey, "1"); } catch (e) { /* just means the one-time protection may run again next time — harmless */ }
+  }
   async function syncNow(store) {
     if (syncInFlight[store.name]) return;
     syncInFlight[store.name] = true;
@@ -4309,24 +4336,27 @@
         saveSyncQueue(store, queue);
       }
       var remote = await fetchRemoteList(store);
-      var remoteIds = {};
-      remote.forEach(function (r) { remoteIds[r.id] = true; });
-      var localOnly = store.loadRaw().filter(function (s) { return !remoteIds[s.id]; });
-      if (localOnly.length) {
-        if (!hasSecret) {
-          // Can't push without a key — but MUST NOT overwrite local with a
-          // remote list that's missing real local data either. Leave local
-          // exactly as it is and surface it clearly instead of silently
-          // reconciling in the dangerous direction.
-          updateSyncStatus(store, "conflict");
-          return;
+      if (!hasEverSynced(store)) {
+        var remoteIds = {};
+        remote.forEach(function (r) { remoteIds[r.id] = true; });
+        var localOnly = store.loadRaw().filter(function (s) { return !remoteIds[s.id]; });
+        if (localOnly.length) {
+          if (!hasSecret) {
+            // Can't push without a key — but MUST NOT overwrite local with a
+            // remote list that's missing real local data either. Leave local
+            // exactly as it is and surface it clearly instead of silently
+            // reconciling in the dangerous direction.
+            updateSyncStatus(store, "conflict");
+            return;
+          }
+          for (var i = 0; i < localOnly.length; i++) {
+            await pushOp(store, { type: "add", id: localOnly[i].id, snapshot: localOnly[i] });
+          }
+          remote = await fetchRemoteList(store);
         }
-        for (var i = 0; i < localOnly.length; i++) {
-          await pushOp(store, { type: "add", id: localOnly[i].id, snapshot: localOnly[i] });
-        }
-        remote = await fetchRemoteList(store);
       }
       store.save(remote);
+      markEverSynced(store);
       updateSyncStatus(store, hasSecret ? "synced" : "readonly");
       renderStoreView(store);
     } catch (e) {
@@ -4570,7 +4600,7 @@
     dateLabelPrefix: "Sauvegardé le",
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment du snapshot"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
-    remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY,
+    remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY, everSyncedKey: "vtSnapshotsEverSynced",
     els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
       tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
       stats: snapStatsContent, list: snapshotsContent, syncStatus: snapSyncStatusEl,
@@ -4591,7 +4621,7 @@
     dateLabelPrefix: "Prise le",
     simSubtitle: function () { return "PnL basé sur la mise réellement choisie pour cette position, au prix du marché au moment du snapshot d'origine"; },
     cardHypLabel: function (stake) { return "Ta position (" + fmtUSD(stake) + ") : "; },
-    remotePath: "positions", queueKey: POSITIONS_QUEUE_KEY,
+    remotePath: "positions", queueKey: POSITIONS_QUEUE_KEY, everSyncedKey: "vtPositionsEverSynced",
     els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
       tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
       stats: posStatsContent, list: positionsContent, syncStatus: posSyncStatusEl,
