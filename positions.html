@@ -1401,6 +1401,24 @@
   .mini-legend-swatch { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
   .mini-legend-swatch.mini-legend-sq { border-radius: 2px; }
   .chart-title-note { font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: 6px; }
+  .archive-batch { margin-bottom: 16px; }
+  .archive-batch-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .archive-batch-header .dim { font-size: 12px; color: var(--text-dim); }
+  .archive-reactivate-btn { white-space: nowrap; }
+  .archive-details { margin-top: 10px; }
+  .archive-details summary { cursor: pointer; font-size: 12.5px; color: var(--accent); font-weight: 600; }
+  .archive-section-label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .03em; margin: 12px 0 4px; }
+  .archive-item-list { display: flex; flex-direction: column; gap: 4px; }
+  .archive-item-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 6px 10px; border-radius: var(--radius-sm);
+    background: var(--row-hover); font-size: 12px;
+  }
+  .archive-item-date { color: var(--text-dim); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+  .archive-item-question { flex: 1 1 220px; min-width: 0; }
+  .archive-item-leader { color: var(--text-dim); flex: 0 0 auto; }
+  .archive-item-meta { color: var(--text-dim); flex: 0 0 auto; }
+  .archive-item-result { flex: 0 0 auto; font-weight: 600; }
   .chart-tooltip {
     position: absolute;
     background: var(--text);
@@ -1606,6 +1624,7 @@
     <button class="tab-btn tab-btn-primary active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
     <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="stats-profiles" type="button">Statistiques profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
@@ -1669,6 +1688,7 @@
       <input type="file" id="snapImportInput" accept="application/json" style="display:none;">
       <button type="button" id="snapRestyleBtn" class="snap-sync-link" title="Applique le dégradé bleu-or cote/ROI aux anciens snapshots enregistrés avant son introduction — télécharge une sauvegarde automatiquement avant de toucher à quoi que ce soit">🎨 Mettre à jour le style</button>
       <button type="button" id="snapAddManualBtn" class="snap-sync-link" title="Enregistrer un pari pris en dehors des traders suivis — pas de note, juste titre/camp/cote/date/confiance">✍️ Pari manuel</button>
+      <button type="button" id="snapArchiveSeasonBtn" class="snap-sync-link" title="Déplace TOUS les snapshots et positions actuels vers Archives — télécharge une sauvegarde automatiquement, rien n'est supprimé, réactivable plus tard">🗄️ Archiver la saison</button>
       <button id="snapTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots mis à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
     </div>
     <div id="snapSyncSetup" class="snap-sync-setup" style="display:none;">
@@ -1757,6 +1777,14 @@
     <div id="posNoteStakeContent"></div>
     <div id="positionsContent" class="value-trades-box">
       <div class="empty-note">Aucune position pour l'instant — clique sur 🎯 Prendre position sur une carte dans Mes Snapshots pour l'enregistrer ici.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-archives">
+    <h2 class="section-title">Archives</h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Mes Snapshots / Mes Positions) plus tard, rien n'est jamais supprimé ici.</div>
+    <div id="archivesContent">
+      <div class="empty-note">Aucune archive pour l'instant.</div>
     </div>
   </div>
 
@@ -1931,6 +1959,8 @@
   var manualConfSelect = document.getElementById("manualConfSelect");
   var manualFormSave = document.getElementById("manualFormSave");
   var manualFormCancel = document.getElementById("manualFormCancel");
+  var snapArchiveSeasonBtn = document.getElementById("snapArchiveSeasonBtn");
+  var archivesContent = document.getElementById("archivesContent");
   var positionsContent = document.getElementById("positionsContent");
   var posCountEl = document.getElementById("posCount");
   var posStatsContent = document.getElementById("posStatsContent");
@@ -4554,6 +4584,153 @@
       noteViolinToggle: "posNoteViolinToggleBtn", noteStakeToggle: "posNoteStakeToggleBtn" },
     state: freshStoreState()
   };
+  // ---------- Archives (bulk "close out the season" move, reversible) ----------
+  // A season close-out is a different shape of operation than anything else
+  // in this file: it moves EVERY current snapshot and position (trashed
+  // ones included — loadRaw, not load) out of the live, synced stores in
+  // one go, rather than editing one item at a time. Kept local-only
+  // (unlike Snapshots/Positions themselves) — archived batches don't need
+  // cross-device sync, they're a closed history, not something edited day
+  // to day; the live data going forward stays fully synced as before.
+  // Stored as an array of batches (not one flat list) so archiving twice
+  // never merges two seasons together.
+  var ARCHIVE_KEY = "vtArchive";
+  function loadArchive() {
+    try { return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveArchive(list) {
+    try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
+  }
+  function downloadJsonBackup(obj, prefix) {
+    var blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = url;
+    a.download = prefix + "-" + stamp + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  // Read-only — an archived item is frozen history, not something you edit
+  // in place, so this deliberately skips every interactive affordance
+  // (side/confidence buttons, take-position, delete) the live cards have.
+  function archiveItemSummaryHtml(item) {
+    var d = new Date(item.savedAt);
+    var dateLabel = isNaN(d.getTime()) ? item.savedAt : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    var resultLabel = !item.winningSide ? '<span class="dim">⏳ En attente</span>'
+      : (item.leaderName === item.winningSide ? '<span class="pnl-pos">✅ Gagné</span>' : '<span class="pnl-neg">❌ Perdu</span>');
+    var noteLabel = item.isManual ? "✍️ Manuel" : (item.noteAtSnapshot != null ? "Note " + item.noteAtSnapshot.toFixed(1) : "");
+    var priceLabel = item.leaderPriceAtSnapshot != null ? fmtCents(item.leaderPriceAtSnapshot) : "";
+    return '<div class="archive-item-row">' +
+      '<span class="archive-item-date">' + esc(dateLabel) + '</span>' +
+      '<span class="archive-item-question">' + esc(item.question || "") + '</span>' +
+      '<span class="archive-item-leader">→ ' + esc(item.leaderName || "") + '</span>' +
+      (priceLabel ? '<span class="archive-item-meta">' + esc(priceLabel) + '</span>' : '') +
+      (noteLabel ? '<span class="archive-item-meta">' + esc(noteLabel) + '</span>' : '') +
+      '<span class="archive-item-result">' + resultLabel + '</span>' +
+    '</div>';
+  }
+  function renderArchives() {
+    var el = archivesContent;
+    if (!el) return;
+    var archive = loadArchive();
+    if (!archive.length) { el.innerHTML = '<div class="empty-note">Aucune archive pour l\'instant.</div>'; return; }
+    el.innerHTML = archive.map(function (batch) {
+      var d = new Date(batch.archivedAt);
+      var dateLabel = isNaN(d.getTime()) ? batch.archivedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      var snaps = batch.snapshots || [], poss = batch.positions || [];
+      var snapCards = snaps.map(archiveItemSummaryHtml).join("");
+      var posCards = poss.map(archiveItemSummaryHtml).join("");
+      return '<div class="chart-box archive-batch">' +
+        '<div class="archive-batch-header">' +
+          '<div><div class="tier-wr-title">' + esc(batch.label) + '</div>' +
+          '<span class="dim">Archivé le ' + esc(dateLabel) + ' — ' + snaps.length + ' snapshot(s), ' + poss.length + ' position(s)</span></div>' +
+          '<button type="button" class="snap-sync-link archive-reactivate-btn" data-batch-id="' + esc(batch.batchId) + '">↺ Réactiver ce lot</button>' +
+        '</div>' +
+        '<details class="archive-details"><summary>Voir le détail</summary>' +
+          (snapCards ? '<div class="archive-section-label">Snapshots</div><div class="archive-item-list">' + snapCards + '</div>' : '') +
+          (posCards ? '<div class="archive-section-label">Positions</div><div class="archive-item-list">' + posCards + '</div>' : '') +
+        '</details>' +
+      '</div>';
+    }).join("");
+  }
+  async function reactivateArchiveBatch(batchId) {
+    var archive = loadArchive();
+    var idx = archive.findIndex(function (b) { return b.batchId === batchId; });
+    if (idx === -1) return;
+    var batch = archive[idx];
+    if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro dans Mes Snapshots) — la réactivation doit aussi les renvoyer sur le serveur partagé, pas juste sur cet appareil."); return; }
+    var snaps = batch.snapshots || [], poss = batch.positions || [];
+    if (!confirm('Réactiver "' + batch.label + '" — ' + snaps.length + ' snapshot(s) et ' + poss.length + ' position(s) vont revenir dans Mes Snapshots / Mes Positions.\n\nContinuer ?')) return;
+    var btn = archivesContent.querySelector('.archive-reactivate-btn[data-batch-id="' + batchId + '"]');
+    if (btn) { btn.disabled = true; btn.textContent = "↺ Réactivation…"; }
+    try {
+      for (var i = 0; i < snaps.length; i++) { await pushOp(SNAPSHOTS_STORE, { type: "add", id: snaps[i].id, snapshot: snaps[i] }); }
+      for (var j = 0; j < poss.length; j++) { await pushOp(POSITIONS_STORE, { type: "add", id: poss[j].id, snapshot: poss[j] }); }
+    } catch (e) {
+      console.error("Reactivate archive error", e);
+      alert("Erreur pendant la réactivation (" + e.message + ") — le lot reste dans Archives, relance depuis là pour réessayer. Ce qui a déjà été renvoyé au serveur y reste (rejouer l'opération ne duplique rien, même id).");
+      if (btn) { btn.disabled = false; btn.textContent = "↺ Réactiver ce lot"; }
+      return;
+    }
+    archive.splice(idx, 1);
+    saveArchive(archive);
+    await syncNow(SNAPSHOTS_STORE);
+    await syncNow(POSITIONS_STORE);
+    renderArchives();
+    alert("Réactivé — " + snaps.length + " snapshot(s) et " + poss.length + " position(s) sont de retour.");
+  }
+  archivesContent.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest(".archive-reactivate-btn") : null;
+    if (!btn) return;
+    reactivateArchiveBatch(btn.getAttribute("data-batch-id"));
+  });
+  snapArchiveSeasonBtn.addEventListener("click", async function () {
+    var snaps = loadSnapshotsRaw(), poss = loadPositionsRaw();
+    if (!snaps.length && !poss.length) { alert("Rien à archiver — Mes Snapshots et Mes Positions sont déjà vides."); return; }
+    if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro) — l'archivage doit aussi les supprimer du serveur partagé, pas juste sur cet appareil."); return; }
+    if (!confirm(snaps.length + " snapshot(s) et " + poss.length + " position(s) vont être déplacés vers Archives — rien n'est supprimé, juste rangé, et réactivable plus tard depuis là. Une sauvegarde JSON va être téléchargée automatiquement d'abord.\n\nContinuer ?")) return;
+    downloadJsonBackup({ snapshots: snaps, positions: poss }, "archive-backup");
+    var batch = {
+      batchId: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      label: "Avant saison 2026/2027 (archivé le " + new Date().toLocaleDateString("fr-FR") + ")",
+      archivedAt: new Date().toISOString(),
+      snapshots: snaps, positions: poss
+    };
+    var archive = loadArchive();
+    archive.unshift(batch);
+    saveArchive(archive);
+    saveSnapshotsToStorage([]);
+    savePositionsToStorage([]);
+    saveSyncQueue(SNAPSHOTS_STORE, []);
+    saveSyncQueue(POSITIONS_STORE, []);
+    snapArchiveSeasonBtn.disabled = true;
+    snapArchiveSeasonBtn.textContent = "🗄️ Archivage en cours…";
+    var serverCleanupFailed = false;
+    try {
+      for (var i = 0; i < snaps.length; i++) { await pushOp(SNAPSHOTS_STORE, { type: "delete", id: snaps[i].id }); }
+      for (var j = 0; j < poss.length; j++) { await pushOp(POSITIONS_STORE, { type: "delete", id: poss[j].id }); }
+    } catch (e) {
+      serverCleanupFailed = true;
+      console.error("Archive server cleanup error", e);
+      alert("Archivé localement (et sauvegardé en JSON), mais la suppression côté serveur a été interrompue (" + e.message + "). Reste calme — rien n'est perdu, le lot est dans Archives. La resynchro qui suit va faire réapparaître dans Mes Snapshots/Positions tout ce qui n'a pas pu être supprimé côté serveur — reclique \"Archiver la saison\" à ce moment-là pour finir le ménage (ça ne dupliquera rien).");
+    }
+    snapArchiveSeasonBtn.disabled = false;
+    snapArchiveSeasonBtn.textContent = "🗄️ Archiver la saison";
+    // Reconciles immediately instead of waiting for the next periodic sync —
+    // if every delete above succeeded this just confirms the empty state;
+    // if some failed, this is what pulls the stragglers back into view
+    // (see the alert above) rather than leaving them silently orphaned
+    // server-side until whenever the next sync happens to run.
+    await syncNow(SNAPSHOTS_STORE);
+    await syncNow(POSITIONS_STORE);
+    renderSnapshots();
+    renderPositions();
+    renderArchives();
+    if (!serverCleanupFailed) alert("Archivage terminé — " + snaps.length + " snapshot(s) et " + poss.length + " position(s) déplacés vers l'onglet Archives.");
+  });
   // Replaces the old `pnl / (count * HYPOTHETICAL_FLAT_STAKE)` formula
   // everywhere an aggregate ROI is shown — that only worked because every
   // item's stake was the same constant. Once stake varies per item
@@ -6527,6 +6704,7 @@
       // on the click itself instead of waiting on that.
       if (btn.getAttribute("data-tab") === "snapshots") renderSnapshots();
       if (btn.getAttribute("data-tab") === "positions") renderPositions();
+      if (btn.getAttribute("data-tab") === "archives") renderArchives();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
     });
