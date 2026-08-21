@@ -3294,7 +3294,8 @@
     volume: [3000, 50000],                         // $, log scale between the two
     traderCount: [4, 9],                           // traders, linear
     reliableAgreement: [0, 3.5],                   // fiables traders agreeing, linear — see 2026-08-15 note below
-    topTraderShare: [0.35, 0.85]                   // biggest single trader's $ / leading side's $ — 0.35 = spread out, 0.85 = one whale alone
+    topTraderShare: [0.35, 0.85],                  // biggest single trader's $ / leading side's $ — 0.35 = spread out, 0.85 = one whale alone
+    traderQuality: [6, 9]                          // leading side's stake-weighted trader rating — matches the real 5.5-9.5 spread of tracked traders
   };
   // Calibrated 2026-08-15 against 17 user-corrected real notes (almost all
   // corrections upward, one as large as 4.5→7.5): two systematic biases
@@ -3329,6 +3330,36 @@
   // Verified against the formula: an otherwise-flawless trade sitting at
   // ~$3k that would have scored ~8.3 before this change now lands ~5.0.
   var GATE_VOLUME_PARAMS = [1, 0.5]; // [rampHi, floor]
+  // Added 2026-08-22 on request: everything above judges the SHAPE of a
+  // trade (consensus, money split, volume) but was completely blind to
+  // WHO is actually behind it — 9 traders unanimous on $42k could score a
+  // 9+ even when most of that headcount is low-rated names padding out
+  // the count around one or two genuinely good traders. leaderWeightedQuality
+  // (below) is the leading side's own trader QUALITY rating
+  // (WEIGHT_BY_NAME, the same 1-10 a trader's profile already carries),
+  // stake-weighted so one $40k trader's rating isn't diluted to nothing by
+  // eight $500 tag-alongs. SCORE_RANGES.traderQuality = [6, 9] matches the
+  // real spread of tracked traders (5.5-9.5) — floor 0.5 means a side
+  // averaging out near the bottom of that range still loses half its score
+  // to this alone, same crush-not-nudge treatment as every other gate here.
+  var GATE_QUALITY_PARAMS = [1, 0.5]; // [rampHi, floor]
+  function leaderWeightedQuality(traderStakes) {
+    var weightedSum = 0, totalStake = 0;
+    traderStakes.forEach(function (t) {
+      var w = WEIGHT_BY_NAME[t.trader];
+      if (w != null && t.stake > 0) { weightedSum += w * t.stake; totalStake += t.stake; }
+    });
+    return totalStake > 0 ? weightedSum / totalStake : null;
+  }
+  // Also requested 2026-08-22: every note across the board reads about a
+  // point too generous — flattened here as a final flat -1 on the finished
+  // score (after every factor/gate above), floored at 1 so it can't go
+  // negative, rather than re-tuning five weights and five gates to try to
+  // land the same shift indirectly.
+  var SCORE_FLAT_SHIFT = -1;
+  function applyScoreShift(score) {
+    return Math.max(1, Math.round((score + SCORE_FLAT_SHIFT) * 10) / 10);
+  }
   // Calibrated 2026-08-08 against 20 hand-scored real-shaped examples (see
   // notify/SCORE_CALIBRATION.md) after the additive-only formula badly
   // mis-ranked several cases users flagged by hand:
@@ -3415,12 +3446,16 @@
     // on, not once total.
     var totalSideTraders = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
     var consensusRatio = totalSideTraders > 0 ? leaderCount / totalSideTraders : 0;
+    var leaderTraderStakes = [];
+    if (leaderGroup) leaderGroup.items.forEach(function (it) { it.s.entries.forEach(function (e) { leaderTraderStakes.push({ trader: e.trader, stake: e.stake }); }); });
+    var leaderQuality = leaderWeightedQuality(leaderTraderStakes);
     var factors = {
       consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
       volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
       volume: normLog(u.totalStake, SCORE_RANGES.volume),
       traderCount: normLinear(u.traderCount, SCORE_RANGES.traderCount),
-      reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement)
+      reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement),
+      traderQuality: leaderQuality != null ? normLinear(leaderQuality, SCORE_RANGES.traderQuality) : 0
     };
     var raw = factors.consensusRatio * SCORE_WEIGHTS.consensusRatio +
       factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
@@ -3433,8 +3468,9 @@
     var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
     var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
     var gateVolume = consensusGate(factors.volume, GATE_VOLUME_PARAMS[0], GATE_VOLUME_PARAMS[1]);
-    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume;
-    var score = Math.round((1 + raw * 9 * gate) * 10) / 10;
+    var gateQuality = consensusGate(factors.traderQuality, GATE_QUALITY_PARAMS[0], GATE_QUALITY_PARAMS[1]);
+    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume * gateQuality;
+    var score = applyScoreShift(Math.round((1 + raw * 9 * gate) * 10) / 10);
     return {
       score: score,
       leaderPrice: leaderGroup ? mergedSideAvgPrice(leaderGroup) : null,
@@ -7469,12 +7505,14 @@
     Object.keys(byTrader).forEach(function (name) { if (byTrader[name] > maxStake) maxStake = byTrader[name]; });
     var topTraderShare = (leaderGroup.stake && leaderCount >= 2) ? maxStake / leaderGroup.stake : 0;
     var consensusRatio = traderCount > 0 ? leaderCount / traderCount : 0;
+    var leaderQuality = leaderWeightedQuality((leaderGroup.traders || []).map(function (t) { return { trader: t.trader, stake: t.stake }; }));
     var factors = {
       consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
       volumeConcentration: normLinear(volumeConcentration, SCORE_RANGES.volumeConcentration),
       volume: normLog(totalStake, SCORE_RANGES.volume),
       traderCount: normLinear(traderCount, SCORE_RANGES.traderCount),
-      reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement)
+      reliableAgreement: normLinear(reliableAgreeing, SCORE_RANGES.reliableAgreement),
+      traderQuality: leaderQuality != null ? normLinear(leaderQuality, SCORE_RANGES.traderQuality) : 0
     };
     var raw = factors.consensusRatio * SCORE_WEIGHTS.consensusRatio +
       factors.volumeConcentration * SCORE_WEIGHTS.volumeConcentration +
@@ -7484,8 +7522,9 @@
     var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
     var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
     var gateVolume = consensusGate(factors.volume, GATE_VOLUME_PARAMS[0], GATE_VOLUME_PARAMS[1]);
-    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume;
-    return Math.round((1 + raw * 9 * gate) * 10) / 10;
+    var gateQuality = consensusGate(factors.traderQuality, GATE_QUALITY_PARAMS[0], GATE_QUALITY_PARAMS[1]);
+    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume * gateQuality;
+    return applyScoreShift(Math.round((1 + raw * 9 * gate) * 10) / 10);
   }
   // One-time exact corrections from the 2026-08-15 calibration pass — the
   // recalibrated formula above lands close to these but not exact (it's a
