@@ -3312,6 +3312,23 @@
   //    0.65: a 60%+ majority now reaches the full gate, and even a bare
   //    50/50 split only loses 35% instead of 55%.
   var GATE_HEADCOUNT_PARAMS = [0.35, 0.65]; // [rampHi, floor] — see note above
+  // Added 2026-08-21 on request: raw volume only ever cost a trade 16% of
+  // its score (SCORE_WEIGHTS.volume) applied ADDITIVELY — a small, thin
+  // trade with flawless consensus (everyone agrees, all reliable, one side
+  // gets all the money) could still pad its way to a high-8s note on a few
+  // thousand dollars, because the other four additive factors are all
+  // RATIOS, blind to the absolute $ behind them. Requested explicitly:
+  // don't let that happen without real volume behind it — e.g. $50k across
+  // several traders — the same way gateHeadcount/gateMoney/gateWhale
+  // already crush the score (multiplicatively, not just a lost fraction of
+  // one weight) for weak consensus. rampHi 1.0 means factors.volume (the
+  // existing normLog over SCORE_RANGES.volume = [$3k, $50k]) must actually
+  // reach its own max — genuinely $50k+ — before this gate fully opens;
+  // floor 0.5 means a thin trade (near $3k or less) loses HALF its score
+  // to this alone, on top of whatever the other gates already take.
+  // Verified against the formula: an otherwise-flawless trade sitting at
+  // ~$3k that would have scored ~8.3 before this change now lands ~5.0.
+  var GATE_VOLUME_PARAMS = [1, 0.5]; // [rampHi, floor]
   // Calibrated 2026-08-08 against 20 hand-scored real-shaped examples (see
   // notify/SCORE_CALIBRATION.md) after the additive-only formula badly
   // mis-ranked several cases users flagged by hand:
@@ -3415,7 +3432,8 @@
     var gateHeadcount = consensusGate(factors.consensusRatio, GATE_HEADCOUNT_PARAMS[0], GATE_HEADCOUNT_PARAMS[1]);
     var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
     var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
-    var gate = gateHeadcount * gateMoney * gateWhale;
+    var gateVolume = consensusGate(factors.volume, GATE_VOLUME_PARAMS[0], GATE_VOLUME_PARAMS[1]);
+    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume;
     var score = Math.round((1 + raw * 9 * gate) * 10) / 10;
     return {
       score: score,
@@ -7435,7 +7453,8 @@
     var gateHeadcount = consensusGate(factors.consensusRatio, GATE_HEADCOUNT_PARAMS[0], GATE_HEADCOUNT_PARAMS[1]);
     var gateMoney = consensusGate(factors.volumeConcentration, 0.55, 0.24);
     var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
-    var gate = gateHeadcount * gateMoney * gateWhale;
+    var gateVolume = consensusGate(factors.volume, GATE_VOLUME_PARAMS[0], GATE_VOLUME_PARAMS[1]);
+    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume;
     return Math.round((1 + raw * 9 * gate) * 10) / 10;
   }
   // One-time exact corrections from the 2026-08-15 calibration pass — the
