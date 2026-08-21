@@ -530,7 +530,7 @@
      is its OWN class, never combined with .vt-snap-btn on the same
      element, or the delegated click handler's .vt-snap-btn check (which
      runs first and returns early) would swallow their clicks too. */
-  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn, .vt-sibling-btn {
+  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn, .vt-sibling-btn, .vt-comment-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     color: var(--gold);
@@ -837,6 +837,22 @@
      across a long list, deliberately not paired with a glow or background
      on top. Hovering still reveals which factors drove the score. */
   .vt-score-wrap { position: relative; display: inline-flex; align-items: center; cursor: default; vertical-align: middle; }
+  .vt-score-editable { cursor: pointer; }
+  .vt-score-editable:hover .vt-score-num { outline: 2px dashed color-mix(in srgb, currentColor 55%, transparent); outline-offset: 2px; }
+  .vt-score-manual-mark { font-size: 12px; margin-left: 2px; opacity: .8; vertical-align: top; }
+  .vt-comment-btn { color: var(--text-dim); }
+  .vt-comment-btn:hover { border-color: var(--accent); box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .vt-comment-btn.active { color: var(--accent); }
+  .vt-comment-display {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    background: var(--row-hover);
+    border-radius: var(--radius-sm);
+    padding: 5px 9px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
   /* Exact kickoff date/time — bottom-right corner of the card, see
      .vt-bottom-row above. */
   .vt-exact-time { font-size: 9.5px; font-style: italic; color: var(--text-dim); white-space: nowrap; }
@@ -2226,6 +2242,27 @@
   function saveFollowedKeys() {
     try { localStorage.setItem(FOLLOWED_KEY, JSON.stringify(followedKeys)); } catch (e) { /* won't persist this time */ }
   }
+  // Manual note override + free-text comment — both keyed by the same
+  // unitStableKey as follow/trash, so they survive the 10s auto-refresh
+  // rebuilding every unit from scratch. Unlike NOTE_OVERRIDES/
+  // NOTE_ID_OVERRIDES (hardcoded, developer-only, for Mes Snapshots'
+  // frozen cards), these are user-editable in place on a live Value
+  // Trades card — click the note to override the computed value, or the
+  // 💬 to attach a short note-to-self that shows at the bottom of the card.
+  var MANUAL_NOTE_KEY = "vtManualNoteOverrides";
+  var VT_COMMENT_KEY = "vtComments";
+  var manualNoteOverrides = (function () {
+    try { return JSON.parse(localStorage.getItem(MANUAL_NOTE_KEY) || "{}"); } catch (e) { return {}; }
+  })();
+  var vtComments = (function () {
+    try { return JSON.parse(localStorage.getItem(VT_COMMENT_KEY) || "{}"); } catch (e) { return {}; }
+  })();
+  function saveManualNoteOverrides() {
+    try { localStorage.setItem(MANUAL_NOTE_KEY, JSON.stringify(manualNoteOverrides)); } catch (e) { /* won't persist this time */ }
+  }
+  function saveVtComments() {
+    try { localStorage.setItem(VT_COMMENT_KEY, JSON.stringify(vtComments)); } catch (e) { /* won't persist this time */ }
+  }
   // Toggled by the 🗑 Corbeille header button — swaps the main list for the
   // trashed one instead of adding a whole separate tab, same idea as
   // vtDenseMode's toggle-button pattern.
@@ -2663,6 +2700,31 @@
       result[m.name] = color;
     });
     return result;
+  }
+  function hexToRgb(hex) {
+    var h = (hex || "").replace("#", "");
+    if (h.length === 3) h = h.split("").map(function (c) { return c + c; }).join("");
+    var num = parseInt(h, 16);
+    return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+  }
+  function rgbToHex(r, g, b) {
+    return "#" + [r, g, b].map(function (v) {
+      return Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+    }).join("");
+  }
+  // Opposite hue, same saturation/lightness — used only where two DIFFERENT
+  // markets' identically-named side (e.g. two separate "No" outcomes on two
+  // separate confrontation markets — see the sibling-market panel) would
+  // otherwise render in the exact same semantic color despite meaning
+  // different things, which visually reads as plain agreement when it
+  // isn't. rgbToHsl/hslToRgb are defined further down (oddsRoiColor's own
+  // helpers) — safe to call here regardless since these are all function
+  // declarations, hoisted the same as everything else in this file.
+  function complementaryHex(hex) {
+    var rgb = hexToRgb(hex);
+    var hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+    var rotated = hslToRgb((hsl[0] + 180) % 360, hsl[1], hsl[2]);
+    return rgbToHex(rotated[0], rotated[1], rotated[2]);
   }
   // One-letter marker for a side, shown instead of a generic leader/other
   // glyph so the letter itself says which camp this is — "Y"/"N" for a
@@ -3782,15 +3844,21 @@
   // (from unitScoreInfo) is optional — pass it to also render a hover
   // popover showing each factor's weighted contribution (points added to
   // the raw 1-10 scale), not just the final number.
-  function scoreBadgeHtml(score, factors, extraClass, gate) {
+  // editKey (optional) is a unitStableKey — passing one makes the badge
+  // clickable to override the note in place (Value Trades only; Mes
+  // Snapshots' calls omit it and stay non-interactive, same display as
+  // always). See manualNoteOverrides.
+  function scoreBadgeHtml(score, factors, extraClass, gate, editKey) {
     if (score == null) return "";
     var color = scoreColor(score);
+    var isManual = editKey != null && manualNoteOverrides[editKey] != null;
     // Picked over the ring/disc treatment: no shape, no container — a
     // large bold colored number. A tint of its own color sits behind it
     // (no visible border) to delimit it from the rest of the header
     // without turning it back into a hard badge, plus a soft halo glowing
     // outward so the note reads as the most eye-catching thing on the card.
-    var scoreNumHtml = '<span class="vt-score-num" style="color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent);box-shadow:0 0 12px color-mix(in srgb, ' + color + ' 50%, transparent)">' + score.toFixed(1) + '</span>';
+    var scoreNumHtml = '<span class="vt-score-num" style="color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent);box-shadow:0 0 12px color-mix(in srgb, ' + color + ' 50%, transparent)">' + score.toFixed(1) +
+      (isManual ? '<span class="vt-score-manual-mark">✎</span>' : '') + '</span>';
     var breakdownHtml = "";
     if (factors) {
       var g = gate == null ? 1 : gate;
@@ -3817,7 +3885,12 @@
       }
       breakdownHtml = '<div class="vt-score-breakdown"><div class="vt-score-breakdown-title">Note ' + score.toFixed(1) + '/10 — détail</div>' + rows + penaltyRow + '</div>';
     }
-    return '<span class="vt-score-wrap' + (extraClass ? " " + extraClass : "") + '" title="Note du trade : ' + score.toFixed(1) + '/10 — volume, nb de traders, accord entre eux, accord des traders fiables, répartition du volume entre eux">' + scoreNumHtml + breakdownHtml + '</span>';
+    var editTitle = isManual
+      ? "Note modifiée manuellement — reclique pour changer ou effacer (revient à la note calculée)"
+      : "Note du trade : " + score.toFixed(1) + "/10 — volume, nb de traders, accord entre eux, accord des traders fiables, répartition du volume entre eux — clique pour la modifier";
+    var wrapClass = "vt-score-wrap" + (extraClass ? " " + extraClass : "") + (editKey != null ? " vt-score-editable" : "") + (isManual ? " vt-score-manual" : "");
+    var wrapAttrs = editKey != null ? ' data-note-key="' + esc(editKey) + '"' : "";
+    return '<span class="' + wrapClass + '"' + wrapAttrs + ' title="' + (editKey != null ? esc(editTitle) : "Note du trade : " + score.toFixed(1) + "/10 — volume, nb de traders, accord entre eux, accord des traders fiables, répartition du volume entre eux") + '">' + scoreNumHtml + breakdownHtml + '</span>';
   }
   // Computes everything renderUnitCard needs, split into header (question +
   // leader badge) and body (balance bars + trader breakdown) so the header
@@ -3936,6 +4009,12 @@
     var siblingBtnHtml = siblingUnits.length
       ? '<button type="button" class="vt-sibling-btn' + (isSiblingOpen ? ' active' : '') + '" data-sibling-key="' + esc(stableKey) + '" data-unit-key="' + esc(primary.key) + '" title="Voir les ' + siblingUnits.length + ' autre(s) marché(s) de ce même match — vérifier si des traders sont aussi positionnés en face (arbitrage/couverture)">⇄</button>'
       : '';
+    // 💬 — a short free-text note-to-self, shown at the bottom of the card
+    // (see bottomBarHtml below) once set. Same manual/local-only treatment
+    // as the note override just below: keyed off stableKey, not synced or
+    // tied to the live data in any way.
+    var vtComment = vtComments[stableKey] || "";
+    var commentBtnHtml = '<button type="button" class="vt-comment-btn' + (vtComment ? ' active' : '') + '" data-comment-key="' + esc(stableKey) + '" title="' + (vtComment ? "Modifier le commentaire" : "Ajouter un commentaire") + '">💬</button>';
     var sportEmoji = sportEmojiFor(primary.question, primary.slug);
     // Emoji + question live in ONE flex item (.vt-top-left), not two
     // siblings of .vt-top — .vt-top uses justify-content:space-between,
@@ -4022,7 +4101,7 @@
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + '</span>' +
         statsHtml +
-        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + siblingBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate) + trashBtnHtml + '</span>' +
+        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + siblingBtnHtml + commentBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate, stableKey) + trashBtnHtml + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
     // group) — sits on the card's real bottom row, in normal flow so it
@@ -4039,7 +4118,8 @@
     var exactTimeHtml = preciseKickoff
       ? '<span class="vt-exact-time">' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '</span>'
       : '';
-    var bottomBarHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders"><b class="vt-bottom-traders-num">' + u.traderCount + '</b> traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(u.totalStake) + '</span></span>' + exactTimeHtml + '</div>';
+    var bottomBarHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders"><b class="vt-bottom-traders-num">' + u.traderCount + '</b> traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(u.totalStake) + '</span></span>' + exactTimeHtml + '</div>' +
+      (vtComment ? '<div class="vt-comment-display">💬 ' + esc(vtComment) + '</div>' : '');
     // Kept separate (not just one bodyHtml) so renderUnitCard can put the
     // gauges in the always-visible summary and the trader-by-trader
     // breakdown behind a click, while Snapshots — which doesn't want that
@@ -4079,6 +4159,20 @@
         siblingUnits.map(function (su) {
           var suMerged = mergeUnitSides(su);
           var suColors = resolveDistinctSideColors(suMerged);
+          // Requested: a sibling side sharing the MAIN card's leading side's
+          // exact name (e.g. both "No") would otherwise render in the exact
+          // same semantic color (sideColorFor is a fixed Yes=green/No=red
+          // mapping everywhere) — visually reading as "these traders agree"
+          // when actually No+No across two different team markets is a
+          // draw bet, not agreement. Flipped to the complementary hue here,
+          // ONLY in this panel, so it reads as "different thing" at a glance
+          // instead of quietly implying the same side.
+          if (leaderName) {
+            var leaderNameNorm = leaderName.trim().toLowerCase();
+            Object.keys(suColors).forEach(function (name) {
+              if (name.trim().toLowerCase() === leaderNameNorm) suColors[name] = complementaryHex(suColors[name]);
+            });
+          }
           var suMaxStake = suMerged.reduce(function (max, m) {
             return m.items.reduce(function (mx, it) {
               return it.s.entries.reduce(function (mx2, e) { return e.stake > mx2 ? e.stake : mx2; }, mx);
@@ -6235,6 +6329,14 @@
       u.scoreFactors = info.factors;
       u.scoreGate = info.gate;
       u.leaderCount = info.agreeingCount;
+      // Manual override (see manualNoteOverrides/scoreBadgeHtml) replaces
+      // the computed note outright — filters, sort, color and the note<5
+      // exclusion below all see the overridden value, same as if the
+      // formula itself had produced it. u.scoreFactors/u.scoreGate are left
+      // as the ORIGINAL computed ones so the hover breakdown still explains
+      // what the formula actually landed on, underneath the override.
+      var manualVal = manualNoteOverrides[unitStableKey(u)];
+      if (manualVal != null) u.score = manualVal;
     });
     renderFollowedSection(allUnitsRaw);
     // A trade priced at (or effectively at) 100¢ has already happened, a
@@ -7257,6 +7359,40 @@
       // opening it while the card itself stays collapsed would hide the
       // very thing this click was for.
       if (willOpen) expandedValueTrades[siblingBtn.getAttribute("data-unit-key")] = true;
+      renderValueTrades();
+      return;
+    }
+    var scoreEditWrap = e.target.closest ? e.target.closest(".vt-score-editable") : null;
+    if (scoreEditWrap) {
+      e.preventDefault();
+      e.stopPropagation();
+      var noteKey = scoreEditWrap.getAttribute("data-note-key");
+      var currentManual = manualNoteOverrides[noteKey];
+      var rawNote = prompt("Note manuelle (1-10) — laisse vide pour revenir à la note calculée automatiquement :", currentManual != null ? String(currentManual) : "");
+      if (rawNote === null) return; // cancelled
+      var trimmedNote = rawNote.trim();
+      if (trimmedNote === "") {
+        delete manualNoteOverrides[noteKey];
+      } else {
+        var noteVal = parseFloat(trimmedNote.replace(",", "."));
+        if (!isFinite(noteVal) || noteVal < 1 || noteVal > 10) { alert("Note invalide — entre un nombre entre 1 et 10."); return; }
+        manualNoteOverrides[noteKey] = Math.round(noteVal * 10) / 10;
+      }
+      saveManualNoteOverrides();
+      renderValueTrades();
+      return;
+    }
+    var commentBtn = e.target.closest ? e.target.closest(".vt-comment-btn") : null;
+    if (commentBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var commentKey = commentBtn.getAttribute("data-comment-key");
+      var currentComment = vtComments[commentKey] || "";
+      var rawComment = prompt("Commentaire pour ce trade (laisse vide pour effacer) :", currentComment);
+      if (rawComment === null) return; // cancelled
+      var trimmedComment = rawComment.trim();
+      if (trimmedComment === "") delete vtComments[commentKey]; else vtComments[commentKey] = trimmedComment;
+      saveVtComments();
       renderValueTrades();
       return;
     }
