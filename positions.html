@@ -3468,10 +3468,20 @@
   // (WEIGHT_BY_NAME, the same 1-10 a trader's profile already carries),
   // stake-weighted so one $40k trader's rating isn't diluted to nothing by
   // eight $500 tag-alongs. SCORE_RANGES.traderQuality = [6, 9] matches the
-  // real spread of tracked traders (5.5-9.5) — floor 0.5 means a side
-  // averaging out near the bottom of that range still loses half its score
-  // to this alone, same crush-not-nudge treatment as every other gate here.
-  var GATE_QUALITY_PARAMS = [1, 0.5]; // [rampHi, floor]
+  // real spread of tracked traders (5.5-9.5).
+  // Floor recalibrated same day (0.5 -> 0.75) on a user-flagged case: 9
+  // traders, 8/9 consensus, $58.5k, the lone dissenter a token $396 against
+  // a $27.8k leader — an objectively excellent trade by every OTHER
+  // measure, still landed at 6.0 because its single biggest trader
+  // (dominating the stake-weighted average) happens to carry a below-
+  // median quality rating. A big, decisive stake from a moderately-rated
+  // trader backed by near-total consensus is still real signal; floor 0.5
+  // was treating "who" as harshly as gateVolume treats "how much", which
+  // this case showed is too harsh. At 0.75 that exact trade scores 7.1
+  // (verified against the formula); the genuinely low-quality/thin case
+  // this gate was built for (SCORE_VOLUME's own calibration example) still
+  // lands at 3.1 — crushed, well under the note<5 floor, just not to 2.1.
+  var GATE_QUALITY_PARAMS = [1, 0.75]; // [rampHi, floor]
   function leaderWeightedQuality(traderStakes) {
     var weightedSum = 0, totalStake = 0;
     traderStakes.forEach(function (t) {
