@@ -4475,7 +4475,12 @@
   function awsFetch(url, options) {
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, AWS_FETCH_TIMEOUT_MS);
-    return fetch(url, Object.assign({}, options, { signal: controller.signal })).finally(function () { clearTimeout(timer); });
+    // cache:"no-store" — the Lambda's GET responses carry no Cache-Control
+    // header, and some mobile/private browsers (Safari in particular) will
+    // heuristically cache a bare 200 JSON response anyway, silently serving
+    // an old snapshots/positions list on later visits instead of ever
+    // hitting the network again. Force every AWS call to bypass that.
+    return fetch(url, Object.assign({ cache: "no-store" }, options, { signal: controller.signal })).finally(function () { clearTimeout(timer); });
   }
   // Reading needs no secret — the Lambda's GET is open, so a device that
   // never configured a write secret (or lost it) still sees the real shared
