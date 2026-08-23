@@ -978,28 +978,9 @@
   .match-detail { padding: 4px 16px 14px; border-top: 1px solid var(--panel-border); }
   .match-filter-bar { display: flex; align-items: center; gap: 8px; padding: 10px 0 4px; font-size: 12.5px; color: var(--text-dim); }
   .match-filter-bar label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  .match-trade-row { padding: 8px 0; border-bottom: 1px solid var(--panel-border); }
-  .match-trade-row:last-child { border-bottom: none; }
-  .match-trade-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-  .match-trade-question { font-size: 11.5px; color: var(--text-dim); }
-  .match-trade-side { font-size: 12.5px; font-weight: 700; }
-  .match-trade-stats { font-size: 11px; color: var(--text-dim); margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .match-empty-filter { font-size: 12.5px; color: var(--text-dim); font-style: italic; padding: 10px 0; }
-  /* Opposed-camps box (Par match) — two rows for the exact same question
-     (a market's two sides) grouped together, see renderMatchDetail. */
-  .match-trade-opposed-box {
-    border: 2px dashed var(--accent);
-    border-radius: var(--radius-md);
-    padding: 4px 12px 2px;
-    margin: 8px 0;
-    background: color-mix(in srgb, var(--accent) 5%, transparent);
-  }
-  .match-trade-opposed-title {
-    font-size: 10.5px; font-weight: 800; color: var(--accent);
-    text-transform: uppercase; letter-spacing: 0.03em;
-    padding-top: 8px;
-  }
-  .match-trade-opposed-box .match-trade-row:first-of-type { padding-top: 4px; }
+  .match-unit-cards .value-trade-item { margin-bottom: 10px; }
+  .match-unit-cards .value-trade-item:last-child { margin-bottom: 0; }
   /* Click a trader's name in "Par match" to highlight every row of theirs —
      scoped to this tab only since the handler is only wired here, even
      though .vt-trader-row-name-text is shared markup with Value Trades. */
@@ -1278,6 +1259,7 @@
   .snap-dist-wrap { margin-bottom: 16px; max-height: none; }
   .snap-dist-subtitle { font-size: 11px; font-style: italic; color: var(--text-dim); padding: 10px 12px 0; }
   .snap-dist-empty { color: var(--text-dim); }
+  .snap-dist-footer td { border-top: 2px solid var(--panel-border); background: var(--panel); padding-top: 8px; }
   .snap-dist-cell { cursor: pointer; transition: background-color .15s ease; background: var(--cell-heat, transparent); }
   .snap-dist-cell:hover { background: var(--row-hover); }
   .snap-dist-cell.active { background: color-mix(in srgb, var(--gold) 30%, transparent); font-weight: 700; }
@@ -3575,82 +3557,35 @@
     groups.sort(function (a, b) { return b.tradeCount - a.tradeCount || b.volume - a.volume; });
     return groups;
   }
-  // Flattens every unit's merged sides into one row per (market, side) —
-  // that's what "trade" means here, not per individual trader — sorted by
-  // how many tracked traders are on that exact side, matching what was asked.
-  function buildMatchTradeRows(units) {
-    var rows = [];
-    units.forEach(function (u) {
-      var mergedSides = mergeUnitSides(u);
-      var distinctColors = resolveDistinctSideColors(mergedSides);
-      var primary = u.members[0];
-      mergedSides.forEach(function (m) {
-        if (m.traderCount <= 0) return;
-        var entries = [];
-        m.items.forEach(function (it) { it.s.entries.forEach(function (e) { entries.push(e); }); });
-        rows.push({
-          question: primary.question, sideName: m.name, color: distinctColors[m.name],
-          traderCount: m.traderCount, stake: m.stake, avgPrice: mergedSideAvgPrice(m),
-          entries: entries, mergedSide: m
-        });
-      });
-    });
-    rows.sort(function (a, b) { return b.traderCount - a.traderCount || b.stake - a.stake; });
-    return rows;
-  }
   var BY_MATCH_TARGET_TRADERS = ["swisstony", "rn1"];
   var BY_MATCH_TARGET_TRADERS_EXACT = ["swisstony", "RN1"]; // real casing from TRADERS — needed for the highlight lookup (exact match), unlike the filter above which lowercases
-  function rowHasTargetTrader(row) {
-    return row.entries.some(function (e) { return BY_MATCH_TARGET_TRADERS.indexOf((e.trader || "").toLowerCase()) !== -1; });
+  function unitHasTargetTrader(u) {
+    return mergeUnitSides(u).some(function (m) {
+      return m.items.some(function (it) {
+        return it.s.entries.some(function (e) { return BY_MATCH_TARGET_TRADERS.indexOf((e.trader || "").toLowerCase()) !== -1; });
+      });
+    });
   }
-  function renderOneMatchTradeRow(row) {
-    var colorMap = {};
-    colorMap[row.sideName] = row.color;
-    return '<div class="match-trade-row">' +
-      '<div class="match-trade-head">' +
-        '<span class="match-trade-side" style="color:' + row.color + '">' + esc(row.sideName) + '</span>' +
-        '<span class="match-trade-question">' + esc(row.question) + '</span>' +
-        '<span class="match-trade-stats">' + row.traderCount + ' trader' + (row.traderCount > 1 ? "s" : "") +
-          ' · ' + fmtUSD(row.stake) + (row.avgPrice != null ? ' · ' + fmtCents(row.avgPrice) : '') + '</span>' +
-      '</div>' +
-      renderMergedTraderRows([row.mergedSide], row.stake || 1, colorMap, byMatchHighlighted) +
-    '</div>';
-  }
+  // CHANGED (user-reported): a market's two camps ("No" 12 traders, "Yes" 10
+  // traders — see the Barcelona screenshot) used to render as two separate
+  // trade rows, boxed together only as an afterthought. Value Trades already
+  // has the exact combined view this needed — one card with a real Consensus
+  // gauge and Mises balance bar spanning BOTH camps at once (computeUnitCardParts
+  // /renderUnitCard) — so each market here is now that same card, not a
+  // parallel hand-rolled layout. byMatchHighlighted threads through as the
+  // optional highlight-set param both functions already accept for this.
   function renderMatchDetail(g) {
-    var allRows = buildMatchTradeRows(g.units);
-    var rows = byMatchTraderFilter ? allRows.filter(rowHasTargetTrader) : allRows;
+    var units = g.units.slice().sort(function (a, b) { return b.traderCount - a.traderCount || b.totalStake - a.totalStake; });
     var filterBar = '<div class="match-filter-bar"><label><input type="checkbox" class="match-trader-filter"' +
       (byMatchTraderFilter ? " checked" : "") + ' /> swisstony &amp; RN1 uniquement</label></div>';
-    if (!rows.length) {
+    var filtered = byMatchTraderFilter ? units.filter(unitHasTargetTrader) : units;
+    if (!filtered.length) {
       return filterBar + '<div class="match-empty-filter">' +
         (byMatchTraderFilter ? "Aucun trade de swisstony ou RN1 sur ce match." : "Aucun trade.") + '</div>';
     }
-    // Two rows for the exact same question (a market's "No" camp and its
-    // "Yes"/other camp) are opposite sides of ONE bet, not two separate
-    // trades — traderCount sorting alone can still land them next to each
-    // other (as in the screenshot) or apart, so this regroups by question
-    // explicitly rather than relying on them happening to sort adjacently.
-    var byQuestion = {};
-    rows.forEach(function (row) {
-      if (!byQuestion[row.question]) byQuestion[row.question] = [];
-      byQuestion[row.question].push(row);
-    });
-    var renderedRows = {};
-    var rowsHtml = rows.map(function (row) {
-      if (renderedRows[row.question + "|" + row.sideName]) return "";
-      var group = byQuestion[row.question];
-      var distinctSides = {};
-      group.forEach(function (r) { distinctSides[r.sideName] = true; });
-      if (group.length > 1 && Object.keys(distinctSides).length > 1) {
-        return '<div class="match-trade-opposed-box">' +
-          '<div class="match-trade-opposed-title">⚔️ Camps opposés — même marché</div>' +
-          group.map(function (r) { renderedRows[r.question + "|" + r.sideName] = true; return renderOneMatchTradeRow(r); }).join("") +
-        '</div>';
-      }
-      renderedRows[row.question + "|" + row.sideName] = true;
-      return renderOneMatchTradeRow(row);
-    }).join("");
-    return filterBar + rowsHtml;
+    return filterBar + '<div class="match-unit-cards">' +
+      filtered.map(function (u) { return renderUnitCard(u, byMatchHighlighted); }).join("") +
+    '</div>';
   }
   // Capped, not just sorted — allUnitsGlobal covers every open position
   // across every tracked trader (politics, crypto, esports… not just
@@ -4193,7 +4128,7 @@
   // leader badge) and body (balance bars + trader breakdown) so the header
   // can stay in the always-visible summary and just the body collapses,
   // instead of repeating the header inside the expanded detail.
-  function computeUnitCardParts(u) {
+  function computeUnitCardParts(u, highlightNames) {
     // u can come from a codepath that never scored it (the peer-panel's
     // unitByMarketKey, built independently of renderValueTrades' own pass)
     // — compute it here so every caller (Value Trades, peer panel,
@@ -4493,7 +4428,7 @@
         }).join("") +
       '</div>';
     }
-    var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides, distinctColors) + renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors) + siblingPanelHtml + '</div>';
+    var sideGridHtml = '<div class="vt-unit-detail">' + renderSidesLegend(mergedSides, distinctColors) + renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors, highlightNames) + siblingPanelHtml + '</div>';
     var bodyHtml = balanceHtml + bottomBarHtml + sideGridHtml;
 
     return {
@@ -4512,8 +4447,8 @@
   // Collapsed by default (only header + gauges show) — clicking the card
   // reveals the trader-by-trader breakdown. Shared by Value Trades and the
   // "Autres traders" peer panel.
-  function renderUnitCard(u) {
-    var parts = computeUnitCardParts(u);
+  function renderUnitCard(u, highlightNames) {
+    var parts = computeUnitCardParts(u, highlightNames);
     var key = u.members[0].key;
     // Keyed off the member-order-independent stableKey, not primary.key —
     // see computeUnitCardParts — so a linked market's "new" clock doesn't
@@ -6063,6 +5998,15 @@
       : "Simulation " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " misés à plat sur chaque snapshot décidé de la tranche, au prix du camp leader au moment du snapshot";
     var headCells = '<th>Cote</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("") +
       '<th class="num" title="' + esc(roiTitle) + '">ROI</th>';
+    // Footer row — same ROI simulation as each row's own rightmost cell, but
+    // aggregated across every cote bracket at once, per column (Tous, then
+    // each conviction tier) — the table above already lets you read a single
+    // tier's ROI down one bracket at a time; this is that same number
+    // collapsed to "how has S done overall", not sliced by price.
+    var footerCells = '<td><b>ROI global</b></td><td class="num"><b>' + roiCell(decided) + '</b></td>' +
+      CONFIDENCE_TIERS.map(function (tier) {
+        return '<td class="num"><b>' + roiCell(decided.filter(function (s) { return s.confidence === tier; })) + '</b></td>';
+      }).join("") + '<td class="num"></td>';
     var cellFilterNoteHtml = store.state.snapDistCellFilter
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.snapDistCellFilter.tier || "Tous") + ' · ' + store.state.snapDistCellFilter.bracket[0] + '–' + store.state.snapDistCellFilter.bracket[1] + '¢</b> — reclique la cellule active pour l\'enlever.</div>'
       : '';
@@ -6070,7 +6014,7 @@
     el.innerHTML =
       '<div class="snap-dist-wrap table-scroll' + (store.state.distCollapsed ? " collapsed" : "") + '">' +
       '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction. Clique une cellule pour filtrer les snapshots ci-dessous sur cette tranche.</div>' +
-      '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table>' + cellFilterNoteHtml + '</div>';
+      '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody><tfoot><tr class="snap-dist-footer">' + footerCells + '</tr></tfoot></table>' + cellFilterNoteHtml + '</div>';
   }
   function renderSnapStats(list, store) {
     var el = store.els.stats;
@@ -7685,6 +7629,11 @@
     }
   }
   document.getElementById("byMatchContent").addEventListener("toggle", trackMatchToggle, true);
+  // Trade cards inside "Par match" are the exact same value-trade-item cards
+  // Value Trades renders (renderUnitCard) — share the same open/closed
+  // tracking so re-renders here (filter/highlight toggles, the periodic
+  // refresh) don't collapse a card the user just opened.
+  document.getElementById("byMatchContent").addEventListener("toggle", trackValueTradeToggle, true);
   document.getElementById("byMatchContent").addEventListener("click", function (e) {
     var nameEl = e.target.closest ? e.target.closest(".vt-trader-row-name-text") : null;
     if (!nameEl) return;
