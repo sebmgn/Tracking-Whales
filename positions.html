@@ -1694,8 +1694,9 @@
         </div>
         <div class="vt-adv-filters" id="vtAdvFilters">
           <div class="vt-adv-filter">
-            <label for="vtMinScoreSlider">Note ≥ <b id="vtMinScoreVal">5</b></label>
-            <input type="range" id="vtMinScoreSlider" min="5" max="10" step="0.5" value="5" />
+            <!-- min/value must match VT_SCORE_FLOOR (the hard exclusion floor) -->
+            <label for="vtMinScoreSlider">Note ≥ <b id="vtMinScoreVal">3</b></label>
+            <input type="range" id="vtMinScoreSlider" min="3" max="10" step="0.5" value="3" />
             <span class="vt-adv-filter-count" id="vtMinScoreCount"></span>
           </div>
           <div class="vt-adv-filter">
@@ -2214,6 +2215,11 @@
   var RELIABLE_TRADERS = ["JJJJ", "predict847", "swisstony", "RN1", "VeryLucky888"];
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
+  // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
+  // everything down to a 3 now instead of hard-hiding it. Single source of
+  // truth for the hard exclusion filter, the slider's floor/default, and
+  // the tier chart's bottom row — change this one value to move all three.
+  var VT_SCORE_FLOOR = 3;
   var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart, or dragging the slider (kept in sync both ways)
   var vtMinAgreement = 0; // 0 = no filter; else the leading side's own trader count must be >= this
   var vtMinVolume = 0; // 0 = no filter; else totalStake must be >= this ($)
@@ -6209,10 +6215,10 @@
     var agreementSlider = document.getElementById("vtMinAgreementSlider");
     var volumeSlider = document.getElementById("vtMinVolumeSlider");
     if (!scoreSlider || !agreementSlider || !volumeSlider) return;
-    scoreSlider.value = vtMinScore == null ? 5 : vtMinScore;
+    scoreSlider.value = vtMinScore == null ? VT_SCORE_FLOOR : vtMinScore;
     agreementSlider.value = vtMinAgreement;
     volumeSlider.value = Math.min(vtMinVolume, 100000);
-    document.getElementById("vtMinScoreVal").textContent = vtMinScore == null ? "5" : vtMinScore.toFixed(1);
+    document.getElementById("vtMinScoreVal").textContent = vtMinScore == null ? String(VT_SCORE_FLOOR) : vtMinScore.toFixed(1);
     document.getElementById("vtMinAgreementVal").textContent = vtMinAgreement > 0 ? String(vtMinAgreement) : "0";
     document.getElementById("vtMinVolumeVal").textContent = vtMinVolume > 0 ? fmtUSD(vtMinVolume) : "0 $";
 
@@ -6254,22 +6260,22 @@
     document.getElementById("vtMinAgreementCount").textContent = agreementCount + " trade" + (agreementCount > 1 ? "s" : "");
     document.getElementById("vtMinVolumeCount").textContent = volumeCount + " trade" + (volumeCount > 1 ? "s" : "");
   }
-  // One row per NOTE threshold (>=8 down to >=5), not trader count — color
-  // comes straight from the threshold itself (vtTierColor(n)), never from
-  // an average of whatever happens to qualify right now, so every row is
-  // always the same color and always drawn even at 0 trades.
+  // One row per NOTE threshold (>=8 down to VT_SCORE_FLOOR), not trader
+  // count — color comes straight from the threshold itself (vtTierColor(n)),
+  // never from an average of whatever happens to qualify right now, so
+  // every row is always the same color and always drawn even at 0 trades.
   // Clicking a row filters Value Trades to that note or better; clicking
-  // the active row again clears it (see vtMinScore). No ">=4" row anymore —
-  // a note under 5 is hard-excluded everywhere now (see the allUnits
-  // filter above), so it would always show the exact same count as ">=5".
-  var VT_SCORE_THRESHOLDS = [8, 7, 6, 5];
+  // the active row again clears it (see vtMinScore). No row below
+  // VT_SCORE_FLOOR — a note under it is hard-excluded everywhere (see the
+  // allUnits filter above), so it would always show a count of 0.
+  var VT_SCORE_THRESHOLDS = [8, 7, 6, 5, 4, VT_SCORE_FLOOR];
   // scoreColor's hue ramp is tuned for the full 1-10 badge scale, so this
-  // 5-8 subset only ever lands in a narrow yellow-green sliver of it (too
-  // close together to tell apart at a glance, per feedback) — this ramp
-  // instead sweeps the full red->orange->yellow->green range across just
-  // these thresholds, so each row's color is clearly its own.
+  // narrow subset only ever lands in a cramped sliver of it (too close
+  // together to tell apart at a glance, per feedback) — this ramp instead
+  // sweeps the full red->orange->yellow->green range across just these
+  // thresholds, so each row's color is clearly its own.
   function vtTierColor(n) {
-    var t = Math.max(0, Math.min(1, (n - 5) / (VT_SCORE_THRESHOLDS[0] - 5)));
+    var t = Math.max(0, Math.min(1, (n - VT_SCORE_FLOOR) / (VT_SCORE_THRESHOLDS[0] - VT_SCORE_FLOOR)));
     return "hsl(" + (t * 140).toFixed(0) + ",72%,40%)";
   }
   function renderVtTierChart(unitsForTiers) {
@@ -6385,10 +6391,10 @@
       // also means these never need a live CLOB price fetch (see
       // applyLivePolyPricesForDisplayedMarkets), since they'd never be shown.
       if (u.leaderPrice > 0.99 || u.leaderPrice < 0.05) return false;
-      // A note under 5 isn't a real value-trade candidate either — always
-      // excluded now, same as the cote bounds above, not just the "Note ≥"
-      // slider's default position (that slider's floor is 5 to match).
-      if (u.score != null && u.score < 5) return false;
+      // A note under VT_SCORE_FLOOR isn't a real value-trade candidate
+      // either — always excluded, same as the cote bounds above, not just
+      // the "Note ≥" slider's default position (that slider's floor matches).
+      if (u.score != null && u.score < VT_SCORE_FLOOR) return false;
       return true;
     });
     if (vtTrashMode) { renderTrashView(allUnitsRaw); return; }
@@ -7067,7 +7073,7 @@
   // just on release — that's the whole point of the "aperçu live".
   document.getElementById("vtMinScoreSlider").addEventListener("input", function (e) {
     var v = Number(e.target.value);
-    vtMinScore = v <= 5 ? null : v; // 5 is the slider's floor now — the hard note<5 filter above already covers it, no need for a redundant explicit value
+    vtMinScore = v <= VT_SCORE_FLOOR ? null : v; // VT_SCORE_FLOOR is the slider's floor — the hard exclusion filter above already covers it, no need for a redundant explicit value
     renderValueTrades();
   });
   document.getElementById("vtMinAgreementSlider").addEventListener("input", function (e) {
