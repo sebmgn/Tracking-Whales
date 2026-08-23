@@ -1865,7 +1865,7 @@
 
   <div class="tab-panel" id="tab-by-match">
     <h2 class="section-title">Par match <span class="count-pill" id="byMatchCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Tous les marchés d'un même événement (moneyline, spread, O/U…) regroupés sous un seul match, classés par nombre total de trades trackés. Clique un match pour voir chaque trade en détail.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Tous les marchés d'un même événement (moneyline, spread, O/U…) regroupés sous un seul match, classés par nombre total de trades trackés — top 60. Clique un match pour voir chaque trade en détail.</div>
     <div id="byMatchContent">
       <div class="loading-state">Chargement…</div>
     </div>
@@ -3544,12 +3544,22 @@
     }).join("");
     return filterBar + rowsHtml;
   }
+  // Capped, not just sorted — allUnitsGlobal covers every open position
+  // across every tracked trader (politics, crypto, esports… not just
+  // today's football), so an uncapped list ran to 600+ rows and ~2MB of
+  // hidden detail HTML (every match's full trader breakdown is built eagerly,
+  // same convention as Value Trades' own cards — fine for a dozen cards,
+  // not for hundreds). "The matches with the most trades" is a top list by
+  // definition, so showing only the top BY_MATCH_MAX_ROWS is exactly the ask,
+  // not a compromise.
+  var BY_MATCH_MAX_ROWS = 60;
   function renderByMatch() {
     var container = document.getElementById("byMatchContent");
     var countEl = document.getElementById("byMatchCount");
     if (!container) return;
-    var groups = computeMatchGroups();
-    if (countEl) countEl.textContent = String(groups.length);
+    var allGroups = computeMatchGroups();
+    var groups = allGroups.slice(0, BY_MATCH_MAX_ROWS);
+    if (countEl) countEl.textContent = allGroups.length > groups.length ? (groups.length + " / " + allGroups.length) : String(allGroups.length);
     if (!groups.length) {
       container.innerHTML = '<div class="empty-note">Aucun match tracké pour l\'instant.</div>';
       return;
