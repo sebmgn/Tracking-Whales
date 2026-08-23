@@ -985,6 +985,16 @@
   .match-trade-side { font-size: 12.5px; font-weight: 700; }
   .match-trade-stats { font-size: 11px; color: var(--text-dim); margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .match-empty-filter { font-size: 12.5px; color: var(--text-dim); font-style: italic; padding: 10px 0; }
+  /* Click a trader's name in "Par match" to highlight every row of theirs —
+     scoped to this tab only since the handler is only wired here, even
+     though .vt-trader-row-name-text is shared markup with Value Trades. */
+  #byMatchContent .vt-trader-row-name-text { cursor: pointer; border-radius: 3px; padding: 0 2px; margin: 0 -2px; }
+  #byMatchContent .vt-trader-row-name-text:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .vt-trader-row-name-text.vt-trader-row-name-highlighted {
+    background: color-mix(in srgb, var(--gold) 30%, transparent);
+    color: var(--text); font-weight: 800; box-shadow: 0 0 0 1px var(--gold);
+  }
+  .vt-trader-row.vt-trader-row-highlighted { background: color-mix(in srgb, var(--gold) 7%, transparent); border-radius: 6px; }
 
   /* ---- Trades suivis ---- */
   .vt-followed-box {
@@ -1119,7 +1129,7 @@
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-restore-btn, .snap-purge-btn {
+  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     padding: 5px 12px;
@@ -1129,7 +1139,19 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover { border-color: var(--accent); }
+  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover { border-color: var(--accent); }
+  .snap-edit-btn { color: var(--accent); }
+  .snap-edit-btn:hover { background: var(--accent); color: #fff; }
+  /* Drag-and-drop reorder (Mes Positions only) */
+  .snap-drag-handle {
+    cursor: grab; color: var(--text-dim); font-size: 15px; line-height: 1;
+    padding: 2px 4px; user-select: none; flex: none;
+  }
+  .snap-drag-handle:hover { color: var(--text); }
+  .snap-drag-handle:active { cursor: grabbing; }
+  details.value-trade-item.snap-dragging { opacity: 0.4; }
+  details.value-trade-item.snap-drop-before { box-shadow: inset 0 3px 0 0 var(--accent); }
+  details.value-trade-item.snap-drop-after { box-shadow: inset 0 -3px 0 0 var(--accent); }
   .snap-side-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
   /* Generic fallback when no tracked trader ever held the other side, so
      its real name is unknown — dashed + italic marks it as "not a real
@@ -2212,6 +2234,7 @@
   var allUnitsGlobal = []; // every render unit, unfiltered — set once per refresh cycle in renderAll, reused by "Par match" so it doesn't need its own pass over tradersData
   var expandedMatches = {}; // match key -> bool, same "survives a rebuild" purpose as expandedValueTrades
   var byMatchTraderFilter = false; // "Par match" — only show trades where swisstony or RN1 has a position
+  var byMatchHighlighted = {}; // "Par match" — trader name -> bool, toggled by clicking their name in a trade row
   // Every bit of mutable UI state that used to be its own bare module-level
   // var (one collapsed-flag/filter/sort per concept) now lives per-store
   // instead, so Mes Snapshots and Mes Positions each keep their own filters/
@@ -2747,6 +2770,33 @@
       result[m.name] = color;
     });
     return result;
+  }
+  // Mes Positions only (set in renderStoreView) — position id -> a color
+  // that's guaranteed distinct from every OTHER position taken on the exact
+  // same market. Two of your own positions on the same "question" almost
+  // always means opposite bets (one Yes, one No — or two different teams'
+  // moneylines) — a real hedge/change of mind you'd want to spot scrolling
+  // the list, not two cards that might coincidentally land on similar-hashed
+  // "other" colors. Literal Yes/No already gets green/red independently
+  // (sideColorFor), so this is a no-op there; it only changes anything for
+  // non-Yes/No pairs (team names) that would otherwise risk looking alike.
+  var positionOpposedColors = {};
+  function computePositionOpposedColors(list) {
+    positionOpposedColors = {};
+    var byQuestion = {};
+    list.forEach(function (s) {
+      if (!s.question || !s.leaderName) return;
+      if (!byQuestion[s.question]) byQuestion[s.question] = [];
+      if (byQuestion[s.question].indexOf(s.leaderName) === -1) byQuestion[s.question].push(s.leaderName);
+    });
+    Object.keys(byQuestion).forEach(function (q) {
+      var names = byQuestion[q];
+      if (names.length < 2) return; // only one side ever taken on this market — nothing to oppose
+      var colorMap = resolveDistinctSideColors(names.map(function (n) { return { name: n }; }));
+      list.forEach(function (s) {
+        if (s.question === q && colorMap[s.leaderName]) positionOpposedColors[s.id] = colorMap[s.leaderName];
+      });
+    });
   }
   function hexToRgb(hex) {
     var h = (hex || "").replace("#", "");
@@ -3396,7 +3446,7 @@
   // width scale regardless of camp, so fill length/color is an honest,
   // direct comparison — "is the single biggest bettor on Yes or No" reads
   // immediately instead of needing to compare two separate columns.
-  function renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors) {
+  function renderMergedTraderRows(mergedSides, maxStakeInUnit, distinctColors, highlightNames) {
     var rows = [];
     mergedSides.forEach(function (m) {
       var color = distinctColors[m.name];
@@ -3422,10 +3472,11 @@
     return '<div class="vt-traders">' + rows.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
       var isMarginal = rowCountByTrader[e.trader] > 1 && e.stake < maxStakeByTrader[e.trader];
+      var isHighlighted = !!(highlightNames && highlightNames[e.trader]);
       var nameTitle = esc(e.trader) + (isMarginal ? " — position marginale ici, camp principal sur l'autre côté" : "");
-      return '<div class="vt-trader-row">' +
+      return '<div class="vt-trader-row' + (isHighlighted ? ' vt-trader-row-highlighted' : '') + '">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
-        '<span class="vt-trader-row-name' + (isMarginal ? ' vt-trader-row-name-marginal' : '') + '"><span class="vt-trader-row-name-text" title="' + nameTitle + '">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<span class="vt-trader-row-name' + (isMarginal ? ' vt-trader-row-name-marginal' : '') + '"><span class="vt-trader-row-name-text' + (isHighlighted ? ' vt-trader-row-name-highlighted' : '') + '" title="' + nameTitle + '">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track">' +
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
         '</div>' +
@@ -3539,7 +3590,7 @@
           '<span class="match-trade-stats">' + row.traderCount + ' trader' + (row.traderCount > 1 ? "s" : "") +
             ' · ' + fmtUSD(row.stake) + (row.avgPrice != null ? ' · ' + fmtCents(row.avgPrice) : '') + '</span>' +
         '</div>' +
-        renderMergedTraderRows([row.mergedSide], row.stake || 1, colorMap) +
+        renderMergedTraderRows([row.mergedSide], row.stake || 1, colorMap, byMatchHighlighted) +
       '</div>';
     }).join("");
     return filterBar + rowsHtml;
@@ -4646,6 +4697,29 @@
         return copy;
       });
     }
+    // Mes Positions only — correcting the stake/cote after the fact (a typo,
+    // or the real fill differed from what was entered at "Prendre position"
+    // time). op.patch carries whatever changed (stakeUsd and/or
+    // leaderPriceAtSnapshot + a rebuilt cardHtml, same shape "Prendre
+    // position" itself already produces — see the takePosBtn handler).
+    if (op.type === "editPosition") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        return Object.assign({}, s, op.patch);
+      });
+    }
+    // Mes Positions only — drag-and-drop reorder. The list has no separate
+    // "order" field; display order IS savedAt order (see renderStoreView), so
+    // reordering means assigning this item a new savedAt that sits between
+    // its new neighbors' — see attachReorderHandlers.
+    if (op.type === "setSavedAt") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        var copy = Object.assign({}, s);
+        copy.savedAt = op.savedAt;
+        return copy;
+      });
+    }
     return list;
   }
   // Every other fetch in this app (throttledFetch) aborts after 15s — match
@@ -5052,6 +5126,8 @@
     loadRaw: loadPositionsRaw, load: loadPositions, save: savePositionsToStorage,
     stakeFor: function (snap) { return snap.stakeUsd; },
     allowTakePosition: false,
+    allowEditPosition: true, // "✎ Modifier" — correct the stake/cote after the fact, positions only
+    allowReorder: true, // drag-and-drop to fix the chronological order, positions only
     itemNoun: "position",
     emptyHint: "Aucune position pour l\'instant — clique sur 🎯 Prendre position sur une carte dans Mes Snapshots pour l\'enregistrer ici.",
     dateLabelPrefix: "Prise le",
@@ -6041,7 +6117,7 @@
   function manualCardHtml(snap, isTrash, store) {
     var d = new Date(snap.savedAt);
     var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    var borderColor = snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)";
+    var borderColor = (store.name === "positions" && positionOpposedColors[snap.id]) || (snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)");
     var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
     var stake = store.stakeFor(snap);
     var hyp = stake ? hypotheticalFlatPnl(snap, stake) : null;
@@ -6060,7 +6136,7 @@
       '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
       '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roiVal != null ? (roiVal >= 0 ? '+' : '') + roiVal.toFixed(0) + '%' : '') + '</span>' +
     '</span>';
-    var leaderColor = sideColorFor(snap.leaderName);
+    var leaderColor = (store.name === "positions" && positionOpposedColors[snap.id]) || sideColorFor(snap.leaderName);
     var leaderBadge = '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(snap.leaderName) + '</span>';
     var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">✍️</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
       statsHtml + '<span class="vt-badge-group"><span class="snap-manual-badge">✍️ Pari manuel</span></span></div>';
@@ -6096,13 +6172,18 @@
       var takePositionHtml = store.allowTakePosition
         ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce pari manuel dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
         : '';
+      var editPositionHtml = store.allowEditPosition
+        ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Corriger la mise ou la cote de cette position">✎ Modifier</button>'
+        : '';
       toolbarHtml = '<div class="snap-toolbar">' +
+        (store.allowReorder ? '<span class="snap-drag-handle" draggable="true" data-snap-id="' + esc(snap.id) + '" title="Glisser pour réordonner">⠿</span>' : '') +
         '<span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + '</span>' +
         '<span class="snap-side-label">Camp gagnant :</span>' +
         sideButtonsHtml +
         '<span class="snap-side-label">Confiance :</span>' +
         confidenceButtonsHtml +
         takePositionHtml +
+        editPositionHtml +
         '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
       '</div>';
     }
@@ -6126,7 +6207,10 @@
     // Border stays tied to which side was leading when saved (not to the
     // later result) — a snapshot can hold traders on both sides, so there
     // is no single win/loss color for the card as a whole anymore.
-    var borderColor = snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)";
+    // positionOpposedColors overrides this (Mes Positions only) when another
+    // position of yours is on the exact same market with a different
+    // leaderName — see computePositionOpposedColors.
+    var borderColor = (store.name === "positions" && positionOpposedColors[snap.id]) || (snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)");
     // Whole-card background instead just reads the bet-level verdict —
     // leaderName (the side the group was leaning towards when saved) vs.
     // winningSide, the same "one win/loss per snapshot" call the global
@@ -6206,13 +6290,18 @@
       var takePositionHtml = store.allowTakePosition
         ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce snapshot dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
         : '';
+      var editPositionHtml = store.allowEditPosition
+        ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Corriger la mise ou la cote de cette position">✎ Modifier</button>'
+        : '';
       toolbarHtml = '<div class="snap-toolbar">' +
+        (store.allowReorder ? '<span class="snap-drag-handle" draggable="true" data-snap-id="' + esc(snap.id) + '" title="Glisser pour réordonner">⠿</span>' : '') +
         '<span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + '</span>' +
         '<span class="snap-side-label">Camp gagnant :</span>' +
         sideButtonsHtml +
         '<span class="snap-side-label">Confiance :</span>' +
         confidenceButtonsHtml +
         takePositionHtml +
+        editPositionHtml +
         '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
       '</div>';
     }
@@ -6267,6 +6356,7 @@
     // local edit or a sync.
     var list = fullList.filter(function (s) { return !s.deletedAt; })
       .sort(function (a, b) { return new Date(b.savedAt) - new Date(a.savedAt); });
+    if (store.name === "positions") computePositionOpposedColors(list);
     // Dashboard/tier-gauge/recap table always reflect every (non-trashed)
     // item — only the card list below is narrowed by tierCardFilter /
     // snapDistCellFilter, otherwise clicking a tier badge or a distribution
@@ -7426,12 +7516,90 @@
     }
   }
   positionsContent.addEventListener("toggle", trackPositionToggle, true);
+  // Drag-and-drop reorder (Mes Positions only, via store.allowReorder — see
+  // POSITIONS_STORE). There's no separate "order" field: display order IS
+  // savedAt order (see renderStoreView's sort), so "reorder" means giving the
+  // dragged item a new savedAt that sits between its new neighbors' — same
+  // trick a lot of drag-to-reorder UIs use instead of maintaining a whole
+  // separate index. Dragging only ever starts from the ⠿ handle (not the
+  // whole card), so it can never fight a click on a button or the summary.
+  var dragPositionId = null;
+  function clearDropMarkers(listEl) {
+    listEl.querySelectorAll(".snap-drop-before, .snap-drop-after").forEach(function (el) {
+      el.classList.remove("snap-drop-before", "snap-drop-after");
+    });
+  }
+  function attachReorderHandlers(listEl, store) {
+    listEl.addEventListener("dragstart", function (e) {
+      var handle = e.target.closest ? e.target.closest(".snap-drag-handle") : null;
+      if (!handle) { e.preventDefault(); return; }
+      var card = handle.closest(".value-trade-item");
+      if (!card) return;
+      dragPositionId = card.getAttribute("data-key");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", dragPositionId); // required by Firefox for drag to actually start
+      card.classList.add("snap-dragging");
+    });
+    listEl.addEventListener("dragend", function (e) {
+      var card = e.target.closest ? e.target.closest(".value-trade-item") : null;
+      if (card) card.classList.remove("snap-dragging");
+      clearDropMarkers(listEl);
+      dragPositionId = null;
+    });
+    listEl.addEventListener("dragover", function (e) {
+      if (!dragPositionId) return;
+      var card = e.target.closest ? e.target.closest(".value-trade-item") : null;
+      if (!card || card.getAttribute("data-key") === dragPositionId) return;
+      e.preventDefault(); // required for "drop" to fire at all
+      var rect = card.getBoundingClientRect();
+      var before = (e.clientY - rect.top) < rect.height / 2;
+      clearDropMarkers(listEl);
+      card.classList.add(before ? "snap-drop-before" : "snap-drop-after");
+    });
+    listEl.addEventListener("drop", function (e) {
+      if (!dragPositionId) return;
+      var card = e.target.closest ? e.target.closest(".value-trade-item") : null;
+      clearDropMarkers(listEl);
+      if (!card || card.getAttribute("data-key") === dragPositionId) { dragPositionId = null; return; }
+      e.preventDefault();
+      var rect = card.getBoundingClientRect();
+      var before = (e.clientY - rect.top) < rect.height / 2;
+      var allCards = Array.from(listEl.querySelectorAll(".value-trade-item"));
+      var targetIdx = allCards.indexOf(card);
+      // List is newest-first (see renderStoreView) — "above" in the DOM
+      // means a later/larger savedAt, "below" means earlier/smaller.
+      var neighborAboveEl = before ? allCards[targetIdx - 1] : card;
+      var neighborBelowEl = before ? card : allCards[targetIdx + 1];
+      var byId = {};
+      store.loadRaw().forEach(function (s) { byId[s.id] = s; });
+      var aboveItem = neighborAboveEl ? byId[neighborAboveEl.getAttribute("data-key")] : null;
+      var belowItem = neighborBelowEl ? byId[neighborBelowEl.getAttribute("data-key")] : null;
+      var aboveTime = aboveItem ? new Date(aboveItem.savedAt).getTime() : null;
+      var belowTime = belowItem ? new Date(belowItem.savedAt).getTime() : null;
+      var newTime;
+      if (aboveTime != null && belowTime != null) newTime = (aboveTime + belowTime) / 2;
+      else if (belowTime != null) newTime = belowTime + 1000; // dropped above everything -> becomes the newest
+      else if (aboveTime != null) newTime = aboveTime - 1000; // dropped below everything -> becomes the oldest
+      else newTime = Date.now();
+      enqueueOp(store, { type: "setSavedAt", id: dragPositionId, savedAt: new Date(newTime).toISOString() });
+      dragPositionId = null;
+    });
+  }
+  if (POSITIONS_STORE.allowReorder) attachReorderHandlers(positionsContent, POSITIONS_STORE);
   function trackMatchToggle(e) {
     if (e.target && e.target.classList.contains("match-item")) {
       expandedMatches[e.target.getAttribute("data-key")] = e.target.open;
     }
   }
   document.getElementById("byMatchContent").addEventListener("toggle", trackMatchToggle, true);
+  document.getElementById("byMatchContent").addEventListener("click", function (e) {
+    var nameEl = e.target.closest ? e.target.closest(".vt-trader-row-name-text") : null;
+    if (!nameEl) return;
+    var name = nameEl.textContent;
+    if (byMatchHighlighted[name]) delete byMatchHighlighted[name];
+    else byMatchHighlighted[name] = true;
+    renderByMatch();
+  });
   document.getElementById("byMatchContent").addEventListener("change", function (e) {
     if (e.target && e.target.classList.contains("match-trader-filter")) {
       byMatchTraderFilter = e.target.checked;
@@ -7545,6 +7713,42 @@
       enqueueOp(POSITIONS_STORE, { type: "add", id: pos.id, snapshot: pos });
       takePosBtn.textContent = "✅ Position prise";
       takePosBtn.disabled = true;
+      return;
+    }
+    // "✎ Modifier" (Mes Positions only) — correct the stake/cote after the
+    // fact, same two prompts "Prendre position" itself uses, so it's the
+    // one flow the user already knows rather than a new form to learn.
+    var editPosBtn = e.target.closest ? e.target.closest(".snap-edit-btn") : null;
+    if (editPosBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var editId = editPosBtn.getAttribute("data-snap-id");
+      var editPos = POSITIONS_STORE.loadRaw().filter(function (s) { return s.id === editId; })[0];
+      if (!editPos) return;
+      var rawStake = prompt("Nouvelle mise pour cette position ($) :", String(editPos.stakeUsd != null ? editPos.stakeUsd : ""));
+      if (rawStake === null) return; // cancelled
+      var newStake = parseFloat(String(rawStake).replace(",", "."));
+      if (!isFinite(newStake) || newStake <= 0) { alert("Montant invalide — entre un nombre positif."); return; }
+      var defaultCote2 = editPos.leaderPriceAtSnapshot != null ? (editPos.leaderPriceAtSnapshot * 100).toFixed(1) : "";
+      var rawCote2 = prompt("Nouvelle cote (¢) — laisse tel quel pour ne pas la changer :", defaultCote2);
+      if (rawCote2 === null) return; // cancelled
+      var patch = { stakeUsd: newStake };
+      if (String(rawCote2).trim() !== "") {
+        var coteCents2 = parseFloat(String(rawCote2).replace(",", "."));
+        if (!isFinite(coteCents2) || coteCents2 <= 0 || coteCents2 > 100) { alert("Cote invalide — entre un nombre entre 0 et 100 (¢)."); return; }
+        var newPrice2 = coteCents2 / 100;
+        if (newPrice2 !== editPos.leaderPriceAtSnapshot) {
+          patch.leaderPriceAtSnapshot = newPrice2;
+          // Manual entries build their card fresh from leaderPriceAtSnapshot
+          // every render (see manualCardHtml) — no frozen cardHtml to patch.
+          if (!editPos.isManual) {
+            var patched = Object.assign({}, editPos, patch);
+            var rebuilt2 = rebuildFullSnapshotCardHtml(patched);
+            if (rebuilt2 != null) patch.cardHtml = rebuilt2;
+          }
+        }
+      }
+      enqueueOp(POSITIONS_STORE, { type: "editPosition", id: editId, patch: patch });
       return;
     }
     var followBtn = e.target.closest ? e.target.closest(".vt-follow-btn") : null;
