@@ -1900,7 +1900,12 @@
 
   <div class="tab-panel" id="tab-by-match">
     <h2 class="section-title">Par match <span class="count-pill" id="byMatchCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Tous les marchés d'un même événement (moneyline, spread, O/U…) regroupés sous un seul match, classés par nombre total de trades trackés — top 60. Clique un match pour voir chaque trade en détail.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Tous les marchés d'un même événement (moneyline, spread, O/U…) regroupés sous un seul match, classés par nombre total de trades trackés — top 60. Clique un match pour voir chaque trade en détail, triés par note décroissante.</div>
+    <div class="vt-filters" id="byMatchSportFilters">
+      <button data-sport="all" type="button">Tous les sports</button>
+      <button data-sport="football" class="active" type="button">⚽ Football</button>
+      <button data-sport="other" type="button">Autres</button>
+    </div>
     <div id="byMatchContent">
       <div class="loading-state">Chargement…</div>
     </div>
@@ -2248,6 +2253,7 @@
   var expandedMatches = {}; // match key -> bool, same "survives a rebuild" purpose as expandedValueTrades
   var byMatchTraderFilter = false; // "Par match" — only show trades where swisstony or RN1 has a position
   var byMatchHighlighted = {}; // "Par match" — trader name -> bool, toggled by clicking their name in a trade row
+  var byMatchSportFilter = "football"; // "all" | "football" | "other" — same convention/default as Value Trades' own sportFilter
   // Every bit of mutable UI state that used to be its own bare module-level
   // var (one collapsed-flag/filter/sort per concept) now lives per-store
   // instead, so Mes Snapshots and Mes Positions each keep their own filters/
@@ -3575,7 +3581,15 @@
   // parallel hand-rolled layout. byMatchHighlighted threads through as the
   // optional highlight-set param both functions already accept for this.
   function renderMatchDetail(g) {
-    var units = g.units.slice().sort(function (a, b) { return b.traderCount - a.traderCount || b.totalStake - a.totalStake; });
+    // Note descending — the whole point of "Par match" is spotting the best
+    // trades on a given fixture, not just the biggest by headcount/volume.
+    // computeUnitCardParts sets u.score lazily on first render, so it has to
+    // be forced here too or the very first sort would compare undefineds.
+    var units = g.units.slice();
+    units.forEach(function (u) {
+      if (u.score == null) { var si = unitScoreInfo(u); u.score = si.score; u.scoreFactors = si.factors; u.scoreGate = si.gate; }
+    });
+    units.sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
     var filterBar = '<div class="match-filter-bar"><label><input type="checkbox" class="match-trader-filter"' +
       (byMatchTraderFilter ? " checked" : "") + ' /> swisstony &amp; RN1 uniquement</label></div>';
     var filtered = byMatchTraderFilter ? units.filter(unitHasTargetTrader) : units;
@@ -3601,8 +3615,13 @@
     var countEl = document.getElementById("byMatchCount");
     if (!container) return;
     var allGroups = computeMatchGroups();
-    var groups = allGroups.slice(0, BY_MATCH_MAX_ROWS);
-    if (countEl) countEl.textContent = allGroups.length > groups.length ? (groups.length + " / " + allGroups.length) : String(allGroups.length);
+    var sportFiltered = byMatchSportFilter === "all" ? allGroups : allGroups.filter(function (g) {
+      var primary = g.primaryUnit.members[0];
+      var football = isFootball(primary.question, primary.slug);
+      return byMatchSportFilter === "football" ? football : !football;
+    });
+    var groups = sportFiltered.slice(0, BY_MATCH_MAX_ROWS);
+    if (countEl) countEl.textContent = sportFiltered.length > groups.length ? (groups.length + " / " + sportFiltered.length) : String(sportFiltered.length);
     if (!groups.length) {
       container.innerHTML = '<div class="empty-note">Aucun match tracké pour l\'instant.</div>';
       return;
@@ -7347,6 +7366,15 @@
       btn.classList.add("active");
       sportFilter = btn.getAttribute("data-sport") || "all";
       renderValueTrades();
+    });
+  });
+  var byMatchSportFiltersEl = document.getElementById("byMatchSportFilters");
+  byMatchSportFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      byMatchSportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      byMatchSportFilter = btn.getAttribute("data-sport") || "all";
+      renderByMatch();
     });
   });
   var timingFiltersEl = document.getElementById("timingFilters");
