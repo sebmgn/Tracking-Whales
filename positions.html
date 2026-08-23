@@ -1152,6 +1152,22 @@
   details.value-trade-item.snap-dragging { opacity: 0.4; }
   details.value-trade-item.snap-drop-before { box-shadow: inset 0 3px 0 0 var(--accent); }
   details.value-trade-item.snap-drop-after { box-shadow: inset 0 -3px 0 0 var(--accent); }
+  /* Opposed-position grouping box (Mes Positions only) — see
+     renderPositionCardsWithOpposedGroups/computePositionOpposedColors. */
+  .pos-opposed-box {
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius-md);
+    padding: 12px 14px 2px;
+    margin-bottom: 12px;
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+  }
+  .pos-opposed-box-title {
+    font-size: 11.5px; font-weight: 800; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.03em;
+    margin-bottom: 10px;
+  }
+  .pos-opposed-box .value-trade-item { margin-bottom: 10px; }
+  .pos-opposed-box .value-trade-item:last-child { margin-bottom: 0; }
   .snap-side-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
   /* Generic fallback when no tracked trader ever held the other side, so
      its real name is unknown — dashed + italic marks it as "not a real
@@ -3568,6 +3584,7 @@
     return rows;
   }
   var BY_MATCH_TARGET_TRADERS = ["swisstony", "rn1"];
+  var BY_MATCH_TARGET_TRADERS_EXACT = ["swisstony", "RN1"]; // real casing from TRADERS — needed for the highlight lookup (exact match), unlike the filter above which lowercases
   function rowHasTargetTrader(row) {
     return row.entries.some(function (e) { return BY_MATCH_TARGET_TRADERS.indexOf((e.trader || "").toLowerCase()) !== -1; });
   }
@@ -6391,7 +6408,43 @@
         : store.emptyHint) + '</div>';
       return;
     }
-    store.els.list.innerHTML = cardsList.map(function (snap) { return snapCardHtml(snap, false, store); }).join("");
+    store.els.list.innerHTML = store.name === "positions"
+      ? renderPositionCardsWithOpposedGroups(cardsList, store)
+      : cardsList.map(function (snap) { return snapCardHtml(snap, false, store); }).join("");
+  }
+  // Mes Positions only — two (or more) of your own positions on the exact
+  // same market with different leading sides (see computePositionOpposedColors)
+  // now render inside one shared bordered box instead of just getting
+  // distinct colors, so the fact that they're a pair — not two unrelated
+  // bets that happen to sit near each other in the date-sorted list — is
+  // obvious without having to notice the colors match up. Only positions
+  // both currently passing the active tier/note/dist filters are boxed
+  // together — if one got filtered out, its partner just renders normally.
+  function renderPositionCardsWithOpposedGroups(cardsList, store) {
+    var byQuestion = {};
+    cardsList.forEach(function (s) {
+      if (!s.question || !s.leaderName) return;
+      if (!byQuestion[s.question]) byQuestion[s.question] = [];
+      byQuestion[s.question].push(s);
+    });
+    var rendered = {};
+    var html = "";
+    cardsList.forEach(function (snap) {
+      if (rendered[snap.id]) return;
+      var group = byQuestion[snap.question] || [snap];
+      var distinctNames = {};
+      group.forEach(function (s) { distinctNames[s.leaderName] = true; });
+      if (group.length > 1 && Object.keys(distinctNames).length > 1) {
+        html += '<div class="pos-opposed-box">' +
+          '<div class="pos-opposed-box-title">⚔️ Positions opposées — ' + esc(snap.question) + '</div>' +
+          group.map(function (s) { rendered[s.id] = true; return snapCardHtml(s, false, store); }).join("") +
+        '</div>';
+      } else {
+        rendered[snap.id] = true;
+        html += snapCardHtml(snap, false, store);
+      }
+    });
+    return html;
   }
   function renderSnapshots() { renderStoreView(SNAPSHOTS_STORE); }
   function renderPositions() { renderStoreView(POSITIONS_STORE); }
@@ -7603,6 +7656,18 @@
   document.getElementById("byMatchContent").addEventListener("change", function (e) {
     if (e.target && e.target.classList.contains("match-trader-filter")) {
       byMatchTraderFilter = e.target.checked;
+      // The checkbox's own job is filtering out every OTHER trade — it said
+      // nothing about swisstony/RN1's own rows once a trade actually has
+      // them, which is why checking it looked like it did nothing on a
+      // trade where they're just two names among many others. Checking it
+      // now also highlights them (same mechanism a name click uses),
+      // unchecking clears just those two — a name clicked independently
+      // stays highlighted either way.
+      if (byMatchTraderFilter) {
+        BY_MATCH_TARGET_TRADERS_EXACT.forEach(function (n) { byMatchHighlighted[n] = true; });
+      } else {
+        BY_MATCH_TARGET_TRADERS_EXACT.forEach(function (n) { delete byMatchHighlighted[n]; });
+      }
       renderByMatch();
     }
   });
