@@ -957,6 +957,35 @@
   .vt-dense-actions { flex: none; display: flex; gap: 4px; }
   .vt-dense-actions .vt-follow-btn, .vt-dense-actions .vt-trash-btn { padding: 2px 5px; font-size: 11px; }
 
+  /* ---- Par match ---- */
+  details.match-item {
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+    margin-bottom: 8px;
+  }
+  .match-summary {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    list-style: none; cursor: pointer;
+  }
+  .match-summary::-webkit-details-marker { display: none; }
+  .match-col-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: var(--text); }
+  .match-col-markets { flex: none; font-size: 10.5px; color: var(--text-dim); background: var(--cream-grad-2); border: 1px solid var(--panel-border); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+  .match-col-traders { flex: 0 0 70px; font-size: 11.5px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .match-col-volume { flex: 0 0 90px; font-size: 11.5px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .match-col-count {
+    flex: none; font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 900;
+    font-size: 16px; width: 40px; text-align: right; color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .match-detail { padding: 4px 16px 14px; border-top: 1px solid var(--panel-border); }
+  .match-filter-bar { display: flex; align-items: center; gap: 8px; padding: 10px 0 4px; font-size: 12.5px; color: var(--text-dim); }
+  .match-filter-bar label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .match-trade-row { padding: 8px 0; border-bottom: 1px solid var(--panel-border); }
+  .match-trade-row:last-child { border-bottom: none; }
+  .match-trade-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .match-trade-question { font-size: 11.5px; color: var(--text-dim); }
+  .match-trade-side { font-size: 12.5px; font-weight: 700; }
+  .match-trade-stats { font-size: 11px; color: var(--text-dim); margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .match-empty-filter { font-size: 12.5px; color: var(--text-dim); font-style: italic; padding: 10px 0; }
+
   /* ---- Trades suivis ---- */
   .vt-followed-box {
     background: color-mix(in srgb, var(--gold) 8%, var(--panel));
@@ -1669,6 +1698,7 @@
     <button class="tab-btn tab-btn-primary" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
     <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Par match</button>
     <button class="tab-btn tab-btn-quiet" data-tab="stats-profiles" type="button">Statistiques profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
@@ -1830,6 +1860,14 @@
     <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Mes Snapshots / Mes Positions) plus tard, rien n'est jamais supprimé ici.</div>
     <div id="archivesContent">
       <div class="empty-note">Aucune archive pour l'instant.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-by-match">
+    <h2 class="section-title">Par match <span class="count-pill" id="byMatchCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Tous les marchés d'un même événement (moneyline, spread, O/U…) regroupés sous un seul match, classés par nombre total de trades trackés. Clique un match pour voir chaque trade en détail.</div>
+    <div id="byMatchContent">
+      <div class="loading-state">Chargement…</div>
     </div>
   </div>
 
@@ -2171,6 +2209,9 @@
   var traderCollapsed = {};  // trader name -> bool
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var siblingPanelOpen = {}; // unit stableKey -> bool — "⇄" toggle, see findSiblingUnits
+  var allUnitsGlobal = []; // every render unit, unfiltered — set once per refresh cycle in renderAll, reused by "Par match" so it doesn't need its own pass over tradersData
+  var expandedMatches = {}; // match key -> bool, same "survives a rebuild" purpose as expandedValueTrades
+  var byMatchTraderFilter = false; // "Par match" — only show trades where swisstony or RN1 has a position
   // Every bit of mutable UI state that used to be its own bare module-level
   // var (one collapsed-flag/filter/sort per concept) now lives per-store
   // instead, so Mes Snapshots and Mes Positions each keep their own filters/
@@ -3423,6 +3464,113 @@
     mergedSides.sort(function (a, b) { return b.traderCount - a.traderCount || b.stake - a.stake; });
     return mergedSides;
   }
+
+  // ---------- Par match ----------
+  // Groups every render unit (already built once per refresh in renderAll,
+  // reused here via allUnitsGlobal — no extra fetch, no extra pass over
+  // tradersData) by real-world fixture instead of by single market, so a
+  // match with 5 tracked trades split across its moneyline + O/U + spread
+  // markets outranks a single market with 3. A unit with no matchKey (an
+  // outright/futures market, not tied to one date-stamped confrontation) is
+  // its own solo "match" rather than being dropped.
+  function computeMatchGroups() {
+    var byKey = {};
+    allUnitsGlobal.forEach(function (u) {
+      var key = u.matchKey || ("solo:" + unitStableKey(u));
+      if (!byKey[key]) byKey[key] = { key: key, units: [], traderNames: {}, tradeCount: 0, volume: 0, primaryUnit: null, primaryTraderCount: -1 };
+      var grp = byKey[key];
+      grp.units.push(u);
+      if (u.traderCount > grp.primaryTraderCount) { grp.primaryTraderCount = u.traderCount; grp.primaryUnit = u; }
+      mergeUnitSides(u).forEach(function (m) {
+        if (m.traderCount <= 0) return;
+        grp.tradeCount += m.traderCount;
+        grp.volume += m.stake;
+        m.items.forEach(function (it) { it.s.entries.forEach(function (e) { grp.traderNames[e.trader] = true; }); });
+      });
+    });
+    var groups = Object.keys(byKey).map(function (k) { return byKey[k]; });
+    groups.forEach(function (g) { g.traderCount = Object.keys(g.traderNames).length; });
+    groups.sort(function (a, b) { return b.tradeCount - a.tradeCount || b.volume - a.volume; });
+    return groups;
+  }
+  // Flattens every unit's merged sides into one row per (market, side) —
+  // that's what "trade" means here, not per individual trader — sorted by
+  // how many tracked traders are on that exact side, matching what was asked.
+  function buildMatchTradeRows(units) {
+    var rows = [];
+    units.forEach(function (u) {
+      var mergedSides = mergeUnitSides(u);
+      var distinctColors = resolveDistinctSideColors(mergedSides);
+      var primary = u.members[0];
+      mergedSides.forEach(function (m) {
+        if (m.traderCount <= 0) return;
+        var entries = [];
+        m.items.forEach(function (it) { it.s.entries.forEach(function (e) { entries.push(e); }); });
+        rows.push({
+          question: primary.question, sideName: m.name, color: distinctColors[m.name],
+          traderCount: m.traderCount, stake: m.stake, avgPrice: mergedSideAvgPrice(m),
+          entries: entries, mergedSide: m
+        });
+      });
+    });
+    rows.sort(function (a, b) { return b.traderCount - a.traderCount || b.stake - a.stake; });
+    return rows;
+  }
+  var BY_MATCH_TARGET_TRADERS = ["swisstony", "rn1"];
+  function rowHasTargetTrader(row) {
+    return row.entries.some(function (e) { return BY_MATCH_TARGET_TRADERS.indexOf((e.trader || "").toLowerCase()) !== -1; });
+  }
+  function renderMatchDetail(g) {
+    var allRows = buildMatchTradeRows(g.units);
+    var rows = byMatchTraderFilter ? allRows.filter(rowHasTargetTrader) : allRows;
+    var filterBar = '<div class="match-filter-bar"><label><input type="checkbox" class="match-trader-filter"' +
+      (byMatchTraderFilter ? " checked" : "") + ' /> swisstony &amp; RN1 uniquement</label></div>';
+    if (!rows.length) {
+      return filterBar + '<div class="match-empty-filter">' +
+        (byMatchTraderFilter ? "Aucun trade de swisstony ou RN1 sur ce match." : "Aucun trade.") + '</div>';
+    }
+    var rowsHtml = rows.map(function (row) {
+      var colorMap = {};
+      colorMap[row.sideName] = row.color;
+      return '<div class="match-trade-row">' +
+        '<div class="match-trade-head">' +
+          '<span class="match-trade-side" style="color:' + row.color + '">' + esc(row.sideName) + '</span>' +
+          '<span class="match-trade-question">' + esc(row.question) + '</span>' +
+          '<span class="match-trade-stats">' + row.traderCount + ' trader' + (row.traderCount > 1 ? "s" : "") +
+            ' · ' + fmtUSD(row.stake) + (row.avgPrice != null ? ' · ' + fmtCents(row.avgPrice) : '') + '</span>' +
+        '</div>' +
+        renderMergedTraderRows([row.mergedSide], row.stake || 1, colorMap) +
+      '</div>';
+    }).join("");
+    return filterBar + rowsHtml;
+  }
+  function renderByMatch() {
+    var container = document.getElementById("byMatchContent");
+    var countEl = document.getElementById("byMatchCount");
+    if (!container) return;
+    var groups = computeMatchGroups();
+    if (countEl) countEl.textContent = String(groups.length);
+    if (!groups.length) {
+      container.innerHTML = '<div class="empty-note">Aucun match tracké pour l\'instant.</div>';
+      return;
+    }
+    container.innerHTML = groups.map(function (g) {
+      var label = esc(g.primaryUnit.members[0].question);
+      var marketsBadge = g.units.length > 1 ? '<span class="match-col-markets">' + g.units.length + ' marchés</span>' : '';
+      var isOpen = !!expandedMatches[g.key];
+      return '<details class="match-item" data-key="' + esc(g.key) + '"' + (isOpen ? " open" : "") + '>' +
+        '<summary class="match-summary">' +
+          '<span class="match-col-count" title="Nombre total de trades trackés sur ce match">' + g.tradeCount + '</span>' +
+          '<span class="match-col-label">' + label + '</span>' +
+          marketsBadge +
+          '<span class="match-col-traders">' + g.traderCount + ' trader' + (g.traderCount > 1 ? "s" : "") + '</span>' +
+          '<span class="match-col-volume">' + fmtUSD(g.volume) + '</span>' +
+        '</summary>' +
+        '<div class="match-detail">' + renderMatchDetail(g) + '</div>' +
+      '</details>';
+    }).join("");
+  }
+
   // ---------- value trade "note" (1-10) ----------
   // A single blended score meant to be retuned often as real results come
   // in — every knob that matters lives in these two objects, nothing else
@@ -6728,8 +6876,11 @@
     unitsForPeers.forEach(function (u) {
       u.members.forEach(function (m) { unitByMarketKey[m.key] = u; });
     });
+    allUnitsGlobal = unitsForPeers;
     renderValueTrades();
     renderRecentTrades();
+    var byMatchTab = document.getElementById("tab-by-match");
+    if (byMatchTab && byMatchTab.classList.contains("active")) renderByMatch();
     // MEASURED: this section alone was ~147,000 DOM nodes (one row per
     // OPEN POSITION across every tracked trader, no cap) — 94% of the
     // page's entire DOM, rebuilt unconditionally on every refresh cycle
@@ -7041,6 +7192,7 @@
       if (btn.getAttribute("data-tab") === "archives") renderArchives();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
+      if (btn.getAttribute("data-tab") === "by-match") renderByMatch();
     });
   });
   rtFilters.querySelectorAll("button").forEach(function (btn) {
@@ -7264,6 +7416,18 @@
     }
   }
   positionsContent.addEventListener("toggle", trackPositionToggle, true);
+  function trackMatchToggle(e) {
+    if (e.target && e.target.classList.contains("match-item")) {
+      expandedMatches[e.target.getAttribute("data-key")] = e.target.open;
+    }
+  }
+  document.getElementById("byMatchContent").addEventListener("toggle", trackMatchToggle, true);
+  document.getElementById("byMatchContent").addEventListener("change", function (e) {
+    if (e.target && e.target.classList.contains("match-trader-filter")) {
+      byMatchTraderFilter = e.target.checked;
+      renderByMatch();
+    }
+  });
   collapseAllBtn.addEventListener("click", function () {
     var anyExpanded = TRADERS.some(function (t) { return !traderCollapsed[t.name]; });
     TRADERS.forEach(function (t) { traderCollapsed[t.name] = anyExpanded; });
