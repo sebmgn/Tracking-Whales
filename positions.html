@@ -3272,6 +3272,21 @@
     // that null-as-zero used to be able to drag a near-certain ~99.95¢ side
     // down to a nonsensical ~50¢ just because the OTHER linked platform
     // happened to have zero qualifying traders on it.
+    //
+    // CHANGED 2026-08-23 (user-reported): this used to average BOTH
+    // platforms' prices into one number when a trade was linked across
+    // Polymarket and Predict.fun — a real Bournemouth trade showed 77.5¢
+    // ("cote actuelle") when Polymarket itself was trading that exact "No"
+    // at 68¢; the other 87¢ was Predict.fun's own separate market, blended
+    // in invisibly. That average never matches a price you can actually act
+    // on anywhere. Polymarket is the platform actually used to trade, so
+    // its price wins outright whenever it has one for this side — Predict.fun
+    // is only used as a fallback for a side with no Polymarket entries at all.
+    var polyPrices = m.items
+      .filter(function (it) { return it.g.platform === "polymarket"; })
+      .map(function (it) { return it.s.price; })
+      .filter(function (p) { return typeof p === "number" && !isNaN(p); });
+    if (polyPrices.length) return polyPrices.reduce(function (sum, p) { return sum + p; }, 0) / polyPrices.length;
     var prices = m.items.map(function (it) { return it.s.price; }).filter(function (p) { return typeof p === "number" && !isNaN(p); });
     return prices.length ? prices.reduce(function (sum, p) { return sum + p; }, 0) / prices.length : null;
   }
@@ -3971,9 +3986,9 @@
     var leaderColor = leaderName ? distinctColors[leaderName] : "var(--accent)";
     // Show the current odds right on the leader badge — that's the number
     // that tells you what a bet on the leading side would actually pay out.
-    // When linked across platforms, show one averaged price rather than
-    // both platforms' figures side by side. Shared with the legend below so
-    // there's exactly one place this average gets computed.
+    // When linked across platforms, this is Polymarket's own price (see
+    // mergedSideAvgPrice) — not a blend with Predict.fun. Shared with the
+    // legend below so there's exactly one place this gets computed.
     var leaderAvgPrice = leaderGroup ? mergedSideAvgPrice(leaderGroup) : null;
     var leaderPriceText = leaderAvgPrice != null ? fmtCents(leaderAvgPrice) : '';
     var leaderRoi = leaderAvgPrice != null && leaderAvgPrice > 0 ? (1 - leaderAvgPrice) / leaderAvgPrice * 100 : null;
