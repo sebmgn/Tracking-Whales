@@ -2377,6 +2377,16 @@
     return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(n));
   }
   function fmtCents(p) { return (p * 100).toFixed(1) + "¢"; }
+  // A price this close to 100¢ or 0¢ means the market has already resolved
+  // (or is a formality away from it) — that position/trade is dead weight,
+  // not a real signal, in any view that isn't specifically about history.
+  // Value Trades already hard-excludes on a wider band (5-99¢, "not really
+  // a value trade anymore") for its own different reason; this is the
+  // narrower "it's literally decided" check requested for Trades par
+  // profils and Par match, which otherwise show every open position as-is.
+  function isPriceDecided(price) {
+    return price != null && (price >= 0.9995 || price <= 0.0005);
+  }
   function fmtPct(n) { var sign = n > 0 ? "+" : ""; return sign + n.toFixed(2) + "%"; }
   function median(arr) {
     var vals = (arr || []).filter(function (v) { return typeof v === "number" && !isNaN(v); });
@@ -3546,12 +3556,19 @@
   function computeMatchGroups() {
     var byKey = {};
     allUnitsGlobal.forEach(function (u) {
+      var mergedSides = mergeUnitSides(u);
+      // Already-resolved markets (leader price ~100¢ or ~0¢) are dead
+      // weight here — allUnitsGlobal covers every open position with no
+      // price filtering of its own (unlike Value Trades' allUnits), so
+      // without this a decided market still shows up ranked by its old
+      // trade count.
+      if (mergedSides.length && isPriceDecided(mergedSideAvgPrice(mergedSides[0]))) return;
       var key = u.matchKey || ("solo:" + unitStableKey(u));
       if (!byKey[key]) byKey[key] = { key: key, units: [], traderNames: {}, tradeCount: 0, volume: 0, primaryUnit: null, primaryTraderCount: -1 };
       var grp = byKey[key];
       grp.units.push(u);
       if (u.traderCount > grp.primaryTraderCount) { grp.primaryTraderCount = u.traderCount; grp.primaryUnit = u; }
-      mergeUnitSides(u).forEach(function (m) {
+      mergedSides.forEach(function (m) {
         if (m.traderCount <= 0) return;
         grp.tradeCount += m.traderCount;
         grp.volume += m.stake;
@@ -6869,7 +6886,7 @@
 
   // ---------- trader sections rendering ----------
   function renderTraderSection(trader) {
-    var positions = (tradersData[trader.name] || []).slice();
+    var positions = (tradersData[trader.name] || []).filter(function (p) { return !isPriceDecided(p.curPrice); });
     positions.sort(function (a, b) { return (b.valueUsd || 0) - (a.valueUsd || 0); });
 
     var totalValue = positions.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
