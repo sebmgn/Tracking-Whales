@@ -3792,6 +3792,45 @@
     var t = Math.max(0, Math.min(1, normalized01 / rampHi));
     return floor + (1 - floor) * t;
   }
+  // A hedger (a position on 2+ sides of the same market) used to count as a
+  // FULL vote on every side they touched — someone 95% committed to the
+  // leader with a token 5% hedge elsewhere read exactly like a genuine
+  // near-50/50 fence-sitter (user-flagged case: a trader with $4.2k on the
+  // leading side and a $730 token position on the other one was dragging
+  // consensus down as hard as if that $730 were a real, undiluted bet).
+  // This weights each trader's presence on a side by their STAKE SPLIT
+  // (stake on this side / their total stake across every side of the unit)
+  // instead of a flat 1 — a token hedge barely dents consensus, a real
+  // split still shows up fully. Weights sum to exactly 1 per trader (the
+  // real unique headcount), unlike the old flat sum-of-side-counts, which
+  // double-counted every hedger (see the 2026-08-15 fix this refines).
+  // getEntries(side) -> [{trader, stake}] for that one side; sideList/
+  // getEntries are abstracted so the exact same weighting runs on both the
+  // live mergedSides shape and the frozen snapshot sides shape.
+  function weightedConsensusCounts(sideList, getEntries) {
+    var totalByTrader = {};
+    sideList.forEach(function (side) {
+      getEntries(side).forEach(function (e) { totalByTrader[e.trader] = (totalByTrader[e.trader] || 0) + e.stake; });
+    });
+    return sideList.map(function (side) {
+      var stakeByTrader = {};
+      getEntries(side).forEach(function (e) { stakeByTrader[e.trader] = (stakeByTrader[e.trader] || 0) + e.stake; });
+      var sum = 0;
+      Object.keys(stakeByTrader).forEach(function (trader) {
+        var total = totalByTrader[trader];
+        sum += total > 0 ? stakeByTrader[trader] / total : 0;
+      });
+      return sum;
+    });
+  }
+  function mergedSideEntries(m) {
+    var out = [];
+    m.items.forEach(function (it) { it.s.entries.forEach(function (e) { out.push({ trader: e.trader, stake: e.stake }); }); });
+    return out;
+  }
+  function snapshotSideEntries(s) {
+    return (s.traders || []).map(function (t) { return { trader: t.trader, stake: t.stake }; });
+  }
   // Returns the leading side's live price alongside the score (both need
   // mergeUnitSides — computed once here, not twice) so callers can filter
   // out already-decided trades (leaderPrice ~100¢) using the same pass.
@@ -3815,17 +3854,18 @@
     // market, so a hedger is credited to leaderCount (they do have a
     // position on the leader side) but only ever counted ONCE in the
     // denominator too, since it's the same person — netting out to zero
-    // signal of their contrary bet ever existing. A market with 6 unique
-    // traders where 2 of them ALSO hedged a real position on the other side
-    // scored consensusRatio 6/6 = 1.0 (literally "unanimous"), while the
-    // Consensus gauge shown on the same card already correctly read 6/8 —
-    // this was two different, disagreeing definitions of "consensus" on the
-    // same card. Fixed by using the same denominator the gauge already
-    // uses: the sum of each SIDE's own trader count (mergedSides' own
-    // .traderCount), which counts a hedger once per side they're actually
-    // on, not once total.
-    var totalSideTraders = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
-    var consensusRatio = totalSideTraders > 0 ? leaderCount / totalSideTraders : 0;
+    // signal of their contrary bet ever existing. Fixed by counting a
+    // hedger once per side they're actually on.
+    // REFINED (2026-08-24, user-flagged): that first fix counted every
+    // side-appearance as one full trader regardless of size — a $730 token
+    // hedge next to a $4.2k real position on the leader side dragged
+    // consensus down exactly as hard as a genuine 50/50 split would have.
+    // weightedConsensusCounts weights each side-appearance by the trader's
+    // own stake split instead, so a token hedge barely registers.
+    var weightedSideCounts = weightedConsensusCounts(mergedSides, mergedSideEntries);
+    var totalSideTraders = weightedSideCounts.reduce(function (s, c) { return s + c; }, 0);
+    var leaderCountWeighted = weightedSideCounts.length ? weightedSideCounts[0] : 0;
+    var consensusRatio = totalSideTraders > 0 ? leaderCountWeighted / totalSideTraders : 0;
     var leaderTraderStakes = [];
     if (leaderGroup) leaderGroup.items.forEach(function (it) { it.s.entries.forEach(function (e) { leaderTraderStakes.push({ trader: e.trader, stake: e.stake }); }); });
     var leaderQuality = leaderWeightedQuality(leaderTraderStakes);
@@ -4167,7 +4207,6 @@
     // colors happened to collide.
     var distinctColors = resolveDistinctSideColors(mergedSides);
 
-    var totalTradersAll = mergedSides.reduce(function (s, m) { return s + m.traderCount; }, 0);
     var totalStakeAll = mergedSides.reduce(function (s, m) { return s + m.stake; }, 0);
     // The single largest individual stake across EVERY side of this
     // proposition (Yes+No, over+under, ...) — the per-trader-row gauges in
@@ -4382,18 +4421,42 @@
     // fixed 10) so "6 filled out of 7" is literal, not an interpolated
     // rounding — segments just get thinner as the flex:1 track divides
     // itself among however many there are.
-    var consensusSegCount = totalTradersAll > 0 ? totalTradersAll : 1;
-    var consensusFilled = mergedSides[0] ? mergedSides[0].traderCount : 0;
+    // One segment per (side, trader) — same shape as before — but sized by
+    // that trader's own stake split across every side they're on (see
+    // weightedConsensusCounts) instead of a uniform flex:1. A hedger with a
+    // token position on the non-leading side now draws a visibly slim
+    // segment there instead of a full-width one identical to a genuine
+    // dissenter's, while a trader on only one side is unaffected (weight 1).
+    // Floored at 0.15 so even an extreme split still leaves a visible,
+    // clickable sliver rather than vanishing entirely.
+    var gaugeTraderTotals = {};
+    mergedSides.forEach(function (m) {
+      mergedSideEntries(m).forEach(function (e) { gaugeTraderTotals[e.trader] = (gaugeTraderTotals[e.trader] || 0) + e.stake; });
+    });
+    var consensusSegments = [];
+    mergedSides.forEach(function (m, sideIdx) {
+      var stakeByTrader = {};
+      mergedSideEntries(m).forEach(function (e) { stakeByTrader[e.trader] = (stakeByTrader[e.trader] || 0) + e.stake; });
+      Object.keys(stakeByTrader).forEach(function (trader) {
+        var total = gaugeTraderTotals[trader];
+        var weight = total > 0 ? stakeByTrader[trader] / total : 1;
+        consensusSegments.push({ weight: Math.max(0.15, weight), filled: sideIdx === 0 });
+      });
+    });
     // The count used to sit as a 3rd flex sibling after the gauge, which
     // ate its own width + gap and left the gauge track visibly shorter than
     // the Mises bar below it (same label width, but one fewer flex item to
     // share space with). Overlaying the count on top of the track — inside
     // the same flex:1 wrapper — keeps the two bars pixel-identical in width.
+    // Label uses the real unique headcount (u.traderCount) as the
+    // denominator, not a sum of side counts — that sum double-counts a
+    // hedger once per side, which used to read as e.g. "9/11" for a market
+    // with only 10 real people in it.
     var consensusHtml = '<div class="balance-row"><span class="balance-label">Consensus</span><div class="consensus-gauge-wrap"><div class="consensus-gauge">' +
-      Array.from({ length: consensusSegCount }, function (_, i) {
-        return '<div class="consensus-seg' + (i < consensusFilled ? ' filled' : '') + '"></div>';
+      consensusSegments.map(function (seg) {
+        return '<div class="consensus-seg' + (seg.filled ? ' filled' : '') + '" style="flex-grow:' + seg.weight.toFixed(3) + '"></div>';
       }).join("") +
-      '</div><span class="consensus-count">' + (mergedSides[0] ? mergedSides[0].traderCount : 0) + '/' + totalTradersAll + '</span></div></div>';
+      '</div><span class="consensus-count">' + (mergedSides[0] ? mergedSides[0].traderCount : 0) + '/' + u.traderCount + '</span></div></div>';
     var balanceHtml =
       '<div class="balance-group">' +
         consensusHtml +
@@ -8262,7 +8325,13 @@
     var maxStake = 0;
     Object.keys(byTrader).forEach(function (name) { if (byTrader[name] > maxStake) maxStake = byTrader[name]; });
     var topTraderShare = (leaderGroup.stake && leaderCount >= 2) ? maxStake / leaderGroup.stake : 0;
-    var consensusRatio = traderCount > 0 ? leaderCount / traderCount : 0;
+    // Same stake-weighted consensus as unitScoreInfo (2026-08-24) — a
+    // hedger's token position on the non-leading side barely counts against
+    // consensus instead of registering as a full dissenting trader.
+    var weightedSideCounts = weightedConsensusCounts(sides, snapshotSideEntries);
+    var totalSideTradersWeighted = weightedSideCounts.reduce(function (s, c) { return s + c; }, 0);
+    var leaderCountWeighted = weightedSideCounts.length ? weightedSideCounts[0] : 0;
+    var consensusRatio = totalSideTradersWeighted > 0 ? leaderCountWeighted / totalSideTradersWeighted : 0;
     var leaderQuality = leaderWeightedQuality((leaderGroup.traders || []).map(function (t) { return { trader: t.trader, stake: t.stake }; }));
     var factors = {
       consensusRatio: normLinear(consensusRatio, SCORE_RANGES.consensusRatio),
@@ -8408,8 +8477,25 @@
     // ---- gauges (Consensus = current segmented gauge, Mises = balance bar) ----
     var totalTraders = snap.traderCount || 1;
     var filled = sides[0].traderCount;
-    var consensusSegs = Array.from({ length: totalTraders }, function (_, i) {
-      return '<div class="consensus-seg' + (i < filled ? ' filled' : '') + '"></div>';
+    // Same stake-weighted segment sizing as the live card (computeUnitCardParts)
+    // — a hedger's token position on a non-leading side draws a slim segment
+    // instead of a full-width one, see weightedConsensusCounts.
+    var gaugeTraderTotals = {};
+    sides.forEach(function (s) {
+      snapshotSideEntries(s).forEach(function (e) { gaugeTraderTotals[e.trader] = (gaugeTraderTotals[e.trader] || 0) + e.stake; });
+    });
+    var consensusSegments = [];
+    sides.forEach(function (s, sideIdx) {
+      var stakeByTrader = {};
+      snapshotSideEntries(s).forEach(function (e) { stakeByTrader[e.trader] = (stakeByTrader[e.trader] || 0) + e.stake; });
+      Object.keys(stakeByTrader).forEach(function (trader) {
+        var total = gaugeTraderTotals[trader];
+        var weight = total > 0 ? stakeByTrader[trader] / total : 1;
+        consensusSegments.push({ weight: Math.max(0.15, weight), filled: sideIdx === 0 });
+      });
+    });
+    var consensusSegs = consensusSegments.map(function (seg) {
+      return '<div class="consensus-seg' + (seg.filled ? ' filled' : '') + '" style="flex-grow:' + seg.weight.toFixed(3) + '"></div>';
     }).join("");
     var consensusHtml = '<div class="balance-row"><span class="balance-label">Consensus</span><div class="consensus-gauge-wrap"><div class="consensus-gauge">' + consensusSegs + '</div><span class="consensus-count">' + filled + '/' + totalTraders + '</span></div></div>';
     function gaugeBg(i) {
