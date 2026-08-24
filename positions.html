@@ -1308,10 +1308,28 @@
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .tier-wr-roi { font-style: italic; font-size: 10.5px; font-weight: 400; color: var(--text-dim); }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
-  /* Manuel vs suivi auto — same .tier-wr-* row, just a wider label badge
-     than the 3-char conviction/note codes it was built for. */
-  .tier-wr-badge-wide { flex: 0 0 150px; cursor: default; }
-  .tier-wr-badge-wide:hover { filter: none; }
+  /* Manuel vs suivi auto — wider label badge than the 3-char conviction/
+     note codes .tier-wr-badge was built for. */
+  .tier-wr-badge-wide { flex: 0 0 150px; }
+  /* Own row class (not .tier-wr-row) for the same reason .note-wr-row is
+     its own class above — this row's click-filter handler (manualVsAutoFilter)
+     would otherwise collide with the conviction gauge's own .tier-wr-row
+     handler reading a data-tier attribute this row doesn't have. */
+  .manual-auto-row { display: flex; align-items: center; gap: 12px; margin: 0 -8px 4px; padding: 4px 8px; border-radius: var(--radius-md); cursor: pointer; transition: background-color .15s ease; }
+  .manual-auto-row:hover { background: var(--row-hover); }
+  .manual-auto-row.tier-win { background: color-mix(in srgb, var(--green) 38%, transparent); border: 1px solid color-mix(in srgb, var(--green) 55%, transparent); }
+  .manual-auto-row.tier-lose { background: color-mix(in srgb, var(--red) 38%, transparent); border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); }
+  .manual-auto-row.tier-win:hover { background: color-mix(in srgb, var(--green) 48%, transparent); }
+  .manual-auto-row.tier-lose:hover { background: color-mix(in srgb, var(--red) 48%, transparent); }
+  .manual-auto-row.active { box-shadow: 0 0 0 1px var(--accent) inset; }
+  .manual-auto-tier-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px 162px; }
+  .manual-auto-tier-chips:last-child { margin-bottom: 0; }
+  .manual-auto-tier-chip {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid;
+    background: var(--panel); cursor: pointer; font-variant-numeric: tabular-nums;
+  }
+  .manual-auto-tier-chip:hover { filter: brightness(0.94); }
+  .manual-auto-tier-chip.active { color: #fff !important; }
   /* Same visual language as .tier-wr-* above (winrate-by-conviction), under
      its own class namespace — this gauge is keyed by cumulative note
      threshold instead of confidence tag, and needs its own click-filter
@@ -2246,7 +2264,7 @@
   //   tierWinrateCollapsed, noteWinrateCollapsed
   function freshStoreState() {
     return {
-      tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null,
+      tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null, manualVsAutoFilter: null,
       pnlChartOddsFilter: null, pnlChartTierFilter: null, pnlChartDays: null, pnlChartNoteFilter: null,
       pnlChartSplitByTier: false,
       chartSelectedId: null, chartPrevScrollY: null,
@@ -5391,6 +5409,12 @@
   // conviction gauge above (renderTierWinrate), just split by isManual
   // instead of by confidence tier, since a manual bet carries no computed
   // note to bucket by anyway.
+  // Clicking a group row filters the card list below to just that group
+  // (manualVsAutoFilter, single-select — reclick to clear); clicking a
+  // confidence chip under a group toggles that tier into tierCardFilter,
+  // the SAME filter the conviction gauge above already uses — the two
+  // compose (AND) rather than needing their own separate state, so "manuel
+  // + S" is just clicking both.
   var MANUAL_VS_AUTO_GROUPS = [
     { key: "manual", label: "✍️ Paris manuels", color: "#f472b6", match: function (s) { return !!s.isManual; } },
     { key: "auto", label: "🎯 Suivi des whales", color: "#38bdf8", match: function (s) { return !s.isManual; } }
@@ -5413,18 +5437,37 @@
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
         ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
       var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
-      return '<div class="tier-wr-row' + resultClass + '" title="' + esc(g.label + " — " + items.length + " au total, " + countLabel) + '">' +
+      var isActive = store.state.manualVsAutoFilter === g.key;
+      var rowHtml = '<div class="manual-auto-row' + resultClass + (isActive ? ' active' : '') + '" data-manual-auto="' + g.key + '" data-store="' + store.name + '" title="Filtrer sur ' + esc(g.label) + '">' +
         '<span class="tier-wr-badge tier-wr-badge-wide" style="color:' + g.color + ';border-color:' + g.color + ';background:color-mix(in srgb, ' + g.color + ' 14%, transparent)">' + esc(g.label) + '</span>' +
         '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + g.color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + ' · ' + items.length + ' total</span>' +
         hypHtml +
       '</div>';
+      // Confidence differential — this group's own winrate per tag, tags
+      // with zero items in this group omitted rather than shown as "—".
+      var tierChips = CONFIDENCE_TIERS.map(function (tier) {
+        var tierItems = decided.filter(function (s) { return s.confidence === tier; });
+        if (!tierItems.length) return "";
+        var tierWin = tierItems.filter(function (s) { return s.leaderName === s.winningSide; }).length;
+        var tierWr = Math.round(tierWin / tierItems.length * 100);
+        var tierColor = CONFIDENCE_COLORS[tier];
+        var tierActive = store.state.tierCardFilter.indexOf(tier) !== -1;
+        var chipStyle = tierActive
+          ? "background:" + tierColor + ";border-color:" + tierColor
+          : "color:" + tierColor + ";border-color:" + tierColor;
+        return '<button type="button" class="manual-auto-tier-chip' + (tierActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" data-store="' + store.name + '" style="' + chipStyle + '" title="' + esc(g.label + " · " + tier + " : " + tierWin + "/" + tierItems.length) + '">' + esc(tier) + " " + tierWr + '%</button>';
+      }).join("");
+      return rowHtml + (tierChips ? '<div class="manual-auto-tier-chips">' + tierChips + '</div>' : "");
     }).join("");
+    var filterNoteHtml = store.state.manualVsAutoFilter
+      ? '<div class="tier-wr-note">Filtré sur <b>' + esc(MANUAL_VS_AUTO_GROUPS.filter(function (g) { return g.key === store.state.manualVsAutoFilter; })[0].label) + '</b> — reclique la ligne active pour l\'enlever.</div>'
+      : '';
     syncSnapToggleLabel(store.ids.manualVsAutoToggle, store.state.manualVsAutoCollapsed, "manuel vs suivi auto");
     el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.manualVsAutoCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Paris manuels vs suivi des whales</div>' +
-      '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — comparé entre tes paris manuels et ceux issus du suivi des traders.</div>' +
-      rows + '</div></div>';
+      '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — clique une ligne pour filtrer, une pastille de confiance pour affiner.</div>' +
+      rows + filterNoteHtml + '</div></div>';
   }
 
   function computeTierWinrates(list, store) {
@@ -6250,9 +6293,14 @@
       var activeNoteBinIsLast = NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === st.noteCardFilter;
       cardsList = cardsList.filter(function (s) { return s.noteAtSnapshot != null && noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast); });
     }
+    if (st.manualVsAutoFilter != null) {
+      var wantManual = st.manualVsAutoFilter === "manual";
+      cardsList = cardsList.filter(function (s) { return !!s.isManual === wantManual; });
+    }
     var activeFilterLabels = st.tierCardFilter.slice();
     if (st.snapDistCellFilter) activeFilterLabels.push((st.snapDistCellFilter.tier || "Tous") + " " + st.snapDistCellFilter.bracket[0] + "–" + st.snapDistCellFilter.bracket[1] + "¢");
     if (st.noteCardFilter != null) activeFilterLabels.push("note " + st.noteCardFilter + "-" + (st.noteCardFilter + 1));
+    if (st.manualVsAutoFilter != null) activeFilterLabels.push(st.manualVsAutoFilter === "manual" ? "paris manuels" : "suivi auto");
     store.els.count.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + list.length + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
@@ -7905,6 +7953,26 @@
       var rowBinMin = Number(noteRow.getAttribute("data-note-bin-min"));
       noteRowStore.state.noteCardFilter = noteRowStore.state.noteCardFilter === rowBinMin ? null : rowBinMin;
       renderStoreView(noteRowStore);
+      return;
+    }
+    // Checked before .manual-auto-row below — the chip sits inside the row,
+    // so without an early return here a chip click would also fall through
+    // and toggle the row's own manualVsAutoFilter.
+    var manualAutoChip = e.target.closest ? e.target.closest(".manual-auto-tier-chip") : null;
+    if (manualAutoChip) {
+      var chipStore = resolveStoreFromEl(manualAutoChip);
+      var chipTier = manualAutoChip.getAttribute("data-tier");
+      var chipIdx = chipStore.state.tierCardFilter.indexOf(chipTier);
+      if (chipIdx === -1) chipStore.state.tierCardFilter.push(chipTier); else chipStore.state.tierCardFilter.splice(chipIdx, 1);
+      renderStoreView(chipStore);
+      return;
+    }
+    var manualAutoRow = e.target.closest ? e.target.closest(".manual-auto-row") : null;
+    if (manualAutoRow) {
+      var manualAutoRowStore = resolveStoreFromEl(manualAutoRow);
+      var rowGroup = manualAutoRow.getAttribute("data-manual-auto");
+      manualAutoRowStore.state.manualVsAutoFilter = manualAutoRowStore.state.manualVsAutoFilter === rowGroup ? null : rowGroup;
+      renderStoreView(manualAutoRowStore);
       return;
     }
   });
