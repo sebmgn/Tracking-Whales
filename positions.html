@@ -632,6 +632,12 @@
      (its own title attribute carries the full pseudo, shown on hover). */
   .vt-trader-row-name { flex: 0 0 108px; display: flex; align-items: center; overflow: hidden; }
   .vt-trader-row-name-text { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* A trader row's name is a real link to their Polymarket/Predict.fun
+     profile when one's resolvable (traderProfileUrl) — plain text color by
+     default so it doesn't read as a link until you're actually over it,
+     matching every other subtle in-card link this app already uses. */
+  a.vt-trader-row-name-text { color: inherit; text-decoration: none; }
+  a.vt-trader-row-name-text:hover { color: var(--accent); text-decoration: underline; }
   .vt-trader-row-name .w-badge { flex: none; }
   /* Marks a trader's row on the camp that ISN'T their main position (they
      also hold a bigger stake on the other side) — a plain neutral grey so it
@@ -2046,7 +2052,8 @@
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
-  TRADERS.forEach(function (t) { WEIGHT_BY_NAME[t.name] = t.weight; PLATFORM_BY_NAME[t.name] = t.platform; });
+  var ADDRESS_BY_NAME = {};
+  TRADERS.forEach(function (t) { WEIGHT_BY_NAME[t.name] = t.weight; PLATFORM_BY_NAME[t.name] = t.platform; ADDRESS_BY_NAME[t.name] = t.address; });
   // Best-rated profiles first wherever profiles are listed top-to-bottom.
   var TRADERS_BY_WEIGHT = TRADERS.slice().sort(function (a, b) { return (b.weight || 0) - (a.weight || 0); });
   // Predict = violet, Polymarket = dark blue — distinct from --accent
@@ -2062,6 +2069,15 @@
       profileUrl: function (addr) { return "https://polymarket.com/fr/profile/" + addr; }
     }
   };
+  // Resolves a tracked trader's name to their profile URL on whichever
+  // platform they're tracked on — null for a name that isn't in TRADERS
+  // (shouldn't happen for anything rendered from tracked positions, but
+  // callers still check before turning the name into a link).
+  function traderProfileUrl(name) {
+    var platform = PLATFORM_BY_NAME[name], address = ADDRESS_BY_NAME[name];
+    if (!platform || !address || !PLATFORMS[platform]) return null;
+    return PLATFORMS[platform].profileUrl(address);
+  }
   function platformBadge(platform) {
     var info = PLATFORMS[platform];
     if (!info) return "";
@@ -3540,9 +3556,13 @@
       var isMarginal = rowCountByTrader[e.trader] > 1 && e.stake < maxStakeByTrader[e.trader];
       var isHighlighted = !!(highlightNames && highlightNames[e.trader]);
       var nameTitle = esc(e.trader) + (isMarginal ? " — position marginale ici, camp principal sur l'autre côté" : "");
+      var profileUrl = traderProfileUrl(e.trader);
+      var nameTag = profileUrl
+        ? '<a class="vt-trader-row-name-text' + (isHighlighted ? ' vt-trader-row-name-highlighted' : '') + '" href="' + esc(profileUrl) + '" target="_blank" rel="noopener" title="' + nameTitle + ' — ouvrir le profil">' + esc(e.trader) + '</a>'
+        : '<span class="vt-trader-row-name-text' + (isHighlighted ? ' vt-trader-row-name-highlighted' : '') + '" title="' + nameTitle + '">' + esc(e.trader) + '</span>';
       return '<div class="vt-trader-row' + (isHighlighted ? ' vt-trader-row-highlighted' : '') + '">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
-        '<span class="vt-trader-row-name' + (isMarginal ? ' vt-trader-row-name-marginal' : '') + '"><span class="vt-trader-row-name-text' + (isHighlighted ? ' vt-trader-row-name-highlighted' : '') + '" title="' + nameTitle + '">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<span class="vt-trader-row-name' + (isMarginal ? ' vt-trader-row-name-marginal' : '') + '">' + nameTag + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track">' +
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
         '</div>' +
@@ -5579,7 +5599,10 @@
     if (!decidedAll.length) { el.innerHTML = ""; return; }
     var byTier = computeTierWinrates(list, store);
     var untagged = decidedAll.filter(function (s) { return !s.confidence; }).length;
-    var rows = CONFIDENCE_TIERS.map(function (tier) {
+    // B-to-S top-to-bottom here specifically (on request) — CONFIDENCE_TIERS
+    // itself stays S-first everywhere else (tag buttons, table columns…),
+    // this is just the row order for this one gauge.
+    var rows = CONFIDENCE_TIERS.slice().reverse().map(function (tier) {
       var st = byTier[tier];
       var wr = st.decided > 0 ? (st.win / st.decided * 100) : null;
       var color = CONFIDENCE_COLORS[tier];
@@ -8465,9 +8488,13 @@
     rows.sort(function (a, b) { return b.stake - a.stake; });
     var traderRowsHtml = '<div class="vt-traders">' + rows.map(function (e) {
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
+      var eProfileUrl = traderProfileUrl(e.trader);
+      var eNameTag = eProfileUrl
+        ? '<a class="vt-trader-row-name-text" href="' + esc(eProfileUrl) + '" target="_blank" rel="noopener" title="' + esc(e.trader) + ' — ouvrir le profil">' + esc(e.trader) + '</a>'
+        : '<span class="vt-trader-row-name-text">' + esc(e.trader) + '</span>';
       return '<div class="vt-trader-row">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
-        '<span class="vt-trader-row-name"><span class="vt-trader-row-name-text">' + esc(e.trader) + '</span>' + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
+        '<span class="vt-trader-row-name">' + eNameTag + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track"><div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div></div>' +
         '<span class="vt-conviction"></span>' +
         '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b>' + (typeof e.avgPrice === "number" ? ' @ ' + fmtCents(e.avgPrice) : '') + '</span>' +
