@@ -1923,6 +1923,11 @@
 
   <div class="tab-panel" id="tab-trades-profiles">
     <h2 class="section-title">Positions par profil</h2>
+    <div class="vt-filters" id="tradesProfilesTimingFilters">
+      <button data-timing="all" class="active" type="button">Tous<span class="vt-filter-count"></span></button>
+      <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
+      <button data-timing="upcoming" type="button">📅 À venir<span class="vt-filter-count"></span></button>
+    </div>
     <div id="tradersContent">
       <div class="loading-state">Chargement des positions…</div>
     </div>
@@ -2296,6 +2301,7 @@
   var RELIABLE_TRADERS = ["JJJJ", "predict847", "swisstony", "RN1", "VeryLucky888"];
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
+  var tradesProfilesTimingFilter = "all"; // "all" | "live" | "upcoming" — same idea, for Trades par profils
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
   // everything down to a 3 now instead of hard-hiding it. Single source of
   // truth for the hard exclusion filter, the slider's floor/default, and
@@ -6713,6 +6719,12 @@
   // ---------- trader sections rendering ----------
   function renderTraderSection(trader) {
     var positions = (tradersData[trader.name] || []).filter(function (p) { return !isPriceDecided(p.curPrice); });
+    if (tradesProfilesTimingFilter !== "all") {
+      positions = positions.filter(function (p) {
+        var unit = unitByMarketKey[p.marketKey];
+        return !!unit && unitTimingStatus(unit) === tradesProfilesTimingFilter;
+      });
+    }
     positions.sort(function (a, b) { return (b.valueUsd || 0) - (a.valueUsd || 0); });
 
     var totalValue = positions.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
@@ -7290,6 +7302,15 @@
       btn.classList.add("active");
       vtTimingFilter = btn.getAttribute("data-timing") || "all";
       renderValueTrades();
+    });
+  });
+  var tradesProfilesTimingFiltersEl = document.getElementById("tradesProfilesTimingFilters");
+  tradesProfilesTimingFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tradesProfilesTimingFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      tradesProfilesTimingFilter = btn.getAttribute("data-timing") || "all";
+      renderTraderSections();
     });
   });
   // `input` (not `change`) so the list updates live while dragging, not
