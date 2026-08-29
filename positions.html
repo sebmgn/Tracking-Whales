@@ -1938,12 +1938,14 @@
       <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="snapshots">▸ L'analyse cote × confiance</button>
       <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="snapshots">▸ Le récap par trader</button>
       <button type="button" id="manualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="snapshots">▸ Manuel vs suivi auto</button>
+      <button type="button" id="weeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="snapshots">▸ Paris par semaine</button>
     </div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
     <div id="snapDistContent"></div>
     <div id="snapStatsContent"></div>
     <div id="snapManualVsAutoContent"></div>
+    <div id="snapWeeklyPnlContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
     </div>
@@ -1974,12 +1976,14 @@
       <button type="button" id="posDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="positions">▸ L'analyse cote × confiance</button>
       <button type="button" id="posStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="positions">▸ Le récap par trader</button>
       <button type="button" id="posManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="positions">▸ Manuel vs suivi auto</button>
+      <button type="button" id="posWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="positions">▸ Paris par semaine</button>
     </div>
     <div id="posTierWinrateContent"></div>
     <div id="posNoteWinrateContent"></div>
     <div id="posDistContent"></div>
     <div id="posStatsContent"></div>
     <div id="posManualVsAutoContent"></div>
+    <div id="posWeeklyPnlContent"></div>
     <div id="positionsContent" class="value-trades-box">
       <div class="empty-note">Aucune position pour l'instant — clique sur 🎯 Prendre position sur une carte dans Mes Snapshots pour l'enregistrer ici.</div>
     </div>
@@ -2191,6 +2195,7 @@
   var snapPnlChartContent = document.getElementById("snapPnlChartContent");
   var snapDistContent = document.getElementById("snapDistContent");
   var snapManualVsAutoContent = document.getElementById("snapManualVsAutoContent");
+  var snapWeeklyPnlContent = document.getElementById("snapWeeklyPnlContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -2218,6 +2223,7 @@
   var posPnlChartContent = document.getElementById("posPnlChartContent");
   var posDistContent = document.getElementById("posDistContent");
   var posManualVsAutoContent = document.getElementById("posManualVsAutoContent");
+  var posWeeklyPnlContent = document.getElementById("posWeeklyPnlContent");
   var posSyncStatusEl = document.getElementById("posSyncStatus");
   var posSyncSetup = document.getElementById("posSyncSetup");
   var posSyncTokenInput = document.getElementById("posSyncTokenInput");
@@ -2394,7 +2400,7 @@
       chartSelectedId: null, chartPrevScrollY: null,
       statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
       trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
-      manualVsAutoCollapsed: true
+      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true
     };
   }
   var rtMinValue = 0;
@@ -5371,10 +5377,10 @@
     els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
       tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
       stats: snapStatsContent, list: snapshotsContent, syncStatus: snapSyncStatusEl,
-      manualVsAuto: snapManualVsAutoContent },
+      manualVsAuto: snapManualVsAutoContent, weeklyPnl: snapWeeklyPnlContent },
     ids: { statsToggle: "snapStatsToggleBtn", distToggle: "snapDistToggleBtn",
       tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn",
-      manualVsAutoToggle: "manualVsAutoToggleBtn" },
+      manualVsAutoToggle: "manualVsAutoToggleBtn", weeklyPnlToggle: "weeklyPnlToggleBtn" },
     state: freshStoreState()
   };
   var POSITIONS_STORE = {
@@ -5393,10 +5399,10 @@
     els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
       tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
       stats: posStatsContent, list: positionsContent, syncStatus: posSyncStatusEl,
-      manualVsAuto: posManualVsAutoContent },
+      manualVsAuto: posManualVsAutoContent, weeklyPnl: posWeeklyPnlContent },
     ids: { statsToggle: "posStatsToggleBtn", distToggle: "posDistToggleBtn",
       tierToggle: "posTierWinrateToggleBtn", noteToggle: "posNoteWinrateToggleBtn",
-      manualVsAutoToggle: "posManualVsAutoToggleBtn" },
+      manualVsAutoToggle: "posManualVsAutoToggleBtn", weeklyPnlToggle: "posWeeklyPnlToggleBtn" },
     state: freshStoreState()
   };
   // ---------- Archives (bulk "close out the season" move, reversible) ----------
@@ -5636,6 +5642,90 @@
     el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.manualVsAutoCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Paris manuels vs suivi des whales</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — clique une ligne pour filtrer, une pastille de confiance pour affiner.</div>' +
       rows + filterNoteHtml + '</div></div>';
+  }
+
+  // ---------- Paris par semaine (barres divergentes + tableau) ----------
+  // Monday-start week bucket for a date — a plain "day / 7" would let a
+  // Sunday and the following Monday land in the same bucket depending on
+  // where the epoch falls; anchoring explicitly to the week's Monday avoids
+  // that regardless of timezone/locale.
+  function weekStartOf(d) {
+    var day = d.getDay(); // 0=dim..6=sam
+    var diffToMonday = (day === 0 ? -6 : 1 - day);
+    var monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  }
+  // Same flat-stake PnL simulation as everywhere else on this tab
+  // (aggregateFlatPnl/hypotheticalFlatPnl), just bucketed by the week
+  // savedAt falls in instead of one running total — one entry per week that
+  // actually has a decided bet, chronological (oldest first, matching how
+  // the bar chart reads left to right).
+  function computeWeeklyPnl(list, store) {
+    var decided = list.filter(function (s) { return !!s.winningSide; });
+    var byWeek = {};
+    decided.forEach(function (s) {
+      var d = new Date(s.savedAt);
+      if (isNaN(d.getTime())) return;
+      var monday = weekStartOf(d);
+      var key = monday.getTime();
+      if (!byWeek[key]) byWeek[key] = { key: key, start: monday, items: [] };
+      byWeek[key].items.push(s);
+    });
+    var weeks = Object.keys(byWeek).map(function (k) { return byWeek[k]; }).sort(function (a, b) { return a.key - b.key; });
+    weeks.forEach(function (w) {
+      var agg = aggregateFlatPnl(w.items, store);
+      w.count = w.items.length;
+      w.pnl = agg.pnl;
+      w.roi = agg.roi;
+    });
+    return weeks;
+  }
+  // Barres divergentes autour de zéro — hauteur = gain $ de la semaine
+  // (vert au-dessus de zéro, rouge en dessous), nombre de paris affiché
+  // au-dessus/en-dessous de chaque barre. Même conventions de mise en page
+  // que buildHistoryChartSvg (viewBox 1000x260, largeur de barre dynamique
+  // selon le nombre de semaines) pour rester visuellement cohérent avec le
+  // graphique d'évolution du PnL juste au-dessus sur la page.
+  function buildWeeklyBarSvg(weeks) {
+    var W = 1000, H = 260, padL = 14, padR = 14, padT = 26, padB = 30;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var n = weeks.length;
+    var maxAbs = Math.max.apply(null, weeks.map(function (w) { return Math.abs(w.pnl); }).concat([1]));
+    var zeroY = padT + innerH / 2;
+    var scale = (innerH / 2) / maxAbs;
+    var slot = innerW / n;
+    var barW = Math.max(6, Math.min(46, slot * 0.55));
+    var bars = weeks.map(function (w, i) {
+      var cx = padL + slot * (i + 0.5);
+      var h = Math.max(2, Math.abs(w.pnl) * scale);
+      var y = w.pnl >= 0 ? zeroY - h : zeroY;
+      var color = w.pnl >= 0 ? "var(--green)" : "var(--red)";
+      var countY = w.pnl >= 0 ? (y - 6) : (y + h + 14);
+      var countLabel = slot > 20 ? '<text x="' + cx.toFixed(2) + '" y="' + countY.toFixed(2) + '" font-size="10" font-weight="700" fill="var(--text)" text-anchor="middle">' + w.count + '</text>' : '';
+      var xLabel = slot > 20 ? '<text x="' + cx.toFixed(2) + '" y="' + (H - 10) + '" font-size="9" fill="var(--text-dim)" text-anchor="middle">' + esc(fmtDateShort(w.start)) + '</text>' : '';
+      return '<rect x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.78"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + '% ROI)' : '') + '</title></rect>' + countLabel + xLabel;
+    }).join("");
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+      '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-width="1"/>' +
+      bars +
+      '</svg>';
+  }
+  function renderWeeklyPnl(list, store) {
+    var el = store.els.weeklyPnl;
+    if (!el) return;
+    var weeks = computeWeeklyPnl(list, store);
+    if (weeks.length < 1) { el.innerHTML = ""; return; }
+    var rows = weeks.map(function (w) {
+      var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
+      var gainHtml = '<span class="' + (w.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(w.pnl)) + '</span>';
+      return '<tr><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + gainHtml + '</td></tr>';
+    }).join("");
+    var tableHtml = '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Gain</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    syncSnapToggleLabel(store.ids.weeklyPnlToggle, store.state.weeklyPnlCollapsed, "paris par semaine");
+    el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.weeklyPnlCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Paris par semaine</div>' +
+      '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — regroupé par semaine (lundi à dimanche).</div>' +
+      buildWeeklyBarSvg(weeks) + tableHtml + '</div></div>';
   }
 
   function computeTierWinrates(list, store) {
@@ -6482,6 +6572,7 @@
     renderSnapDistribution(list, store);
     renderSnapStats(list, store);
     renderManualVsAuto(list, store);
+    renderWeeklyPnl(list, store);
     if (!cardsList.length) {
       store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
         ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
@@ -8090,6 +8181,13 @@
       var manualVsAutoStore = resolveStoreFromEl(manualVsAutoToggleBtn);
       manualVsAutoStore.state.manualVsAutoCollapsed = !manualVsAutoStore.state.manualVsAutoCollapsed;
       renderManualVsAuto(manualVsAutoStore.load(), manualVsAutoStore);
+      return;
+    }
+    var weeklyPnlToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='weeklypnl']") : null;
+    if (weeklyPnlToggleBtn) {
+      var weeklyPnlStore = resolveStoreFromEl(weeklyPnlToggleBtn);
+      weeklyPnlStore.state.weeklyPnlCollapsed = !weeklyPnlStore.state.weeklyPnlCollapsed;
+      renderWeeklyPnl(weeklyPnlStore.load(), weeklyPnlStore);
       return;
     }
     var distCell = e.target.closest ? e.target.closest(".snap-dist-cell") : null;
