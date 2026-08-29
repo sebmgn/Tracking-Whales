@@ -524,6 +524,16 @@
   .vt-countdown-text { border-radius: 999px; padding: 1px 8px; color: #fff; }
   .vt-countdown-soon .vt-countdown-text { background: var(--green); }
   .vt-countdown-live .vt-countdown-text { background: var(--accent); }
+  /* Small round S/R badge right next to the countdown — see
+     WATCHED_BADGE_INITIALS in computeUnitCardParts. Gold ties into the same
+     "reliable trader" semantic already used for weightBadge's stars. */
+  .vt-watch-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; margin-left: 4px; border-radius: 50%;
+    background: var(--gold); color: #1a1000; font-size: 10px; font-weight: 800;
+    flex: none;
+  }
+  .vt-watch-badge + .vt-watch-badge { margin-left: 3px; }
   /* Icon-only now (was "📌 Snapshot") — square-ish padding instead of the
      pill shape that made sense for a text label. Shared base for every
      small icon-button in this family (snapshot, follow, trash) — each one
@@ -4385,9 +4395,25 @@
       }
     }
     var isUpcoming = relTimeText != null && relTimeText.indexOf("dans") === 0;
+    // Small round S/R badges right next to the countdown — a quick "is
+    // swisstony or RN1 actually on this trade" read without having to open
+    // the card and scan every trader row. Checks every side, not just the
+    // leader — a hedge/contrary position still counts as "they're on this".
+    var WATCHED_BADGE_INITIALS = { swisstony: "S", RN1: "R" };
+    var watchBadgeNames = [];
+    mergedSides.forEach(function (m) {
+      m.items.forEach(function (it) {
+        it.s.entries.forEach(function (e) {
+          if (WATCHED_BADGE_INITIALS[e.trader] && watchBadgeNames.indexOf(e.trader) === -1) watchBadgeNames.push(e.trader);
+        });
+      });
+    });
+    var watchBadgesHtml = watchBadgeNames.map(function (name) {
+      return '<span class="vt-watch-badge" title="' + esc(name) + ' a une position sur ce trade">' + esc(WATCHED_BADGE_INITIALS[name]) + '</span>';
+    }).join("");
     var kickoffHtml = relTimeText
-      ? '<span class="vt-countdown ' + (isUpcoming ? 'vt-countdown-soon' : 'vt-countdown-live') + '"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '><span class="vt-countdown-text">' + esc(relTimeText) + '</span></span>'
-      : '';
+      ? '<span class="vt-countdown ' + (isUpcoming ? 'vt-countdown-soon' : 'vt-countdown-live') + '"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '><span class="vt-countdown-text">' + esc(relTimeText) + '</span>' + watchBadgesHtml + '</span>'
+      : (watchBadgesHtml ? '<span class="vt-countdown vt-countdown-live">' + watchBadgesHtml + '</span>' : '');
     var marketLinksHtml = '<div class="vt-market-links">' + members.map(function (m) {
       var info = PLATFORMS[m.platform] || { label: m.platform, short: m.platform };
       return '<a class="vt-market-link" href="' + esc(m.marketUrl) + '" target="_blank" rel="noopener" title="Ouvrir sur ' + esc(info.label) + '">' + esc(info.short) + ' ↗</a>';
