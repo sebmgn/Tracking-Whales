@@ -1722,6 +1722,19 @@
     white-space: nowrap; text-align: center;
   }
   .pnl-chart-stat-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* "Paris par semaine", embedded directly under the evolution chart (on
+     request — used to live only behind its own collapsible toggle further
+     down, see .tier-wr-box's "vue compacte" variant, still there as an
+     independent alternative). Its two SVGs (this one + buildHistoryChartSvg
+     above) share the same viewBox width and left/right padding, which is
+     what actually keeps the bars lined up under their matching dots once
+     stacked at 100% width — this div just adds the visual separation. */
+  .pnl-chart-weekly { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--panel-border); }
+  .pnl-chart-weekly-label {
+    font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim);
+    margin-bottom: 2px;
+  }
+  .pnl-chart-weekly-svg { display: block; width: 100%; height: auto; margin-bottom: 8px; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
   .snap-item-highlight {
@@ -5711,21 +5724,83 @@
       bars +
       '</svg>';
   }
-  function renderWeeklyPnl(list, store) {
-    var el = store.els.weeklyPnl;
-    if (!el) return;
-    var weeks = computeWeeklyPnl(list, store);
-    if (weeks.length < 1) { el.innerHTML = ""; return; }
+  // Shared by both the compact toggle panel (renderWeeklyPnl) and the
+  // aligned version embedded under the evolution chart (renderSnapPnlChart)
+  // — same 4 columns either way, just fed a different `weeks` array.
+  function weeklyTableHtml(weeks) {
     var rows = weeks.map(function (w) {
       var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
       var gainHtml = '<span class="' + (w.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(w.pnl)) + '</span>';
       return '<tr><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + gainHtml + '</td></tr>';
     }).join("");
-    var tableHtml = '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Gain</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
-    syncSnapToggleLabel(store.ids.weeklyPnlToggle, store.state.weeklyPnlCollapsed, "paris par semaine");
-    el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.weeklyPnlCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Paris par semaine</div>' +
-      '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — regroupé par semaine (lundi à dimanche).</div>' +
-      buildWeeklyBarSvg(weeks) + tableHtml + '</div></div>';
+    return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Gain</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+  function renderWeeklyPnl(list, store) {
+    var el = store.els.weeklyPnl;
+    if (!el) return;
+    var weeks = computeWeeklyPnl(list, store);
+    if (weeks.length < 1) { el.innerHTML = ""; return; }
+    syncSnapToggleLabel(store.ids.weeklyPnlToggle, store.state.weeklyPnlCollapsed, "paris par semaine (vue compacte)");
+    el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.weeklyPnlCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Paris par semaine — vue compacte</div>' +
+      '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — regroupé par semaine (lundi à dimanche), indépendamment du graphique d\'évolution ci-dessus.</div>' +
+      buildWeeklyBarSvg(weeks) + weeklyTableHtml(weeks) + '</div></div>';
+  }
+  // ---------- Paris par semaine, ALIGNÉ sur le graphique d'évolution ----------
+  // Same weekly grouping as computeWeeklyPnl above, but built from the exact
+  // point array the evolution chart (buildHistoryChartSvg) just plotted —
+  // renderSnapPnlChart passes `weeklySeries`, a sibling array built in
+  // lockstep with `series` (same filter/period selection, same order, same
+  // valid-price-only points) — instead of re-filtering the raw list, so a
+  // week here is guaranteed to correspond to the exact dots shown above it.
+  // firstIdx/lastIdx (positions within that same array) are what let the
+  // bar chart below center each bar on that week's actual dots rather than
+  // an evenly-spaced calendar grid.
+  function computeWeeklyPnlAligned(weeklySeries) {
+    var weeks = [];
+    var current = null;
+    weeklySeries.forEach(function (p, i) {
+      var monday = weekStartOf(p.date);
+      var key = monday.getTime();
+      if (!current || current.key !== key) {
+        current = { key: key, start: monday, count: 0, pnl: 0, stakeSum: 0, firstIdx: i, lastIdx: i };
+        weeks.push(current);
+      }
+      current.count++;
+      current.pnl += p.pnl;
+      current.stakeSum += p.stake;
+      current.lastIdx = i;
+    });
+    weeks.forEach(function (w) { w.roi = w.stakeSum > 0 ? (w.pnl / w.stakeSum * 100) : null; });
+    return weeks;
+  }
+  // Same W/padL/padR as buildHistoryChartSvg (1000/54/14) so a given index's
+  // x(i) lands at the identical horizontal position in both SVGs — that's
+  // the whole trick that makes the two charts read as one aligned unit once
+  // stacked, without needing to merge them into a single <svg>. Each bar
+  // spans from its week's first dot to its last (+14px so a lone dot still
+  // gets a visible bar), so a week with dots spread wide reads wide and a
+  // tight cluster reads narrow, exactly like the dots above it.
+  function buildWeeklyAlignedBarSvg(weeklySeries, weeks) {
+    var W = 1000, padL = 54, padR = 14, H = 110, padT = 16, padB = 4;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var n = weeklySeries.length;
+    function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
+    var maxAbs = Math.max.apply(null, weeks.map(function (w) { return Math.abs(w.pnl); }).concat([1]));
+    var zeroY = padT + innerH / 2;
+    var scale = (innerH / 2) / maxAbs;
+    var bars = weeks.map(function (w) {
+      var x0 = x(w.firstIdx), x1 = x(w.lastIdx);
+      var cx = (x0 + x1) / 2;
+      var barW = Math.max(6, Math.min(40, (x1 - x0) + 14));
+      var h = Math.max(2, Math.abs(w.pnl) * scale);
+      var y = w.pnl >= 0 ? zeroY - h : zeroY;
+      var color = w.pnl >= 0 ? "var(--green)" : "var(--red)";
+      return '<rect x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.72"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + '% ROI)' : '') + '</title></rect>';
+    }).join("");
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-weekly-svg">' +
+      '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
+      bars +
+      '</svg>';
   }
 
   function computeTierWinrates(list, store) {
@@ -5918,6 +5993,12 @@
     var decided = decidedFiltered.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
     var cum = 0;
     var series = [];
+    // Sibling of `series`, built in the exact same loop iteration below (so
+    // it always has the identical points in the identical order) — feeds
+    // the "Paris par semaine" bar chart embedded right under this one, so
+    // its weekly bars can center themselves on this exact chart's own dot
+    // positions. See computeWeeklyPnlAligned/buildWeeklyAlignedBarSvg.
+    var weeklySeries = [];
     // Same running total, kept per-tier instead of one global sum — only
     // built/used when pnlChartSplitByTier is on (see below), computed
     // alongside the normal single-line series rather than as a second pass
@@ -5941,6 +6022,7 @@
       // flashy win/loss read at a glance.
       var won = snap.leaderName === snap.winningSide;
       series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
+      weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: store.stakeFor(snap) });
       if (snap.confidence && seriesByTier[snap.confidence]) {
         cumByTier[snap.confidence] += pnl;
         seriesByTier[snap.confidence].push({ date: new Date(snap.savedAt), value: cumByTier[snap.confidence], delta: pnl, win: won, note: snap.noteAtSnapshot });
@@ -6000,15 +6082,25 @@
       wirePnlChartFilterControls(cardsList, store);
       return;
     }
-    var chartHtml, hintHtml;
+    var chartHtml, hintHtml, weeklyHtml;
     if (st.pnlChartSplitByTier) {
       chartHtml = buildHistoryChartByTierSvg(seriesByTier) + tierLegendHtml();
       hintHtml = "";
+      // No single point-per-week mapping once split into 4 overlapping
+      // per-tier lines (same reason wireSnapPnlChartClicks is skipped below)
+      // — the compact "vue compacte" toggle panel still covers this case.
+      weeklyHtml = "";
     } else {
       chartHtml = buildHistoryChartSvg(series);
       hintHtml = '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div>';
+      var weeks = computeWeeklyPnlAligned(weeklySeries);
+      weeklyHtml = '<div class="pnl-chart-weekly">' +
+        '<div class="pnl-chart-weekly-label">Paris par semaine</div>' +
+        buildWeeklyAlignedBarSvg(weeklySeries, weeks) +
+        weeklyTableHtml(weeks) +
+      '</div>';
     }
-    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + '</div>';
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + weeklyHtml + '</div>';
     wirePnlChartFilterControls(cardsList, store);
     var box = document.getElementById(boxId);
     // The split-by-tier view has no per-point data-id (4 overlapping lines,
