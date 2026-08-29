@@ -1277,6 +1277,7 @@
   #snapDistToggleBtn, #snapDistContent, #posDistToggleBtn, #posDistContent { --neon: #a78bfa; }
   #snapStatsToggleBtn, #snapStatsContent, #posStatsToggleBtn, #posStatsContent { --neon: #fb923c; }
   #manualVsAutoToggleBtn, #snapManualVsAutoContent, #posManualVsAutoToggleBtn, #posManualVsAutoContent { --neon: #f472b6; }
+  #weeklyPnlToggleBtn, #snapWeeklyPnlContent, #posWeeklyPnlToggleBtn, #posWeeklyPnlContent { --neon: #34d399; }
   /* flex:1 with a shared min width — the 5 buttons stretch evenly to fill
      the row instead of clumping left, sized up now that dropping
      "Afficher" leaves them short. */
@@ -1553,6 +1554,57 @@
   }
   .open-market-btn:hover { opacity: .88; }
   .copy-disclaimer { width: 100%; color: var(--text-dim); font-size: 11px; }
+  /* Statistiques profils — one card per tracked trader, real grid instead
+     of a stacked list. --profile-accent (set inline per card, see
+     renderStatsProfiles) is the same weightHue red→gold→green scale the
+     w-badge pill uses everywhere else — a 6-rated trader and a 9.5-rated
+     one now visibly differ before you've even read the number. */
+  .profile-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 14px;
+  }
+  .profile-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-top: 3px solid var(--profile-accent, var(--accent));
+    border-radius: var(--radius-md);
+    padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: box-shadow .15s ease, transform .15s ease;
+  }
+  .profile-card:hover {
+    box-shadow: 0 5px 18px color-mix(in srgb, var(--profile-accent, var(--accent)) 28%, transparent);
+    transform: translateY(-2px);
+  }
+  .profile-card-top { display: flex; align-items: center; gap: 10px; }
+  .profile-avatar {
+    flex: none; width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+  .profile-card-id { min-width: 0; }
+  .profile-card-name { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .profile-card-badges { margin-top: 3px; }
+  .profile-card-addr { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--text-dim); }
+  .profile-card-stats { display: flex; gap: 8px; }
+  .profile-card-stat {
+    flex: 1; display: flex; flex-direction: column; gap: 2px; align-items: center;
+    background: var(--row-hover); border-radius: var(--radius-sm); padding: 6px 4px;
+  }
+  .profile-card-stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
+  .profile-card-stat-value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .profile-card-link {
+    margin-top: auto; text-align: center; text-decoration: none;
+    background: var(--accent); color: #fff;
+    padding: 8px 12px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 700;
+  }
+  .profile-card-link:hover { opacity: .88; }
 
   tfoot td { padding: 12px; font-weight: 700; border-top: 2px solid var(--panel-border); font-variant-numeric: tabular-nums; }
   tfoot td.num { text-align: right; }
@@ -1736,6 +1788,18 @@
     margin-bottom: 2px;
   }
   .pnl-chart-weekly-svg { display: block; width: 100%; height: auto; margin-bottom: 8px; }
+  /* Click a week (bar or table row) to highlight that week's own dots on
+     the evolution chart above — see the [data-week-key][data-first-idx]
+     handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
+     when fed firstIdx/lastIdx) get these attributes at all, so the compact
+     "vue compacte" panel's rows/bars are never clickable here — matches it
+     being independent of the evolution chart, on request. */
+  .vt-weekly-row { cursor: pointer; }
+  .vt-weekly-row:hover td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .vt-weekly-row.vt-weekly-active td { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  .vt-weekly-bar { cursor: pointer; transition: stroke-width .15s ease; }
+  .vt-weekly-bar.vt-weekly-active { stroke: var(--accent); stroke-width: 2; }
+  .chart-pt.chart-pt-week-active { r: 6.5; stroke: var(--accent); stroke-width: 2.5; }
   /* Toggled on the snapshot card a chart point was clicked for; clicking
      that same point again removes it (see wireSnapPnlChartClicks). */
   .snap-item-highlight {
@@ -2385,6 +2449,14 @@
   var secondsLeft = REFRESH_MS / 1000;
   var tradersData = {};      // name -> array of open positions
   var recentMatches = {};    // name -> array of recent match events
+  // Recent matches are fetched separately from the main tradersData cycle
+  // (only once the "Trades récents" tab is actually opened, see
+  // ensureRecentMatchesFresh) — hasLoadedOnce above tracks the UNRELATED
+  // main fetch, so without its own flag renderRecentTrades has no way to
+  // tell "haven't fetched yet" apart from "fetched, genuinely 0 trades" and
+  // was showing "Aucun trade récent" for the few seconds before the first
+  // fetch actually lands, which reads as broken/empty rather than loading.
+  var recentMatchesLoaded = false;
   var positionIndex = {};    // key -> { position, trader }
   var panelState = {};       // key -> { open, stake, peerOpen }
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
@@ -5739,7 +5811,14 @@
     var rows = weeks.map(function (w) {
       var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
       var gainHtml = '<span class="' + (w.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(w.pnl)) + '</span>';
-      return '<tr><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + gainHtml + '</td></tr>';
+      // Only the aligned weeks (computeWeeklyPnlAligned) carry firstIdx/
+      // lastIdx — the compact panel's own weeks (computeWeeklyPnl) don't,
+      // so its rows come out with no class/data attrs at all and stay
+      // inert, matching it being independent of the evolution chart.
+      var rowAttrs = w.firstIdx != null
+        ? ' class="vt-weekly-row" data-week-key="' + w.key + '" data-first-idx="' + w.firstIdx + '" data-last-idx="' + w.lastIdx + '"'
+        : '';
+      return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + gainHtml + '</td></tr>';
     }).join("");
     return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Gain</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
@@ -5803,7 +5882,7 @@
       var h = Math.max(2, Math.abs(w.pnl) * scale);
       var y = w.pnl >= 0 ? zeroY - h : zeroY;
       var color = w.pnl >= 0 ? "var(--green)" : "var(--red)";
-      return '<rect x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.72"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + '% ROI)' : '') + '</title></rect>';
+      return '<rect class="vt-weekly-bar" data-week-key="' + w.key + '" data-first-idx="' + w.firstIdx + '" data-last-idx="' + w.lastIdx + '" x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.72"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + '% ROI)' : '') + '</title></rect>';
     }).join("");
     // One faint divider per week boundary, sat exactly between the last dot
     // of one week and the first dot of the next (not just between the two
@@ -7048,6 +7127,10 @@
 
   // ---------- recent trades ----------
   function renderRecentTrades() {
+    if (!recentMatchesLoaded) {
+      recentTradesContent.innerHTML = '<div class="loading-state">Chargement des trades récents…</div>';
+      return;
+    }
     var all = [];
     TRADERS.forEach(function (t) {
       (recentMatches[t.name] || []).forEach(function (m) { all.push(m); });
@@ -7288,21 +7371,35 @@
   // profile instead of guessing. Open-position count/value below IS accurate
   // (same public APIs used everywhere else on this page). ----------
   function renderStatsProfiles() {
+    // Real cards (grid, circular weight avatar, accent tied to the same
+    // red→gold→green weightHue scale the w-badge pill already uses
+    // elsewhere) instead of reusing .value-trade-item's plain full-width
+    // row — that class is built for a trade's own content (question, sides,
+    // gauges) and left every profile here reading as a thin, near-identical
+    // line with barely anything to look at. 2026-08-30, on request.
     var html = TRADERS_BY_WEIGHT.map(function (t) {
       var open = tradersData[t.name] || [];
       var openValue = open.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
       var info = PLATFORMS[t.platform];
-      return '<div class="value-trade-item">' +
-        '<div class="vt-top">' +
-          '<span class="vt-question">' + esc(t.name) + '</span>' + platformBadge(t.platform) + weightBadge(t.weight) +
-          '<a class="open-market-btn" href="' + info.profileUrl(t.address) + '" target="_blank" rel="noopener">Voir le profil complet sur ' + info.label + ' →</a>' +
+      var accent = "hsl(" + weightHue(t.weight).toFixed(0) + ",62%,42%)";
+      var label = t.weight.toFixed(1).replace(/\.0$/, "");
+      return '<div class="profile-card" style="--profile-accent:' + accent + '">' +
+        '<div class="profile-card-top">' +
+          '<span class="profile-avatar" style="background:' + accent + '" title="Note qualité : ' + label + '/10">' + esc(label) + '</span>' +
+          '<div class="profile-card-id">' +
+            '<div class="profile-card-name">' + esc(t.name) + '</div>' +
+            '<div class="profile-card-badges">' + platformBadge(t.platform) + '</div>' +
+          '</div>' +
         '</div>' +
-        '<div class="trader-stats" style="margin-top:6px;">' + t.address.slice(0, 6) + '…' + t.address.slice(-4) +
-          ' · ' + open.length + ' position' + (open.length > 1 ? "s" : "") + ' ouverte' + (open.length > 1 ? "s" : "") +
-          ' · valeur <b>' + fmtUSD(openValue) + '</b></div>' +
+        '<div class="profile-card-addr">' + t.address.slice(0, 6) + '…' + t.address.slice(-4) + '</div>' +
+        '<div class="profile-card-stats">' +
+          '<div class="profile-card-stat"><span class="profile-card-stat-label">Positions</span><span class="profile-card-stat-value">' + open.length + '</span></div>' +
+          '<div class="profile-card-stat"><span class="profile-card-stat-label">Valeur ouverte</span><span class="profile-card-stat-value">' + fmtUSD(openValue) + '</span></div>' +
+        '</div>' +
+        '<a class="profile-card-link" href="' + info.profileUrl(t.address) + '" target="_blank" rel="noopener">Voir le profil sur ' + info.label + ' →</a>' +
       '</div>';
     }).join("");
-    statsProfilesContent.innerHTML = '<div class="value-trades-box">' + html + '</div>';
+    statsProfilesContent.innerHTML = '<div class="profile-card-grid">' + html + '</div>';
   }
 
   function renderAll() {
@@ -7594,8 +7691,15 @@
       return fetchRecentMatchesForTrader(t, 20).then(function (matches) { return { name: t.name, matches: matches }; });
     })).then(function (matchResults) {
       matchResults.forEach(function (r) { if (r.matches) recentMatches[r.name] = r.matches; });
+      recentMatchesLoaded = true;
       renderRecentTrades();
-    }).catch(function (err) { console.error("Recent matches fetch:", err); });
+    }).catch(function (err) {
+      console.error("Recent matches fetch:", err);
+      // Still flips to loaded — an error resolves to "nothing to show" (the
+      // existing empty-state text), not an infinite "Chargement…" spinner.
+      recentMatchesLoaded = true;
+      renderRecentTrades();
+    });
   }
   // ---------- tabs ----------
   // Not real security (it's a client-side prompt in a public static page —
@@ -8367,6 +8471,29 @@
       var rowGroup = manualAutoRow.getAttribute("data-manual-auto");
       manualAutoRowStore.state.manualVsAutoFilter = manualAutoRowStore.state.manualVsAutoFilter === rowGroup ? null : rowGroup;
       renderStoreView(manualAutoRowStore);
+      return;
+    }
+    // A week's bar or table row (only the ones aligned to the evolution
+    // chart carry both attributes — see weeklyTableHtml/
+    // buildWeeklyAlignedBarSvg) — highlights that week's own dots on the
+    // evolution chart directly above it. Pure DOM class toggling, no
+    // store.state/re-render involved (same spirit as wireSnapPnlChartClicks'
+    // snap-item-highlight): reclique the same week to remove it.
+    var weekEl = e.target.closest ? e.target.closest("[data-week-key][data-first-idx]") : null;
+    if (weekEl) {
+      var weekBox = weekEl.closest(".chart-box");
+      if (!weekBox) return;
+      var weekWasActive = weekEl.classList.contains("vt-weekly-active");
+      weekBox.querySelectorAll(".vt-weekly-active").forEach(function (x) { x.classList.remove("vt-weekly-active"); });
+      weekBox.querySelectorAll(".chart-pt-week-active").forEach(function (x) { x.classList.remove("chart-pt-week-active"); });
+      if (!weekWasActive) {
+        var weekKey = weekEl.getAttribute("data-week-key");
+        weekBox.querySelectorAll('[data-week-key="' + weekKey + '"]').forEach(function (x) { x.classList.add("vt-weekly-active"); });
+        var weekFirstIdx = Number(weekEl.getAttribute("data-first-idx"));
+        var weekLastIdx = Number(weekEl.getAttribute("data-last-idx"));
+        var evoDots = weekBox.querySelectorAll(".chart-pt");
+        for (var wdi = weekFirstIdx; wdi <= weekLastIdx; wdi++) { if (evoDots[wdi]) evoDots[wdi].classList.add("chart-pt-week-active"); }
+      }
       return;
     }
   });
