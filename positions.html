@@ -286,20 +286,21 @@
   }
   .tab-btn-icon { font-size: 13px; }
   /* Value Trades and Mes Snapshots are what this app is actually for, so
-     they win the eye first (bold gold, identical weight/size on both) and
-     stay pinned left; the other three (Statistiques profils, Trades par
-     profils, Trades récents) are reference material, pushed all the way to
-     the right edge of the same bar (margin-left:auto on the first of them)
-     so the split between "what this app is for" and "everything else" is
-     spatial, not just visual weight — and all three share one flat,
-     deliberate mid-gray/size/weight (not the pale sand tint that would
-     fade next to everything else), so they read as one group rather than
-     three separately-styled tabs. */
+     they win the eye first (bold gold, identical weight/size on both) —
+     color only now (2026-08-29: the margin-left:auto that used to sit here
+     and push everything from Mes Positions onward into one right-clustered
+     group was removed once Par match needed to sit immediately after Mes
+     Snapshots with no gap; Archives gets its own, separate right-push
+     instead — see .tab-btn-end below). */
   .tab-bar .tab-btn:nth-child(1) { color: var(--tab-gold-1); }
   .tab-bar .tab-btn:nth-child(2) { color: var(--tab-gold-2); }
-  .tab-bar .tab-btn:nth-child(3) { margin-left: auto; }
   .tab-btn-primary { font-weight: 800; font-size: 14.5px; }
   .tab-bar .tab-btn.tab-btn-quiet { color: var(--tier-b-gray); font-weight: 500; font-size: 12.5px; }
+  /* Archives is a rarely-touched "close out the season" utility, not part
+     of the day-to-day tab flow — pushed flush against the bar's right edge
+     (on request) instead of sitting in the same left-clustered run as
+     everything else, so it reads as set apart rather than just "last". */
+  .tab-btn-end { margin-left: auto; }
   .tab-bar .tab-btn:hover { color: var(--text); }
   .tab-bar .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-panel { display: none; }
@@ -338,13 +339,13 @@
         color-mix(in srgb, var(--sport-tint, transparent) 3%, var(--cream-grad-1)),
         color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-2)));
     border: 1px solid var(--panel-border);
-    /* --border-tint/--border-tint-hover (set inline, see sportTintFor)
-       always resolve to a real color — the sport's own hue, or --accent
-       for the unclassified "🎲 other" bucket — unlike --sport-tint above,
-       which stays genuinely unset there so the background wash can fall
-       through to fully transparent. Hover pushes to a visibly brighter
-       variant of the same hue, not just a generic highlight. */
-    border-left: 4px solid var(--border-tint, var(--accent));
+    /* Plain neutral edge (2026-08-29, on request) — used to be colored per
+       sport via --border-tint/--border-tint-hover (see sportTintFor), which
+       read as a distracting "band" down the left of every card; the sport
+       cue now lives only in the faint --sport-tint background wash above.
+       Width still varies with noteBorderWidth(u.score) (inline per card) —
+       that's a separate, note-strength signal, not a sport one. */
+    border-left: 4px solid var(--panel-border);
     border-radius: var(--radius-md);
     padding: 16px 20px 18px;
     position: relative;
@@ -356,7 +357,7 @@
        "none" can't sit inside a multi-shadow list). */
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0));
   }
-  .value-trade-item:hover { border-left-color: var(--border-tint-hover, var(--accent)); }
+  .value-trade-item:hover { border-left-color: var(--accent); }
   /* Resting state stays each element's own plain color (leader badge's
      side color, the green consensus/mises fills) — only on hover do they
      turn a touch more vivid. A filter (not a recomputed color) so this
@@ -1851,12 +1852,12 @@
   <div class="tab-bar">
     <button class="tab-btn tab-btn-primary active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
-    <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Par match</button>
+    <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-quiet" data-tab="stats-profiles" type="button">Statistiques profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
+    <button class="tab-btn tab-btn-quiet tab-btn-end" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
@@ -4719,7 +4720,7 @@
       balanceHtml: balanceHtml, sideGridHtml: sideGridHtml,
       followBtnHtml: followBtnHtml, trashBtnHtml: trashBtnHtml, isFollowed: isFollowed, isTrashed: isTrashed,
       borderWidth: noteBorderWidth(u.score),
-      sportTint: sportTintFor(sportEmoji), sportTintHover: sportTintFor(sportEmoji, true)
+      sportTint: sportTintFor(sportEmoji)
     };
   }
 
@@ -4767,8 +4768,6 @@
     return '<details class="value-trade-item' + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + (isLive ? ' vt-live-now' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="border-left-width:' + parts.borderWidth.toFixed(1) + 'px' +
       (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
-      ';--border-tint:' + (parts.sportTint || "var(--accent)") +
-      ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
       (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
       '<summary class="vt-summary">' + cornerBadgesHtml + noteGaugeHtml + volumeGaugeHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
@@ -4798,8 +4797,7 @@
     // makes them actually line up scrolling down the list.
     return '<details class="value-trade-item vt-dense" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="border-left-width:3px' +
-      (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
-      ';--border-tint:' + (parts.sportTint || "var(--accent)") + '">' +
+      (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') + '">' +
       '<summary class="vt-summary-dense">' +
         '<span class="vt-dense-sport" title="Type de pari">' + sportEmoji + '</span>' +
         '<span class="vt-dense-question">' + esc(primary.question) + '</span>' +
