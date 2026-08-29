@@ -223,6 +223,46 @@
   }
   .status-bar button:hover, .rt-filters button:hover { border-color: var(--accent); color: var(--accent); }
   .error-msg { color: var(--red); }
+  /* 🔔 notification center — a rolling read-only history of the emails
+     tracking-whales-notify actually sent (see AWS_NOTIFY_URL), so a missed
+     or deleted alert email is still visible somewhere. Same dropdown-off-a-
+     status-bar-button pattern as nothing else on the page yet, styled to
+     match .status-bar button. */
+  .notif-bell-wrap { position: relative; }
+  .notif-bell-btn {
+    background: var(--panel); border: 1px solid var(--panel-border); color: var(--text);
+    padding: 5px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px;
+    position: relative; line-height: 1;
+  }
+  .notif-bell-btn:hover { border-color: var(--accent); }
+  .notif-bell-count {
+    position: absolute; top: -6px; right: -6px; min-width: 15px; height: 15px;
+    padding: 0 3px; border-radius: 999px; background: var(--red); color: #fff;
+    font-size: 9.5px; font-weight: 800; line-height: 15px; text-align: center;
+    box-shadow: 0 0 0 2px var(--panel); display: none;
+  }
+  .notif-bell-count.show { display: block; }
+  .notif-bell-panel {
+    display: none; position: absolute; top: calc(100% + 8px); left: 0; z-index: 20;
+    width: 340px; max-height: 420px; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
+  .notif-bell-panel.open { display: block; }
+  .notif-bell-panel-title {
+    font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 700;
+    font-size: 14px; padding: 10px 14px; border-bottom: 1px solid var(--panel-border); color: var(--text);
+  }
+  .notif-bell-empty { padding: 18px 14px; font-size: 12.5px; color: var(--text-dim); text-align: center; }
+  .notif-bell-item { padding: 9px 14px; border-bottom: 1px solid var(--panel-border); }
+  .notif-bell-item:last-child { border-bottom: none; }
+  .notif-bell-item-top { display: flex; align-items: baseline; gap: 7px; }
+  .notif-bell-item-note {
+    font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 800;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .notif-bell-item-q { font-size: 12px; color: var(--text); line-height: 1.4; }
+  .notif-bell-item-meta { font-size: 10.5px; color: var(--text-dim); margin-top: 3px; }
 
   /* --- Tabs --- */
   .tab-bar {
@@ -397,6 +437,20 @@
     overflow: hidden;
   }
   .vt-note-gauge-fill { position: absolute; left: 0; right: 0; bottom: 0; }
+  /* Mirror of .vt-note-gauge on the opposite edge — same "fuel gauge" read
+     (filled bottom-up), but for total volume instead of the note, and in
+     --gold rather than the note's red/amber/green scoreColor scale so the
+     two are never mistaken for the same signal at a glance. Log-scaled (see
+     VOLUME_GAUGE_RANGE) since real totalStake spreads from a few hundred to
+     six figures — a linear scale would leave almost every card maxed out or
+     empty. */
+  .vt-volume-gauge {
+    position: absolute; top: 0; left: 0; bottom: 0; width: 6px;
+    background: var(--panel-border);
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+    overflow: hidden;
+  }
+  .vt-volume-gauge-fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--gold); }
   .vt-detail { padding: 0 20px 18px; }
   /* Explicit rather than relying solely on the browser's native <details>
      hiding — belt-and-suspenders so this can never render open by default. */
@@ -1771,6 +1825,13 @@
     <button id="refreshBtn" type="button">Rafraîchir maintenant</button>
     <button id="collapseAllBtn" type="button">Réduire tous les profils</button>
     <button id="themeToggleBtn" type="button" title="Thème clair / sombre">🌙</button>
+    <div class="notif-bell-wrap">
+      <button id="notifBellBtn" type="button" class="notif-bell-btn" title="Alertes email envoyées récemment">🔔<span id="notifBellCount" class="notif-bell-count"></span></button>
+      <div id="notifBellPanel" class="notif-bell-panel">
+        <div class="notif-bell-panel-title">🔔 Alertes envoyées</div>
+        <div id="notifBellList" class="notif-bell-list"></div>
+      </div>
+    </div>
     <span class="error-msg" id="errorMsg"></span>
   </div>
 
@@ -2089,6 +2150,15 @@
   // see the sync engine near "Mes Snapshots" below.
   var AWS_LAMBDA_URL = "https://objy7aaniw6upf5ki3mh5zb7eu0jwjag.lambda-url.eu-north-1.on.aws";
   var AWS_SECRET_KEY = "awsWriteSecret";
+  // Separate Lambda (tracking-whales-notify — same one that sends the email
+  // alerts), its own Function URL, GET-only, no write secret — read-only
+  // history of the last ~30 alerts it actually emailed, for the 🔔
+  // notification center. Distinct from AWS_LAMBDA_URL above (snapshots/
+  // positions sync): the two Lambdas run under separate IAM roles with no
+  // access to each other's DynamoDB table, so this reuses the notify
+  // Lambda's own already-granted table instead of routing through the sync
+  // Lambda (see the 2026-08-29 comment on positions.html's notif center).
+  var AWS_NOTIFY_URL = "https://npifomeib64qpv7dzy6cerjyte0lsmvv.lambda-url.eu-north-1.on.aws";
   var PREDICT_POSITIONS_BASE = "https://api.predict.fun/v1/positions/";
   var PREDICT_MATCHES_BASE = "https://api.predict.fun/v1/orders/matches";
   var POLY_POSITIONS_BASE = "https://data-api.polymarket.com/positions";
@@ -3741,6 +3811,13 @@
     topTraderShare: [0.35, 0.85],                  // biggest single trader's $ / leading side's $ — 0.35 = spread out, 0.85 = one whale alone
     traderQuality: [6, 9]                          // leading side's stake-weighted trader rating — matches the real 5.5-9.5 spread of tracked traders
   };
+  // Deliberately wider than SCORE_RANGES.volume — that range is tuned so the
+  // note's own volume factor saturates by $50k (past which more money stops
+  // meaningfully raising the note). The left-edge gauge is a plain "how big
+  // is this trade" read, not a note input, so it stays visually informative
+  // out past the six-figure trades this roster actually produces instead of
+  // pegging at 100% for most of them.
+  var VOLUME_GAUGE_RANGE = [1000, 150000];
   // Calibrated 2026-08-15 against 17 user-corrected real notes (almost all
   // corrections upward, one as large as 4.5→7.5): two systematic biases
   // found and fixed.
@@ -4648,6 +4725,10 @@
     var noteGaugeHtml = u.score != null
       ? '<div class="vt-note-gauge"><div class="vt-note-gauge-fill" style="height:' + (Math.max(0, Math.min(100, u.score / 10 * 100))).toFixed(1) + '%;background:' + scoreColor(u.score) + '"></div></div>'
       : '';
+    // Left-edge mirror of noteGaugeHtml — same fixed 0-100 fill, but reading
+    // total volume (log-scaled, see VOLUME_GAUGE_RANGE) instead of the note.
+    var volumeGaugePct = normLog(u.totalStake, VOLUME_GAUGE_RANGE) * 100;
+    var volumeGaugeHtml = '<div class="vt-volume-gauge" title="Volume total : ' + esc(fmtUSD(u.totalStake)) + '"><div class="vt-volume-gauge-fill" style="height:' + volumeGaugePct.toFixed(1) + '%"></div></div>';
     // Same "live" read the En cours filter already uses — kickoff has
     // passed (or there's no extractable date at all, treated as live by
     // unitTimingStatus).
@@ -4670,7 +4751,7 @@
       ';--border-tint:' + (parts.sportTint || "var(--accent)") +
       ';--border-tint-hover:' + (parts.sportTintHover || "var(--accent)") +
       (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
-      '<summary class="vt-summary">' + cornerBadgesHtml + noteGaugeHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
+      '<summary class="vt-summary">' + cornerBadgesHtml + noteGaugeHtml + volumeGaugeHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
   }
@@ -8565,6 +8646,73 @@
   // 60 req/hour per IP, so this leaves headroom for manual resyncs too.
   setInterval(function () { syncNow(SNAPSHOTS_STORE); }, 120000);
   setInterval(function () { syncNow(POSITIONS_STORE); }, 120000);
+  // ---------- 🔔 notification center ----------
+  // Read-only history of the emails tracking-whales-notify actually sent
+  // (see AWS_NOTIFY_URL) — useful when an alert email is missed, deleted, or
+  // buried, since the same list is now visible right on the site. Polled
+  // independently of the main refresh loop (works even while that's
+  // Pause'd) on the same 2-min cadence as the snapshots/positions sync
+  // above — this is a single small DynamoDB read behind it, not worth a
+  // tighter interval.
+  var notifBellBtn = document.getElementById("notifBellBtn");
+  var notifBellCount = document.getElementById("notifBellCount");
+  var notifBellPanel = document.getElementById("notifBellPanel");
+  var notifBellList = document.getElementById("notifBellList");
+  var NOTIF_SEEN_KEY = "notifLastSeenAt";
+  var notifLogEntries = [];
+  function notifSeenAt() { return localStorage.getItem(NOTIF_SEEN_KEY) || ""; }
+  function renderNotifBell() {
+    var seen = notifSeenAt();
+    var unread = notifLogEntries.filter(function (e) { return e.sentAt > seen; }).length;
+    if (unread > 0) {
+      notifBellCount.textContent = unread > 9 ? "9+" : String(unread);
+      notifBellCount.classList.add("show");
+    } else {
+      notifBellCount.classList.remove("show");
+    }
+    if (!notifLogEntries.length) {
+      notifBellList.innerHTML = '<div class="notif-bell-empty">Aucune alerte envoyée pour l\'instant.</div>';
+      return;
+    }
+    notifBellList.innerHTML = notifLogEntries.map(function (e) {
+      var d = new Date(e.sentAt);
+      var ago = !isNaN(d.getTime()) ? fmtCountdown(Date.now() - d.getTime()) : null;
+      var color = typeof e.note === "number" ? scoreColor(e.note) : "var(--text-dim)";
+      return '<div class="notif-bell-item">' +
+        '<div class="notif-bell-item-top"><span class="notif-bell-item-note" style="color:' + color + '">' + (typeof e.note === "number" ? e.note.toFixed(1) : "—") + '</span>' +
+        '<span class="notif-bell-item-q">' + esc(e.question || "—") + '</span></div>' +
+        '<div class="notif-bell-item-meta">' + esc(e.side || "") + (ago ? ' · il y a ' + esc(ago) : '') + '</div>' +
+      '</div>';
+    }).join("");
+  }
+  async function fetchNotifLog() {
+    try {
+      var res = await awsFetch(AWS_NOTIFY_URL + "/notifications");
+      if (!res.ok) return;
+      var list = await res.json();
+      notifLogEntries = Array.isArray(list) ? list : [];
+      renderNotifBell();
+    } catch (e) {
+      // Best-effort — a failed poll just leaves the last known list showing.
+    }
+  }
+  notifBellBtn.addEventListener("click", function (ev) {
+    ev.stopPropagation();
+    var opening = !notifBellPanel.classList.contains("open");
+    notifBellPanel.classList.toggle("open", opening);
+    if (opening && notifLogEntries.length) {
+      localStorage.setItem(NOTIF_SEEN_KEY, notifLogEntries[0].sentAt || new Date().toISOString());
+      renderNotifBell();
+    }
+  });
+  document.addEventListener("click", function (ev) {
+    if (!notifBellPanel.classList.contains("open")) return;
+    if (ev.target === notifBellBtn || notifBellPanel.contains(ev.target)) return;
+    notifBellPanel.classList.remove("open");
+  });
+  fetchNotifLog();
+  setInterval(fetchNotifLog, 120000);
+
   refresh(true);
   setInterval(tick, 1000);
 })();
