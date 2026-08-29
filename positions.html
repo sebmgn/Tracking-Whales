@@ -354,11 +354,6 @@
   .value-trade-item.vt-new {
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0)), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
   }
-  .vt-live-badge {
-    display: inline-block; background: var(--red); color: #fff;
-    font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.25);
-  }
   /* Same unitTimingStatus "live" read the En cours filter uses — a strong
      red wash (well past the ~5-8% sport tint resting cards get) so a
      genuinely in-progress event is unmistakable at a glance, not just a
@@ -521,7 +516,13 @@
      the fill is always a fairly saturated color. Direction carries its own
      color: an upcoming kickoff ("dans …") reads green, one already
      underway ("depuis …") reads blue. */
-  .vt-countdown-text { border-radius: 999px; padding: 1px 8px; color: #fff; }
+  /* Fixed width (not just padding) — "dans 5 min" and "depuis 14 jours" used
+     to give this pill a different width card to card, which shifted the S/R
+     watch badge riding right after it sideways too, so the same trader
+     landed at a different x position on every card (the whole point of the
+     badge is a fast scan down the list). Centered text inside a fixed box
+     instead keeps that badge's position identical everywhere. */
+  .vt-countdown-text { border-radius: 999px; padding: 1px 4px; color: #fff; width: 76px; text-align: center; }
   .vt-countdown-soon .vt-countdown-text { background: var(--green); }
   .vt-countdown-live .vt-countdown-text { background: var(--accent); }
   /* Small round S/R badge right next to the countdown — see WATCHED_BADGES
@@ -4609,13 +4610,14 @@
     // passed (or there's no extractable date at all, treated as live by
     // unitTimingStatus).
     var isLive = unitTimingStatus(u) === "live";
-    // Live, the countdown, and Nouveau all sit in one corner strip — Live
-    // and the countdown are the paired "this is happening now/soon" read,
-    // Nouveau tags along after when it also applies. Flexbox in
-    // .vt-corner-badges spaces however many of the three are present.
-    var cornerBadgesHtml = (isLive || parts.kickoffHtml || isNew)
+    // The countdown and Nouveau share one corner strip — the 🔴 Live pill
+    // that used to sit before the countdown was removed (2026-08-29,
+    // on request): its variable presence/width shifted the countdown
+    // (and the S/R watch badges riding on it) sideways card to card,
+    // which is exactly what a fixed-width countdown is trying to prevent.
+    // "depuis X" already carries the same "this is live" signal on its own.
+    var cornerBadgesHtml = (parts.kickoffHtml || isNew)
       ? '<div class="vt-corner-badges">' +
-          (isLive ? '<span class="vt-live-badge">🔴 Live</span>' : '') +
           parts.kickoffHtml +
           (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') +
         '</div>'
