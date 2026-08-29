@@ -5719,7 +5719,17 @@
       var xLabel = slot > 20 ? '<text x="' + cx.toFixed(2) + '" y="' + (H - 10) + '" font-size="9" fill="var(--text-dim)" text-anchor="middle">' + esc(fmtDateShort(w.start)) + '</text>' : '';
       return '<rect x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.78"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + '% ROI)' : '') + '</title></rect>' + countLabel + xLabel;
     }).join("");
+    // One faint vertical divider per week boundary (n-1 of them, evenly
+    // spaced at each slot edge) — thin and low-opacity on purpose, just
+    // enough to read "new week starts here" without competing with the
+    // bars themselves for attention.
+    var dividers = "";
+    for (var di = 1; di < n; di++) {
+      var dx = (padL + slot * di).toFixed(2);
+      dividers += '<line x1="' + dx + '" y1="' + padT + '" x2="' + dx + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1" opacity="0.55"/>';
+    }
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+      dividers +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-width="1"/>' +
       bars +
       '</svg>';
@@ -5797,7 +5807,17 @@
       var color = w.pnl >= 0 ? "var(--green)" : "var(--red)";
       return '<rect x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.72"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + '% ROI)' : '') + '</title></rect>';
     }).join("");
+    // One faint divider per week boundary, sat exactly between the last dot
+    // of one week and the first dot of the next (not just between the two
+    // bars) — same idea as buildWeeklyBarSvg's evenly-spaced dividers, just
+    // positioned from the real dot indices instead of a fixed slot width.
+    var dividers = "";
+    for (var di = 1; di < weeks.length; di++) {
+      var dx = ((x(weeks[di - 1].lastIdx) + x(weeks[di].firstIdx)) / 2).toFixed(2);
+      dividers += '<line x1="' + dx + '" y1="' + padT + '" x2="' + dx + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1" opacity="0.55"/>';
+    }
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-weekly-svg">' +
+      dividers +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
       bars +
       '</svg>';
