@@ -520,22 +520,33 @@
      to give this pill a different width card to card, which shifted the S/R
      watch badge riding right after it sideways too, so the same trader
      landed at a different x position on every card (the whole point of the
-     badge is a fast scan down the list). Centered text inside a fixed box
-     instead keeps that badge's position identical everywhere. */
-  .vt-countdown-text { border-radius: 999px; padding: 1px 4px; color: #fff; width: 76px; text-align: center; }
+     badge is a fast scan down the list). 104px comfortably fits the widest
+     realistic text ("depuis 14 jours") without clipping the shorter ones
+     ("dans 54 min" was getting cut off at a narrower width); flex-shrink:0
+     stops the flex row from compressing it below that when space is tight,
+     which is what was actually clipping the text, not the width itself.
+     box-sizing so the fixed width includes the pill's own padding. */
+  .vt-countdown-text {
+    border-radius: 999px; padding: 1px 4px; color: #fff;
+    width: 104px; box-sizing: border-box; flex-shrink: 0; text-align: center;
+  }
   .vt-countdown-soon .vt-countdown-text { background: var(--green); }
   .vt-countdown-live .vt-countdown-text { background: var(--accent); }
   /* Small round S/R badge right next to the countdown — see WATCHED_BADGES
      in computeUnitCardParts. Each tracked name gets its own color (inline
      background, set per-badge) so swisstony and RN1 read apart at a
      glance, not just by letter — white text throughout since both colors
-     are fairly saturated, same convention .vt-countdown-text already uses. */
+     are fairly saturated, same convention .vt-countdown-text already uses.
+     Always two slots (S then R, see WATCHED_ORDER) so each letter keeps
+     its own fixed column whether or not that trader is actually on this
+     trade — .vt-watch-badge-empty is a same-size invisible placeholder. */
   .vt-watch-badge {
     display: inline-flex; align-items: center; justify-content: center;
     width: 16px; height: 16px; margin-left: 4px; border-radius: 50%;
     color: #fff; font-size: 10px; font-weight: 800;
     flex: none;
   }
+  .vt-watch-badge-empty { background: transparent !important; visibility: hidden; }
   .vt-watch-badge + .vt-watch-badge { margin-left: 3px; }
   /* Icon-only now (was "📌 Snapshot") — square-ish padding instead of the
      pill shape that made sense for a text label. Shared base for every
@@ -4402,18 +4413,29 @@
     // swisstony or RN1 actually on this trade" read without having to open
     // the card and scan every trader row. Checks every side, not just the
     // leader — a hedge/contrary position still counts as "they're on this".
+    // Fixed order (S then R), one slot per name always rendered — a trade
+    // with only RN1 used to render just one badge, which slid into the
+    // slot swisstony's badge would have used elsewhere, so neither letter
+    // kept a stable column down the list. An absent name now renders an
+    // invisible same-size placeholder instead of nothing, so S is always
+    // in the first slot and R always in the second, filled or not.
+    var WATCHED_ORDER = ["swisstony", "RN1"];
     var WATCHED_BADGES = { swisstony: { initial: "S", color: "var(--gold)" }, RN1: { initial: "R", color: "#38bdf8" } };
-    var watchBadgeNames = [];
+    var watchPresent = {};
     mergedSides.forEach(function (m) {
       m.items.forEach(function (it) {
         it.s.entries.forEach(function (e) {
-          if (WATCHED_BADGES[e.trader] && watchBadgeNames.indexOf(e.trader) === -1) watchBadgeNames.push(e.trader);
+          if (WATCHED_BADGES[e.trader]) watchPresent[e.trader] = true;
         });
       });
     });
-    var watchBadgesHtml = watchBadgeNames.map(function (name) {
-      return '<span class="vt-watch-badge" style="background:' + WATCHED_BADGES[name].color + '" title="' + esc(name) + ' a une position sur ce trade">' + esc(WATCHED_BADGES[name].initial) + '</span>';
-    }).join("");
+    var anyWatched = WATCHED_ORDER.some(function (name) { return watchPresent[name]; });
+    var watchBadgesHtml = anyWatched ? WATCHED_ORDER.map(function (name) {
+      var info = WATCHED_BADGES[name];
+      return watchPresent[name]
+        ? '<span class="vt-watch-badge" style="background:' + info.color + '" title="' + esc(name) + ' a une position sur ce trade">' + esc(info.initial) + '</span>'
+        : '<span class="vt-watch-badge vt-watch-badge-empty"></span>';
+    }).join("") : "";
     var kickoffHtml = relTimeText
       ? '<span class="vt-countdown ' + (isUpcoming ? 'vt-countdown-soon' : 'vt-countdown-live') + '"' + (preciseKickoff ? ' title="' + esc(preciseKickoff.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })) + '"' : '') + '><span class="vt-countdown-text">' + esc(relTimeText) + '</span>' + watchBadgesHtml + '</span>'
       : (watchBadgesHtml ? '<span class="vt-countdown vt-countdown-live">' + watchBadgesHtml + '</span>' : '');
