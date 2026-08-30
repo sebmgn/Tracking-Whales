@@ -971,7 +971,8 @@
   .vt-score-factor-pts { flex: 0 0 28px; text-align: right; font-variant-numeric: tabular-nums; font-size: 9.5px; }
 
   /* --- Recent trades --- */
-  .rt-filters, .vt-filters { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
+  .rt-filters, .vt-filters { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; align-items: center; }
+  .vt-sort-label { font-size: 12.5px; color: var(--text-dim); margin-right: 2px; }
   .rt-filters button, .vt-filters button {
     border-radius: 999px;
     padding: 6px 15px;
@@ -1985,6 +1986,12 @@
           <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
           <button data-timing="upcoming" type="button">📅 À venir<span class="vt-filter-count"></span></button>
         </div>
+        <div class="vt-filters" id="vtSortFilters">
+          <span class="vt-sort-label">Trier par</span>
+          <button data-sort="note" class="active" type="button">Note</button>
+          <button data-sort="volume" type="button">Volume</button>
+          <button data-sort="traders" type="button">Traders</button>
+        </div>
         <div class="vt-adv-filters" id="vtAdvFilters">
           <div class="vt-adv-filter">
             <!-- min/value must match VT_SCORE_FLOOR (the hard exclusion floor) -->
@@ -2564,6 +2571,7 @@
   var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart, or dragging the slider (kept in sync both ways)
   var vtMinAgreement = 0; // 0 = no filter; else the leading side's own trader count must be >= this
   var vtMinVolume = 0; // 0 = no filter; else totalStake must be >= this ($)
+  var vtSortBy = "note"; // "note" | "volume" | "traders" — which column ranks the list, see renderValueTrades
   // One line per trade, no jauges/badges — a scan mode for going through a
   // long list fast. Remembered across reloads since it's a reading
   // preference, not a filter.
@@ -7177,9 +7185,14 @@
         ' — ' + allUnits.length + ' marché' + (allUnits.length > 1 ? 's' : '') + ' au total actuellement suivi' + (allUnits.length > 1 ? 's' : '') + ', aucun avec > ' + (vtMinTraders - 1) + ' traders sur le même camp.</div></div>';
       return;
     }
-    // Ranked by note (highest first) instead of stake — the note is the
-    // whole point of this list now, not just another number shown on it.
-    var rankedUnits = finalUnits.slice().sort(function (a, b) { return b.score - a.score; });
+    // Ranked by note (default), volume, or trader count — picked via the
+    // "Trier par" row (vtSortBy). Note stays the tiebreaker for the other
+    // two, same as it always was on its own.
+    var rankedUnits = finalUnits.slice().sort(function (a, b) {
+      if (vtSortBy === "volume") return (b.totalStake - a.totalStake) || (b.score - a.score);
+      if (vtSortBy === "traders") return (b.traderCount - a.traderCount) || (b.score - a.score);
+      return b.score - a.score;
+    });
     // Grouped into day buckets (chronological, "Date inconnue" — outright/
     // futures markets with no extractable date — last), note-desc order
     // preserved WITHIN each bucket since we group a list that's already
@@ -7866,6 +7879,15 @@
       timingFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       vtTimingFilter = btn.getAttribute("data-timing") || "all";
+      renderValueTrades();
+    });
+  });
+  var vtSortFiltersEl = document.getElementById("vtSortFilters");
+  vtSortFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      vtSortFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      vtSortBy = btn.getAttribute("data-sort") || "note";
       renderValueTrades();
     });
   });
