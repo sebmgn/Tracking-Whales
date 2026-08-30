@@ -5155,7 +5155,13 @@
     if (!res.ok) throw new Error("AWS POST " + res.status);
     return res.json();
   }
-  function updateSyncStatus(store, state) {
+  // `detail` (2026-08-30) — on "error" specifically, syncNow now passes
+  // which op type/question is actually stuck at the front of the queue, so
+  // a future sync failure is immediately diagnosable from the status line
+  // itself instead of requiring a devtools/console investigation to even
+  // know something is silently jammed (see the editPosition/setSavedAt
+  // incident this was added after).
+  function updateSyncStatus(store, state, detail) {
     var el = store.els.syncStatus;
     if (!el) return;
     var now = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -5165,7 +5171,7 @@
       "readonly": "📖 Lecture seule à " + now + " — connecte une clé pour ajouter/modifier",
       "pending-secret": "🔒 Modifications en attente — connecte une clé pour les envoyer",
       "conflict": "⚠️ Données locales absentes du serveur — connecte une clé pour les envoyer, sinon rien n'est perdu mais rien n'est synchronisé non plus",
-      "error": "⚠️ Erreur de synchro — sauvegardé localement, nouvelle tentative automatique"
+      "error": "⚠️ Erreur de synchro" + (detail ? " (" + detail + ")" : "") + " — sauvegardé localement, nouvelle tentative automatique"
     };
     el.textContent = labels[state] || "—";
     el.className = "snap-sync-status snap-sync-" + state;
@@ -5214,11 +5220,22 @@
   // local data when this code first runs (upgrading from before this flag
   // existed) — only a device starting from truly nothing gets the
   // one-time protection.
+  // 2026-08-30 bug fix: this used to also treat "local storage already has
+  // items" as proof of a past successful sync, immediately re-marking the
+  // flag and returning true — which defeated the ENTIRE point of being able
+  // to clear everSyncedKey to force a fresh local-vs-remote reconciliation
+  // (see syncNow below): a device with real local data (which is every
+  // device that would ever need this) would just silently re-mark itself
+  // "synced" on the very next check, skipping the reconciliation it was
+  // supposed to trigger. Real incident: a user's device had 22 local
+  // positions but only 9 on the server; clearing the flag to force a
+  // re-check did nothing because of exactly this fallback, and the
+  // subsequent normal sync then overwrote local with the sparse remote
+  // list. Flag-only now — the one-time reconciliation runs whenever this
+  // is genuinely unset, full stop.
   function hasEverSynced(store) {
     try {
-      if (localStorage.getItem(store.everSyncedKey) === "1") return true;
-      if (store.loadRaw().length > 0) { markEverSynced(store); return true; }
-      return false;
+      return localStorage.getItem(store.everSyncedKey) === "1";
     } catch (e) { return false; }
   }
   function markEverSynced(store) {
@@ -5270,7 +5287,13 @@
       renderStoreView(store);
     } catch (e) {
       console.error(store.name + " sync error", e);
-      updateSyncStatus(store, "error");
+      // Whatever's still sitting at the front of the queue is the op that
+      // just failed (the while loop above only ever shifts one off after
+      // it succeeds) — naming it here means a future stuck sync is
+      // immediately diagnosable from the status line, not just a generic
+      // "erreur" with no way to tell what's actually blocked.
+      var stuckOp = loadSyncQueue(store)[0];
+      updateSyncStatus(store, "error", stuckOp ? (stuckOp.type + " · " + stuckOp.id) : null);
     } finally {
       syncInFlight[store.name] = false;
     }
