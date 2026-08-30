@@ -1796,6 +1796,10 @@
     margin-bottom: 2px;
   }
   .pnl-chart-weekly-svg { display: block; width: 100%; height: auto; margin-bottom: 8px; }
+  /* Manuel/Auto split and confidence-tier counts in the weekly table —
+     secondary detail next to Paris/Note/ROI/Gain, kept visually quieter
+     on purpose (smaller, muted) rather than as co-equal columns. */
+  .weekly-mini { font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
   /* Click a week (bar or table row) to highlight that week's own dots on
      the evolution chart above — see the [data-week-key][data-first-idx]
      handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
@@ -5766,13 +5770,29 @@
       byWeek[key].items.push(s);
     });
     var weeks = Object.keys(byWeek).map(function (k) { return byWeek[k]; }).sort(function (a, b) { return a.key - b.key; });
-    weeks.forEach(function (w) {
-      var agg = aggregateFlatPnl(w.items, store);
-      w.count = w.items.length;
-      w.pnl = agg.pnl;
-      w.roi = agg.roi;
-    });
+    weeks.forEach(function (w) { augmentWeekStats(w, w.items, store); });
     return weeks;
+  }
+  // Shared by both computeWeeklyPnl (compact panel, full snap objects in
+  // w.items) and computeWeeklyPnlAligned (weeklySeries points) below —
+  // average note, manuel/auto split + each one's own ROI, and a count per
+  // confidence tier (only tiers actually used that week end up in
+  // tierCounts, so a week with only A/B trades never renders an empty S or
+  // A+ column — see weeklyTableHtml).
+  function augmentWeekStats(w, items, store) {
+    var agg = aggregateFlatPnl(items, store);
+    w.count = items.length;
+    w.pnl = agg.pnl;
+    w.roi = agg.roi;
+    var noted = items.filter(function (s) { return typeof s.noteAtSnapshot === "number"; });
+    w.avgNote = noted.length ? noted.reduce(function (sum, s) { return sum + s.noteAtSnapshot; }, 0) / noted.length : null;
+    var manual = items.filter(function (s) { return !!s.isManual; });
+    var auto = items.filter(function (s) { return !s.isManual; });
+    w.manualPct = items.length ? (manual.length / items.length * 100) : null;
+    w.manualRoi = manual.length ? aggregateFlatPnl(manual, store).roi : null;
+    w.autoRoi = auto.length ? aggregateFlatPnl(auto, store).roi : null;
+    w.tierCounts = {};
+    items.forEach(function (s) { if (s.confidence) w.tierCounts[s.confidence] = (w.tierCounts[s.confidence] || 0) + 1; });
   }
   // Barres divergentes autour de zéro — hauteur = gain $ de la semaine
   // (vert au-dessus de zéro, rouge en dessous), nombre de paris affiché
@@ -5816,11 +5836,25 @@
   }
   // Shared by both the compact toggle panel (renderWeeklyPnl) and the
   // aligned version embedded under the evolution chart (renderSnapPnlChart)
-  // — same 4 columns either way, just fed a different `weeks` array.
+  // — same columns either way, just fed a different `weeks` array (both
+  // computeWeeklyPnl and computeWeeklyPnlAligned produce the same augmented
+  // shape now, see augmentWeekStats). Manuel/Auto and Confiance are
+  // deliberately smaller/muted (.weekly-mini) — secondary detail next to
+  // Paris/Note/ROI/Gain, not co-equal columns, per request.
   function weeklyTableHtml(weeks) {
     var rows = weeks.map(function (w) {
       var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
       var gainHtml = '<span class="' + (w.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(w.pnl)) + '</span>';
+      var noteHtml = w.avgNote == null ? '—' : w.avgNote.toFixed(1);
+      var manualAutoHtml = w.manualPct == null ? '—' : (function () {
+        var manualRoiTxt = w.manualRoi == null ? '' : ' (' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + '%)';
+        var autoRoiTxt = w.autoRoi == null ? '' : ' (' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%)';
+        return '<span class="weekly-mini">✍️ ' + Math.round(w.manualPct) + '%' + manualRoiTxt + ' · 🎯 ' + Math.round(100 - w.manualPct) + '%' + autoRoiTxt + '</span>';
+      })();
+      // Only the tiers actually used that week show up — a week with just
+      // A/B trades never renders an empty S or A+ column.
+      var tierParts = CONFIDENCE_TIERS.filter(function (t) { return w.tierCounts && w.tierCounts[t]; }).map(function (t) { return t + ' ' + w.tierCounts[t]; });
+      var tierHtml = tierParts.length ? '<span class="weekly-mini">' + esc(tierParts.join(' · ')) + '</span>' : '—';
       // Only the aligned weeks (computeWeeklyPnlAligned) carry firstIdx/
       // lastIdx — the compact panel's own weeks (computeWeeklyPnl) don't,
       // so its rows come out with no class/data attrs at all and stay
@@ -5828,9 +5862,9 @@
       var rowAttrs = w.firstIdx != null
         ? ' class="vt-weekly-row" data-week-key="' + w.key + '" data-first-idx="' + w.firstIdx + '" data-last-idx="' + w.lastIdx + '"'
         : '';
-      return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + gainHtml + '</td></tr>';
+      return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + noteHtml + '</td><td class="num">' + roiHtml + '</td><td class="num">' + gainHtml + '</td><td>' + manualAutoHtml + '</td><td>' + tierHtml + '</td></tr>';
     }).join("");
-    return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Gain</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">Note moy.</th><th class="num">ROI</th><th class="num">Gain</th><th>Manuel / Auto</th><th>Confiance</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   function renderWeeklyPnl(list, store) {
     var el = store.els.weeklyPnl;
@@ -5859,15 +5893,35 @@
       var monday = weekStartOf(p.date);
       var key = monday.getTime();
       if (!current || current.key !== key) {
-        current = { key: key, start: monday, count: 0, pnl: 0, stakeSum: 0, firstIdx: i, lastIdx: i };
+        current = {
+          key: key, start: monday, count: 0, pnl: 0, stakeSum: 0, firstIdx: i, lastIdx: i,
+          noteSum: 0, noteCount: 0,
+          manualCount: 0, manualPnl: 0, manualStake: 0,
+          autoCount: 0, autoPnl: 0, autoStake: 0,
+          tierCounts: {}
+        };
         weeks.push(current);
       }
       current.count++;
       current.pnl += p.pnl;
       current.stakeSum += p.stake;
       current.lastIdx = i;
+      // weeklySeries points already carry pnl/stake pre-computed (same loop
+      // that builds `series` for the evolution chart) — no full snap object
+      // to hand aggregateFlatPnl here, so the manuel/auto ROI split is just
+      // that same pnl/stake summed separately per group instead.
+      if (typeof p.note === "number") { current.noteSum += p.note; current.noteCount++; }
+      if (p.isManual) { current.manualCount++; current.manualPnl += p.pnl; current.manualStake += p.stake; }
+      else { current.autoCount++; current.autoPnl += p.pnl; current.autoStake += p.stake; }
+      if (p.confidence) current.tierCounts[p.confidence] = (current.tierCounts[p.confidence] || 0) + 1;
     });
-    weeks.forEach(function (w) { w.roi = w.stakeSum > 0 ? (w.pnl / w.stakeSum * 100) : null; });
+    weeks.forEach(function (w) {
+      w.roi = w.stakeSum > 0 ? (w.pnl / w.stakeSum * 100) : null;
+      w.avgNote = w.noteCount > 0 ? (w.noteSum / w.noteCount) : null;
+      w.manualPct = w.count > 0 ? (w.manualCount / w.count * 100) : null;
+      w.manualRoi = w.manualStake > 0 ? (w.manualPnl / w.manualStake * 100) : null;
+      w.autoRoi = w.autoStake > 0 ? (w.autoPnl / w.autoStake * 100) : null;
+    });
     return weeks;
   }
   // Same W/padL/padR as buildHistoryChartSvg (1000/54/14) so a given index's
@@ -6129,7 +6183,7 @@
       // flashy win/loss read at a glance.
       var won = snap.leaderName === snap.winningSide;
       series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
-      weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: store.stakeFor(snap) });
+      weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: store.stakeFor(snap), note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
       if (snap.confidence && seriesByTier[snap.confidence]) {
         cumByTier[snap.confidence] += pnl;
         seriesByTier[snap.confidence].push({ date: new Date(snap.savedAt), value: cumByTier[snap.confidence], delta: pnl, win: won, note: snap.noteAtSnapshot });
