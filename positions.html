@@ -1827,6 +1827,15 @@
      secondary detail next to Paris/Note/ROI/Gain, kept visually quieter
      on purpose (smaller, muted) rather than as co-equal columns. */
   .weekly-mini { font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
+  /* Confidence column: 4 fixed S/A+/A/B slots, bar height = count relative
+     to that week's tallest tier — absent tiers stay at a flat 2px stub
+     instead of disappearing, so "no S this week" reads as clearly as
+     "8 B's this week" (chosen over listing counts as text, on request). */
+  .weekly-tierbars { display: flex; gap: 4px; align-items: flex-end; }
+  .weekly-tierbars-col { display: flex; flex-direction: column; align-items: center; width: 13px; }
+  .weekly-tierbars-track { height: 20px; display: flex; align-items: flex-end; }
+  .weekly-tierbars-bar { width: 8px; border-radius: 2px 2px 0 0; }
+  .weekly-tierbars-lbl { font-size: 7.5px; color: var(--text-dim); margin-top: 2px; letter-spacing: -0.02em; }
   /* Click a week (bar or table row) to highlight that week's own dots on
      the evolution chart above — see the [data-week-key][data-first-idx]
      handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
@@ -5922,6 +5931,21 @@
   // shape now, see augmentWeekStats). Manuel/Auto and Confiance are
   // deliberately smaller/muted (.weekly-mini) — secondary detail next to
   // Paris/Note/ROI/Gain, not co-equal columns, per request.
+  // 4 fixed S/A+/A/B slots, bar height scaled to that week's tallest tier —
+  // absent tiers render as a flat 2px stub rather than vanishing, so their
+  // absence is as visible as another tier's dominance.
+  function tierBarsHtml(w) {
+    if (!w.tierCounts || !Object.keys(w.tierCounts).length) return '—';
+    var max = 0;
+    CONFIDENCE_TIERS.forEach(function (t) { max = Math.max(max, w.tierCounts[t] || 0); });
+    if (!max) return '—';
+    var cols = CONFIDENCE_TIERS.map(function (t) {
+      var c = w.tierCounts[t] || 0;
+      var h = c ? Math.max(2, Math.round((c / max) * 20)) : 2;
+      return '<div class="weekly-tierbars-col" title="' + esc(t) + ': ' + c + '"><div class="weekly-tierbars-track"><div class="weekly-tierbars-bar" style="height:' + h + 'px;background:' + CONFIDENCE_COLORS[t] + ';opacity:' + (c ? '1' : '0.18') + '"></div></div><span class="weekly-tierbars-lbl">' + esc(t) + '</span></div>';
+    }).join("");
+    return '<div class="weekly-tierbars">' + cols + '</div>';
+  }
   function weeklyTableHtml(weeks) {
     var rows = weeks.map(function (w) {
       var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
@@ -5932,10 +5956,7 @@
         var autoRoiTxt = w.autoRoi == null ? '' : ' (' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%)';
         return '<span class="weekly-mini">✍️ ' + Math.round(w.manualPct) + '%' + manualRoiTxt + ' · 🎯 ' + Math.round(100 - w.manualPct) + '%' + autoRoiTxt + '</span>';
       })();
-      // Only the tiers actually used that week show up — a week with just
-      // A/B trades never renders an empty S or A+ column.
-      var tierParts = CONFIDENCE_TIERS.filter(function (t) { return w.tierCounts && w.tierCounts[t]; }).map(function (t) { return t + ' ' + w.tierCounts[t]; });
-      var tierHtml = tierParts.length ? '<span class="weekly-mini">' + esc(tierParts.join(' · ')) + '</span>' : '—';
+      var tierHtml = tierBarsHtml(w);
       // Only the aligned weeks (computeWeeklyPnlAligned) carry firstIdx/
       // lastIdx — the compact panel's own weeks (computeWeeklyPnl) don't,
       // so its rows come out with no class/data attrs at all and stay
