@@ -1949,6 +1949,7 @@
           <button data-sport="football" class="active" type="button">⚽ Football<span class="vt-filter-count"></span></button>
           <button data-sport="other" type="button">Autres<span class="vt-filter-count"></span></button>
         </div>
+        <div class="vt-filters" id="vtLeagueFilters" style="display:none;"></div>
         <div class="vt-filters" id="timingFilters">
           <button data-timing="all" class="active" type="button">Tous<span class="vt-filter-count"></span></button>
           <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
@@ -2512,6 +2513,7 @@
   var RELIABLE_TRADERS = ["JJJJ", "predict847", "swisstony", "RN1", "VeryLucky888"];
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
+  var vtLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForUnit/renderVtLeagueFilters
   var tradesProfilesTimingFilter = "all"; // "all" | "live" | "upcoming" — same idea, for Trades par profils
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
   // everything down to a 3 now instead of hard-hiding it. Single source of
@@ -3189,6 +3191,50 @@
       if (SPORT_EMOJI_RULES[i].test.test(q) || SPORT_EMOJI_RULES[i].test.test(s)) return SPORT_EMOJI_RULES[i].emoji;
     }
     return "🎲";
+  }
+  // Curated subset of FOOTBALL_SLUG_PREFIXES — only the leagues/competitions
+  // confidently identifiable from their slug code get a real name + flag
+  // here, feeding the "Trier par ligue" filter row (only leagues that
+  // actually have a trade right now get a button, see renderVtLeagueFilters).
+  // Several prefixes share one `key` (e.g. "lal" and "laliga" are both La
+  // Liga) so the filter groups them as one league regardless of which
+  // platform/slug style produced the trade. Anything not listed here still
+  // counts as football (isFootball is unaffected) — it just has no
+  // dedicated league button, same as before this filter existed.
+  var LEAGUE_INFO = {
+    epl: { key: "epl", name: "Premier League", emoji: "🏴" },
+    lal: { key: "liga_es", name: "Liga (Espagne)", emoji: "🇪🇸" }, laliga: { key: "liga_es", name: "Liga (Espagne)", emoji: "🇪🇸" },
+    sea: { key: "seriea", name: "Serie A", emoji: "🇮🇹" }, seriea: { key: "seriea", name: "Serie A", emoji: "🇮🇹" },
+    fl1: { key: "ligue1", name: "Ligue 1", emoji: "🇫🇷" }, ligue1: { key: "ligue1", name: "Ligue 1", emoji: "🇫🇷" },
+    bun: { key: "bundesliga", name: "Bundesliga", emoji: "🇩🇪" }, bundesliga: { key: "bundesliga", name: "Bundesliga", emoji: "🇩🇪" },
+    bl2: { key: "bundesliga2", name: "Bundesliga 2", emoji: "🇩🇪" },
+    ucl: { key: "ucl", name: "Champions League", emoji: "🏆" },
+    uel: { key: "uel", name: "Europa League", emoji: "🏆" },
+    mls: { key: "mls", name: "MLS", emoji: "🇺🇸" },
+    ere: { key: "eredivisie", name: "Eredivisie", emoji: "🇳🇱" }, eredivisie: { key: "eredivisie", name: "Eredivisie", emoji: "🇳🇱" },
+    bra: { key: "brasileirao", name: "Brasileirão", emoji: "🇧🇷" }, brasileirao: { key: "brasileirao", name: "Brasileirão", emoji: "🇧🇷" },
+    arg: { key: "arg", name: "Primera División", emoji: "🇦🇷" },
+    mex: { key: "mex", name: "Liga MX", emoji: "🇲🇽" },
+    por: { key: "por", name: "Primeira Liga", emoji: "🇵🇹" },
+    tur: { key: "tur", name: "Süper Lig", emoji: "🇹🇷" },
+    rus: { key: "rus", name: "Premier League (Russie)", emoji: "🇷🇺" },
+    bel1: { key: "bel1", name: "Pro League", emoji: "🇧🇪" },
+    aut: { key: "aut", name: "Bundesliga (Autriche)", emoji: "🇦🇹" },
+    spl: { key: "spl", name: "Premiership (Écosse)", emoji: "🏴" },
+    jap: { key: "jleague", name: "J-League", emoji: "🇯🇵" }, j1100: { key: "jleague", name: "J-League", emoji: "🇯🇵" }, j2100: { key: "jleague2", name: "J-League 2", emoji: "🇯🇵" },
+    kor: { key: "kor", name: "K League", emoji: "🇰🇷" },
+    swe: { key: "swe", name: "Allsvenskan", emoji: "🇸🇪" },
+    nor: { key: "nor", name: "Eliteserien", emoji: "🇳🇴" },
+    den: { key: "den", name: "Superliga (Danemark)", emoji: "🇩🇰" },
+    fif: { key: "fifwc", name: "Coupe du Monde", emoji: "🌍" }, fifwc: { key: "fifwc", name: "Coupe du Monde", emoji: "🌍" },
+    acn: { key: "acn", name: "CAN", emoji: "🌍" },
+    concacaf: { key: "concacaf", name: "Concacaf", emoji: "🌎" }
+  };
+  function leagueInfoForUnit(u) {
+    var primary = u.members[0];
+    var slug = (primary.slug || "").toLowerCase();
+    var prefix = slug.split("-")[0];
+    return LEAGUE_INFO[prefix] || null;
   }
   // A pre-text-read pre-sort cue on a mixed list — a very faint hue wash
   // (mixed in at just a few percent, see .value-trade-item) keyed off the
@@ -6884,6 +6930,10 @@
       if (sportFilter === "other" && football) return false;
     }
     if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
+    if (vtLeagueFilter) {
+      var league = leagueInfoForUnit(u);
+      if (!league || league.key !== vtLeagueFilter) return false;
+    }
     return true;
   }
   // Live count riding each sport/timing chip — "how many would show if you
@@ -6922,6 +6972,49 @@
       var span = btn.querySelector(".vt-filter-count");
       if (span) span.textContent = " · " + (timingCounts[mode] || 0);
     });
+  }
+  // League buttons — rebuilt from scratch every render (unlike sport/timing,
+  // which are static), since which leagues even have a button at all
+  // depends on what's actually in `base` right now. Counted under the same
+  // "every OTHER active filter" convention as updateVtFilterChipCounts
+  // above (timing + note, not sport/league themselves), sorted by count so
+  // the busiest league leads. Hidden entirely (not just empty) when nothing
+  // qualifies, e.g. viewing "Autres" — leagues are football-only.
+  function renderVtLeagueFilters(base) {
+    var container = document.getElementById("vtLeagueFilters");
+    if (!container) return;
+    // Leagues are football-only — irrelevant (and confusing) while viewing
+    // "Autres", regardless of whether football matches technically exist
+    // elsewhere in `base` (this pool is the same pre-sport-filter universe
+    // updateVtFilterChipCounts previews other sports' counts from).
+    if (sportFilter === "other") {
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+    function passesNoteEtc(u) { return vtMinScore == null || u.score >= vtMinScore; }
+    var counts = {}, infoByKey = {};
+    base.forEach(function (u) {
+      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return;
+      if (!passesNoteEtc(u)) return;
+      if (!isFootball(u.members[0].question, u.members[0].slug)) return;
+      var info = leagueInfoForUnit(u);
+      if (!info) return;
+      counts[info.key] = (counts[info.key] || 0) + 1;
+      infoByKey[info.key] = info;
+    });
+    var keys = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+    if (!keys.length) {
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+    container.style.display = "";
+    container.innerHTML = keys.map(function (key) {
+      var info = infoByKey[key];
+      var active = vtLeagueFilter === key;
+      return '<button type="button" data-league="' + esc(key) + '"' + (active ? ' class="active"' : '') + '>' + esc(info.emoji) + ' ' + esc(info.name) + '<span class="vt-filter-count"> · ' + counts[key] + '</span></button>';
+    }).join("");
   }
   // One row per NOTE threshold (>=8 down to VT_SCORE_FLOOR), not trader
   // count — color comes straight from the threshold itself (vtTierColor(n)),
@@ -7078,6 +7171,7 @@
     // the actual visible list ("234" vs the "12" markets really shown).
     renderVtTierChart(floorUnits.filter(vtBaseUnitFilter));
     updateVtFilterChipCounts(floorUnits);
+    renderVtLeagueFilters(floorUnits);
 
     var finalUnits = traderFiltered;
 
@@ -7778,8 +7872,22 @@
       sportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       sportFilter = btn.getAttribute("data-sport") || "all";
+      // A league filter means nothing once you're not looking at football
+      // anymore — cleared rather than left invisibly still narrowing the
+      // list under "Tous les sports"/"Autres".
+      if (sportFilter !== "football") vtLeagueFilter = null;
       renderValueTrades();
     });
+  });
+  // League buttons are rebuilt from scratch every render (see
+  // renderVtLeagueFilters), so this is delegated on the container instead
+  // of re-attached per-button each time.
+  document.getElementById("vtLeagueFilters").addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest("button[data-league]") : null;
+    if (!btn) return;
+    var key = btn.getAttribute("data-league");
+    vtLeagueFilter = vtLeagueFilter === key ? null : key;
+    renderValueTrades();
   });
   var byMatchSportFiltersEl = document.getElementById("byMatchSportFilters");
   byMatchSportFiltersEl.querySelectorAll("button").forEach(function (btn) {
