@@ -1964,14 +1964,14 @@
 
   <div class="tab-bar">
     <button class="tab-btn tab-btn-primary tab-gold-1 active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
-    <button class="tab-btn tab-btn-primary tab-gold-2" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
+    <button class="tab-btn tab-btn-primary tab-gold-2" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Saison 26/27</button>
     <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-primary tab-gold-3" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Matchs</button>
     <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="stats-profiles" type="button">Statistiques profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🧪</span>Test</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
@@ -2012,7 +2012,7 @@
   </div>
 
   <div class="tab-panel" id="tab-snapshots">
-    <h2 class="section-title">Mes Snapshots <span class="count-pill" id="snapCount">—</span></h2>
+    <h2 class="section-title">Saison 26/27 <span class="count-pill" id="snapCount">—</span></h2>
     <div class="snap-sync-bar">
       <span id="snapSyncStatus" class="snap-sync-status">—</span>
       <button type="button" id="snapSyncRefreshBtn" class="snap-sync-link" title="Resynchroniser maintenant">🔄 Resynchro</button>
@@ -2083,7 +2083,7 @@
       <input type="password" id="posSyncTokenInput" placeholder="Clé de synchro AWS" autocomplete="off" />
       <button type="button" id="posSyncTokenSave">Enregistrer</button>
       <button type="button" id="posSyncTokenClear">Déconnecter</button>
-      <div class="empty-note" style="padding:6px 0 0;">Même clé que Mes Snapshots — connecte-la une fois par appareil/navigateur pour ajouter/modifier des positions partout.</div>
+      <div class="empty-note" style="padding:6px 0 0;">Même clé que Saison 26/27 — connecte-la une fois par appareil/navigateur pour ajouter/modifier des positions partout.</div>
     </div>
     <div id="posPnlChartContent"></div>
     <div id="posDashboard"></div>
@@ -2102,21 +2102,21 @@
     <div id="posManualVsAutoContent"></div>
     <div id="posWeeklyPnlContent"></div>
     <div id="positionsContent" class="value-trades-box">
-      <div class="empty-note">Aucune position pour l'instant — clique sur 🎯 Prendre position sur une carte dans Mes Snapshots pour l'enregistrer ici.</div>
+      <div class="empty-note">Aucune position pour l'instant — clique sur 🎯 Prendre position sur une carte dans Saison 26/27 pour l'enregistrer ici.</div>
     </div>
   </div>
 
   <div class="tab-panel" id="tab-archives">
     <h2 class="section-title">Archives</h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Mes Snapshots / Mes Positions) plus tard, rien n'est jamais supprimé ici.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Saison 26/27 / Mes Positions) plus tard, rien n'est jamais supprimé ici.</div>
     <div id="archivesContent">
       <div class="empty-note">Aucune archive pour l'instant.</div>
     </div>
   </div>
 
   <div class="tab-panel" id="tab-test">
-    <h2 class="section-title">Test <span class="count-pill" id="testCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Mes Snapshots actuels + tout ce qui est dans Archives — pour voir comment l'affichage tient avec l'historique complet. Rien n'est modifiable ni synchronisé ici.</div>
+    <h2 class="section-title">All Time <span class="count-pill" id="testCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Saison 26/27 (actuelle) + tout ce qui est dans Archives — l'historique complet, toutes saisons confondues. Se met à jour automatiquement au fil des modifs faites dans Saison 26/27, mais rien n'est modifiable ni synchronisé directement ici.</div>
     <div id="testPnlChartContent"></div>
     <div id="testDashboard"></div>
     <div class="snap-toggle-bar">
@@ -4654,7 +4654,7 @@
     recordPricePoint(stableKey, leaderAvgPrice);
     var sparkHtml = sparklineHtml(stableKey);
 
-    var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Mes Snapshots">📌</button>';
+    var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Saison 26/27">📌</button>';
     var isFollowed = !!followedKeys[stableKey];
     var followBtnHtml = '<button type="button" class="vt-follow-btn' + (isFollowed ? ' active' : '') + '" data-follow-key="' + esc(stableKey) + '" title="' + (isFollowed ? "Retirer des suivis" : "Ajouter aux suivis — reste visible même si le trade devient inéligible") + '">' + (isFollowed ? '⭐' : '☆') + '</button>';
     var isTrashed = !!trashedKeys[stableKey];
@@ -5632,7 +5632,7 @@
     allowEditPosition: true, // "✎ Modifier" — correct the stake/cote after the fact, positions only
     allowReorder: true, // drag-and-drop to fix the chronological order, positions only
     itemNoun: "position",
-    emptyHint: "Aucune position pour l\'instant — clique sur 🎯 Prendre position sur une carte dans Mes Snapshots pour l\'enregistrer ici.",
+    emptyHint: "Aucune position pour l\'instant — clique sur 🎯 Prendre position sur une carte dans Saison 26/27 pour l\'enregistrer ici.",
     dateLabelPrefix: "Prise le",
     simSubtitle: function () { return "PnL basé sur la mise réellement choisie pour cette position, au prix du marché au moment du snapshot d'origine"; },
     cardHypLabel: function (stake) { return "Ta position (" + fmtUSD(stake) + ") : "; },
@@ -5749,9 +5749,9 @@
     var idx = archive.findIndex(function (b) { return b.batchId === batchId; });
     if (idx === -1) return;
     var batch = archive[idx];
-    if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro dans Mes Snapshots) — la réactivation doit aussi les renvoyer sur le serveur partagé, pas juste sur cet appareil."); return; }
+    if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro dans Saison 26/27) — la réactivation doit aussi les renvoyer sur le serveur partagé, pas juste sur cet appareil."); return; }
     var snaps = batch.snapshots || [], poss = batch.positions || [];
-    if (!confirm('Réactiver "' + batch.label + '" — ' + snaps.length + ' snapshot(s) et ' + poss.length + ' position(s) vont revenir dans Mes Snapshots / Mes Positions.\n\nContinuer ?')) return;
+    if (!confirm('Réactiver "' + batch.label + '" — ' + snaps.length + ' snapshot(s) et ' + poss.length + ' position(s) vont revenir dans Saison 26/27 / Mes Positions.\n\nContinuer ?')) return;
     var btn = archivesContent.querySelector('.archive-reactivate-btn[data-batch-id="' + batchId + '"]');
     if (btn) { btn.disabled = true; btn.textContent = "↺ Réactivation…"; }
     try {
@@ -5778,7 +5778,7 @@
   });
   snapArchiveSeasonBtn.addEventListener("click", async function () {
     var snaps = loadSnapshotsRaw(), poss = loadPositionsRaw();
-    if (!snaps.length && !poss.length) { alert("Rien à archiver — Mes Snapshots et Mes Positions sont déjà vides."); return; }
+    if (!snaps.length && !poss.length) { alert("Rien à archiver — Saison 26/27 et Mes Positions sont déjà vides."); return; }
     if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro) — l'archivage doit aussi les supprimer du serveur partagé, pas juste sur cet appareil."); return; }
     if (!confirm(snaps.length + " snapshot(s) et " + poss.length + " position(s) vont être déplacés vers Archives — rien n'est supprimé, juste rangé, et réactivable plus tard depuis là. Une sauvegarde JSON va être téléchargée automatiquement d'abord.\n\nContinuer ?")) return;
     downloadJsonBackup({ snapshots: snaps, positions: poss }, "archive-backup");
@@ -5804,7 +5804,7 @@
     } catch (e) {
       serverCleanupFailed = true;
       console.error("Archive server cleanup error", e);
-      alert("Archivé localement (et sauvegardé en JSON), mais la suppression côté serveur a été interrompue (" + e.message + "). Reste calme — rien n'est perdu, le lot est dans Archives. La resynchro qui suit va faire réapparaître dans Mes Snapshots/Positions tout ce qui n'a pas pu être supprimé côté serveur — reclique \"Archiver la saison\" à ce moment-là pour finir le ménage (ça ne dupliquera rien).");
+      alert("Archivé localement (et sauvegardé en JSON), mais la suppression côté serveur a été interrompue (" + e.message + "). Reste calme — rien n'est perdu, le lot est dans Archives. La resynchro qui suit va faire réapparaître dans Saison 26/27/Positions tout ce qui n'a pas pu être supprimé côté serveur — reclique \"Archiver la saison\" à ce moment-là pour finir le ménage (ça ne dupliquera rien).");
     }
     snapArchiveSeasonBtn.disabled = false;
     snapArchiveSeasonBtn.textContent = "🗄️ Archiver la saison";
