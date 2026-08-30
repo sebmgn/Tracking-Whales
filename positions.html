@@ -947,6 +947,33 @@
   /* --- Recent trades --- */
   .rt-filters, .vt-filters { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; align-items: center; }
   .vt-sort-label { font-size: 12.5px; color: var(--text-dim); margin-right: 2px; }
+  /* League filter buttons — flag only, no name on the face (title tooltip
+     carries it), so these get their own circular treatment instead of the
+     wide text pill every other .vt-filters button uses. Count sits as a
+     small badge overlapping the bottom-right corner, same idea as a
+     notification badge. */
+  #vtLeagueFilters { gap: 10px; }
+  #vtLeagueFilters .vt-league-btn {
+    position: relative;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+  }
+  #vtLeagueFilters .vt-league-btn:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); transform: translateY(-2px); }
+  #vtLeagueFilters .vt-league-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .vt-league-flag { font-size: 19px; line-height: 1; }
+  .vt-league-count {
+    position: absolute; bottom: -5px; right: -5px;
+    min-width: 17px; height: 17px; padding: 0 4px;
+    border-radius: 999px; background: var(--accent); color: #fff;
+    font-family: "IBM Plex Mono", monospace; font-size: 9.5px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 2px var(--panel);
+  }
   .rt-filters button, .vt-filters button {
     border-radius: 999px;
     padding: 6px 15px;
@@ -3202,14 +3229,22 @@
   // counts as football (isFootball is unaffected) — it just has no
   // dedicated league button, same as before this filter existed.
   var LEAGUE_INFO = {
-    epl: { key: "epl", name: "Premier League", emoji: "🏴" },
-    lal: { key: "liga_es", name: "Liga (Espagne)", emoji: "🇪🇸" }, laliga: { key: "liga_es", name: "Liga (Espagne)", emoji: "🇪🇸" },
+    epl: { key: "epl", name: "Premier League", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
+    lal: { key: "liga_es", name: "Liga", emoji: "🇪🇸" }, laliga: { key: "liga_es", name: "Liga", emoji: "🇪🇸" },
     sea: { key: "seriea", name: "Serie A", emoji: "🇮🇹" }, seriea: { key: "seriea", name: "Serie A", emoji: "🇮🇹" },
     fl1: { key: "ligue1", name: "Ligue 1", emoji: "🇫🇷" }, ligue1: { key: "ligue1", name: "Ligue 1", emoji: "🇫🇷" },
     bun: { key: "bundesliga", name: "Bundesliga", emoji: "🇩🇪" }, bundesliga: { key: "bundesliga", name: "Bundesliga", emoji: "🇩🇪" },
     bl2: { key: "bundesliga2", name: "Bundesliga 2", emoji: "🇩🇪" },
-    ucl: { key: "ucl", name: "Champions League", emoji: "🏆" },
-    uel: { key: "uel", name: "Europa League", emoji: "🏆" },
+    // Champions League / Europa League / Conference League — all UEFA,
+    // no single country fits, so all three share the EU flag (on request)
+    // and stay distinct buttons/counts. "uef" is a best guess at the
+    // Conference League's slug prefix (unconfirmed, unlike ucl/uel which
+    // showed up in the original FOOTBALL_SLUG_PREFIXES audit) — if it
+    // turns out wrong, this entry just silently never gets a count instead
+    // of misclassifying anything.
+    ucl: { key: "ucl", name: "Champions League", emoji: "🇪🇺" },
+    uel: { key: "uel", name: "Europa League", emoji: "🇪🇺" },
+    uef: { key: "uecl", name: "Conference League", emoji: "🇪🇺" },
     mls: { key: "mls", name: "MLS", emoji: "🇺🇸" },
     ere: { key: "eredivisie", name: "Eredivisie", emoji: "🇳🇱" }, eredivisie: { key: "eredivisie", name: "Eredivisie", emoji: "🇳🇱" },
     bra: { key: "brasileirao", name: "Brasileirão", emoji: "🇧🇷" }, brasileirao: { key: "brasileirao", name: "Brasileirão", emoji: "🇧🇷" },
@@ -3217,15 +3252,15 @@
     mex: { key: "mex", name: "Liga MX", emoji: "🇲🇽" },
     por: { key: "por", name: "Primeira Liga", emoji: "🇵🇹" },
     tur: { key: "tur", name: "Süper Lig", emoji: "🇹🇷" },
-    rus: { key: "rus", name: "Premier League (Russie)", emoji: "🇷🇺" },
+    rus: { key: "rus", name: "Premier League russe", emoji: "🇷🇺" },
     bel1: { key: "bel1", name: "Pro League", emoji: "🇧🇪" },
-    aut: { key: "aut", name: "Bundesliga (Autriche)", emoji: "🇦🇹" },
-    spl: { key: "spl", name: "Premiership (Écosse)", emoji: "🏴" },
+    aut: { key: "aut", name: "Bundesliga autrichienne", emoji: "🇦🇹" },
+    spl: { key: "spl", name: "Premiership", emoji: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
     jap: { key: "jleague", name: "J-League", emoji: "🇯🇵" }, j1100: { key: "jleague", name: "J-League", emoji: "🇯🇵" }, j2100: { key: "jleague2", name: "J-League 2", emoji: "🇯🇵" },
     kor: { key: "kor", name: "K League", emoji: "🇰🇷" },
     swe: { key: "swe", name: "Allsvenskan", emoji: "🇸🇪" },
     nor: { key: "nor", name: "Eliteserien", emoji: "🇳🇴" },
-    den: { key: "den", name: "Superliga (Danemark)", emoji: "🇩🇰" },
+    den: { key: "den", name: "Superliga danoise", emoji: "🇩🇰" },
     fif: { key: "fifwc", name: "Coupe du Monde", emoji: "🌍" }, fifwc: { key: "fifwc", name: "Coupe du Monde", emoji: "🌍" },
     acn: { key: "acn", name: "CAN", emoji: "🌍" },
     concacaf: { key: "concacaf", name: "Concacaf", emoji: "🌎" }
@@ -7010,10 +7045,17 @@
       return;
     }
     container.style.display = "";
+    // Flag only, no name on the button face (on request) — the name still
+    // lives in the native title tooltip, since three of these (Champions/
+    // Europa/Conference League) intentionally share the same 🇪🇺 flag and
+    // would otherwise be indistinguishable at a glance.
     container.innerHTML = keys.map(function (key) {
       var info = infoByKey[key];
       var active = vtLeagueFilter === key;
-      return '<button type="button" data-league="' + esc(key) + '"' + (active ? ' class="active"' : '') + '>' + esc(info.emoji) + ' ' + esc(info.name) + '<span class="vt-filter-count"> · ' + counts[key] + '</span></button>';
+      return '<button type="button" class="vt-league-btn' + (active ? ' active' : '') + '" data-league="' + esc(key) + '" title="' + esc(info.name) + '">' +
+        '<span class="vt-league-flag">' + esc(info.emoji) + '</span>' +
+        '<span class="vt-league-count">' + counts[key] + '</span>' +
+      '</button>';
     }).join("");
   }
   // One row per NOTE threshold (>=8 down to VT_SCORE_FLOOR), not trader
