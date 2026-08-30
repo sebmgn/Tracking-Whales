@@ -1043,23 +1043,36 @@
   .vt-dense-actions { flex: none; display: flex; gap: 4px; }
   .vt-dense-actions .vt-follow-btn, .vt-dense-actions .vt-trash-btn { padding: 2px 5px; font-size: 11px; }
 
-  /* ---- Par match ---- */
+  /* ---- Matchs ---- */
+  /* --match-accent (inline per row, see renderByMatch) is the same sport
+     hue Value Trades cards compute via sportTintFor — a thin left border
+     plus the trade-count badge's fill, so a long list of matches reads by
+     sport at a glance instead of every row looking identical bar its text. */
   details.match-item {
     background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+    border-left: 3px solid var(--match-accent, var(--panel-border));
     margin-bottom: 8px;
+    transition: box-shadow .15s ease, transform .15s ease;
   }
+  details.match-item:hover { box-shadow: 0 3px 12px rgba(0,0,0,.14); transform: translateY(-1px); }
   .match-summary {
     display: flex; align-items: center; gap: 12px; padding: 10px 16px;
     list-style: none; cursor: pointer;
   }
   .match-summary::-webkit-details-marker { display: none; }
+  .match-sport-icon { flex: none; font-size: 14px; }
   .match-col-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: var(--text); }
   .match-col-markets { flex: none; font-size: 10.5px; color: var(--text-dim); background: var(--cream-grad-2); border: 1px solid var(--panel-border); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
   .match-col-traders { flex: 0 0 70px; font-size: 11.5px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .match-col-volume { flex: 0 0 90px; font-size: 11.5px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .match-col-volume-big { color: var(--gold); font-weight: 800; font-size: 12.5px; }
   .match-col-count {
-    flex: none; font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 900;
-    font-size: 16px; width: 40px; text-align: right; color: var(--accent); font-variant-numeric: tabular-nums;
+    flex: none; display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    font-family: "Times New Roman", Times, Georgia, serif; font-style: italic; font-weight: 900;
+    font-size: 14px; color: #fff; background: var(--match-accent, var(--accent));
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
   }
   .match-detail { padding: 4px 16px 14px; border-top: 1px solid var(--panel-border); }
   .match-filter-bar { display: flex; align-items: center; gap: 8px; padding: 10px 0 4px; font-size: 12.5px; color: var(--text-dim); }
@@ -1931,7 +1944,7 @@
     <span id="countdownWrap">Prochain refresh dans <strong id="countdown">10</strong>s</span>
     <button id="toggleBtn" type="button">Pause</button>
     <button id="refreshBtn" type="button">Rafraîchir maintenant</button>
-    <button id="collapseAllBtn" type="button">Réduire tous les profils</button>
+    <button id="collapseAllBtn" type="button">Tout afficher</button>
     <button id="themeToggleBtn" type="button" title="Thème clair / sombre">🌙</button>
     <div class="notif-bell-wrap">
       <button id="notifBellBtn" type="button" class="notif-bell-btn" title="Alertes email envoyées récemment">🔔<span id="notifBellCount" class="notif-bell-count"></span></button>
@@ -3893,16 +3906,26 @@
       return;
     }
     container.innerHTML = groups.map(function (g) {
-      var label = esc(g.primaryUnit.members[0].question);
+      var primary = g.primaryUnit.members[0];
+      var label = esc(primary.question);
       var marketsBadge = g.units.length > 1 ? '<span class="match-col-markets">' + g.units.length + ' marchés</span>' : '';
       var isOpen = !!expandedMatches[g.key];
-      return '<details class="match-item" data-key="' + esc(g.key) + '"' + (isOpen ? " open" : "") + '>' +
+      // Same sport emoji + hue Value Trades cards use, here as the match
+      // row's own accent (left border + count badge) instead of a plain
+      // italic number on a flat row — helps a long list of matches read
+      // by sport at a glance, and a big-volume match (≥ $50k, same idea as
+      // Trades récents' $10k row highlight) gets its total called out.
+      var sportEmoji = sportEmojiFor(primary.question, primary.slug);
+      var accent = sportTintFor(sportEmoji) || "var(--accent)";
+      var isBigVolume = g.volume >= 50000;
+      return '<details class="match-item" data-key="' + esc(g.key) + '" style="--match-accent:' + accent + '"' + (isOpen ? " open" : "") + '>' +
         '<summary class="match-summary">' +
           '<span class="match-col-count" title="Nombre total de trades trackés sur ce match">' + g.tradeCount + '</span>' +
+          '<span class="match-sport-icon" title="Type de pari">' + sportEmoji + '</span>' +
           '<span class="match-col-label">' + label + '</span>' +
           marketsBadge +
           '<span class="match-col-traders">' + g.traderCount + ' trader' + (g.traderCount > 1 ? "s" : "") + '</span>' +
-          '<span class="match-col-volume">' + fmtUSD(g.volume) + '</span>' +
+          '<span class="match-col-volume' + (isBigVolume ? ' match-col-volume-big' : '') + '">' + fmtUSD(g.volume) + '</span>' +
         '</summary>' +
         '<div class="match-detail">' + renderMatchDetail(g) + '</div>' +
       '</details>';
@@ -7221,7 +7244,10 @@
     var section = document.createElement("div");
     section.className = "trader-section";
 
-    var collapsed = !!traderCollapsed[trader.name];
+    // Collapsed by default (on request) — traderCollapsed[name] is only
+    // ever explicitly set to false once the user expands that one profile,
+    // so "unset" now reads as collapsed instead of expanded.
+    var collapsed = traderCollapsed[trader.name] !== false;
     var info = PLATFORMS[trader.platform];
 
     var traderAccent = "hsl(" + weightHue(trader.weight).toFixed(0) + ",62%,42%)";
@@ -7397,7 +7423,11 @@
     tradersContent.querySelectorAll(".collapse-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var name = btn.getAttribute("data-trader");
-        traderCollapsed[name] = !traderCollapsed[name];
+        // Toggles the EFFECTIVE state (unset counts as collapsed, see
+        // renderTraderSection), not the raw stored value — a plain `!`
+        // here would leave an untouched (still-undefined) profile stuck
+        // collapsed on its first click instead of expanding it.
+        traderCollapsed[name] = (traderCollapsed[name] === false);
         var section = btn.closest(".trader-section");
         var scrollWrap = section && section.querySelector(".table-scroll");
         if (scrollWrap) scrollWrap.classList.toggle("collapsed", traderCollapsed[name]);
@@ -8128,7 +8158,11 @@
     }
   });
   collapseAllBtn.addEventListener("click", function () {
-    var anyExpanded = TRADERS.some(function (t) { return !traderCollapsed[t.name]; });
+    // Matches renderTraderSection's own "unset === collapsed" default —
+    // an untouched trader must count as already-collapsed here too, or the
+    // very first click (nothing explicitly expanded yet) would think
+    // something needs collapsing and silently no-op instead of expanding.
+    var anyExpanded = TRADERS.some(function (t) { return traderCollapsed[t.name] === false; });
     TRADERS.forEach(function (t) { traderCollapsed[t.name] = anyExpanded; });
     collapseAllBtn.textContent = anyExpanded ? "Tout afficher" : "Réduire tous les profils";
     renderAll();
