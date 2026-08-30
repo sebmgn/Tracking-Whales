@@ -39,6 +39,7 @@
     --cream-grad-2: #fbf5e9;
     --tab-gold-1: #8a6a26;
     --tab-gold-2: #a37f34;
+    --tab-gold-3: #bf9642;
     --tier-b-gray: #6b6b6b;
     --gain-nuance: #2c4f24;
     --perte-nuance: #96481f;
@@ -71,6 +72,7 @@
       --cream-grad-2: #221d13;
       --tab-gold-1: #d8b86a;
       --tab-gold-2: #c9a355;
+      --tab-gold-3: #ba9040;
       --tier-b-gray: #a39c8e;
       --gain-nuance: #86c66a;
       --perte-nuance: #e0955a;
@@ -285,22 +287,21 @@
     gap: 5px;
   }
   .tab-btn-icon { font-size: 13px; }
-  /* Value Trades and Mes Snapshots are what this app is actually for, so
-     they win the eye first (bold gold, identical weight/size on both) —
-     color only now (2026-08-29: the margin-left:auto that used to sit here
-     and push everything from Mes Positions onward into one right-clustered
-     group was removed once Par match needed to sit immediately after Mes
-     Snapshots with no gap; Archives gets its own, separate right-push
-     instead — see .tab-btn-end below). */
-  .tab-bar .tab-btn:nth-child(1) { color: var(--tab-gold-1); }
-  .tab-bar .tab-btn:nth-child(2) { color: var(--tab-gold-2); }
+  /* Explicit classes (not nth-child, which broke twice already as tabs got
+     reordered on request) — the 4 "what this app is for" tabs (Value
+     Trades, Mes Snapshots, Mes Positions, Matchs) stay bold/pinned left;
+     the 3 gold ones among them each get their own warm shade so they read
+     as one deliberate family, not just "bold". Mes Positions is bold too
+     but plain-colored — no gold assigned to it specifically, on request.
+     tab-btn-group-start's margin-left:auto is what actually pushes
+     Statistiques profils/Trades par profils/Trades récents/Archives to the
+     right as one cluster, Archives trailing naturally last within it. */
+  .tab-gold-1 { color: var(--tab-gold-1); }
+  .tab-gold-2 { color: var(--tab-gold-2); }
+  .tab-gold-3 { color: var(--tab-gold-3); }
   .tab-btn-primary { font-weight: 800; font-size: 14.5px; }
   .tab-bar .tab-btn.tab-btn-quiet { color: var(--tier-b-gray); font-weight: 500; font-size: 12.5px; }
-  /* Archives is a rarely-touched "close out the season" utility, not part
-     of the day-to-day tab flow — pushed flush against the bar's right edge
-     (on request) instead of sitting in the same left-clustered run as
-     everything else, so it reads as set apart rather than just "last". */
-  .tab-btn-end { margin-left: auto; }
+  .tab-btn-group-start { margin-left: auto; }
   .tab-bar .tab-btn:hover { color: var(--text); }
   .tab-bar .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-panel { display: none; }
@@ -349,7 +350,6 @@
     border-radius: var(--radius-md);
     padding: 16px 20px 18px;
     position: relative;
-    transition: border-left-color .15s ease;
     /* --note-glow (set inline per card, see noteGlowVar) layers a colored
        glow on top of the card's normal elevation shadow, scaled by score —
        stronger note, more glow. Defaults to an inert zero-shadow so it's
@@ -357,7 +357,8 @@
        "none" can't sit inside a multi-shadow list). */
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0));
   }
-  .value-trade-item:hover { border-left-color: var(--accent); }
+  /* No hover effect on the left border (2026-08-30, on request) — stays
+     the same flat var(--panel-border) at rest and on hover alike. */
   /* Resting state stays each element's own plain color (leader badge's
      side color, the green consensus/mises fills) — only on hover do they
      turn a touch more vivid. A filter (not a recomputed color) so this
@@ -1106,19 +1107,48 @@
   .rt-side.buy { color: var(--green); }
   .rt-side.sell { color: var(--red); }
   .rt-time { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+  /* Trades récents — a $10k+ fill (same tier the filter buttons above
+     already use) gets a gold accent so it pops out of an otherwise flat
+     feed of near-identical rows. */
+  .rt-row-big { background: color-mix(in srgb, var(--gold) 7%, transparent); box-shadow: inset 3px 0 0 var(--gold); }
+  .rt-row-big:hover { background: color-mix(in srgb, var(--gold) 13%, transparent); }
+  .rt-amount { font-variant-numeric: tabular-nums; }
+  .rt-amount-big { font-weight: 800; color: var(--gold); }
 
   /* --- Trader sections --- */
-  .trader-section { margin-bottom: 8px; }
-  .trader-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 10px; }
-  .trader-name { font-size: 17px; font-weight: 700; }
+  .trader-section { margin-bottom: 14px; }
+  /* Card treatment (2026-08-30, on request — same spirit as Statistiques
+     profils' .profile-card: weight-hue accent, circular avatar) instead of
+     a plain text line, as the "roof" over the position table below it,
+     which stays exactly as it was — this is deliberately scoped to the
+     head row only, not a rebuild of the (already dense/functional) table. */
+  .trader-head {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+    margin-bottom: 10px; padding: 10px 14px;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-left: 3px solid var(--trader-accent, var(--accent));
+    border-radius: var(--radius-md);
+  }
+  .trader-avatar {
+    flex: none; width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    background: var(--trader-accent, var(--accent));
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+  .trader-name { font-size: 16px; font-weight: 800; }
   .trader-wallet {
     color: var(--text-dim);
     text-decoration: none;
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 12.5px;
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 12px;
+    background: var(--row-hover);
+    padding: 2px 7px;
+    border-radius: 999px;
   }
   .trader-wallet:hover { color: var(--accent); text-decoration: underline; }
-  .trader-stats { color: var(--text-dim); font-size: 12.5px; }
+  .trader-stats { color: var(--text-dim); font-size: 12.5px; margin-left: auto; }
   .trader-stats b { color: var(--text); }
   .collapse-btn {
     background: var(--panel);
@@ -1906,7 +1936,7 @@
     <div class="notif-bell-wrap">
       <button id="notifBellBtn" type="button" class="notif-bell-btn" title="Alertes email envoyées récemment">🔔<span id="notifBellCount" class="notif-bell-count"></span></button>
       <div id="notifBellPanel" class="notif-bell-panel">
-        <div class="notif-bell-panel-title">🔔 Alertes envoyées</div>
+        <div class="notif-bell-panel-title">🔔 Alertes envoyées (48h)</div>
         <div id="notifBellList" class="notif-bell-list"></div>
       </div>
     </div>
@@ -1914,14 +1944,14 @@
   </div>
 
   <div class="tab-bar">
-    <button class="tab-btn tab-btn-primary active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
-    <button class="tab-btn tab-btn-primary" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Par match</button>
+    <button class="tab-btn tab-btn-primary tab-gold-1 active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
+    <button class="tab-btn tab-btn-primary tab-gold-2" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Mes Snapshots</button>
     <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="stats-profiles" type="button">Statistiques profils</button>
+    <button class="tab-btn tab-btn-primary tab-gold-3" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Matchs</button>
+    <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="stats-profiles" type="button">Statistiques profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
-    <button class="tab-btn tab-btn-quiet tab-btn-end" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
@@ -2076,7 +2106,7 @@
   </div>
 
   <div class="tab-panel" id="tab-by-match">
-    <h2 class="section-title">Par match <span class="count-pill" id="byMatchCount">—</span></h2>
+    <h2 class="section-title">Matchs <span class="count-pill" id="byMatchCount">—</span></h2>
     <div class="empty-note" style="padding:0 4px 14px;">Tous les marchés d'un même événement (moneyline, spread, O/U…) regroupés sous un seul match, classés par nombre total de trades trackés — top 60. Clique un match pour voir chaque trade en détail, triés par note décroissante.</div>
     <div class="vt-filters" id="byMatchSportFilters">
       <button data-sport="all" type="button">Tous les sports</button>
@@ -7147,15 +7177,23 @@
       recentTradesContent.innerHTML = '<div class="empty-note">Aucun trade récent' + (rtMinValue > 0 ? " au-dessus de " + fmtUSD(rtMinValue) : "") + '.</div>';
       return;
     }
+    // Same $10k tier the filter buttons above already use — a trade past
+    // it gets a gold accent + bolder amount so a real whale-sized fill
+    // pops out while scanning down a feed of otherwise near-identical rows,
+    // instead of every row reading with equal visual weight regardless of
+    // size. Direction arrow (▲/▼) is the same buy/sell color already used,
+    // just readable a beat faster than the word alone.
     var rowsHtml = shown.map(function (x) {
       var dirClass = x.direction === "Achat" ? "rt-side buy" : "rt-side sell";
-      return '<tr>' +
+      var dirIcon = x.direction === "Achat" ? "▲" : "▼";
+      var isBig = x.value >= 10000;
+      return '<tr class="' + (isBig ? "rt-row-big" : "") + '">' +
         '<td class="rt-time">' + x.time.toLocaleString("fr-FR") + '</td>' +
         '<td><b>' + esc(x.trader) + '</b>' + platformBadge(x.platform) + weightBadge(WEIGHT_BY_NAME[x.trader]) + '</td>' +
         '<td>' + esc(x.question) + '</td>' +
         '<td><span class="side" style="background:' + sideColorFor(x.side) + '22;color:' + sideColorFor(x.side) + '">' + esc(x.side) + '</span></td>' +
-        '<td class="' + dirClass + '">' + x.direction + '</td>' +
-        '<td class="num">' + fmtUSD(x.value) + '</td>' +
+        '<td class="' + dirClass + '">' + dirIcon + ' ' + x.direction + '</td>' +
+        '<td class="num rt-amount' + (isBig ? ' rt-amount-big' : '') + '">' + fmtUSD(x.value) + '</td>' +
         '<td class="num">' + fmtCents(x.price) + '</td>' +
       '</tr>';
     }).join("");
@@ -7186,10 +7224,14 @@
     var collapsed = !!traderCollapsed[trader.name];
     var info = PLATFORMS[trader.platform];
 
+    var traderAccent = "hsl(" + weightHue(trader.weight).toFixed(0) + ",62%,42%)";
+    var traderLabel = trader.weight != null ? trader.weight.toFixed(1).replace(/\.0$/, "") : "—";
     var head = document.createElement("div");
     head.className = "trader-head";
+    head.style.setProperty("--trader-accent", traderAccent);
     head.innerHTML =
-      '<span class="trader-name">' + esc(trader.name) + '</span>' + platformBadge(trader.platform) + weightBadge(trader.weight) +
+      '<span class="trader-avatar" title="Note qualité : ' + esc(traderLabel) + '/10">' + esc(traderLabel) + '</span>' +
+      '<span class="trader-name">' + esc(trader.name) + '</span>' + platformBadge(trader.platform) +
       '<a class="trader-wallet" href="' + info.profileUrl(trader.address) + '" target="_blank" rel="noopener">' +
         trader.address.slice(0, 6) + '…' + trader.address.slice(-4) + ' ↗</a>' +
       '<span class="trader-stats">' + positions.length + ' position' + (positions.length > 1 ? "s" : "") +
@@ -8996,20 +9038,27 @@
   var NOTIF_SEEN_KEY = "notifLastSeenAt";
   var notifLogEntries = [];
   function notifSeenAt() { return localStorage.getItem(NOTIF_SEEN_KEY) || ""; }
+  // Bell scoped to the last 48h (on request) — the log itself is capped by
+  // count (30 entries, see tracking-whales-notify's LOG_MAX), not by age, so
+  // without this an alert from weeks ago would sit at the bottom looking
+  // just as "current" as one from an hour ago.
+  var NOTIF_WINDOW_MS = 48 * 3600000;
   function renderNotifBell() {
     var seen = notifSeenAt();
-    var unread = notifLogEntries.filter(function (e) { return e.sentAt > seen; }).length;
+    var cutoff = Date.now() - NOTIF_WINDOW_MS;
+    var recent = notifLogEntries.filter(function (e) { return new Date(e.sentAt).getTime() >= cutoff; });
+    var unread = recent.filter(function (e) { return e.sentAt > seen; }).length;
     if (unread > 0) {
       notifBellCount.textContent = unread > 9 ? "9+" : String(unread);
       notifBellCount.classList.add("show");
     } else {
       notifBellCount.classList.remove("show");
     }
-    if (!notifLogEntries.length) {
-      notifBellList.innerHTML = '<div class="notif-bell-empty">Aucune alerte envoyée pour l\'instant.</div>';
+    if (!recent.length) {
+      notifBellList.innerHTML = '<div class="notif-bell-empty">Aucune alerte envoyée durant les dernières 48h.</div>';
       return;
     }
-    notifBellList.innerHTML = notifLogEntries.map(function (e) {
+    notifBellList.innerHTML = recent.map(function (e) {
       var d = new Date(e.sentAt);
       var ago = !isNaN(d.getTime()) ? fmtCountdown(Date.now() - d.getTime()) : null;
       var color = typeof e.note === "number" ? scoreColor(e.note) : "var(--text-dim)";
