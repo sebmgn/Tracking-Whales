@@ -5908,9 +5908,9 @@
       var rowAttrs = w.firstIdx != null
         ? ' class="vt-weekly-row" data-week-key="' + w.key + '" data-first-idx="' + w.firstIdx + '" data-last-idx="' + w.lastIdx + '"'
         : '';
-      return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + noteHtml + '</td><td class="num">' + roiHtml + '</td><td class="num">' + gainHtml + '</td><td>' + manualAutoHtml + '</td><td>' + tierHtml + '</td></tr>';
+      return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + noteHtml + '</td><td class="num">' + gainHtml + '</td><td>' + manualAutoHtml + '</td><td>' + tierHtml + '</td></tr>';
     }).join("");
-    return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">Note moy.</th><th class="num">ROI</th><th class="num">Gain</th><th>Manuel / Auto</th><th>Confiance</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Note moy.</th><th class="num">Gain</th><th>Manuel / Auto</th><th>Confiance</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   function renderWeeklyPnl(list, store) {
     var el = store.els.weeklyPnl;
