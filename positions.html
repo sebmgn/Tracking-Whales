@@ -329,24 +329,14 @@
   }
   .vt-day-count { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-style: normal; font-size: 11px; color: var(--text-dim); font-weight: 400; }
   .value-trade-item {
-    /* --sport-tint (set inline per card, see sportTintFor) mixed in at a
-       few percent — a pre-sort cue on a mixed-sport list, subtle enough to
-       never compete with the outcome-color semantics elsewhere on the
-       card. Falls back to plain transparent (no wash at all) for the
-       unclassified "🎲 other" bucket, via color-mix's own default. Plain
-       soft gradient, no grain texture (tried, decided against — read as
-       too busy across a long list of cards). */
-    background-image: linear-gradient(180deg,
-        color-mix(in srgb, var(--sport-tint, transparent) 3%, var(--cream-grad-1)),
-        color-mix(in srgb, var(--sport-tint, transparent) 5%, var(--cream-grad-2)));
+    /* No sport-based coloring anywhere on this card (2026-08-30, on
+       request — this used to be a border-left color, then a faint
+       background wash once the border went neutral; both removed now).
+       The left edge carries only the volume gauge (.vt-volume-gauge,
+       positioned absolutely inside this card, see below) — plain gradient,
+       plain uniform border on all four sides. */
+    background-image: linear-gradient(180deg, var(--cream-grad-1), var(--cream-grad-2));
     border: 1px solid var(--panel-border);
-    /* Plain neutral edge (2026-08-29, on request) — used to be colored per
-       sport via --border-tint/--border-tint-hover (see sportTintFor), which
-       read as a distracting "band" down the left of every card; the sport
-       cue now lives only in the faint --sport-tint background wash above.
-       Width still varies with noteBorderWidth(u.score) (inline per card) —
-       that's a separate, note-strength signal, not a sport one. */
-    border-left: 4px solid var(--panel-border);
     border-radius: var(--radius-md);
     padding: 16px 20px 18px;
     position: relative;
@@ -423,29 +413,13 @@
      regardless (that's the browser's default <details> behavior, not
      something this text was providing). */
   .vt-summary { display: block; position: relative; }
-  /* Right-edge note gauge, filled bottom-up to note/10 — a real positioned
-     child of .vt-summary (not a background-image layer: a multi-layer
-     background-image combining the card's sport-tint wash with a couple of
-     flat-color layers sized via background-size turned out not to paint
-     reliably here, even though every computed style checked out — safer to
-     use an actual element, and .vt-summary is already the proven place to
-     position one, see .vt-new-badge/.vt-corner-badges above). Scoped to
-     .vt-summary's own height (the always-visible collapsed card), not the
-     expanded trader breakdown below it. */
-  .vt-note-gauge {
-    position: absolute; top: 0; right: 0; bottom: 0; width: 6px;
-    background: var(--panel-border);
-    border-radius: 0 var(--radius-md) var(--radius-md) 0;
-    overflow: hidden;
-  }
-  .vt-note-gauge-fill { position: absolute; left: 0; right: 0; bottom: 0; }
-  /* Mirror of .vt-note-gauge on the opposite edge — same "fuel gauge" read
-     (filled bottom-up), but for total volume instead of the note, and in
-     --gold rather than the note's red/amber/green scoreColor scale so the
-     two are never mistaken for the same signal at a glance. Log-scaled (see
-     VOLUME_GAUGE_RANGE) since real totalStake spreads from a few hundred to
-     six figures — a linear scale would leave almost every card maxed out or
-     empty. */
+  /* Left-edge volume gauge, filled bottom-up (log-scaled, see
+     VOLUME_GAUGE_RANGE) — the only signal living on this card's edges now
+     (2026-08-30: the right-edge note gauge and the sport-tinted border/
+     background were both removed on request; the note itself is still the
+     number in the header, scoreBadgeHtml). A real positioned child of
+     .vt-summary (not a background-image layer — tried, didn't paint
+     reliably), scoped to .vt-summary's own height. */
   .vt-volume-gauge {
     position: absolute; top: 0; left: 0; bottom: 0; width: 6px;
     background: var(--panel-border);
@@ -4267,13 +4241,6 @@
     var rgb = hslToRgb(h, s, l);
     return "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")";
   }
-  // 3px at note 1 up to 10px at note 10 — a "weight" cue readable before
-  // the number itself: a thicker edge means a stronger trade, scanning
-  // down a list of cards top to bottom.
-  function noteBorderWidth(score) {
-    if (score == null) return 4;
-    return 3 + Math.max(0, Math.min(1, (score - 1) / 9)) * 7;
-  }
   // Ambient card-level glow that only kicks in for genuinely strong
   // signals (note ≥7) and ramps up to note 10 — replaces the single
   // "trade en vedette" spotlight's job of calling out the best trade, but
@@ -4821,9 +4788,7 @@
       bottomBarHtml: bottomBarHtml, kickoffHtml: kickoffHtml,
       headerHtml: headerHtml, bodyHtml: bodyHtml,
       balanceHtml: balanceHtml, sideGridHtml: sideGridHtml,
-      followBtnHtml: followBtnHtml, trashBtnHtml: trashBtnHtml, isFollowed: isFollowed, isTrashed: isTrashed,
-      borderWidth: noteBorderWidth(u.score),
-      sportTint: sportTintFor(sportEmoji)
+      followBtnHtml: followBtnHtml, trashBtnHtml: trashBtnHtml, isFollowed: isFollowed, isTrashed: isTrashed
     };
   }
 
@@ -4840,16 +4805,11 @@
     var isNew = markUnitSeen(parts.stableKey);
     var isHighNew = isNew && u.score != null && u.score >= 8;
     var noteGlow = noteGlowShadow(u.score);
-    // Right-edge gauge, filled bottom-up to note/10 of the card's height —
-    // purely additive next to the note number itself (scoreBadgeHtml), not
-    // a replacement for it. A real element inside .vt-summary (proven spot
-    // for a positioned child — see .vt-new-badge/.vt-corner-badges), scoped
-    // to the summary's own height rather than the full expanded card.
-    var noteGaugeHtml = u.score != null
-      ? '<div class="vt-note-gauge"><div class="vt-note-gauge-fill" style="height:' + (Math.max(0, Math.min(100, u.score / 10 * 100))).toFixed(1) + '%;background:' + scoreColor(u.score) + '"></div></div>'
-      : '';
-    // Left-edge mirror of noteGaugeHtml — same fixed 0-100 fill, but reading
-    // total volume (log-scaled, see VOLUME_GAUGE_RANGE) instead of the note.
+    // Right-edge note gauge removed (2026-08-30, on request) — the note
+    // number itself (scoreBadgeHtml, in the header) is the only note
+    // signal on the card now. Left edge carries only this volume gauge —
+    // same fixed 0-100 fill idea the note gauge used, but reading total
+    // volume (log-scaled, see VOLUME_GAUGE_RANGE).
     var volumeGaugePct = normLog(u.totalStake, VOLUME_GAUGE_RANGE) * 100;
     var volumeGaugeHtml = '<div class="vt-volume-gauge" title="Volume total : ' + esc(fmtUSD(u.totalStake)) + '"><div class="vt-volume-gauge-fill" style="height:' + volumeGaugePct.toFixed(1) + '%"></div></div>';
     // Same "live" read the En cours filter already uses — kickoff has
@@ -4869,10 +4829,8 @@
         '</div>'
       : '';
     return '<details class="value-trade-item' + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + (isLive ? ' vt-live-now' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
-      ' style="border-left-width:' + parts.borderWidth.toFixed(1) + 'px' +
-      (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') +
-      (noteGlow ? ';--note-glow:' + noteGlow : '') + '">' +
-      '<summary class="vt-summary">' + cornerBadgesHtml + noteGaugeHtml + volumeGaugeHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
+      ' style="' + (noteGlow ? '--note-glow:' + noteGlow : '') + '">' +
+      '<summary class="vt-summary">' + cornerBadgesHtml + volumeGaugeHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
     '</details>';
   }
@@ -4898,9 +4856,7 @@
     // Splitting odds/ROI/traders/stake into their own fixed slots — instead
     // of the combined variable-width strings this used to build — is what
     // makes them actually line up scrolling down the list.
-    return '<details class="value-trade-item vt-dense" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
-      ' style="border-left-width:3px' +
-      (parts.sportTint ? ';--sport-tint:' + parts.sportTint : '') + '">' +
+    return '<details class="value-trade-item vt-dense" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") + '>' +
       '<summary class="vt-summary-dense">' +
         '<span class="vt-dense-sport" title="Type de pari">' + sportEmoji + '</span>' +
         '<span class="vt-dense-question">' + esc(primary.question) + '</span>' +
