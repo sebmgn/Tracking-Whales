@@ -1826,14 +1826,20 @@
   /* Manuel/Auto split and confidence-tier counts in the weekly table —
      secondary detail next to Paris/Note/ROI/Gain, kept visually quieter
      on purpose (smaller, muted) rather than as co-equal columns. */
-  .weekly-mini { font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
-  /* Confidence column: 4 fixed S/A+/A/B slots, bar height = count relative
-     to that week's tallest tier — absent tiers stay at a flat 2px stub
-     instead of disappearing, so "no S this week" reads as clearly as
-     "8 B's this week" (chosen over listing counts as text, on request). */
-  .weekly-tierbars { display: flex; gap: 4px; align-items: flex-end; }
+  /* Manuel/suivi whales split: a small two-segment stacked bar (width =
+     share of bets) with a percentage legend underneath, ROI on hover. */
+  .weekly-gauge-wrap { display: flex; flex-direction: column; gap: 3px; width: 62px; }
+  .weekly-gauge-track { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--panel-border); }
+  .weekly-gauge-seg { height: 100%; }
+  .weekly-gauge-manual { background: var(--accent); }
+  .weekly-gauge-auto { background: var(--tier-b-gray); }
+  .weekly-gauge-legend { display: flex; justify-content: space-between; font-size: 8.5px; font-family: "IBM Plex Mono", monospace; color: var(--text-dim); }
+  /* Confidence column: only the tiers actually used that week get a bar,
+     height relative to that week's tallest tier, count printed on top. */
+  .weekly-tierbars { display: flex; gap: 6px; align-items: flex-end; }
   .weekly-tierbars-col { display: flex; flex-direction: column; align-items: center; width: 13px; }
-  .weekly-tierbars-track { height: 20px; display: flex; align-items: flex-end; }
+  .weekly-tierbars-track { height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .weekly-tierbars-count { font-size: 8.5px; font-family: "IBM Plex Mono", monospace; color: var(--text-dim); margin-bottom: 1px; }
   .weekly-tierbars-bar { width: 8px; border-radius: 2px 2px 0 0; }
   .weekly-tierbars-lbl { font-size: 7.5px; color: var(--text-dim); margin-top: 2px; letter-spacing: -0.02em; }
   /* Click a week (bar or table row) to highlight that week's own dots on
@@ -5931,31 +5937,43 @@
   // shape now, see augmentWeekStats). Manuel/Auto and Confiance are
   // deliberately smaller/muted (.weekly-mini) — secondary detail next to
   // Paris/Note/ROI/Gain, not co-equal columns, per request.
-  // 4 fixed S/A+/A/B slots, bar height scaled to that week's tallest tier —
-  // absent tiers render as a flat 2px stub rather than vanishing, so their
-  // absence is as visible as another tier's dominance.
+  // Only the tiers actually used that week get a bar — a week with just
+  // A/B trades never renders an empty S or A+ slot. Bar height scales to
+  // that week's tallest tier, and the count sits right on top of its bar.
   function tierBarsHtml(w) {
     if (!w.tierCounts || !Object.keys(w.tierCounts).length) return '—';
+    var tiers = CONFIDENCE_TIERS.filter(function (t) { return w.tierCounts[t]; });
+    if (!tiers.length) return '—';
     var max = 0;
-    CONFIDENCE_TIERS.forEach(function (t) { max = Math.max(max, w.tierCounts[t] || 0); });
-    if (!max) return '—';
-    var cols = CONFIDENCE_TIERS.map(function (t) {
-      var c = w.tierCounts[t] || 0;
-      var h = c ? Math.max(2, Math.round((c / max) * 20)) : 2;
-      return '<div class="weekly-tierbars-col" title="' + esc(t) + ': ' + c + '"><div class="weekly-tierbars-track"><div class="weekly-tierbars-bar" style="height:' + h + 'px;background:' + CONFIDENCE_COLORS[t] + ';opacity:' + (c ? '1' : '0.18') + '"></div></div><span class="weekly-tierbars-lbl">' + esc(t) + '</span></div>';
+    tiers.forEach(function (t) { max = Math.max(max, w.tierCounts[t]); });
+    var cols = tiers.map(function (t) {
+      var c = w.tierCounts[t];
+      var h = Math.max(6, Math.round((c / max) * 20));
+      return '<div class="weekly-tierbars-col" title="' + esc(t) + ': ' + c + '"><div class="weekly-tierbars-track"><span class="weekly-tierbars-count">' + c + '</span><div class="weekly-tierbars-bar" style="height:' + h + 'px;background:' + CONFIDENCE_COLORS[t] + '"></div></div><span class="weekly-tierbars-lbl">' + esc(t) + '</span></div>';
     }).join("");
     return '<div class="weekly-tierbars">' + cols + '</div>';
+  }
+  // Two-segment stacked bar (width = share of bets), percentages printed
+  // underneath, ROI on hover — same treatment as the confidence bars above.
+  function manualAutoGaugeHtml(w) {
+    if (w.manualPct == null) return '—';
+    var mPct = Math.round(w.manualPct);
+    var aPct = 100 - mPct;
+    var mTitle = '✍️ Manuel ' + mPct + '%' + (w.manualRoi == null ? '' : ' · ROI ' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + '%');
+    var aTitle = '🎯 Suivi whales ' + aPct + '%' + (w.autoRoi == null ? '' : ' · ROI ' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%');
+    var segs = (mPct > 0 ? '<span class="weekly-gauge-seg weekly-gauge-manual" style="width:' + mPct + '%" title="' + esc(mTitle) + '"></span>' : '') +
+      (aPct > 0 ? '<span class="weekly-gauge-seg weekly-gauge-auto" style="width:' + aPct + '%" title="' + esc(aTitle) + '"></span>' : '');
+    return '<div class="weekly-gauge-wrap">' +
+      '<div class="weekly-gauge-track">' + segs + '</div>' +
+      '<div class="weekly-gauge-legend"><span title="' + esc(mTitle) + '">✍️' + mPct + '%</span><span title="' + esc(aTitle) + '">🎯' + aPct + '%</span></div>' +
+      '</div>';
   }
   function weeklyTableHtml(weeks) {
     var rows = weeks.map(function (w) {
       var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
       var gainHtml = '<span class="' + (w.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(w.pnl)) + '</span>';
       var noteHtml = w.avgNote == null ? '—' : w.avgNote.toFixed(1);
-      var manualAutoHtml = w.manualPct == null ? '—' : (function () {
-        var manualRoiTxt = w.manualRoi == null ? '' : ' (' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + '%)';
-        var autoRoiTxt = w.autoRoi == null ? '' : ' (' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%)';
-        return '<span class="weekly-mini">✍️ ' + Math.round(w.manualPct) + '%' + manualRoiTxt + ' · 🎯 ' + Math.round(100 - w.manualPct) + '%' + autoRoiTxt + '</span>';
-      })();
+      var manualAutoHtml = manualAutoGaugeHtml(w);
       var tierHtml = tierBarsHtml(w);
       // Only the aligned weeks (computeWeeklyPnlAligned) carry firstIdx/
       // lastIdx — the compact panel's own weeks (computeWeeklyPnl) don't,
