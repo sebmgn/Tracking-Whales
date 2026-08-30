@@ -1826,16 +1826,8 @@
   /* Manuel/Auto split and confidence-tier counts in the weekly table —
      secondary detail next to Paris/Note/ROI/Gain, kept visually quieter
      on purpose (smaller, muted) rather than as co-equal columns. */
-  /* Manuel/suivi whales split: a small two-segment stacked bar (width =
-     share of bets) with a percentage legend underneath, ROI on hover. */
-  .weekly-gauge-wrap { display: flex; flex-direction: column; gap: 3px; width: 62px; }
-  .weekly-gauge-track { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--panel-border); }
-  .weekly-gauge-seg { height: 100%; }
-  .weekly-gauge-manual { background: var(--accent); }
-  .weekly-gauge-auto { background: var(--tier-b-gray); }
-  .weekly-gauge-legend { display: flex; justify-content: space-between; font-size: 8.5px; font-family: "IBM Plex Mono", monospace; color: var(--text-dim); }
-  /* Confidence column: only the tiers actually used that week get a bar,
-     height relative to that week's tallest tier, count printed on top. */
+  /* Confiance and Manuel/Auto share this: only entries with a count get
+     a bar, height relative to the tallest one present, count on top. */
   .weekly-tierbars { display: flex; gap: 6px; align-items: flex-end; }
   .weekly-tierbars-col { display: flex; flex-direction: column; align-items: center; width: 13px; }
   .weekly-tierbars-track { height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
@@ -1979,6 +1971,7 @@
     <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🧪</span>Test</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
@@ -2118,6 +2111,30 @@
     <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Mes Snapshots / Mes Positions) plus tard, rien n'est jamais supprimé ici.</div>
     <div id="archivesContent">
       <div class="empty-note">Aucune archive pour l'instant.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-test">
+    <h2 class="section-title">Test <span class="count-pill" id="testCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Mes Snapshots actuels + tout ce qui est dans Archives — pour voir comment l'affichage tient avec l'historique complet. Rien n'est modifiable ni synchronisé ici.</div>
+    <div id="testPnlChartContent"></div>
+    <div id="testDashboard"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="testTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="test">▸ Le winrate par conviction</button>
+      <button type="button" id="testNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="test">▸ L'analyse winrate × note</button>
+      <button type="button" id="testDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="test">▸ L'analyse cote × confiance</button>
+      <button type="button" id="testStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="test">▸ Le récap par trader</button>
+      <button type="button" id="testManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="test">▸ Manuel vs suivi auto</button>
+      <button type="button" id="testWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="test">▸ Paris par semaine</button>
+    </div>
+    <div id="testTierWinrateContent"></div>
+    <div id="testNoteWinrateContent"></div>
+    <div id="testDistContent"></div>
+    <div id="testStatsContent"></div>
+    <div id="testManualVsAutoContent"></div>
+    <div id="testWeeklyPnlContent"></div>
+    <div id="testContent" class="value-trades-box">
+      <div class="empty-note">Rien à afficher — aucun snapshot actuel ni archivé.</div>
     </div>
   </div>
 
@@ -2320,6 +2337,16 @@
   var snapDistContent = document.getElementById("snapDistContent");
   var snapManualVsAutoContent = document.getElementById("snapManualVsAutoContent");
   var snapWeeklyPnlContent = document.getElementById("snapWeeklyPnlContent");
+  var testContent = document.getElementById("testContent");
+  var testCountEl = document.getElementById("testCount");
+  var testStatsContent = document.getElementById("testStatsContent");
+  var testDashboard = document.getElementById("testDashboard");
+  var testTierWinrateContent = document.getElementById("testTierWinrateContent");
+  var testNoteWinrateContent = document.getElementById("testNoteWinrateContent");
+  var testPnlChartContent = document.getElementById("testPnlChartContent");
+  var testDistContent = document.getElementById("testDistContent");
+  var testManualVsAutoContent = document.getElementById("testManualVsAutoContent");
+  var testWeeklyPnlContent = document.getElementById("testWeeklyPnlContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -5071,6 +5098,24 @@
   function savePositionsToStorage(list) {
     try { localStorage.setItem(POSITIONS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
   }
+  // Test tab: current live snapshots + every archived batch's snapshots
+  // (loadArchive, defined below with the rest of Archives), merged into one
+  // read-only list — a sandbox to see how the display holds up with the
+  // full history, not just the live 20-30. De-duped by id (a live copy wins
+  // over an archived one) in case a batch was reactivated but a stale
+  // archive entry is still sitting around.
+  function loadTestRaw() {
+    var live = loadSnapshotsRaw();
+    var archived = [];
+    loadArchive().forEach(function (batch) { archived = archived.concat(batch.snapshots || []); });
+    archived.forEach(refreshSnapshotDisplay);
+    var seen = {}, merged = [];
+    live.concat(archived).forEach(function (s) { if (!seen[s.id]) { seen[s.id] = true; merged.push(s); } });
+    return merged;
+  }
+  function loadTest() {
+    return loadTestRaw().filter(function (s) { return !s.deletedAt; });
+  }
   // Each store keeps its own persisted queue (store.queueKey) — snapshots
   // and positions flush independently against different Lambda routes, so
   // one store's pending ops must never leak into the other's.
@@ -5601,6 +5646,32 @@
       manualVsAutoToggle: "posManualVsAutoToggleBtn", weeklyPnlToggle: "posWeeklyPnlToggleBtn" },
     state: freshStoreState()
   };
+  // Test tab: same rendering pipeline as Snapshots (renderStoreView), fed
+  // loadTest's merged current+archive list instead — readOnly:true strips
+  // every editable card control (side/confidence/delete, see snapCardHtml)
+  // since this list mixes live items with frozen archive ones that have no
+  // single live store to write back to. save is a no-op for the same
+  // reason: nothing here should ever actually persist.
+  var TEST_STORE = {
+    name: "test",
+    loadRaw: loadTestRaw, load: loadTest, save: function () {},
+    stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
+    allowTakePosition: false,
+    readOnly: true,
+    itemNoun: "snapshot",
+    emptyHint: "Rien à afficher — aucun snapshot actuel ni archivé.",
+    dateLabelPrefix: "Sauvegardé le",
+    simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment du snapshot"; },
+    cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
+    els: { count: testCountEl, dashboard: testDashboard, pnlChart: testPnlChartContent,
+      tierWinrate: testTierWinrateContent, noteWinrate: testNoteWinrateContent, dist: testDistContent,
+      stats: testStatsContent, list: testContent,
+      manualVsAuto: testManualVsAutoContent, weeklyPnl: testWeeklyPnlContent },
+    ids: { statsToggle: "testStatsToggleBtn", distToggle: "testDistToggleBtn",
+      tierToggle: "testTierWinrateToggleBtn", noteToggle: "testNoteWinrateToggleBtn",
+      manualVsAutoToggle: "testManualVsAutoToggleBtn", weeklyPnlToggle: "testWeeklyPnlToggleBtn" },
+    state: freshStoreState()
+  };
   // ---------- Archives (bulk "close out the season" move, reversible) ----------
   // A season close-out is a different shape of operation than anything else
   // in this file: it moves EVERY current snapshot and position (trashed
@@ -5697,6 +5768,7 @@
     await syncNow(SNAPSHOTS_STORE);
     await syncNow(POSITIONS_STORE);
     renderArchives();
+    renderTest();
     alert("Réactivé — " + snaps.length + " snapshot(s) et " + poss.length + " position(s) sont de retour.");
   }
   archivesContent.addEventListener("click", function (e) {
@@ -5746,6 +5818,7 @@
     renderSnapshots();
     renderPositions();
     renderArchives();
+    renderTest();
     if (!serverCleanupFailed) alert("Archivage terminé — " + snaps.length + " snapshot(s) et " + poss.length + " position(s) déplacés vers l'onglet Archives.");
   });
   // Replaces the old `pnl / (count * HYPOTHETICAL_FLAT_STAKE)` formula
@@ -5951,36 +6024,32 @@
   // shape now, see augmentWeekStats). Manuel/Auto and Confiance are
   // deliberately smaller/muted (.weekly-mini) — secondary detail next to
   // Paris/Note/ROI/Gain, not co-equal columns, per request.
-  // Only the tiers actually used that week get a bar — a week with just
-  // A/B trades never renders an empty S or A+ slot. Bar height scales to
-  // that week's tallest tier, and the count sits right on top of its bar.
-  function tierBarsHtml(w) {
-    if (!w.tierCounts || !Object.keys(w.tierCounts).length) return '—';
-    var tiers = CONFIDENCE_TIERS.filter(function (t) { return w.tierCounts[t]; });
-    if (!tiers.length) return '—';
+  // Shared by Confiance and Manuel/Auto — only entries with a count get a
+  // bar, height scales to the tallest one present, count sits on top.
+  function labeledBarsHtml(items) {
+    var present = items.filter(function (it) { return it.count > 0; });
+    if (!present.length) return '—';
     var max = 0;
-    tiers.forEach(function (t) { max = Math.max(max, w.tierCounts[t]); });
-    var cols = tiers.map(function (t) {
-      var c = w.tierCounts[t];
-      var h = Math.max(6, Math.round((c / max) * 20));
-      return '<div class="weekly-tierbars-col" title="' + esc(t) + ': ' + c + '"><div class="weekly-tierbars-track"><span class="weekly-tierbars-count">' + c + '</span><div class="weekly-tierbars-bar" style="height:' + h + 'px;background:' + CONFIDENCE_COLORS[t] + '"></div></div><span class="weekly-tierbars-lbl">' + esc(t) + '</span></div>';
+    present.forEach(function (it) { max = Math.max(max, it.count); });
+    var cols = present.map(function (it) {
+      var h = Math.max(6, Math.round((it.count / max) * 20));
+      var title = it.title || (it.label + ': ' + it.count);
+      return '<div class="weekly-tierbars-col" title="' + esc(title) + '"><div class="weekly-tierbars-track"><span class="weekly-tierbars-count">' + it.count + '</span><div class="weekly-tierbars-bar" style="height:' + h + 'px;background:' + it.color + '"></div></div><span class="weekly-tierbars-lbl">' + esc(it.label) + '</span></div>';
     }).join("");
     return '<div class="weekly-tierbars">' + cols + '</div>';
   }
-  // Two-segment stacked bar (width = share of bets), percentages printed
-  // underneath, ROI on hover — same treatment as the confidence bars above.
+  function tierBarsHtml(w) {
+    if (!w.tierCounts) return '—';
+    return labeledBarsHtml(CONFIDENCE_TIERS.map(function (t) { return { label: t, count: w.tierCounts[t] || 0, color: CONFIDENCE_COLORS[t] }; }));
+  }
   function manualAutoGaugeHtml(w) {
     if (w.manualPct == null) return '—';
-    var mPct = Math.round(w.manualPct);
-    var aPct = 100 - mPct;
-    var mTitle = '✍️ Manuel ' + mPct + '%' + (w.manualRoi == null ? '' : ' · ROI ' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + '%');
-    var aTitle = '🎯 Suivi whales ' + aPct + '%' + (w.autoRoi == null ? '' : ' · ROI ' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%');
-    var segs = (mPct > 0 ? '<span class="weekly-gauge-seg weekly-gauge-manual" style="width:' + mPct + '%" title="' + esc(mTitle) + '"></span>' : '') +
-      (aPct > 0 ? '<span class="weekly-gauge-seg weekly-gauge-auto" style="width:' + aPct + '%" title="' + esc(aTitle) + '"></span>' : '');
-    return '<div class="weekly-gauge-wrap">' +
-      '<div class="weekly-gauge-track">' + segs + '</div>' +
-      '<div class="weekly-gauge-legend"><span title="' + esc(mTitle) + '">✍️' + mPct + '%</span><span title="' + esc(aTitle) + '">🎯' + aPct + '%</span></div>' +
-      '</div>';
+    var mRoiTxt = w.manualRoi == null ? '' : ' · ROI ' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + '%';
+    var aRoiTxt = w.autoRoi == null ? '' : ' · ROI ' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%';
+    return labeledBarsHtml([
+      { label: '✍️', count: w.manualCount || 0, color: 'var(--accent)', title: '✍️ Manuel ' + (w.manualCount || 0) + mRoiTxt },
+      { label: '🎯', count: w.autoCount || 0, color: 'var(--tier-b-gray)', title: '🎯 Suivi whales ' + (w.autoCount || 0) + aRoiTxt }
+    ]);
   }
   // Cells shared by both a normal week row and the bold totals row below —
   // same shape (count/pnl/roi/avgNote/manualPct/manualRoi/autoRoi/tierCounts)
@@ -6763,6 +6832,11 @@
         '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '">↺ Restaurer</button>' +
         '<button type="button" class="snap-purge-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Suppression définitive — pas de retour en arrière possible">🗑 Supprimer définitivement</button>' +
       '</div>';
+    } else if (store.readOnly) {
+      var isOtherWinnerRO = snap.winningSide === OTHER_SIDE_SENTINEL;
+      var mSideLabel = snap.winningSide ? ' · Camp gagnant : ' + esc(isOtherWinnerRO ? "Camp adverse" : snap.winningSide) : '';
+      var mConfLabel = snap.confidence ? ' · Confiance ' + esc(snap.confidence) : '';
+      toolbarHtml = '<div class="snap-toolbar"><span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + mSideLabel + mConfLabel + '</span></div>';
     } else {
       // Only two possible outcomes for a manual, single-camp bet: the named
       // camp won, or it didn't — same OTHER_SIDE_SENTINEL "Camp adverse"
@@ -6878,6 +6952,15 @@
         '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '">↺ Restaurer</button>' +
         '<button type="button" class="snap-purge-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Suppression définitive — pas de retour en arrière possible">🗑 Supprimer définitivement</button>' +
       '</div>';
+    } else if (store.readOnly) {
+      // Test tab: frozen mix of live + archived items with no single live
+      // store to write back to, so every editable control (side/confidence
+      // toggle, take-position, delete) is stripped — same spirit as
+      // archiveItemSummaryHtml's own read-only treatment, just keeping the
+      // full card body instead of the compact archive row.
+      var sideLabel = snap.winningSide ? ' · Camp gagnant : ' + esc(snap.winningSide) : '';
+      var confLabel = snap.confidence ? ' · Confiance ' + esc(snap.confidence) : '';
+      toolbarHtml = '<div class="snap-toolbar"><span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + sideLabel + confLabel + '</span></div>';
     } else {
       var sideButtonsHtml = (snap.sides || []).map(function (side) {
         var isWinner = snap.winningSide === side.name;
@@ -7045,6 +7128,7 @@
   }
   function renderSnapshots() { renderStoreView(SNAPSHOTS_STORE); }
   function renderPositions() { renderStoreView(POSITIONS_STORE); }
+  function renderTest() { renderStoreView(TEST_STORE); }
 
   // Every criterion the Value Trades list applies EXCEPT the min-traders
   // threshold — shared by the real filter chain below and the tier
@@ -7987,6 +8071,7 @@
       if (btn.getAttribute("data-tab") === "snapshots") renderSnapshots();
       if (btn.getAttribute("data-tab") === "positions") renderPositions();
       if (btn.getAttribute("data-tab") === "archives") renderArchives();
+      if (btn.getAttribute("data-tab") === "test") renderTest();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
       if (btn.getAttribute("data-tab") === "by-match") renderByMatch();
@@ -8387,7 +8472,10 @@
   // attribute (there isn't any left, but a stray click target failing to
   // resolve should degrade to the original single-store behavior, not throw).
   function resolveStoreFromEl(el) {
-    return el.getAttribute("data-store") === "positions" ? POSITIONS_STORE : SNAPSHOTS_STORE;
+    var name = el.getAttribute("data-store");
+    if (name === "positions") return POSITIONS_STORE;
+    if (name === "test") return TEST_STORE;
+    return SNAPSHOTS_STORE;
   }
   document.addEventListener("click", function (e) {
     var snapBtn = e.target.closest ? e.target.closest(".vt-snap-btn") : null;
