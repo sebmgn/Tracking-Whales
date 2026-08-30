@@ -1842,6 +1842,9 @@
   .weekly-tierbars-count { font-size: 8.5px; font-family: "IBM Plex Mono", monospace; color: var(--text-dim); margin-bottom: 1px; }
   .weekly-tierbars-bar { width: 8px; border-radius: 2px 2px 0 0; }
   .weekly-tierbars-lbl { font-size: 7.5px; color: var(--text-dim); margin-top: 2px; letter-spacing: -0.02em; }
+  /* Totals row — full period, summed rather than averaged. Bold + a
+     stronger top border to set it apart from the per-week rows above. */
+  .vt-weekly-total-row td { font-weight: 700; border-top: 2px solid var(--panel-border); }
   /* Click a week (bar or table row) to highlight that week's own dots on
      the evolution chart above — see the [data-week-key][data-first-idx]
      handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
@@ -5880,13 +5883,24 @@
     w.count = items.length;
     w.pnl = agg.pnl;
     w.roi = agg.roi;
+    w.stakeSum = agg.stakeSum;
     var noted = items.filter(function (s) { return typeof s.noteAtSnapshot === "number"; });
-    w.avgNote = noted.length ? noted.reduce(function (sum, s) { return sum + s.noteAtSnapshot; }, 0) / noted.length : null;
+    w.noteSum = noted.reduce(function (sum, s) { return sum + s.noteAtSnapshot; }, 0);
+    w.noteCount = noted.length;
+    w.avgNote = noted.length ? w.noteSum / noted.length : null;
     var manual = items.filter(function (s) { return !!s.isManual; });
     var auto = items.filter(function (s) { return !s.isManual; });
+    var manualAgg = aggregateFlatPnl(manual, store);
+    var autoAgg = aggregateFlatPnl(auto, store);
+    w.manualCount = manual.length;
+    w.autoCount = auto.length;
+    w.manualPnl = manualAgg.pnl;
+    w.manualStake = manualAgg.stakeSum;
+    w.autoPnl = autoAgg.pnl;
+    w.autoStake = autoAgg.stakeSum;
     w.manualPct = items.length ? (manual.length / items.length * 100) : null;
-    w.manualRoi = manual.length ? aggregateFlatPnl(manual, store).roi : null;
-    w.autoRoi = auto.length ? aggregateFlatPnl(auto, store).roi : null;
+    w.manualRoi = manual.length ? manualAgg.roi : null;
+    w.autoRoi = auto.length ? autoAgg.roi : null;
     w.tierCounts = {};
     items.forEach(function (s) { if (s.confidence) w.tierCounts[s.confidence] = (w.tierCounts[s.confidence] || 0) + 1; });
   }
@@ -5968,13 +5982,49 @@
       '<div class="weekly-gauge-legend"><span title="' + esc(mTitle) + '">✍️' + mPct + '%</span><span title="' + esc(aTitle) + '">🎯' + aPct + '%</span></div>' +
       '</div>';
   }
+  // Cells shared by both a normal week row and the bold totals row below —
+  // same shape (count/pnl/roi/avgNote/manualPct/manualRoi/autoRoi/tierCounts)
+  // so both go through the exact same bar/gauge rendering.
+  function weeklyRowCellsHtml(w) {
+    var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
+    var gainHtml = '<span class="' + (w.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(w.pnl)) + '</span>';
+    var noteHtml = w.avgNote == null ? '—' : w.avgNote.toFixed(1);
+    return '<td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + noteHtml + '</td><td class="num">' + gainHtml + '</td><td>' + manualAutoGaugeHtml(w) + '</td><td>' + tierBarsHtml(w) + '</td>';
+  }
+  // Sums every week into one totals "week" — over the full period shown,
+  // not an average of the per-week percentages (ROI/manuel-auto/note are
+  // all re-derived from summed pnl/stake so a big week isn't diluted by a
+  // small one, same weighting aggregateFlatPnl uses within a single week).
+  function computeWeeklyTotals(weeks) {
+    var t = {
+      count: 0, pnl: 0, stakeSum: 0, noteSum: 0, noteCount: 0,
+      manualCount: 0, manualPnl: 0, manualStake: 0,
+      autoCount: 0, autoPnl: 0, autoStake: 0,
+      tierCounts: {}
+    };
+    weeks.forEach(function (w) {
+      t.count += w.count;
+      t.pnl += w.pnl;
+      t.stakeSum += w.stakeSum || 0;
+      t.noteSum += w.noteSum || 0;
+      t.noteCount += w.noteCount || 0;
+      t.manualCount += w.manualCount || 0;
+      t.manualPnl += w.manualPnl || 0;
+      t.manualStake += w.manualStake || 0;
+      t.autoCount += w.autoCount || 0;
+      t.autoPnl += w.autoPnl || 0;
+      t.autoStake += w.autoStake || 0;
+      CONFIDENCE_TIERS.forEach(function (tier) { if (w.tierCounts && w.tierCounts[tier]) t.tierCounts[tier] = (t.tierCounts[tier] || 0) + w.tierCounts[tier]; });
+    });
+    t.roi = t.stakeSum > 0 ? (t.pnl / t.stakeSum * 100) : null;
+    t.avgNote = t.noteCount > 0 ? (t.noteSum / t.noteCount) : null;
+    t.manualPct = t.count > 0 ? (t.manualCount / t.count * 100) : null;
+    t.manualRoi = t.manualStake > 0 ? (t.manualPnl / t.manualStake * 100) : null;
+    t.autoRoi = t.autoStake > 0 ? (t.autoPnl / t.autoStake * 100) : null;
+    return t;
+  }
   function weeklyTableHtml(weeks) {
     var rows = weeks.map(function (w) {
-      var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
-      var gainHtml = '<span class="' + (w.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(w.pnl)) + '</span>';
-      var noteHtml = w.avgNote == null ? '—' : w.avgNote.toFixed(1);
-      var manualAutoHtml = manualAutoGaugeHtml(w);
-      var tierHtml = tierBarsHtml(w);
       // Only the aligned weeks (computeWeeklyPnlAligned) carry firstIdx/
       // lastIdx — the compact panel's own weeks (computeWeeklyPnl) don't,
       // so its rows come out with no class/data attrs at all and stay
@@ -5982,9 +6032,12 @@
       var rowAttrs = w.firstIdx != null
         ? ' class="vt-weekly-row" data-week-key="' + w.key + '" data-first-idx="' + w.firstIdx + '" data-last-idx="' + w.lastIdx + '"'
         : '';
-      return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td><td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + noteHtml + '</td><td class="num">' + gainHtml + '</td><td>' + manualAutoHtml + '</td><td>' + tierHtml + '</td></tr>';
+      return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td>' + weeklyRowCellsHtml(w) + '</tr>';
     }).join("");
-    return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Note moy.</th><th class="num">Gain</th><th>Manuel / Auto</th><th>Confiance</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    var totalRow = weeks.length > 1
+      ? '<tr class="vt-weekly-total-row"><td>Total</td>' + weeklyRowCellsHtml(computeWeeklyTotals(weeks)) + '</tr>'
+      : '';
+    return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Note moy.</th><th class="num">Gain</th><th>Manuel / Auto</th><th>Confiance</th></tr></thead><tbody>' + rows + totalRow + '</tbody></table></div>';
   }
   function renderWeeklyPnl(list, store) {
     var el = store.els.weeklyPnl;
