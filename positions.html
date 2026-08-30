@@ -1005,16 +1005,6 @@
   .vt-dense-toggle-btn:hover { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent); }
   .vt-dense-toggle-btn.active { background: var(--accent); color: #fff; border-color: transparent; }
 
-  /* Three sliders sharing the same compact row/label/readout shape — moving
-     one re-renders the list live (native `input` events, no submit step),
-     and the trailing count previews the result under every OTHER active
-     filter, same convention as .vt-filter-count above. */
-  .vt-adv-filters { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 14px; max-width: 420px; }
-  .vt-adv-filter { display: flex; align-items: center; gap: 10px; font-size: 11.5px; }
-  .vt-adv-filter label { flex: 0 0 168px; color: var(--text-dim); white-space: nowrap; }
-  .vt-adv-filter label b { color: var(--text); font-variant-numeric: tabular-nums; }
-  .vt-adv-filter input[type="range"] { flex: 1 1 auto; accent-color: var(--accent); min-width: 60px; }
-  .vt-adv-filter-count { flex: 0 0 auto; color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: 11px; white-space: nowrap; }
 
   /* ---- Vue compacte (dense) ---- */
   details.value-trade-item.vt-dense { padding: 0; }
@@ -1992,24 +1982,6 @@
           <button data-sort="volume" type="button">Volume</button>
           <button data-sort="traders" type="button">Traders</button>
         </div>
-        <div class="vt-adv-filters" id="vtAdvFilters">
-          <div class="vt-adv-filter">
-            <!-- min/value must match VT_SCORE_FLOOR (the hard exclusion floor) -->
-            <label for="vtMinScoreSlider">Note ≥ <b id="vtMinScoreVal">3</b></label>
-            <input type="range" id="vtMinScoreSlider" min="3" max="10" step="0.5" value="3" />
-            <span class="vt-adv-filter-count" id="vtMinScoreCount"></span>
-          </div>
-          <div class="vt-adv-filter">
-            <label for="vtMinAgreementSlider">Traders d'accord ≥ <b id="vtMinAgreementVal">0</b></label>
-            <input type="range" id="vtMinAgreementSlider" min="0" max="9" step="1" value="0" />
-            <span class="vt-adv-filter-count" id="vtMinAgreementCount"></span>
-          </div>
-          <div class="vt-adv-filter">
-            <label for="vtMinVolumeSlider">Volume ≥ <b id="vtMinVolumeVal">0 $</b></label>
-            <input type="range" id="vtMinVolumeSlider" min="0" max="100000" step="1000" value="0" />
-            <span class="vt-adv-filter-count" id="vtMinVolumeCount"></span>
-          </div>
-        </div>
       </div>
       <div class="score-tier-box" id="vtTierChart"></div>
     </div>
@@ -2568,9 +2540,7 @@
   // truth for the hard exclusion filter, the slider's floor/default, and
   // the tier chart's bottom row — change this one value to move all three.
   var VT_SCORE_FLOOR = 3;
-  var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart, or dragging the slider (kept in sync both ways)
-  var vtMinAgreement = 0; // 0 = no filter; else the leading side's own trader count must be >= this
-  var vtMinVolume = 0; // 0 = no filter; else totalStake must be >= this ($)
+  var vtMinScore = null; // null = no filter; else the unit's note must be >= this — toggled by clicking a row in the note chart
   var vtSortBy = "note"; // "note" | "volume" | "traders" — which column ranks the list, see renderValueTrades
   // One line per trade, no jauges/badges — a scan mode for going through a
   // long list fast. Remembered across reloads since it's a reading
@@ -6904,8 +6874,6 @@
       if (sportFilter === "other" && football) return false;
     }
     if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
-    if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return false;
-    if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return false;
     return true;
   }
   // Live count riding each sport/timing chip — "how many would show if you
@@ -6918,8 +6886,6 @@
     var sportCounts = { all: 0, football: 0, other: 0 };
     base.forEach(function (u) {
       if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return;
-      if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return;
-      if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return;
       if (!passesNoteEtc(u)) return;
       sportCounts.all++;
       sportCounts[isFootballUnit(u) ? "football" : "other"]++;
@@ -6931,8 +6897,6 @@
         if (sportFilter === "football" && !f) return;
         if (sportFilter === "other" && f) return;
       }
-      if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return;
-      if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return;
       if (!passesNoteEtc(u)) return;
       timingCounts.all++;
       var status = unitTimingStatus(u);
@@ -6948,62 +6912,6 @@
       var span = btn.querySelector(".vt-filter-count");
       if (span) span.textContent = " · " + (timingCounts[mode] || 0);
     });
-  }
-  // Keeps the 3 slider labels/readouts in sync with whatever the filter
-  // variables currently are (including vtMinScore when it was set by
-  // clicking a tier-chart row instead of dragging the slider itself), and
-  // shows each one's live "N trades at this position" count, computed
-  // under every OTHER active filter — moving a slider previews its own
-  // effect without the other two filters' counts jumping around too.
-  function updateVtAdvFilterCounts(base) {
-    var scoreSlider = document.getElementById("vtMinScoreSlider");
-    var agreementSlider = document.getElementById("vtMinAgreementSlider");
-    var volumeSlider = document.getElementById("vtMinVolumeSlider");
-    if (!scoreSlider || !agreementSlider || !volumeSlider) return;
-    scoreSlider.value = vtMinScore == null ? VT_SCORE_FLOOR : vtMinScore;
-    agreementSlider.value = vtMinAgreement;
-    volumeSlider.value = Math.min(vtMinVolume, 100000);
-    document.getElementById("vtMinScoreVal").textContent = vtMinScore == null ? String(VT_SCORE_FLOOR) : vtMinScore.toFixed(1);
-    document.getElementById("vtMinAgreementVal").textContent = vtMinAgreement > 0 ? String(vtMinAgreement) : "0";
-    document.getElementById("vtMinVolumeVal").textContent = vtMinVolume > 0 ? fmtUSD(vtMinVolume) : "0 $";
-
-    var scoreThreshold = scoreSlider.value <= 1 ? null : Number(scoreSlider.value);
-    var scoreCount = base.filter(function (u) {
-      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
-      if (sportFilter !== "all") {
-        var f = isFootball(u.members[0].question, u.members[0].slug);
-        if (sportFilter === "football" && !f) return false;
-        if (sportFilter === "other" && f) return false;
-      }
-      if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return false;
-      if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return false;
-      return scoreThreshold == null || u.score >= scoreThreshold;
-    }).length;
-    var agreementCount = base.filter(function (u) {
-      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
-      if (sportFilter !== "all") {
-        var f2 = isFootball(u.members[0].question, u.members[0].slug);
-        if (sportFilter === "football" && !f2) return false;
-        if (sportFilter === "other" && f2) return false;
-      }
-      if (vtMinScore != null && u.score < vtMinScore) return false;
-      if (vtMinVolume > 0 && u.totalStake < vtMinVolume) return false;
-      return Number(agreementSlider.value) <= 0 || (u.leaderCount || 0) >= Number(agreementSlider.value);
-    }).length;
-    var volumeCount = base.filter(function (u) {
-      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
-      if (sportFilter !== "all") {
-        var f3 = isFootball(u.members[0].question, u.members[0].slug);
-        if (sportFilter === "football" && !f3) return false;
-        if (sportFilter === "other" && f3) return false;
-      }
-      if (vtMinScore != null && u.score < vtMinScore) return false;
-      if (vtMinAgreement > 0 && (u.leaderCount || 0) < vtMinAgreement) return false;
-      return Number(volumeSlider.value) <= 0 || u.totalStake >= Number(volumeSlider.value);
-    }).length;
-    document.getElementById("vtMinScoreCount").textContent = scoreCount + " trade" + (scoreCount > 1 ? "s" : "");
-    document.getElementById("vtMinAgreementCount").textContent = agreementCount + " trade" + (agreementCount > 1 ? "s" : "");
-    document.getElementById("vtMinVolumeCount").textContent = volumeCount + " trade" + (volumeCount > 1 ? "s" : "");
   }
   // One row per NOTE threshold (>=8 down to VT_SCORE_FLOOR), not trader
   // count — color comes straight from the threshold itself (vtTierColor(n)),
@@ -7160,7 +7068,6 @@
     // the actual visible list ("234" vs the "12" markets really shown).
     renderVtTierChart(floorUnits.filter(vtBaseUnitFilter));
     updateVtFilterChipCounts(floorUnits);
-    updateVtAdvFilterCounts(floorUnits);
 
     var finalUnits = traderFiltered;
 
@@ -7899,21 +7806,6 @@
       tradesProfilesTimingFilter = btn.getAttribute("data-timing") || "all";
       renderTraderSections();
     });
-  });
-  // `input` (not `change`) so the list updates live while dragging, not
-  // just on release — that's the whole point of the "aperçu live".
-  document.getElementById("vtMinScoreSlider").addEventListener("input", function (e) {
-    var v = Number(e.target.value);
-    vtMinScore = v <= VT_SCORE_FLOOR ? null : v; // VT_SCORE_FLOOR is the slider's floor — the hard exclusion filter above already covers it, no need for a redundant explicit value
-    renderValueTrades();
-  });
-  document.getElementById("vtMinAgreementSlider").addEventListener("input", function (e) {
-    vtMinAgreement = Number(e.target.value);
-    renderValueTrades();
-  });
-  document.getElementById("vtMinVolumeSlider").addEventListener("input", function (e) {
-    vtMinVolume = Number(e.target.value);
-    renderValueTrades();
   });
   var vtDenseToggleBtn = document.getElementById("vtDenseToggleBtn");
   function syncDenseToggleBtn() {
@@ -9139,12 +9031,12 @@
     }
     notifBellList.innerHTML = recent.map(function (e) {
       var d = new Date(e.sentAt);
-      var ago = !isNaN(d.getTime()) ? fmtCountdown(Date.now() - d.getTime()) : null;
+      var exact = !isNaN(d.getTime()) ? d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
       var color = typeof e.note === "number" ? scoreColor(e.note) : "var(--text-dim)";
       return '<div class="notif-bell-item">' +
         '<div class="notif-bell-item-top"><span class="notif-bell-item-note" style="color:' + color + '">' + (typeof e.note === "number" ? e.note.toFixed(1) : "—") + '</span>' +
         '<span class="notif-bell-item-q">' + esc(e.question || "—") + '</span></div>' +
-        '<div class="notif-bell-item-meta">' + esc(e.side || "") + (ago ? ' · il y a ' + esc(ago) : '') + '</div>' +
+        '<div class="notif-bell-item-meta">' + esc(e.side || "") + (exact ? ' · ' + esc(exact) : '') + '</div>' +
       '</div>';
     }).join("");
   }
