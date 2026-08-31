@@ -2108,7 +2108,12 @@
 
   <div class="tab-panel" id="tab-archives">
     <h2 class="section-title">Archives</h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Saison 26/27 / Mes Positions) plus tard, rien n'est jamais supprimé ici.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Saison 26/27 / Mes Positions) plus tard, rien n'est jamais supprimé ici. Stocké uniquement dans ce navigateur (jamais synchronisé) — si tu utilises plusieurs navigateurs/appareils (ou l'adresse cloudfront.net en plus de whalescorrelation-seb.com), exporte ici et importe sur l'autre pour qu'All Time voie le même historique partout.</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="archiveExportBtn" class="snap-sync-link" title="Télécharger toutes les archives (tous les lots) en JSON">⬇️ Exporter</button>
+      <button type="button" id="archiveImportBtn" class="snap-sync-link" title="Fusionner un fichier d'archives exporté depuis un autre navigateur — les lots déjà présents ici (même batchId) sont ignorés, rien n'est écrasé">⬆️ Importer (fusion)</button>
+      <input type="file" id="archiveImportInput" accept="application/json" style="display:none;">
+    </div>
     <div id="archivesContent">
       <div class="empty-note">Aucune archive pour l'instant.</div>
     </div>
@@ -8978,6 +8983,42 @@
   wireTrashToggle(POSITIONS_STORE, "posTrashToggleBtn", renderPositions);
   wireExport(POSITIONS_STORE, "posExportBtn");
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
+  // Archives is local-only (never synced — see loadArchive's own comment),
+  // so two browsers/domains (e.g. the raw cloudfront.net URL vs. the
+  // whalescorrelation-seb.com alias) can silently accumulate different
+  // archived seasons, which then makes All Time show a different total on
+  // each one. Export/import here is the manual bridge between them — import
+  // MERGES by batchId (skips a batch already present) rather than replacing,
+  // since the whole point is reconciling two divergent histories without
+  // losing either side's batches.
+  document.getElementById("archiveExportBtn").addEventListener("click", function () {
+    downloadJsonBackup(loadArchive(), "archive-export");
+  });
+  document.getElementById("archiveImportBtn").addEventListener("click", function () {
+    document.getElementById("archiveImportInput").click();
+  });
+  document.getElementById("archiveImportInput").addEventListener("change", function () {
+    var input = document.getElementById("archiveImportInput");
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed;
+      try { parsed = JSON.parse(reader.result); } catch (e) { alert("Fichier invalide — ce n'est pas un JSON lisible."); input.value = ""; return; }
+      if (!Array.isArray(parsed)) { alert("Fichier invalide — attendu une liste de lots d'archive."); input.value = ""; return; }
+      var current = loadArchive();
+      var seen = {};
+      current.forEach(function (b) { seen[b.batchId] = true; });
+      var added = 0;
+      parsed.forEach(function (b) { if (b && b.batchId && !seen[b.batchId]) { current.push(b); seen[b.batchId] = true; added++; } });
+      saveArchive(current);
+      input.value = "";
+      renderArchives();
+      renderTest();
+      alert(added + " lot(s) ajouté(s) (" + (parsed.length - added) + " déjà présent(s), ignoré(s)) — " + current.length + " lot(s) au total dans Archives sur ce navigateur.");
+    };
+    reader.readAsText(file);
+  });
   // Old snapshots freeze cardHtml as a static string at save time — CSS
   // class rules (like the leader/cote/ROI font-size bump) still apply to
   // them automatically since those are just stylesheet rules, but the
