@@ -2122,6 +2122,9 @@
   <div class="tab-panel" id="tab-test">
     <h2 class="section-title">All Time <span class="count-pill" id="testCount">—</span></h2>
     <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Saison 26/27 (actuelle) + tout ce qui est dans Archives — l'historique complet, toutes saisons confondues. Se met à jour automatiquement au fil des modifs faites dans Saison 26/27, mais rien n'est modifiable ni synchronisé directement ici.</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="testExportBtn" class="snap-sync-link" title="Télécharger Saison 26/27 + Archives fusionnés (y compris la corbeille) en JSON — le jeu complet, pas juste les archives">⬇️ Exporter (tout)</button>
+    </div>
     <div id="testPnlChartContent"></div>
     <div id="testDashboard"></div>
     <div class="snap-toggle-bar">
@@ -2259,7 +2262,11 @@
     // un match Liverpool) : soit un gros joueur qui débute juste sur
     // Polymarket, soit un compte à conviction concentrée plutôt que
     // diversifiée — pas encore assez de recul pour trancher.
-    { name: "kilian7kilian", platform: "polymarket", address: "0x14c7111afa871fb215339f365043d7b2837b9ccf", weight: 8 }
+    { name: "kilian7kilian", platform: "polymarket", address: "0x14c7111afa871fb215339f365043d7b2837b9ccf", weight: 8 },
+    // Added on request — address resolved from the profile page's own
+    // api/profile/userData call (proxyWallet), cross-checked against a live
+    // positions fetch.
+    { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", weight: 7 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -8982,6 +8989,7 @@
   wireImport(SNAPSHOTS_STORE, "snapImportBtn", "snapImportInput", renderSnapshots);
   wireTrashToggle(POSITIONS_STORE, "posTrashToggleBtn", renderPositions);
   wireExport(POSITIONS_STORE, "posExportBtn");
+  wireExport(TEST_STORE, "testExportBtn");
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
   // Archives is local-only (never synced — see loadArchive's own comment),
   // so two browsers/domains (e.g. the raw cloudfront.net URL vs. the
