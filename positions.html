@@ -2124,6 +2124,8 @@
     <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Saison 26/27 (actuelle) + tout ce qui est dans Archives — l'historique complet, toutes saisons confondues. Se met à jour automatiquement au fil des modifs faites dans Saison 26/27, mais rien n'est modifiable ni synchronisé directement ici.</div>
     <div class="snap-sync-bar">
       <button type="button" id="testExportBtn" class="snap-sync-link" title="Télécharger Saison 26/27 + Archives fusionnés (y compris la corbeille) en JSON — le jeu complet, pas juste les archives">⬇️ Exporter (tout)</button>
+      <button type="button" id="testImportBtn" class="snap-sync-link" title="Importer un fichier exporté depuis All Time sur un autre navigateur — tout ce qui manque ici (id absent de Saison 26/27 et d'Archives) est ajouté à Archives comme nouveau lot, rien n'est écrasé">⬆️ Importer (fusion)</button>
+      <input type="file" id="testImportInput" accept="application/json" style="display:none;">
     </div>
     <div id="testPnlChartContent"></div>
     <div id="testDashboard"></div>
@@ -9014,6 +9016,15 @@
       var parsed;
       try { parsed = JSON.parse(reader.result); } catch (e) { alert("Fichier invalide — ce n'est pas un JSON lisible."); input.value = ""; return; }
       if (!Array.isArray(parsed)) { alert("Fichier invalide — attendu une liste de lots d'archive."); input.value = ""; return; }
+      // A "Exporter (tout)" file from All Time is a flat list of snapshots
+      // (no batchId on any item) — importing that here would silently match
+      // nothing and report a confusing "0 ajouté(s)", so redirect to the
+      // button that actually understands that shape instead.
+      if (parsed.length && !parsed.some(function (b) { return b && b.batchId; })) {
+        alert("Ce fichier ressemble à un export d'All Time (liste de snapshots), pas à un export d'Archives (liste de lots). Utilise plutôt le bouton \"Importer (fusion)\" de l'onglet All Time pour ce fichier.");
+        input.value = "";
+        return;
+      }
       var current = loadArchive();
       var seen = {};
       current.forEach(function (b) { seen[b.batchId] = true; });
@@ -9024,6 +9035,47 @@
       renderArchives();
       renderTest();
       alert(added + " lot(s) ajouté(s) (" + (parsed.length - added) + " déjà présent(s), ignoré(s)) — " + current.length + " lot(s) au total dans Archives sur ce navigateur.");
+    };
+    reader.readAsText(file);
+  });
+  // Counterpart to "Exporter (tout)" above — takes a flat snapshot list (an
+  // All Time export from another browser/origin) and adds only the ids
+  // missing here (checked against THIS origin's own Saison 26/27 + Archives)
+  // into Archives as one new batch. Never touches Saison 26/27 directly —
+  // these are frozen historical items with no live store to reconcile them
+  // into, same reasoning as why All Time itself is read-only.
+  document.getElementById("testImportBtn").addEventListener("click", function () {
+    document.getElementById("testImportInput").click();
+  });
+  document.getElementById("testImportInput").addEventListener("change", function () {
+    var input = document.getElementById("testImportInput");
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed;
+      try { parsed = JSON.parse(reader.result); } catch (e) { alert("Fichier invalide — ce n'est pas un JSON lisible."); input.value = ""; return; }
+      if (!Array.isArray(parsed)) { alert("Fichier invalide — attendu une liste de snapshots (export All Time)."); input.value = ""; return; }
+      var existingIds = {};
+      loadTestRaw().forEach(function (s) { existingIds[s.id] = true; });
+      var missing = parsed.filter(function (s) { return s && s.id && !existingIds[s.id]; });
+      input.value = "";
+      if (!missing.length) {
+        alert("Rien à ajouter — les " + parsed.length + " snapshot(s) du fichier sont déjà tous présents ici (Saison 26/27 + Archives).");
+        return;
+      }
+      var archive = loadArchive();
+      archive.push({
+        batchId: "import-" + Date.now(),
+        label: "Import externe (" + new Date().toLocaleDateString("fr-FR") + ")",
+        archivedAt: new Date().toISOString(),
+        snapshots: missing,
+        positions: []
+      });
+      saveArchive(archive);
+      renderArchives();
+      renderTest();
+      alert(missing.length + " snapshot(s) manquant(s) ajouté(s) à Archives comme nouveau lot (\"Import externe\") — " + (parsed.length - missing.length) + " déjà présent(s) ici, ignoré(s).");
     };
     reader.readAsText(file);
   });
