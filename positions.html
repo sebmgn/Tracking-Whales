@@ -1872,6 +1872,27 @@
   .trader-contrib-bar-track { height: 5px; background: var(--panel-border); border-radius: 3px; overflow: hidden; }
   .trader-contrib-bar-fill { height: 100%; }
   .trader-contrib-vals { text-align: right; white-space: nowrap; }
+  /* Autres stats: shared divider between sub-sections (streaks, consensus,
+     co-signal matrix, day×hour heatmap, monthly cards). */
+  .other-stats-section { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
+  .stat-consensus-row { display: flex; gap: 14px; align-items: flex-end; }
+  .stat-consensus-col { display: flex; flex-direction: column; align-items: center; width: 40px; }
+  .stat-consensus-track { height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .stat-consensus-val { font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
+  .stat-consensus-bar { width: 22px; border-radius: 3px 3px 0 0; }
+  .stat-consensus-lbl { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+  .co-signal-matrix { display: grid; gap: 2px; margin-top: 4px; }
+  .co-signal-cell { aspect-ratio: 1; border-radius: 2px; }
+  .co-signal-lbls { display: grid; gap: 2px; margin-top: 3px; }
+  .co-signal-lbls span { font-size: 8px; color: var(--text-dim); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dayhour-table { border-collapse: collapse; font-size: 10px; }
+  .dayhour-table th { color: var(--text-dim); font-weight: 500; padding: 2px 6px; }
+  .dayhour-daylabel { color: var(--text-dim); font-family: "IBM Plex Mono", monospace; padding-right: 6px; }
+  .dayhour-cell { width: 28px; height: 20px; border-radius: 3px; margin: 1px; }
+  .month-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 4px; }
+  .month-tile { border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 4px; text-align: center; }
+  .month-tile-m { font-size: 9px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-dim); }
+  .month-tile-v { font-family: "IBM Plex Mono", monospace; font-weight: 700; font-size: 12.5px; margin-top: 3px; }
   /* Click a week (bar or table row) to highlight that week's own dots on
      the evolution chart above — see the [data-week-key][data-first-idx]
      handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
@@ -6217,6 +6238,145 @@
   // moved out of always-visible real estate under the evolution chart on
   // request; more misc stats land here over time rather than each getting
   // its own top-level toggle.
+  // Winrate bucketed by how many tracked traders agreed on the same side of
+  // a snapshot — checks whether "several whales aligned" is actually a
+  // stronger signal or just a feeling.
+  function computeConsensusBuckets(list) {
+    var buckets = [{ label: "1", min: 1, max: 1 }, { label: "2", min: 2, max: 2 }, { label: "3", min: 3, max: 3 }, { label: "4+", min: 4, max: Infinity }];
+    buckets.forEach(function (b) { b.win = 0; b.total = 0; });
+    list.forEach(function (s) {
+      if (!s.winningSide || !s.traderCount) return;
+      var b = buckets.filter(function (x) { return s.traderCount >= x.min && s.traderCount <= x.max; })[0];
+      if (!b) return;
+      b.total++;
+      if (s.leaderName === s.winningSide) b.win++;
+    });
+    return buckets;
+  }
+  function consensusStrengthHtml(list) {
+    var buckets = computeConsensusBuckets(list);
+    if (buckets.filter(function (b) { return b.total > 0; }).length < 2) return "";
+    var cols = buckets.map(function (b) {
+      var wr = b.total ? (b.win / b.total * 100) : null;
+      var h = wr == null ? 3 : Math.max(4, Math.round(wr / 100 * 44));
+      var color = wr == null ? "var(--text-dim)" : (wr >= 50 ? "var(--green)" : "var(--red)");
+      return '<div class="stat-consensus-col"><div class="stat-consensus-track"><span class="stat-consensus-val">' + (wr == null ? "—" : wr.toFixed(0) + "%") + '</span><div class="stat-consensus-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl" title="' + b.total + ' pari(s)">' + b.label + '</span></div>';
+    }).join("");
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Force du consensus (traders d\'accord) vs winrate</div><div class="stat-consensus-row">' + cols + '</div></div>';
+  }
+  // Row-normalized co-occurrence: cell(i,j) = "of trader i's own bets, what
+  // % also had trader j" — spots redundant profiles (near-1.0 both ways,
+  // effectively the same signal followed twice) vs genuinely diversified
+  // ones. Capped to the top 8 traders by volume so the grid stays readable.
+  function computeCoSignalMatrix(list, topN) {
+    var counts = {};
+    list.forEach(function (s) { (s.traderNames || []).forEach(function (n) { counts[n] = (counts[n] || 0) + 1; }); });
+    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, topN || 8);
+    if (names.length < 2) return null;
+    var idx = {};
+    names.forEach(function (n, i) { idx[n] = i; });
+    var matrix = names.map(function () { return names.map(function () { return 0; }); });
+    list.forEach(function (s) {
+      var present = (s.traderNames || []).filter(function (n) { return idx[n] != null; });
+      present.forEach(function (a) { present.forEach(function (b) { matrix[idx[a]][idx[b]]++; }); });
+    });
+    return { names: names, matrix: matrix };
+  }
+  function coSignalMatrixHtml(list) {
+    var data = computeCoSignalMatrix(list, 8);
+    if (!data) return "";
+    var n = data.names.length;
+    var cells = "";
+    for (var i = 0; i < n; i++) {
+      for (var j = 0; j < n; j++) {
+        var pct = data.matrix[i][i] > 0 ? (data.matrix[i][j] / data.matrix[i][i]) : 0;
+        var title = data.names[i] + " × " + data.names[j] + " : " + data.matrix[i][j] + " pari(s) en commun (" + (pct * 100).toFixed(0) + "% des paris de " + data.names[i] + ")";
+        cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (pct * 100).toFixed(0) + '%, var(--panel))" title="' + esc(title) + '"></div>';
+      }
+    }
+    var lblFor = function (n2) { return n2.length > 8 ? n2.slice(0, 7) + "…" : n2; };
+    var colLbls = data.names.map(function (n2) { return '<span title="' + esc(n2) + '">' + esc(lblFor(n2)) + "</span>"; }).join("");
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders vus ensemble (% des paris de la ligne partagés avec la colonne)</div>' +
+      '<div class="co-signal-matrix" style="grid-template-columns:repeat(' + n + ', 1fr)">' + cells + '</div>' +
+      '<div class="co-signal-lbls" style="grid-template-columns:repeat(' + n + ', 1fr)">' + colLbls + '</div>' +
+      '</div>';
+  }
+  var DAYHOUR_BUCKETS = [[0, 6, "Nuit"], [6, 12, "Matin"], [12, 18, "Aprèm"], [18, 24, "Soir"]];
+  var DAYHOUR_DAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
+  function computeDayHourGrid(list, store) {
+    var grid = [];
+    for (var d = 0; d < 7; d++) grid.push(DAYHOUR_BUCKETS.map(function () { return { pnl: 0, stake: 0, count: 0 }; }));
+    list.forEach(function (s) {
+      if (!s.winningSide) return;
+      var date = new Date(s.savedAt);
+      if (isNaN(date.getTime())) return;
+      var day = (date.getDay() + 6) % 7; // Monday-first, matches weekStartOf elsewhere
+      var hour = date.getHours();
+      var hb = -1;
+      for (var i = 0; i < DAYHOUR_BUCKETS.length; i++) { if (hour >= DAYHOUR_BUCKETS[i][0] && hour < DAYHOUR_BUCKETS[i][1]) { hb = i; break; } }
+      if (hb === -1) return;
+      var stake = store.stakeFor(s);
+      var pnl = stake ? hypotheticalFlatPnl(s, stake) : null;
+      if (pnl == null) return;
+      var cell = grid[day][hb];
+      cell.pnl += pnl; cell.stake += stake; cell.count++;
+    });
+    return grid;
+  }
+  function dayHourHeatmapHtml(list, store) {
+    var grid = computeDayHourGrid(list, store);
+    var totalCount = 0;
+    grid.forEach(function (row) { row.forEach(function (c) { totalCount += c.count; }); });
+    if (totalCount < 6) return "";
+    var maxAbsRoi = 1;
+    grid.forEach(function (row) { row.forEach(function (c) { if (c.count) maxAbsRoi = Math.max(maxAbsRoi, Math.abs(c.pnl / c.stake * 100)); }); });
+    var headCells = DAYHOUR_BUCKETS.map(function (b) { return "<th>" + b[2] + "</th>"; }).join("");
+    var rowsHtml = DAYHOUR_DAY_LABELS.map(function (dayLbl, d) {
+      var cellsHtml = DAYHOUR_BUCKETS.map(function (b, h) {
+        var c = grid[d][h];
+        var roi = c.count ? (c.pnl / c.stake * 100) : null;
+        var opacity = roi == null ? 0.08 : Math.min(1, 0.15 + Math.abs(roi) / maxAbsRoi * 0.85);
+        var color = roi == null ? "var(--text-dim)" : (roi >= 0 ? "var(--green)" : "var(--red)");
+        var title = dayLbl + " " + b[2] + (roi == null ? " — aucun pari" : " — " + c.count + " pari(s), " + (roi >= 0 ? "+" : "") + roi.toFixed(0) + "% ROI");
+        return '<td><div class="dayhour-cell" style="background:' + color + ";opacity:" + opacity.toFixed(2) + '" title="' + esc(title) + '"></div></td>';
+      }).join("");
+      return "<tr><td class=\"dayhour-daylabel\">" + dayLbl + "</td>" + cellsHtml + "</tr>";
+    }).join("");
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">ROI par jour × créneau horaire</div>' +
+      '<table class="dayhour-table"><thead><tr><th></th>' + headCells + '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+      '</div>';
+  }
+  function computeMonthlyStats(list, store) {
+    var byMonth = {};
+    list.forEach(function (s) {
+      if (!s.winningSide) return;
+      var d = new Date(s.savedAt);
+      if (isNaN(d.getTime())) return;
+      var key = d.getFullYear() + "-" + (d.getMonth() + 1);
+      if (!byMonth[key]) byMonth[key] = { date: new Date(d.getFullYear(), d.getMonth(), 1), items: [] };
+      byMonth[key].items.push(s);
+    });
+    var months = Object.keys(byMonth).map(function (k) { return byMonth[k]; }).sort(function (a, b) { return a.date - b.date; });
+    months.forEach(function (m) {
+      var agg = aggregateFlatPnl(m.items, store);
+      m.count = m.items.length; m.roi = agg.roi;
+    });
+    return months;
+  }
+  function monthlyCardsHtml(list, store) {
+    var months = computeMonthlyStats(list, store);
+    if (months.length < 2) return "";
+    var tiles = months.map(function (m) {
+      var cls = m.roi == null ? "" : (m.roi >= 0 ? "pnl-pos" : "pnl-neg");
+      var bg = m.roi == null ? "transparent" : "color-mix(in srgb, " + (m.roi >= 0 ? "var(--green)" : "var(--red)") + " 12%, var(--panel))";
+      var label = m.date.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+      return '<div class="month-tile" style="background:' + bg + '" title="' + m.count + ' pari(s)"><div class="month-tile-m">' + esc(label) + '</div><div class="month-tile-v ' + cls + '">' + (m.roi == null ? "—" : (m.roi >= 0 ? "+" : "") + m.roi.toFixed(0) + "%") + "</div></div>";
+    }).join("");
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Bilan mensuel (ROI moyen par pari)</div><div class="month-grid">' + tiles + '</div></div>';
+  }
+  // Catch-all for secondary stats — streaks plus everything below, all
+  // collapsed by default behind one toggle rather than each claiming its
+  // own permanent slot in the toggle bar.
   function renderOtherStats(list, store) {
     var el = store.els.otherStats;
     if (!el) return;
@@ -6231,9 +6391,15 @@
       cum += pnl;
       series.push({ date: new Date(snap.savedAt), value: cum, win: snap.leaderName === snap.winningSide });
     });
-    var streaksBlock = streaksHtml(computeStreaks(series));
+    var blocks = [
+      streaksHtml(computeStreaks(series)),
+      consensusStrengthHtml(list),
+      coSignalMatrixHtml(list),
+      dayHourHeatmapHtml(list, store),
+      monthlyCardsHtml(list, store)
+    ].filter(function (b) { return !!b; }).join("");
     el.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
-      (streaksBlock || '<div class="empty-note">Pas assez de paris décidés pour ces stats.</div>') +
+      (blocks || '<div class="empty-note">Pas assez de paris décidés pour ces stats.</div>') +
       '</div>';
   }
   // ---------- Paris par semaine, ALIGNÉ sur le graphique d'évolution ----------
