@@ -1857,6 +1857,21 @@
      rows live behind this toggle. */
   .weekly-table-wrap { position: relative; }
   .weekly-expand-btn { display: block; margin: 0 0 6px auto; font-size: 11px; }
+  /* Note vs ROI scatter (extends L'analyse winrate × note) */
+  .note-roi-scatter { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
+  .note-roi-scatter-svg { display: block; width: 100%; height: auto; }
+  /* Confidence drift over time (extends Le winrate par conviction) */
+  .tier-drift { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
+  .tier-drift-svg { display: block; width: 100%; height: auto; }
+  /* Trader contribution: real stake vs flat-$1000 hypothetical (extends Le
+     récap par trader) — two thin bars per trader, real on top. */
+  .trader-contrib { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
+  .trader-contrib-row { display: grid; grid-template-columns: 90px 1fr 150px; align-items: center; gap: 10px; padding: 3px 0; font-size: 11.5px; }
+  .trader-contrib-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trader-contrib-bars { display: flex; flex-direction: column; gap: 2px; }
+  .trader-contrib-bar-track { height: 5px; background: var(--panel-border); border-radius: 3px; overflow: hidden; }
+  .trader-contrib-bar-fill { height: 100%; }
+  .trader-contrib-vals { text-align: right; white-space: nowrap; }
   /* Click a week (bar or table row) to highlight that week's own dots on
      the evolution chart above — see the [data-week-key][data-first-idx]
      handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
@@ -5522,6 +5537,29 @@
   // Per-trader verdict for one snapshot: "win"/"loss" if they were only on
   // one side, "gain_nuance"/"perte_nuance" if they hedged both sides and the
   // net PNL comes out positive or negative, "pending" if not decided yet.
+  // What this trader's own pick would have returned at a flat $1000 stake,
+  // isolating "is the pick good" from "how big did they actually bet" — a
+  // trader whose real PNL is high mostly because they staked huge sums can
+  // look very different here. Uses the trader's OWN avgPrice (not the
+  // snapshot's blended leaderPriceAtSnapshot), stake-weighted if they have
+  // more than one entry on the same side. Returns null for a hedged trader
+  // (present on both sides of the same snapshot) rather than guessing how
+  // to split a single flat stake between two opposing bets.
+  function traderHypFlatPnl(snap, traderName, flatStake) {
+    if (!snap.winningSide) return null;
+    var onSides = [];
+    (snap.sides || []).forEach(function (side) {
+      var totalStake = 0, totalShares = 0;
+      side.traders.forEach(function (t) {
+        if (t.trader !== traderName || !(t.avgPrice > 0)) return;
+        totalStake += t.stake; totalShares += t.stake / t.avgPrice;
+      });
+      if (totalStake > 0) onSides.push({ name: side.name, avgPrice: totalStake / totalShares });
+    });
+    if (onSides.length !== 1) return null;
+    var side = onSides[0];
+    return side.name === snap.winningSide ? flatStake * (1 / side.avgPrice - 1) : -flatStake;
+  }
   function classifyTraderInSnapshot(snap, traderName) {
     var r = traderNetPnlInSnapshot(snap, traderName);
     if (!r) return "pending";
@@ -6297,6 +6335,52 @@
     });
     return byTier;
   }
+  // Rolling weekly winrate per tier — if a lower tier starts beating a
+  // higher one for several weeks running, the note formula deserves a look.
+  function computeTierDriftByWeek(list) {
+    var byWeek = {};
+    list.forEach(function (s) {
+      if (!s.winningSide || !s.confidence || CONFIDENCE_TIERS.indexOf(s.confidence) === -1) return;
+      var d = new Date(s.savedAt);
+      if (isNaN(d.getTime())) return;
+      var key = weekStartOf(d).getTime();
+      if (!byWeek[key]) {
+        byWeek[key] = { key: key, tiers: {} };
+        CONFIDENCE_TIERS.forEach(function (t) { byWeek[key].tiers[t] = { win: 0, total: 0 }; });
+      }
+      var t = byWeek[key].tiers[s.confidence];
+      t.total++;
+      if (s.leaderName === s.winningSide) t.win++;
+    });
+    return Object.keys(byWeek).map(function (k) { return byWeek[k]; }).sort(function (a, b) { return a.key - b.key; });
+  }
+  function buildTierDriftSvg(weeks) {
+    if (weeks.length < 2) return "";
+    var W = 700, H = 130, padL = 26, padR = 10, padT = 10, padB = 16;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var n = weeks.length;
+    function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
+    function y(v) { return padT + innerH - (v / 100) * innerH; }
+    var anyLine = false;
+    var lines = CONFIDENCE_TIERS.map(function (tier) {
+      var d = "";
+      weeks.forEach(function (w, i) {
+        var t = w.tiers[tier];
+        if (t.total === 0) return;
+        d += (d === "" ? "M" : "L") + x(i).toFixed(2) + "," + y(t.win / t.total * 100).toFixed(2) + " ";
+      });
+      if (d === "") return "";
+      anyLine = true;
+      return '<path d="' + d.trim() + '" fill="none" stroke="' + CONFIDENCE_COLORS[tier] + '" stroke-width="1.8"/>';
+    }).join("");
+    if (!anyLine) return "";
+    var midY = y(50);
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="tier-drift-svg">' +
+      '<line x1="' + padL + '" y1="' + midY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + midY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>' +
+      '<text x="2" y="' + (midY + 3).toFixed(2) + '" font-size="8" fill="var(--text-dim)">50%</text>' +
+      lines +
+      '</svg>';
+  }
   function snapMatchesDistCell(s, bracket, tier) {
     if (!s.winningSide || !s.leaderName) return false;
     var p = snapLeaderPrice(s);
@@ -6368,11 +6452,13 @@
     var filterNoteHtml = store.state.tierCardFilter.length
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
+    var driftSvg = buildTierDriftSvg(computeTierDriftByWeek(list));
+    var driftHtml = driftSvg ? '<div class="tier-drift"><div class="pnl-chart-weekly-label">Dérive du winrate par palier (semaine par semaine)</div>' + driftSvg + tierLegendHtml() + '</div>' : '';
     syncSnapToggleLabel(store.ids.tierToggle, store.state.tierWinrateCollapsed, "le winrate par conviction");
     el.innerHTML =
       '<div class="tier-wr-collapse-wrap' + (store.state.tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + '</div>' +
-      rows + noteHtml + filterNoteHtml + '</div></div>';
+      rows + noteHtml + filterNoteHtml + driftHtml + '</div></div>';
   }
   // Same winrate/ROI read as the conviction gauge above, but cut by the
   // trade's own computed note (noteAtSnapshot) instead of the manual
@@ -6398,6 +6484,58 @@
       });
     });
     return byBin;
+  }
+  // One dot per decided, noted bet (note in x, realized ROI% in y) plus a
+  // least-squares trend line — more granular than the bucket rows above,
+  // shows whether the note predicts ROI itself or just win/loss.
+  function computeNoteRoiPoints(list, store) {
+    var pts = [];
+    list.forEach(function (s) {
+      if (!s.winningSide || s.noteAtSnapshot == null) return;
+      var stake = store.stakeFor(s);
+      var pnl = stake ? hypotheticalFlatPnl(s, stake) : null;
+      if (pnl == null || !stake) return;
+      pts.push({ note: s.noteAtSnapshot, roi: (pnl / stake) * 100, win: s.leaderName === s.winningSide });
+    });
+    return pts;
+  }
+  function linearRegression(pts, xKey, yKey) {
+    var n = pts.length;
+    if (n < 2) return null;
+    var sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    pts.forEach(function (p) { sumX += p[xKey]; sumY += p[yKey]; sumXY += p[xKey] * p[yKey]; sumXX += p[xKey] * p[xKey]; });
+    var denom = n * sumXX - sumX * sumX;
+    if (denom === 0) return null;
+    var slope = (n * sumXY - sumX * sumY) / denom;
+    return { slope: slope, intercept: (sumY - slope * sumX) / n };
+  }
+  function buildNoteRoiScatterSvg(pts) {
+    if (pts.length < 4) return "";
+    var W = 700, H = 160, padL = 40, padR = 14, padT = 10, padB = 20;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var xMin = 0, xMax = 10;
+    var yVals = pts.map(function (p) { return p.roi; });
+    var yMin = Math.min.apply(null, yVals.concat([0]));
+    var yMax = Math.max.apply(null, yVals.concat([0]));
+    if (yMin === yMax) { yMin -= 1; yMax += 1; }
+    function x(v) { return padL + ((v - xMin) / (xMax - xMin)) * innerW; }
+    function y(v) { return padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH; }
+    var zeroY = y(0);
+    var dots = pts.map(function (p) {
+      return '<circle cx="' + x(p.note).toFixed(2) + '" cy="' + y(p.roi).toFixed(2) + '" r="3" fill="' + (p.win ? "var(--green)" : "var(--red)") + '" opacity="0.7"><title>Note ' + p.note.toFixed(1) + ' — ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% ROI</title></circle>';
+    }).join("");
+    var reg = linearRegression(pts, "note", "roi");
+    var trendLine = "";
+    if (reg) {
+      var y0 = reg.slope * xMin + reg.intercept, y1 = reg.slope * xMax + reg.intercept;
+      trendLine = '<line x1="' + x(xMin).toFixed(2) + '" y1="' + y(y0).toFixed(2) + '" x2="' + x(xMax).toFixed(2) + '" y2="' + y(y1).toFixed(2) + '" stroke="var(--accent)" stroke-width="1.8" stroke-dasharray="5 3"/>';
+    }
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="note-roi-scatter-svg">' +
+      '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>' +
+      dots + trendLine +
+      '<text x="' + padL + '" y="' + (H - 4) + '" font-size="9" fill="var(--text-dim)">Note 0</text>' +
+      '<text x="' + (W - padR) + '" y="' + (H - 4) + '" font-size="9" fill="var(--text-dim)" text-anchor="end">Note 10</text>' +
+      '</svg>';
   }
   function renderNoteWinrate(list, store) {
     var el = store.els.noteWinrate;
@@ -6434,11 +6572,13 @@
     var filterNoteHtml = store.state.noteCardFilter != null
       ? '<div class="tier-wr-note">Filtré sur <b>note ' + store.state.noteCardFilter + '-' + (store.state.noteCardFilter + 1) + '</b> — reclique le seuil actif pour l\'enlever.</div>'
       : '';
+    var scatterSvg = buildNoteRoiScatterSvg(computeNoteRoiPoints(decidedAll, store));
+    var scatterHtml = scatterSvg ? '<div class="note-roi-scatter"><div class="pnl-chart-weekly-label">Note vs ROI réel (chaque pari, droite de tendance)</div>' + scatterSvg + '</div>' : '';
     syncSnapToggleLabel(store.ids.noteToggle, store.state.noteWinrateCollapsed, "l'analyse winrate × note");
     el.innerHTML =
       '<div class="tier-wr-collapse-wrap' + (store.state.noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par tranche de note</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + '</div>' +
-      rows + noteHtml + filterNoteHtml + '</div></div>';
+      rows + noteHtml + filterNoteHtml + scatterHtml + '</div></div>';
   }
   // Cumulative version of the same flat-$1000-per-pari simulation, in the
   // order the snapshots were actually saved — reuses buildHistoryChartSvg
@@ -6783,10 +6923,12 @@
     var byTrader = {};
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
-        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, items: [], trend: [], entries: [] };
+        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, hypPnl: 0, hypCount: 0, items: [], trend: [], entries: [] };
         byTrader[name].total++;
         var pnlResult = traderNetPnlInSnapshot(snap, name);
         if (pnlResult) byTrader[name].pnl += pnlResult.net;
+        var hypResult = traderHypFlatPnl(snap, name, 1000);
+        if (hypResult != null) { byTrader[name].hypPnl += hypResult; byTrader[name].hypCount++; }
         // Same flat-stake ROI simulation used everywhere else (tier winrate,
         // odds distribution) — lets this column compare apples to apples with
         // those, instead of a raw win/loss percentage that ignores the price
@@ -6825,6 +6967,7 @@
       // this separate field is what sorting uses so "—" rows sink to the
       // bottom instead of racing 0-PNL traders for last place.
       st.pnlForSort = decided > 0 ? st.pnl : null;
+      st.hypPnl = st.hypCount > 0 ? st.hypPnl : null;
       return st;
     });
     if (!rowsData.length) { el.innerHTML = ""; return; }
@@ -6866,7 +7009,39 @@
     el.innerHTML =
       '<div class="snap-stats-wrap table-scroll' + (store.state.statsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
       headCells +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      traderContributionHtml(rowsData) +
+      '</div>';
+  }
+  // Two bars per trader: their real PNL (own actual stakes) against what a
+  // flat $1000 on every one of their picks would have returned — isolates
+  // pick quality from bet sizing. A trader whose real bar dwarfs their
+  // flat-stake bar is winning mostly by betting big, not by picking better;
+  // hedged snapshots (present on both sides) are excluded from the flat
+  // figure rather than guessed at (see traderHypFlatPnl). Top 10 by |real
+  // PNL| — this is a supplementary read, not a full second table.
+  function traderContributionHtml(rowsData) {
+    var withPnl = rowsData.filter(function (st) { return st.decided > 0; });
+    if (!withPnl.length) return "";
+    var top = withPnl.slice().sort(function (a, b) { return Math.abs(b.pnl) - Math.abs(a.pnl); }).slice(0, 10);
+    var maxAbs = 1;
+    top.forEach(function (st) { maxAbs = Math.max(maxAbs, Math.abs(st.pnl), Math.abs(st.hypPnl || 0)); });
+    var rows = top.map(function (st) {
+      var realPct = Math.min(100, Math.abs(st.pnl) / maxAbs * 100);
+      var hypPct = st.hypPnl == null ? 0 : Math.min(100, Math.abs(st.hypPnl) / maxAbs * 100);
+      var hypLabel = st.hypPnl == null ? '—' : esc(fmtUSDSigned(st.hypPnl));
+      return '<div class="trader-contrib-row">' +
+        '<span class="trader-contrib-name mono">' + esc(st.name) + '</span>' +
+        '<div class="trader-contrib-bars">' +
+          '<div class="trader-contrib-bar-track" title="Mise réelle : ' + esc(fmtUSDSigned(st.pnl)) + '"><div class="trader-contrib-bar-fill" style="width:' + realPct.toFixed(1) + '%;background:' + (st.pnl >= 0 ? "var(--green)" : "var(--red)") + '"></div></div>' +
+          '<div class="trader-contrib-bar-track" title="Si $1000 flat par pari : ' + hypLabel + '"><div class="trader-contrib-bar-fill" style="width:' + hypPct.toFixed(1) + '%;background:var(--accent)"></div></div>' +
+        '</div>' +
+        '<span class="trader-contrib-vals mono"><span class="' + (st.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(st.pnl)) + '</span> · <span class="' + (st.hypPnl == null ? "" : (st.hypPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + hypLabel + '</span></span>' +
+      '</div>';
+    }).join("");
+    return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">Contribution au PnL — mise réelle vs $1000 flat par pari</div>' +
+      vizMiniLegend([{ color: "var(--green)", label: "Mise réelle" }, { color: "var(--accent)", label: "$1000 flat (qualité du pick)" }]) +
+      rows + '</div>';
   }
   // A manual entry (see snapAddManualBtn) has none of the trader/consensus
   // data a real snapshot carries — no sides, no cardHtml, no note — by
