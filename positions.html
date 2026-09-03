@@ -1853,6 +1853,10 @@
   /* Totals row — full period, summed rather than averaged. Bold + a
      stronger top border to set it apart from the per-week rows above. */
   .vt-weekly-total-row td { font-weight: 700; border-top: 2px solid var(--panel-border); }
+  /* Weekly table: collapsed to just the Total row by default, per-week
+     rows live behind this toggle. */
+  .weekly-table-wrap { position: relative; }
+  .weekly-expand-btn { display: block; margin: 0 0 6px auto; font-size: 11px; }
   /* Click a week (bar or table row) to highlight that week's own dots on
      the evolution chart above — see the [data-week-key][data-first-idx]
      handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
@@ -2072,6 +2076,7 @@
       <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="snapshots">▸ Le récap par trader</button>
       <button type="button" id="manualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="snapshots">▸ Manuel vs suivi auto</button>
       <button type="button" id="weeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="snapshots">▸ Paris par semaine</button>
+      <button type="button" id="snapOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="snapshots">▸ Autres stats</button>
     </div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
@@ -2079,6 +2084,7 @@
     <div id="snapStatsContent"></div>
     <div id="snapManualVsAutoContent"></div>
     <div id="snapWeeklyPnlContent"></div>
+    <div id="snapOtherStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
     </div>
@@ -2110,6 +2116,7 @@
       <button type="button" id="posStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="positions">▸ Le récap par trader</button>
       <button type="button" id="posManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="positions">▸ Manuel vs suivi auto</button>
       <button type="button" id="posWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="positions">▸ Paris par semaine</button>
+      <button type="button" id="posOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="positions">▸ Autres stats</button>
     </div>
     <div id="posTierWinrateContent"></div>
     <div id="posNoteWinrateContent"></div>
@@ -2117,6 +2124,7 @@
     <div id="posStatsContent"></div>
     <div id="posManualVsAutoContent"></div>
     <div id="posWeeklyPnlContent"></div>
+    <div id="posOtherStatsContent"></div>
     <div id="positionsContent" class="value-trades-box">
       <div class="empty-note">Aucune position pour l'instant — clique sur 🎯 Prendre position sur une carte dans Saison 26/27 pour l'enregistrer ici.</div>
     </div>
@@ -2152,6 +2160,7 @@
       <button type="button" id="testStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="test">▸ Le récap par trader</button>
       <button type="button" id="testManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="test">▸ Manuel vs suivi auto</button>
       <button type="button" id="testWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="test">▸ Paris par semaine</button>
+      <button type="button" id="testOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="test">▸ Autres stats</button>
     </div>
     <div id="testTierWinrateContent"></div>
     <div id="testNoteWinrateContent"></div>
@@ -2159,6 +2168,7 @@
     <div id="testStatsContent"></div>
     <div id="testManualVsAutoContent"></div>
     <div id="testWeeklyPnlContent"></div>
+    <div id="testOtherStatsContent"></div>
     <div id="testContent" class="value-trades-box">
       <div class="empty-note">Rien à afficher — aucun snapshot actuel ni archivé.</div>
     </div>
@@ -2367,6 +2377,7 @@
   var snapDistContent = document.getElementById("snapDistContent");
   var snapManualVsAutoContent = document.getElementById("snapManualVsAutoContent");
   var snapWeeklyPnlContent = document.getElementById("snapWeeklyPnlContent");
+  var snapOtherStatsContent = document.getElementById("snapOtherStatsContent");
   var testContent = document.getElementById("testContent");
   var testCountEl = document.getElementById("testCount");
   var testStatsContent = document.getElementById("testStatsContent");
@@ -2377,6 +2388,7 @@
   var testDistContent = document.getElementById("testDistContent");
   var testManualVsAutoContent = document.getElementById("testManualVsAutoContent");
   var testWeeklyPnlContent = document.getElementById("testWeeklyPnlContent");
+  var testOtherStatsContent = document.getElementById("testOtherStatsContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -2405,6 +2417,7 @@
   var posDistContent = document.getElementById("posDistContent");
   var posManualVsAutoContent = document.getElementById("posManualVsAutoContent");
   var posWeeklyPnlContent = document.getElementById("posWeeklyPnlContent");
+  var posOtherStatsContent = document.getElementById("posOtherStatsContent");
   var posSyncStatusEl = document.getElementById("posSyncStatus");
   var posSyncSetup = document.getElementById("posSyncSetup");
   var posSyncTokenInput = document.getElementById("posSyncTokenInput");
@@ -2589,7 +2602,7 @@
       chartSelectedId: null, chartPrevScrollY: null,
       statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
       trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
-      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true
+      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false
     };
   }
   var rtMinValue = 0;
@@ -5648,10 +5661,11 @@
     els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
       tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
       stats: snapStatsContent, list: snapshotsContent, syncStatus: snapSyncStatusEl,
-      manualVsAuto: snapManualVsAutoContent, weeklyPnl: snapWeeklyPnlContent },
+      manualVsAuto: snapManualVsAutoContent, weeklyPnl: snapWeeklyPnlContent, otherStats: snapOtherStatsContent },
     ids: { statsToggle: "snapStatsToggleBtn", distToggle: "snapDistToggleBtn",
       tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn",
-      manualVsAutoToggle: "manualVsAutoToggleBtn", weeklyPnlToggle: "weeklyPnlToggleBtn" },
+      manualVsAutoToggle: "manualVsAutoToggleBtn", weeklyPnlToggle: "weeklyPnlToggleBtn",
+      otherStatsToggle: "snapOtherStatsToggleBtn" },
     state: freshStoreState()
   };
   var POSITIONS_STORE = {
@@ -5670,10 +5684,11 @@
     els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
       tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
       stats: posStatsContent, list: positionsContent, syncStatus: posSyncStatusEl,
-      manualVsAuto: posManualVsAutoContent, weeklyPnl: posWeeklyPnlContent },
+      manualVsAuto: posManualVsAutoContent, weeklyPnl: posWeeklyPnlContent, otherStats: posOtherStatsContent },
     ids: { statsToggle: "posStatsToggleBtn", distToggle: "posDistToggleBtn",
       tierToggle: "posTierWinrateToggleBtn", noteToggle: "posNoteWinrateToggleBtn",
-      manualVsAutoToggle: "posManualVsAutoToggleBtn", weeklyPnlToggle: "posWeeklyPnlToggleBtn" },
+      manualVsAutoToggle: "posManualVsAutoToggleBtn", weeklyPnlToggle: "posWeeklyPnlToggleBtn",
+      otherStatsToggle: "posOtherStatsToggleBtn" },
     state: freshStoreState()
   };
   // Test tab: same rendering pipeline as Snapshots (renderStoreView), fed
@@ -5696,10 +5711,11 @@
     els: { count: testCountEl, dashboard: testDashboard, pnlChart: testPnlChartContent,
       tierWinrate: testTierWinrateContent, noteWinrate: testNoteWinrateContent, dist: testDistContent,
       stats: testStatsContent, list: testContent,
-      manualVsAuto: testManualVsAutoContent, weeklyPnl: testWeeklyPnlContent },
+      manualVsAuto: testManualVsAutoContent, weeklyPnl: testWeeklyPnlContent, otherStats: testOtherStatsContent },
     ids: { statsToggle: "testStatsToggleBtn", distToggle: "testDistToggleBtn",
       tierToggle: "testTierWinrateToggleBtn", noteToggle: "testNoteWinrateToggleBtn",
-      manualVsAutoToggle: "testManualVsAutoToggleBtn", weeklyPnlToggle: "testWeeklyPnlToggleBtn" },
+      manualVsAutoToggle: "testManualVsAutoToggleBtn", weeklyPnlToggle: "testWeeklyPnlToggleBtn",
+      otherStatsToggle: "testOtherStatsToggleBtn" },
     state: freshStoreState()
   };
   // ---------- Archives (bulk "close out the season" move, reversible) ----------
@@ -6122,7 +6138,12 @@
     t.autoRoi = t.autoStake > 0 ? (t.autoPnl / t.autoStake * 100) : null;
     return t;
   }
-  function weeklyTableHtml(weeks) {
+  // Collapsed by default to just the Total row — the per-week breakdown is
+  // one click away behind "Étendre par semaine" rather than always taking
+  // up the full height of every week on render. Skipped entirely (no
+  // toggle, no total row) when there's only one week, since there'd be
+  // nothing left to hide behind it.
+  function weeklyTableHtml(weeks, store) {
     var rows = weeks.map(function (w) {
       // Only the aligned weeks (computeWeeklyPnlAligned) carry firstIdx/
       // lastIdx — the compact panel's own weeks (computeWeeklyPnl) don't,
@@ -6133,10 +6154,15 @@
         : '';
       return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td>' + weeklyRowCellsHtml(w) + '</tr>';
     }).join("");
-    var totalRow = weeks.length > 1
-      ? '<tr class="vt-weekly-total-row"><td>Total</td>' + weeklyRowCellsHtml(computeWeeklyTotals(weeks)) + '</tr>'
-      : '';
-    return '<div class="table-scroll"><table><thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Note moy.</th><th class="num">Gain</th><th>Manuel / Auto</th><th>Confiance</th></tr></thead><tbody>' + rows + totalRow + '</tbody></table></div>';
+    var theadHtml = '<thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Note moy.</th><th class="num">Gain</th><th>Manuel / Auto</th><th>Confiance</th></tr></thead>';
+    if (weeks.length <= 1) {
+      return '<div class="table-scroll"><table>' + theadHtml + '<tbody>' + rows + '</tbody></table></div>';
+    }
+    var totalRow = '<tr class="vt-weekly-total-row"><td>Total</td>' + weeklyRowCellsHtml(computeWeeklyTotals(weeks)) + '</tr>';
+    var expanded = store.state.weeklyTableExpanded;
+    var toggleHtml = '<button type="button" class="snap-sync-link weekly-expand-btn" data-store="' + esc(store.name) + '">' + (expanded ? "▾ Réduire" : "▸ Étendre par semaine") + '</button>';
+    var bodyHtml = expanded ? rows + totalRow : totalRow;
+    return '<div class="weekly-table-wrap">' + toggleHtml + '<div class="table-scroll"><table>' + theadHtml + '<tbody>' + bodyHtml + '</tbody></table></div></div>';
   }
   function renderWeeklyPnl(list, store) {
     var el = store.els.weeklyPnl;
@@ -6146,7 +6172,31 @@
     syncSnapToggleLabel(store.ids.weeklyPnlToggle, store.state.weeklyPnlCollapsed, "paris par semaine (vue compacte)");
     el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.weeklyPnlCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Paris par semaine — vue compacte</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — regroupé par semaine (lundi à dimanche), indépendamment du graphique d\'évolution ci-dessus.</div>' +
-      buildWeeklyBarSvg(weeks) + weeklyTableHtml(weeks) + '</div></div>';
+      buildWeeklyBarSvg(weeks) + weeklyTableHtml(weeks, store) + '</div></div>';
+  }
+  // "Autres stats" — a catch-all secondary panel, collapsed by default.
+  // Starts with streaks (recent win/loss dots + current/record/worst run),
+  // moved out of always-visible real estate under the evolution chart on
+  // request; more misc stats land here over time rather than each getting
+  // its own top-level toggle.
+  function renderOtherStats(list, store) {
+    var el = store.els.otherStats;
+    if (!el) return;
+    syncSnapToggleLabel(store.ids.otherStatsToggle, store.state.otherStatsCollapsed, "autres stats");
+    if (store.state.otherStatsCollapsed) { el.innerHTML = ""; return; }
+    var decided = list.filter(function (s) { return !!s.winningSide; }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    var cum = 0;
+    var series = [];
+    decided.forEach(function (snap) {
+      var pnl = hypotheticalFlatPnl(snap, store.stakeFor(snap));
+      if (pnl == null) return;
+      cum += pnl;
+      series.push({ date: new Date(snap.savedAt), value: cum, win: snap.leaderName === snap.winningSide });
+    });
+    var streaksBlock = streaksHtml(computeStreaks(series));
+    el.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
+      (streaksBlock || '<div class="empty-note">Pas assez de paris décidés pour ces stats.</div>') +
+      '</div>';
   }
   // ---------- Paris par semaine, ALIGNÉ sur le graphique d'évolution ----------
   // Same weekly grouping as computeWeeklyPnl above, but built from the exact
@@ -6515,16 +6565,15 @@
       wirePnlChartFilterControls(cardsList, store);
       return;
     }
-    var chartHtml, hintHtml, weeklyHtml, streaksBlockHtml, drawdownBlockHtml;
+    var chartHtml, hintHtml, weeklyHtml, drawdownBlockHtml;
     if (st.pnlChartSplitByTier) {
       chartHtml = buildHistoryChartByTierSvg(seriesByTier) + tierLegendHtml();
       hintHtml = "";
       // No single point-per-week mapping once split into 4 overlapping
       // per-tier lines (same reason wireSnapPnlChartClicks is skipped below)
       // — the compact "vue compacte" toggle panel still covers this case.
-      // Streaks/drawdown are single-line concepts too, same reasoning.
+      // Drawdown is a single-line concept too, same reasoning.
       weeklyHtml = "";
-      streaksBlockHtml = "";
       drawdownBlockHtml = "";
     } else {
       chartHtml = buildHistoryChartSvg(series);
@@ -6533,12 +6582,11 @@
       weeklyHtml = '<div class="pnl-chart-weekly">' +
         '<div class="pnl-chart-weekly-label">Paris par semaine</div>' +
         buildWeeklyAlignedBarSvg(weeklySeries, weeks) +
-        weeklyTableHtml(weeks) +
+        weeklyTableHtml(weeks, store) +
       '</div>';
-      streaksBlockHtml = streaksHtml(computeStreaks(series));
       drawdownBlockHtml = drawdownHtml(series);
     }
-    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + streaksBlockHtml + drawdownBlockHtml + weeklyHtml + '</div>';
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + '</div>';
     wirePnlChartFilterControls(cardsList, store);
     var box = document.getElementById(boxId);
     // The split-by-tier view has no per-point data-id (4 overlapping lines,
@@ -7117,6 +7165,7 @@
     renderSnapStats(list, store);
     renderManualVsAuto(list, store);
     renderWeeklyPnl(list, store);
+    renderOtherStats(list, store);
     if (!cardsList.length) {
       store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
         ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
@@ -8864,6 +8913,24 @@
       var weeklyPnlStore = resolveStoreFromEl(weeklyPnlToggleBtn);
       weeklyPnlStore.state.weeklyPnlCollapsed = !weeklyPnlStore.state.weeklyPnlCollapsed;
       renderWeeklyPnl(weeklyPnlStore.load(), weeklyPnlStore);
+      return;
+    }
+    var otherStatsToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='otherstats']") : null;
+    if (otherStatsToggleBtn) {
+      var otherStatsStore = resolveStoreFromEl(otherStatsToggleBtn);
+      otherStatsStore.state.otherStatsCollapsed = !otherStatsStore.state.otherStatsCollapsed;
+      renderOtherStats(otherStatsStore.load(), otherStatsStore);
+      return;
+    }
+    // Weekly table's own "Étendre par semaine" — a full renderStoreView
+    // (not just a table re-render) since this button can live either in the
+    // aligned block under the evolution chart or in the compact "vue
+    // compacte" panel, and renderStoreView refreshes both in one pass.
+    var weeklyExpandBtn = e.target.closest ? e.target.closest(".weekly-expand-btn") : null;
+    if (weeklyExpandBtn) {
+      var weeklyExpandStore = resolveStoreFromEl(weeklyExpandBtn);
+      weeklyExpandStore.state.weeklyTableExpanded = !weeklyExpandStore.state.weeklyTableExpanded;
+      renderStoreView(weeklyExpandStore);
       return;
     }
     var distCell = e.target.closest ? e.target.closest(".snap-dist-cell") : null;
