@@ -1789,6 +1789,8 @@
     font: inherit; font-size: 11.5px; color: var(--text); background: var(--panel);
     border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 3px 6px;
   }
+  .pnl-chart-sim-slider input[type="range"] { width: 100px; accent-color: var(--accent); }
+  .pnl-chart-sim-stake-value { color: var(--text); font-weight: 700; min-width: 44px; }
   /* Realized PnL / avg ROI / trade count for whatever the 4 selects above
      currently narrow the curve to — lives beside the title so it reads as
      "here's the numbers for the view you just set". Three small chips
@@ -1856,7 +1858,13 @@
   /* Weekly table: collapsed to just the Total row by default, per-week
      rows live behind this toggle. */
   .weekly-table-wrap { position: relative; }
-  .weekly-expand-btn { display: block; margin: 0 0 6px auto; font-size: 11px; }
+  .weekly-expand-btn {
+    display: block; margin: 0 0 8px auto; font-size: 13px; font-weight: 700;
+    border-radius: 999px; padding: 7px 16px;
+    background: var(--panel); border: 1px solid var(--panel-border); color: var(--accent);
+  }
+  .weekly-expand-btn:hover { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .weekly-expand-btn.active { background: var(--accent); color: #fff; border-color: transparent; }
   /* Note vs ROI scatter (extends L'analyse winrate × note) */
   .note-roi-scatter { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
   .note-roi-scatter-svg { display: block; width: 100%; height: auto; }
@@ -1865,7 +1873,7 @@
   .tier-drift-svg { display: block; width: 100%; height: auto; }
   /* Trader contribution: real stake vs flat-$1000 hypothetical (extends Le
      récap par trader) — two thin bars per trader, real on top. */
-  .trader-contrib { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
+  .trader-contrib { margin: 4px 0 14px; padding-bottom: 12px; border-bottom: 1px dashed var(--panel-border); }
   .trader-contrib-row { display: grid; grid-template-columns: 90px 1fr 150px; align-items: center; gap: 10px; padding: 3px 0; font-size: 11.5px; }
   .trader-contrib-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .trader-contrib-bars { display: flex; flex-direction: column; gap: 2px; }
@@ -1881,18 +1889,17 @@
   .stat-consensus-val { font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
   .stat-consensus-bar { width: 22px; border-radius: 3px 3px 0 0; }
   .stat-consensus-lbl { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
-  .co-signal-matrix { display: grid; gap: 2px; margin-top: 4px; }
-  .co-signal-cell { aspect-ratio: 1; border-radius: 2px; }
-  .co-signal-lbls { display: grid; gap: 2px; margin-top: 3px; }
-  .co-signal-lbls span { font-size: 8px; color: var(--text-dim); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dayhour-table { border-collapse: collapse; font-size: 10px; }
-  .dayhour-table th { color: var(--text-dim); font-weight: 500; padding: 2px 6px; }
-  .dayhour-daylabel { color: var(--text-dim); font-family: "IBM Plex Mono", monospace; padding-right: 6px; }
-  .dayhour-cell { width: 28px; height: 20px; border-radius: 3px; margin: 1px; }
+  .co-signal-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 12px; }
+  .co-signal-names { width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .co-signal-bar-track { flex: 1; height: 7px; background: var(--panel-border); border-radius: 4px; overflow: hidden; }
+  .co-signal-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .co-signal-count { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  .co-signal-pct { color: var(--text-dim); }
   .month-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 4px; }
   .month-tile { border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 4px; text-align: center; }
   .month-tile-m { font-size: 9px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-dim); }
   .month-tile-v { font-family: "IBM Plex Mono", monospace; font-weight: 700; font-size: 12.5px; margin-top: 3px; }
+  .pnl-chart-monthly { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--panel-border); }
   /* Click a week (bar or table row) to highlight that week's own dots on
      the evolution chart above — see the [data-week-key][data-first-idx]
      handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
@@ -2634,7 +2641,7 @@
     return {
       tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null, manualVsAutoFilter: null,
       pnlChartOddsFilter: null, pnlChartTierFilter: null, pnlChartDays: null, pnlChartNoteFilter: null,
-      pnlChartSplitByTier: false,
+      pnlChartSplitByTier: false, pnlChartSimStake: null,
       chartSelectedId: null, chartPrevScrollY: null,
       statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
       trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
@@ -5711,6 +5718,7 @@
     loadRaw: loadSnapshotsRaw, load: loadSnapshots, save: saveSnapshotsToStorage,
     stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
     allowTakePosition: true,
+    allowSimStakeSlider: true, // flat-stake sim, not real money — the "et si" slider on the evolution chart only makes sense here and on All Time, not Positions (real stakeUsd)
     itemNoun: "snapshot",
     emptyHint: "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.",
     dateLabelPrefix: "Sauvegardé le",
@@ -5761,6 +5769,7 @@
     loadRaw: loadTestRaw, load: loadTest, save: function () {},
     stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
     allowTakePosition: false,
+    allowSimStakeSlider: true,
     readOnly: true,
     itemNoun: "snapshot",
     emptyHint: "Rien à afficher — aucun snapshot actuel ni archivé.",
@@ -6219,7 +6228,7 @@
     }
     var totalRow = '<tr class="vt-weekly-total-row"><td>Total</td>' + weeklyRowCellsHtml(computeWeeklyTotals(weeks)) + '</tr>';
     var expanded = store.state.weeklyTableExpanded;
-    var toggleHtml = '<button type="button" class="snap-sync-link weekly-expand-btn" data-store="' + esc(store.name) + '">' + (expanded ? "▾ Réduire" : "▸ Étendre par semaine") + '</button>';
+    var toggleHtml = '<button type="button" class="weekly-expand-btn' + (expanded ? " active" : "") + '" data-store="' + esc(store.name) + '">' + (expanded ? "▾ Réduire" : "▸ Étendre par semaine") + '</button>';
     var bodyHtml = expanded ? rows + totalRow : totalRow;
     return '<div class="weekly-table-wrap">' + toggleHtml + '<div class="table-scroll"><table>' + theadHtml + '<tbody>' + bodyHtml + '</tbody></table></div></div>';
   }
@@ -6264,107 +6273,98 @@
     }).join("");
     return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Force du consensus (traders d\'accord) vs winrate</div><div class="stat-consensus-row">' + cols + '</div></div>';
   }
-  // Row-normalized co-occurrence: cell(i,j) = "of trader i's own bets, what
-  // % also had trader j" — spots redundant profiles (near-1.0 both ways,
-  // effectively the same signal followed twice) vs genuinely diversified
-  // ones. Capped to the top 8 traders by volume so the grid stays readable.
-  function computeCoSignalMatrix(list, topN) {
+  // Top co-occurring PAIRS rather than a full matrix — a grid of N² tiny
+  // cells didn't read as anything; a ranked list of "these two show up
+  // together most" is the actual scannable version of the same idea.
+  // Restricted to the top 10 traders by volume first so two high-volume
+  // traders who happen to share one snapshot don't drown out a pair that's
+  // genuinely often together.
+  function computeCoSignalPairs(list, topNTraders, topNPairs) {
     var counts = {};
     list.forEach(function (s) { (s.traderNames || []).forEach(function (n) { counts[n] = (counts[n] || 0) + 1; }); });
-    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, topN || 8);
-    if (names.length < 2) return null;
-    var idx = {};
-    names.forEach(function (n, i) { idx[n] = i; });
-    var matrix = names.map(function () { return names.map(function () { return 0; }); });
+    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, topNTraders || 10);
+    var nameSet = {};
+    names.forEach(function (n) { nameSet[n] = true; });
+    var pairCounts = {};
     list.forEach(function (s) {
-      var present = (s.traderNames || []).filter(function (n) { return idx[n] != null; });
-      present.forEach(function (a) { present.forEach(function (b) { matrix[idx[a]][idx[b]]++; }); });
-    });
-    return { names: names, matrix: matrix };
-  }
-  function coSignalMatrixHtml(list) {
-    var data = computeCoSignalMatrix(list, 8);
-    if (!data) return "";
-    var n = data.names.length;
-    var cells = "";
-    for (var i = 0; i < n; i++) {
-      for (var j = 0; j < n; j++) {
-        var pct = data.matrix[i][i] > 0 ? (data.matrix[i][j] / data.matrix[i][i]) : 0;
-        var title = data.names[i] + " × " + data.names[j] + " : " + data.matrix[i][j] + " pari(s) en commun (" + (pct * 100).toFixed(0) + "% des paris de " + data.names[i] + ")";
-        cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (pct * 100).toFixed(0) + '%, var(--panel))" title="' + esc(title) + '"></div>';
+      var present = (s.traderNames || []).filter(function (n) { return nameSet[n]; });
+      for (var i = 0; i < present.length; i++) {
+        for (var j = i + 1; j < present.length; j++) {
+          var a = present[i], b = present[j];
+          var key = a < b ? a + "|" + b : b + "|" + a;
+          pairCounts[key] = (pairCounts[key] || 0) + 1;
+        }
       }
-    }
-    var lblFor = function (n2) { return n2.length > 8 ? n2.slice(0, 7) + "…" : n2; };
-    var colLbls = data.names.map(function (n2) { return '<span title="' + esc(n2) + '">' + esc(lblFor(n2)) + "</span>"; }).join("");
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders vus ensemble (% des paris de la ligne partagés avec la colonne)</div>' +
-      '<div class="co-signal-matrix" style="grid-template-columns:repeat(' + n + ', 1fr)">' + cells + '</div>' +
-      '<div class="co-signal-lbls" style="grid-template-columns:repeat(' + n + ', 1fr)">' + colLbls + '</div>' +
-      '</div>';
+    });
+    return Object.keys(pairCounts).map(function (k) {
+      var parts = k.split("|");
+      return { a: parts[0], b: parts[1], count: pairCounts[k], aTotal: counts[parts[0]] };
+    }).sort(function (x, y) { return y.count - x.count; }).slice(0, topNPairs || 6);
   }
-  var DAYHOUR_BUCKETS = [[0, 6, "Nuit"], [6, 12, "Matin"], [12, 18, "Aprèm"], [18, 24, "Soir"]];
-  var DAYHOUR_DAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
-  function computeDayHourGrid(list, store) {
-    var grid = [];
-    for (var d = 0; d < 7; d++) grid.push(DAYHOUR_BUCKETS.map(function () { return { pnl: 0, stake: 0, count: 0 }; }));
+  function coSignalPairsHtml(list) {
+    var pairs = computeCoSignalPairs(list, 10, 6);
+    if (!pairs.length) return "";
+    var maxCount = Math.max.apply(null, pairs.map(function (p) { return p.count; }).concat([1]));
+    var rows = pairs.map(function (p) {
+      var pct = Math.min(100, p.count / maxCount * 100);
+      var pctOfA = p.aTotal ? Math.round(p.count / p.aTotal * 100) : 0;
+      return '<div class="co-signal-row">' +
+        '<span class="co-signal-names">' + esc(p.a) + ' &amp; ' + esc(p.b) + '</span>' +
+        '<div class="co-signal-bar-track"><div class="co-signal-bar-fill" style="width:' + pct.toFixed(0) + '%"></div></div>' +
+        '<span class="co-signal-count">' + p.count + ' pari(s) <span class="co-signal-pct">(' + pctOfA + '% de ' + esc(p.a) + ')</span></span>' +
+        '</div>';
+    }).join("");
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders vus le plus souvent ensemble</div>' + rows + '</div>';
+  }
+  var DAYHOUR_DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+  function computeDayOfWeekStats(list, store) {
+    var days = DAYHOUR_DAY_LABELS.map(function () { return { pnl: 0, stake: 0, count: 0 }; });
     list.forEach(function (s) {
       if (!s.winningSide) return;
       var date = new Date(s.savedAt);
       if (isNaN(date.getTime())) return;
       var day = (date.getDay() + 6) % 7; // Monday-first, matches weekStartOf elsewhere
-      var hour = date.getHours();
-      var hb = -1;
-      for (var i = 0; i < DAYHOUR_BUCKETS.length; i++) { if (hour >= DAYHOUR_BUCKETS[i][0] && hour < DAYHOUR_BUCKETS[i][1]) { hb = i; break; } }
-      if (hb === -1) return;
       var stake = store.stakeFor(s);
       var pnl = stake ? hypotheticalFlatPnl(s, stake) : null;
       if (pnl == null) return;
-      var cell = grid[day][hb];
-      cell.pnl += pnl; cell.stake += stake; cell.count++;
+      days[day].pnl += pnl; days[day].stake += stake; days[day].count++;
     });
-    return grid;
+    return days;
   }
-  function dayHourHeatmapHtml(list, store) {
-    var grid = computeDayHourGrid(list, store);
-    var totalCount = 0;
-    grid.forEach(function (row) { row.forEach(function (c) { totalCount += c.count; }); });
+  function dayOfWeekHtml(list, store) {
+    var days = computeDayOfWeekStats(list, store);
+    var totalCount = days.reduce(function (s, d) { return s + d.count; }, 0);
     if (totalCount < 6) return "";
     var maxAbsRoi = 1;
-    grid.forEach(function (row) { row.forEach(function (c) { if (c.count) maxAbsRoi = Math.max(maxAbsRoi, Math.abs(c.pnl / c.stake * 100)); }); });
-    var headCells = DAYHOUR_BUCKETS.map(function (b) { return "<th>" + b[2] + "</th>"; }).join("");
-    var rowsHtml = DAYHOUR_DAY_LABELS.map(function (dayLbl, d) {
-      var cellsHtml = DAYHOUR_BUCKETS.map(function (b, h) {
-        var c = grid[d][h];
-        var roi = c.count ? (c.pnl / c.stake * 100) : null;
-        var opacity = roi == null ? 0.08 : Math.min(1, 0.15 + Math.abs(roi) / maxAbsRoi * 0.85);
-        var color = roi == null ? "var(--text-dim)" : (roi >= 0 ? "var(--green)" : "var(--red)");
-        var title = dayLbl + " " + b[2] + (roi == null ? " — aucun pari" : " — " + c.count + " pari(s), " + (roi >= 0 ? "+" : "") + roi.toFixed(0) + "% ROI");
-        return '<td><div class="dayhour-cell" style="background:' + color + ";opacity:" + opacity.toFixed(2) + '" title="' + esc(title) + '"></div></td>';
-      }).join("");
-      return "<tr><td class=\"dayhour-daylabel\">" + dayLbl + "</td>" + cellsHtml + "</tr>";
+    days.forEach(function (d) { if (d.count) maxAbsRoi = Math.max(maxAbsRoi, Math.abs(d.pnl / d.stake * 100)); });
+    var cols = days.map(function (d, i) {
+      var roi = d.count ? (d.pnl / d.stake * 100) : null;
+      var h = roi == null ? 3 : Math.max(4, Math.round(Math.abs(roi) / maxAbsRoi * 44));
+      var color = roi == null ? "var(--text-dim)" : (roi >= 0 ? "var(--green)" : "var(--red)");
+      var title = DAYHOUR_DAY_LABELS[i] + (roi == null ? " — aucun pari" : " — " + d.count + " pari(s), " + (roi >= 0 ? "+" : "") + roi.toFixed(0) + "% ROI");
+      return '<div class="stat-consensus-col" title="' + esc(title) + '"><div class="stat-consensus-track"><span class="stat-consensus-val">' + (roi == null ? "—" : (roi >= 0 ? "+" : "") + roi.toFixed(0) + "%") + '</span><div class="stat-consensus-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl">' + DAYHOUR_DAY_LABELS[i] + '</span></div>';
     }).join("");
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">ROI par jour × créneau horaire</div>' +
-      '<table class="dayhour-table"><thead><tr><th></th>' + headCells + '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
-      '</div>';
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">ROI par jour de la semaine</div><div class="stat-consensus-row">' + cols + '</div></div>';
   }
-  function computeMonthlyStats(list, store) {
+  // Built from the same weeklySeries points the evolution chart and the
+  // weekly table below it already use (not a fresh pass over the full
+  // list) — so the monthly view always matches whatever Cote/Confiance/
+  // Note/Période the chart is currently filtered to, same as the weekly
+  // table, instead of silently including trades the chart above it hides.
+  function computeMonthlyFromSeries(weeklySeries) {
     var byMonth = {};
-    list.forEach(function (s) {
-      if (!s.winningSide) return;
-      var d = new Date(s.savedAt);
-      if (isNaN(d.getTime())) return;
-      var key = d.getFullYear() + "-" + (d.getMonth() + 1);
-      if (!byMonth[key]) byMonth[key] = { date: new Date(d.getFullYear(), d.getMonth(), 1), items: [] };
-      byMonth[key].items.push(s);
+    weeklySeries.forEach(function (p) {
+      var key = p.date.getFullYear() + "-" + (p.date.getMonth() + 1);
+      if (!byMonth[key]) byMonth[key] = { date: new Date(p.date.getFullYear(), p.date.getMonth(), 1), count: 0, pnl: 0, stake: 0 };
+      byMonth[key].count++;
+      byMonth[key].pnl += p.pnl;
+      byMonth[key].stake += p.stake;
     });
     var months = Object.keys(byMonth).map(function (k) { return byMonth[k]; }).sort(function (a, b) { return a.date - b.date; });
-    months.forEach(function (m) {
-      var agg = aggregateFlatPnl(m.items, store);
-      m.count = m.items.length; m.roi = agg.roi;
-    });
+    months.forEach(function (m) { m.roi = m.stake > 0 ? (m.pnl / m.stake * 100) : null; });
     return months;
   }
-  function monthlyCardsHtml(list, store) {
-    var months = computeMonthlyStats(list, store);
+  function monthlyCardsHtml(months) {
     if (months.length < 2) return "";
     var tiles = months.map(function (m) {
       var cls = m.roi == null ? "" : (m.roi >= 0 ? "pnl-pos" : "pnl-neg");
@@ -6372,7 +6372,7 @@
       var label = m.date.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
       return '<div class="month-tile" style="background:' + bg + '" title="' + m.count + ' pari(s)"><div class="month-tile-m">' + esc(label) + '</div><div class="month-tile-v ' + cls + '">' + (m.roi == null ? "—" : (m.roi >= 0 ? "+" : "") + m.roi.toFixed(0) + "%") + "</div></div>";
     }).join("");
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Bilan mensuel (ROI moyen par pari)</div><div class="month-grid">' + tiles + '</div></div>';
+    return '<div class="pnl-chart-monthly"><div class="pnl-chart-weekly-label">Bilan mensuel</div><div class="month-grid">' + tiles + '</div></div>';
   }
   // Catch-all for secondary stats — streaks plus everything below, all
   // collapsed by default behind one toggle rather than each claiming its
@@ -6394,9 +6394,8 @@
     var blocks = [
       streaksHtml(computeStreaks(series)),
       consensusStrengthHtml(list),
-      coSignalMatrixHtml(list),
-      dayHourHeatmapHtml(list, store),
-      monthlyCardsHtml(list, store)
+      coSignalPairsHtml(list),
+      dayOfWeekHtml(list, store)
     ].filter(function (b) { return !!b; }).join("");
     el.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
       (blocks || '<div class="empty-note">Pas assez de paris décidés pour ces stats.</div>') +
@@ -6501,37 +6500,37 @@
     });
     return byTier;
   }
-  // Rolling weekly winrate per tier — if a lower tier starts beating a
-  // higher one for several weeks running, the note formula deserves a look.
-  function computeTierDriftByWeek(list) {
-    var byWeek = {};
+  // Rolling daily winrate per tier — if a lower tier starts beating a
+  // higher one for several days running, the note formula deserves a look.
+  function computeTierDriftByDay(list) {
+    var byDay = {};
     list.forEach(function (s) {
       if (!s.winningSide || !s.confidence || CONFIDENCE_TIERS.indexOf(s.confidence) === -1) return;
       var d = new Date(s.savedAt);
       if (isNaN(d.getTime())) return;
-      var key = weekStartOf(d).getTime();
-      if (!byWeek[key]) {
-        byWeek[key] = { key: key, tiers: {} };
-        CONFIDENCE_TIERS.forEach(function (t) { byWeek[key].tiers[t] = { win: 0, total: 0 }; });
+      var key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      if (!byDay[key]) {
+        byDay[key] = { key: key, tiers: {} };
+        CONFIDENCE_TIERS.forEach(function (t) { byDay[key].tiers[t] = { win: 0, total: 0 }; });
       }
-      var t = byWeek[key].tiers[s.confidence];
+      var t = byDay[key].tiers[s.confidence];
       t.total++;
       if (s.leaderName === s.winningSide) t.win++;
     });
-    return Object.keys(byWeek).map(function (k) { return byWeek[k]; }).sort(function (a, b) { return a.key - b.key; });
+    return Object.keys(byDay).map(function (k) { return byDay[k]; }).sort(function (a, b) { return a.key - b.key; });
   }
-  function buildTierDriftSvg(weeks) {
-    if (weeks.length < 2) return "";
+  function buildTierDriftSvg(days) {
+    if (days.length < 2) return "";
     var W = 700, H = 130, padL = 26, padR = 10, padT = 10, padB = 16;
     var innerW = W - padL - padR, innerH = H - padT - padB;
-    var n = weeks.length;
+    var n = days.length;
     function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
     function y(v) { return padT + innerH - (v / 100) * innerH; }
     var anyLine = false;
     var lines = CONFIDENCE_TIERS.map(function (tier) {
       var d = "";
-      weeks.forEach(function (w, i) {
-        var t = w.tiers[tier];
+      days.forEach(function (day, i) {
+        var t = day.tiers[tier];
         if (t.total === 0) return;
         d += (d === "" ? "M" : "L") + x(i).toFixed(2) + "," + y(t.win / t.total * 100).toFixed(2) + " ";
       });
@@ -6618,8 +6617,8 @@
     var filterNoteHtml = store.state.tierCardFilter.length
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
-    var driftSvg = buildTierDriftSvg(computeTierDriftByWeek(list));
-    var driftHtml = driftSvg ? '<div class="tier-drift"><div class="pnl-chart-weekly-label">Dérive du winrate par palier (semaine par semaine)</div>' + driftSvg + tierLegendHtml() + '</div>' : '';
+    var driftSvg = buildTierDriftSvg(computeTierDriftByDay(list));
+    var driftHtml = driftSvg ? '<div class="tier-drift"><div class="pnl-chart-weekly-label">Dérive du winrate par palier (jour par jour)</div>' + driftSvg + tierLegendHtml() + '</div>' : '';
     syncSnapToggleLabel(store.ids.tierToggle, store.state.tierWinrateCollapsed, "le winrate par conviction");
     el.innerHTML =
       '<div class="tier-wr-collapse-wrap' + (store.state.tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
@@ -6780,6 +6779,13 @@
       return true;
     });
     var decided = decidedFiltered.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    // "Et si" slider (allowSimStakeSlider stores only — flat-stake sim, not
+    // Positions' real stakeUsd): recomputes this chart (and the weekly panel
+    // under it, since they share the same loop) at a different flat stake
+    // without touching the fixed HYPOTHETICAL_FLAT_STAKE used everywhere else
+    // (dashboard, tier/note gauges, weekly "vue compacte").
+    var simStake = store.allowSimStakeSlider ? (st.pnlChartSimStake || HYPOTHETICAL_FLAT_STAKE) : null;
+    function chartStakeFor(snap) { return simStake != null ? simStake : store.stakeFor(snap); }
     var cum = 0;
     var series = [];
     // Sibling of `series`, built in the exact same loop iteration below (so
@@ -6797,7 +6803,7 @@
     var seriesByTier = {};
     CONFIDENCE_TIERS.forEach(function (t) { cumByTier[t] = 0; seriesByTier[t] = []; });
     decided.forEach(function (snap) {
-      var pnl = hypotheticalFlatPnl(snap, store.stakeFor(snap));
+      var pnl = hypotheticalFlatPnl(snap, chartStakeFor(snap));
       if (pnl == null) return;
       cum += pnl;
       // Each dot is colored by ITS OWN outcome (won that bet or not), not
@@ -6811,7 +6817,7 @@
       // flashy win/loss read at a glance.
       var won = snap.leaderName === snap.winningSide;
       series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
-      weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: store.stakeFor(snap), note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
+      weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: chartStakeFor(snap), note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
       if (snap.confidence && seriesByTier[snap.confidence]) {
         cumByTier[snap.confidence] += pnl;
         seriesByTier[snap.confidence].push({ date: new Date(snap.savedAt), value: cumByTier[snap.confidence], delta: pnl, win: won, note: snap.noteAtSnapshot });
@@ -6845,6 +6851,7 @@
       '<label>Note <select id="' + idp + 'pnlChartNoteSelect">' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
       '<label class="pnl-chart-split-toggle" title="Une courbe cumulée par palier de confiance (S/A+/A/B) au lieu d\'une seule courbe globale"><input type="checkbox" id="' + idp + 'pnlChartSplitTier"' + (st.pnlChartSplitByTier ? " checked" : "") + ' /> Diviser par confiance</label>' +
+      (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
     // Realized PnL / avg ROI for the exact subset the 4 selects above
     // currently resolve to — same cumulative total already plotted
@@ -6853,7 +6860,7 @@
     // aggregateFlatPnl needs full snap objects (it calls hypotheticalFlatPnl
     // itself) — `decided` still has those, series is just their derived
     // points, so aggregate over `decided` and take the ROI from there.
-    var statsRoiAgg = aggregateFlatPnl(decided, store);
+    var statsRoiAgg = aggregateFlatPnl(decided, { stakeFor: chartStakeFor });
     var statsCount = series.length;
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsRoiAgg.roi;
@@ -6871,16 +6878,17 @@
       wirePnlChartFilterControls(cardsList, store);
       return;
     }
-    var chartHtml, hintHtml, weeklyHtml, drawdownBlockHtml;
+    var chartHtml, hintHtml, weeklyHtml, drawdownBlockHtml, monthlyBlockHtml;
     if (st.pnlChartSplitByTier) {
       chartHtml = buildHistoryChartByTierSvg(seriesByTier) + tierLegendHtml();
       hintHtml = "";
       // No single point-per-week mapping once split into 4 overlapping
       // per-tier lines (same reason wireSnapPnlChartClicks is skipped below)
       // — the compact "vue compacte" toggle panel still covers this case.
-      // Drawdown is a single-line concept too, same reasoning.
+      // Drawdown/monthly are single-line concepts too, same reasoning.
       weeklyHtml = "";
       drawdownBlockHtml = "";
+      monthlyBlockHtml = "";
     } else {
       chartHtml = buildHistoryChartSvg(series);
       hintHtml = '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div>';
@@ -6891,8 +6899,9 @@
         weeklyTableHtml(weeks, store) +
       '</div>';
       drawdownBlockHtml = drawdownHtml(series);
+      monthlyBlockHtml = monthlyCardsHtml(computeMonthlyFromSeries(weeklySeries));
     }
-    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + '</div>';
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + monthlyBlockHtml + '</div>';
     wirePnlChartFilterControls(cardsList, store);
     var box = document.getElementById(boxId);
     // The split-by-tier view has no per-point data-id (4 overlapping lines,
@@ -6944,6 +6953,21 @@
       if (splitTierCheckbox.checked) store.state.pnlChartTierFilter = null;
       renderSnapPnlChart(cardsList, store);
     });
+    // "Et si" stake slider: live-updates its own label while dragging
+    // (input) but only rebuilds the chart on release (change) — a full
+    // renderSnapPnlChart replaces this very <input>, which would interrupt
+    // an in-progress drag if it fired on every tick.
+    var simStakeRange = document.getElementById(idp + "pnlChartSimStakeRange");
+    var simStakeValueEl = document.getElementById(idp + "pnlChartSimStakeValue");
+    if (simStakeRange) {
+      simStakeRange.addEventListener("input", function () {
+        if (simStakeValueEl) simStakeValueEl.textContent = fmtUSD(Number(simStakeRange.value));
+      });
+      simStakeRange.addEventListener("change", function () {
+        store.state.pnlChartSimStake = Number(simStakeRange.value);
+        renderSnapPnlChart(cardsList, store);
+      });
+    }
   }
   // Clicking a point jumps to (and highlights) the matching snapshot card
   // below; clicking that same point again undoes it — removes the
@@ -7173,10 +7197,11 @@
     }).join("") + '<th>Tendance</th>';
     syncSnapToggleLabel(store.ids.statsToggle, store.state.statsCollapsed, "le récap par trader");
     el.innerHTML =
-      '<div class="snap-stats-wrap table-scroll' + (store.state.statsCollapsed ? " collapsed" : "") + '"><table><thead><tr>' +
+      '<div class="snap-stats-wrap table-scroll' + (store.state.statsCollapsed ? " collapsed" : "") + '">' +
+      traderContributionHtml(rowsData) +
+      '<table><thead><tr>' +
       headCells +
       '</tr></thead><tbody>' + rows + '</tbody></table>' +
-      traderContributionHtml(rowsData) +
       '</div>';
   }
   // Two bars per trader: their real PNL (own actual stakes) against what a
@@ -8245,8 +8270,11 @@
     var n = points.length;
     function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
     function y(v) { return padT + innerH - ((v - min) / (0 - min)) * innerH; }
+    // Straight segments, deliberately not smoothPathD's bezier curve — a
+    // smoothed spline can dip below zero between two points that are both
+    // exactly at 0, reading as a fake drawdown that never happened.
     var linePts = points.map(function (p, i) { return { x: x(i), y: y(p.value) }; });
-    var pathD = smoothPathD(linePts);
+    var pathD = linePts.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(2) + "," + p.y.toFixed(2); }).join(" ");
     var zeroY = y(0);
     var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + zeroY.toFixed(2) + " L" + x(0).toFixed(2) + "," + zeroY.toFixed(2) + " Z";
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="drawdown-svg" preserveAspectRatio="xMidYMid meet">' +
@@ -8261,7 +8289,7 @@
     var svg = buildDrawdownSvg(dd.points);
     if (!svg) return "";
     return '<div class="pnl-chart-drawdown">' +
-      '<div class="pnl-chart-weekly-label">Drawdown (depuis le dernier sommet, pas depuis zéro)</div>' +
+      '<div class="pnl-chart-weekly-label">Drawdown</div>' +
       svg +
       '<div class="drawdown-stats"><span>Actuel : <b class="' + (dd.current < 0 ? "pnl-neg" : "") + '">' + esc(fmtUSDSigned(dd.current)) + '</b></span><span>Pire : <b class="pnl-neg">' + esc(fmtUSDSigned(dd.maxDD)) + '</b></span></div>' +
       '</div>';
