@@ -43,6 +43,15 @@
     --tier-b-gray: #6b6b6b;
     --gain-nuance: #2c4f24;
     --perte-nuance: #96481f;
+    /* Dedicated S/A+/A/B palette — 4 hues spread around the wheel
+       (purple/green/blue/orange) instead of reusing --gold (too close to
+       --bg's own cream tone to read on a chart line) and a flat grey for
+       B. Independent of --green/--red so tier colors never silently shift
+       if those win/loss colors change later. */
+    --tier-s: #8e44ad;
+    --tier-ap: #1a8f4c;
+    --tier-a: #2563eb;
+    --tier-b: #c2650f;
     /* Structural corner-rounding scale — small chips/badges/buttons use
        --radius-sm, cards/panels/boxes use --radius-md. Pills (999px) and
        perfect circles (50%) stay literal since those are already a
@@ -76,6 +85,10 @@
       --tier-b-gray: #a39c8e;
       --gain-nuance: #86c66a;
       --perte-nuance: #e0955a;
+      --tier-s: #c58ce0;
+      --tier-ap: #52d98a;
+      --tier-a: #6fa8f5;
+      --tier-b: #f0a35f;
     }
   }
   :root[data-theme="dark"] {
@@ -96,6 +109,10 @@
     --tier-b-gray: #a39c8e;
     --gain-nuance: #86c66a;
     --perte-nuance: #e0955a;
+    --tier-s: #c58ce0;
+    --tier-ap: #52d98a;
+    --tier-a: #6fa8f5;
+    --tier-b: #f0a35f;
   }
   * { box-sizing: border-box; }
   body {
@@ -1427,7 +1444,7 @@
   .tier-wr-value { flex: 0 0 40px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
   .tier-wr-count { flex: 0 0 auto; min-width: 78px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
-  .tier-wr-roi { font-style: italic; font-size: 10.5px; font-weight: 400; color: var(--text-dim); }
+  .tier-wr-roi { font-style: italic; font-size: 13px; font-weight: 700; color: var(--text); }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
   /* Manuel vs suivi auto — wider label badge than the 3-char conviction/
      note codes .tier-wr-badge was built for. */
@@ -1865,9 +1882,6 @@
   }
   .weekly-expand-btn:hover { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent); }
   .weekly-expand-btn.active { background: var(--accent); color: #fff; border-color: transparent; }
-  /* Note vs ROI scatter (extends L'analyse winrate × note) */
-  .note-roi-scatter { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
-  .note-roi-scatter-svg { display: block; width: 100%; height: auto; }
   /* Confidence drift over time (extends Le winrate par conviction) */
   .tier-drift { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
   .tier-drift-svg { display: block; width: 100%; height: auto; }
@@ -5143,7 +5157,7 @@
   // Conviction tags a snapshot can be marked with at bet time, so backtests
   // can later check whether winrate actually correlates with confidence.
   var CONFIDENCE_TIERS = ["S", "A+", "A", "B"];
-  var CONFIDENCE_COLORS = { "S": "var(--gold)", "A+": "var(--green)", "A": "var(--accent)", "B": "var(--tier-b-gray)" };
+  var CONFIDENCE_COLORS = { "S": "var(--tier-s)", "A+": "var(--tier-ap)", "A": "var(--tier-a)", "B": "var(--tier-b)" };
   // Some snapshots only ever have ONE named side — not a dust-trade gap
   // this time (that one's already handled upstream in computeMarketGroups),
   // but a genuine absence: not one of the ~20 tracked wallets ever held the
@@ -6343,6 +6357,15 @@
     var data = computeCoSignalMatrix(list, 8);
     if (!data) return "";
     var n = data.names.length;
+    // Color intensity is normalized against the matrix's own largest
+    // off-diagonal value (one shared scale for every cell), not against
+    // each row's own diagonal — row-relative % was making a "3" look
+    // darker than a "15" whenever they sat in rows with very different
+    // totals, which reads as nonsense next to the number printed on the
+    // cell. This way, a bigger raw count is always at least as dark as a
+    // smaller one, everywhere in the grid.
+    var maxOffDiag = 1;
+    for (var mi = 0; mi < n; mi++) { for (var mj = 0; mj < n; mj++) { if (mi !== mj) maxOffDiag = Math.max(maxOffDiag, data.matrix[mi][mj]); } }
     var colHeadCells = "";
     for (var c = 0; c < n; c++) colHeadCells += '<span>' + CO_SIGNAL_LETTERS[c] + '</span>';
     var rowsHtml = data.names.map(function (rowName, i) {
@@ -6358,10 +6381,11 @@
           cells += '<div class="co-signal-cell co-signal-diag" title="' + esc(rowName) + " — " + v + ' pari(s) au total (pas une case de comparaison)">' + v + '</div>';
           continue;
         }
-        var pct = data.matrix[i][i] > 0 ? (v / data.matrix[i][i]) : 0;
-        var title = rowName + " × " + data.names[j] + " : " + v + " pari(s) en commun (" + (pct * 100).toFixed(0) + "% des paris de " + rowName + ")";
-        var textColor = pct > 0.55 ? "#fff" : "var(--text)";
-        cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (pct * 100).toFixed(0) + '%, var(--panel));color:' + textColor + '" title="' + esc(title) + '">' + v + '</div>';
+        var rowPct = data.matrix[i][i] > 0 ? (v / data.matrix[i][i]) : 0;
+        var intensity = v / maxOffDiag;
+        var title = rowName + " × " + data.names[j] + " : " + v + " pari(s) en commun (" + (rowPct * 100).toFixed(0) + "% des paris de " + rowName + ")";
+        var textColor = intensity > 0.55 ? "#fff" : "var(--text)";
+        cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (intensity * 100).toFixed(0) + '%, var(--panel));color:' + textColor + '" title="' + esc(title) + '">' + v + '</div>';
       }
       return '<div class="co-signal-row2"><span class="co-signal-rowname" title="' + esc(rowName) + '">' + esc(rowName) + '</span><div class="co-signal-cellrow" style="grid-template-columns:repeat(' + n + ', 44px)">' + cells + '</div></div>';
     }).join("");
@@ -6615,7 +6639,13 @@
     var yMin = Math.min.apply(null, allVals), yMax = Math.max.apply(null, allVals);
     if (yMin === yMax) { yMin -= 1; yMax += 1; }
     function y(v) { return padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH; }
-    var lines = "", markers = "", anyLine = false;
+    // Two lines per tier, same idea as the calibration mockups earlier this
+    // session: a thin dashed line for the daily mean (moves around) and a
+    // thick solid line spanning the FULL width for that tier's mean over
+    // the whole period — not just a short marker at the edge, so it reads
+    // as "here's the steady baseline" right alongside the day-to-day noise
+    // instead of something you have to hold in your head separately.
+    var dailyLines = "", overallLines = "", anyLine = false;
     CONFIDENCE_TIERS.forEach(function (tier) {
       var d = "";
       days.forEach(function (day, i) {
@@ -6623,22 +6653,27 @@
         if (t.count === 0) return;
         d += (d === "" ? "M" : "L") + x(i).toFixed(2) + "," + y(t.sum / t.count).toFixed(2) + " ";
       });
-      if (d === "") return;
-      anyLine = true;
-      lines += '<path d="' + d.trim() + '" fill="none" stroke="' + CONFIDENCE_COLORS[tier] + '" stroke-width="2"><title>' + esc(tier) + ' — moyenne du jour</title></path>';
       var ov = overall[tier];
+      if (d === "" && !ov.count) return;
+      anyLine = true;
+      var color = CONFIDENCE_COLORS[tier];
+      if (d !== "") {
+        dailyLines += '<path d="' + d.trim() + '" fill="none" stroke="' + color + '" stroke-width="1.4" stroke-dasharray="4 3"><title>' + esc(tier) + ' — moyenne du jour</title></path>';
+      }
       if (ov.count) {
         var mean = ov.sum / ov.count, my = y(mean);
-        markers += '<line x1="' + (W - padR).toFixed(2) + '" y1="' + my.toFixed(2) + '" x2="' + (W - padR + 16).toFixed(2) + '" y2="' + my.toFixed(2) + '" stroke="' + CONFIDENCE_COLORS[tier] + '" stroke-width="2" stroke-dasharray="2 2"><title>' + esc(tier) + ' — moyenne totale ' + (mean >= 0 ? "+" : "") + mean.toFixed(0) + '%</title></line>' +
-          '<text x="' + (W - padR + 19).toFixed(2) + '" y="' + (my + 3).toFixed(2) + '" font-size="9" font-weight="700" fill="' + CONFIDENCE_COLORS[tier] + '">' + (mean >= 0 ? "+" : "") + mean.toFixed(0) + '%</text>';
+        overallLines += '<line x1="' + padL + '" y1="' + my.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + my.toFixed(2) + '" stroke="' + color + '" stroke-width="3"><title>' + esc(tier) + ' — moyenne totale ' + (mean >= 0 ? "+" : "") + mean.toFixed(0) + '%</title></line>' +
+          '<text x="' + (W - padR + 6).toFixed(2) + '" y="' + (my + 4).toFixed(2) + '" font-size="12" font-weight="700" fill="' + color + '">' + (mean >= 0 ? "+" : "") + mean.toFixed(0) + '%</text>';
       }
     });
     if (!anyLine) return "";
     var zeroY = y(0);
+    // Overall (solid) drawn first, daily (dashed) drawn after so the finer
+    // dashed line stays visible even where it crosses a thick solid one.
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="tier-drift-svg">' +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>' +
       '<text x="2" y="' + (zeroY + 3).toFixed(2) + '" font-size="8" fill="var(--text-dim)">0%</text>' +
-      lines + markers +
+      overallLines + dailyLines +
       '</svg>';
   }
   function snapMatchesDistCell(s, bracket, tier) {
@@ -6718,7 +6753,7 @@
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
     var driftSvg = buildTierDriftSvg(computeTierDriftByDay(list, store));
-    var driftHtml = driftSvg ? '<div class="tier-drift"><div class="pnl-chart-weekly-label">Dérive du ROI par palier — courbe = moyenne du jour, tirets à droite = moyenne totale</div>' + driftSvg + tierLegendHtml() + '</div>' : '';
+    var driftHtml = driftSvg ? '<div class="tier-drift"><div class="pnl-chart-weekly-label">Dérive du ROI par palier — pointillé fin = moyenne du jour, trait plein = moyenne totale</div>' + driftSvg + tierLegendHtml() + '</div>' : '';
     syncSnapToggleLabel(store.ids.tierToggle, store.state.tierWinrateCollapsed, "le winrate par conviction");
     el.innerHTML =
       '<div class="tier-wr-collapse-wrap' + (store.state.tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
@@ -6749,67 +6784,6 @@
       });
     });
     return byBin;
-  }
-  // One dot per decided, noted bet (note in x, realized ROI% in y) — more
-  // granular than the bucket rows above, shows whether the note predicts
-  // ROI itself or just win/loss.
-  function computeNoteRoiPoints(list, store) {
-    var pts = [];
-    list.forEach(function (s) {
-      if (!s.winningSide || s.noteAtSnapshot == null) return;
-      var stake = store.stakeFor(s);
-      var pnl = stake ? hypotheticalFlatPnl(s, stake) : null;
-      if (pnl == null || !stake) return;
-      pts.push({ note: s.noteAtSnapshot, roi: (pnl / stake) * 100, win: s.leaderName === s.winningSide });
-    });
-    return pts;
-  }
-  function buildNoteRoiScatterSvg(pts) {
-    if (pts.length < 4) return "";
-    var W = 700, H = 160, padL = 40, padR = 14, padT = 10, padB = 20;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var xMin = 0, xMax = 10;
-    var yVals = pts.map(function (p) { return p.roi; });
-    var yMin = Math.min.apply(null, yVals.concat([0]));
-    var yMax = Math.max.apply(null, yVals.concat([0]));
-    if (yMin === yMax) { yMin -= 1; yMax += 1; }
-    function x(v) { return padL + ((v - xMin) / (xMax - xMin)) * innerW; }
-    function y(v) { return padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH; }
-    var zeroY = y(0);
-    var dots = pts.map(function (p) {
-      return '<circle cx="' + x(p.note).toFixed(2) + '" cy="' + y(p.roi).toFixed(2) + '" r="3" fill="' + (p.win ? "var(--green)" : "var(--red)") + '" opacity="0.55"><title>Note ' + p.note.toFixed(1) + ' — ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% ROI</title></circle>';
-    }).join("");
-    // Bucket-mean trend, not a least-squares line — every loss sits at
-    // exactly -100% ROI (the flat-stake floor), and a straight regression
-    // through that floor reads as "higher notes look worse" even when they
-    // aren't. Averaging within each 1-point note bucket first, then
-    // connecting those bucket means, isn't dragged down by the floor the
-    // same way.
-    var buckets = [];
-    for (var b = 0; b < 10; b++) buckets.push({ min: b, sum: 0, count: 0 });
-    pts.forEach(function (p) {
-      var bi = Math.min(9, Math.floor(p.note));
-      buckets[bi].sum += p.roi; buckets[bi].count++;
-    });
-    var trendPts = [];
-    buckets.forEach(function (bk) {
-      if (!bk.count) return;
-      trendPts.push({ px: x(bk.min + 0.5), py: y(bk.sum / bk.count), roi: bk.sum / bk.count, min: bk.min, count: bk.count });
-    });
-    var trendLine = "";
-    if (trendPts.length >= 2) {
-      var d = trendPts.map(function (p, i) { return (i === 0 ? "M" : "L") + p.px.toFixed(2) + "," + p.py.toFixed(2); }).join(" ");
-      trendLine = '<path d="' + d + '" fill="none" stroke="var(--accent)" stroke-width="2"/>' +
-        trendPts.map(function (p) {
-          return '<circle cx="' + p.px.toFixed(2) + '" cy="' + p.py.toFixed(2) + '" r="3" fill="var(--accent)"><title>Note ' + p.min + '-' + (p.min + 1) + ' — ROI moyen ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% (' + p.count + ' pari(s))</title></circle>';
-        }).join("");
-    }
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="note-roi-scatter-svg">' +
-      '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>' +
-      dots + trendLine +
-      '<text x="' + padL + '" y="' + (H - 4) + '" font-size="9" fill="var(--text-dim)">Note 0</text>' +
-      '<text x="' + (W - padR) + '" y="' + (H - 4) + '" font-size="9" fill="var(--text-dim)" text-anchor="end">Note 10</text>' +
-      '</svg>';
   }
   function renderNoteWinrate(list, store) {
     var el = store.els.noteWinrate;
@@ -6846,13 +6820,11 @@
     var filterNoteHtml = store.state.noteCardFilter != null
       ? '<div class="tier-wr-note">Filtré sur <b>note ' + store.state.noteCardFilter + '-' + (store.state.noteCardFilter + 1) + '</b> — reclique le seuil actif pour l\'enlever.</div>'
       : '';
-    var scatterSvg = buildNoteRoiScatterSvg(computeNoteRoiPoints(decidedAll, store));
-    var scatterHtml = scatterSvg ? '<div class="note-roi-scatter"><div class="pnl-chart-weekly-label">Note vs ROI réel (chaque pari, moyenne par palier de note)</div>' + scatterSvg + '</div>' : '';
     syncSnapToggleLabel(store.ids.noteToggle, store.state.noteWinrateCollapsed, "l'analyse winrate × note");
     el.innerHTML =
       '<div class="tier-wr-collapse-wrap' + (store.state.noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par tranche de note</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + '</div>' +
-      rows + noteHtml + filterNoteHtml + scatterHtml + '</div></div>';
+      rows + noteHtml + filterNoteHtml + '</div></div>';
   }
   // Cumulative version of the same flat-$1000-per-pari simulation, in the
   // order the snapshots were actually saved — reuses buildHistoryChartSvg
