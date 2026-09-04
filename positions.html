@@ -1920,14 +1920,20 @@
   .trader-contrib-reset:hover { text-decoration: underline; }
   /* Arbitrage note — current vs suggested rating on a shared 0-10 scale,
      ranked by |gap|. */
-  .arb-row { display: grid; grid-template-columns: 100px 50px 1fr 90px; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--panel-border); }
+  .arb-row { display: grid; grid-template-columns: 100px 100px 1fr 90px; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--panel-border); }
   .arb-row:first-of-type { border-top: none; }
-  .arb-note-pair { text-align: center; }
+  .arb-note-pair { text-align: center; white-space: nowrap; }
   .arb-note-cur { font-size: 15px; font-weight: 700; }
+  .arb-note-arrow { font-size: 12px; color: var(--text-dim); margin: 0 3px; }
+  .arb-note-sug { font-size: 15px; font-weight: 700; }
   .arb-scale { position: relative; height: 6px; background: var(--panel-border); border-radius: 3px; }
   .arb-scale-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; opacity: .3; }
   .arb-tick { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--text); border-radius: 1px; }
   .arb-tick-sug { background: var(--accent); }
+  .arb-legend { font-size: 10px; color: var(--text-dim); display: flex; align-items: center; gap: 14px; margin: 2px 0 10px; }
+  .arb-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+  .arb-legend-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; background: var(--text); }
+  .arb-legend-dot-sug { background: var(--accent); }
   .arb-meta { font-size: 10.5px; color: var(--text-dim); margin-top: 8px; }
   .arb-badge { display: inline-block; font-size: 9px; font-family: "IBM Plex Mono", monospace; padding: 1px 6px; border-radius: 999px; margin-left: 4px; }
   .arb-badge-solid { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
@@ -7431,7 +7437,7 @@
       var winrate = st.decided > 0 ? (st.win / st.decided * 100) : null;
       var weight = Math.min(1, st.hypCount / 15);
       var suggested = roi == null ? current : current + (roiToNoteEstimate(roi) - current) * weight;
-      return { name: name, current: current, suggested: suggested, delta: suggested - current, count: st.hypCount, winrate: winrate, roi: roi, solid: st.hypCount >= ARBITRAGE_SOLID_COUNT };
+      return { name: name, current: current, suggested: suggested, delta: suggested - current, count: st.hypCount, winrate: winrate, roi: roi, pnlTotal: st.hypPnl, solid: st.hypCount >= ARBITRAGE_SOLID_COUNT };
     }).sort(function (a, b) { return Math.abs(b.delta) - Math.abs(a.delta); });
   }
   function arbitrageNoteHtml(list, store) {
@@ -7444,13 +7450,15 @@
       var deltaLbl = Math.abs(r.delta) < 0.3 ? "stable" : (r.delta > 0 ? "sous-noté" : "sur-noté");
       var meta = r.count + " pari(s) (" + ARBITRAGE_WINDOW_DAYS + "j)" +
         (r.winrate != null ? " · " + r.winrate.toFixed(0) + "% winrate" : "") +
-        (r.roi != null ? " · ROI " + (r.roi >= 0 ? "+" : "") + r.roi.toFixed(0) + "%" : "");
+        (r.roi != null ? " · ROI moyen (mise 1000$) " + (r.roi >= 0 ? "+" : "") + r.roi.toFixed(0) + "%" : "") +
+        (r.pnlTotal != null ? " · " + fmtUSDSigned(r.pnlTotal) + " au total" : "");
       var badge = r.solid ? '<span class="arb-badge arb-badge-solid">Signal solide</span>' : '<span class="arb-badge arb-badge-weak">Échantillon faible</span>';
+      var sugColor = Math.abs(r.delta) < 0.3 ? "" : (r.delta > 0 ? "pnl-pos" : "pnl-neg");
       return '<div class="arb-row">' +
         '<span class="trader-contrib-name mono">' + esc(r.name) + '</span>' +
-        '<div class="arb-note-pair"><span class="arb-note-cur mono">' + r.current.toFixed(1) + '</span></div>' +
+        '<div class="arb-note-pair mono"><span class="arb-note-cur">' + r.current.toFixed(1) + '</span><span class="arb-note-arrow">→</span><span class="arb-note-sug ' + sugColor + '">' + r.suggested.toFixed(1) + '</span></div>' +
         '<div>' +
-          '<div class="arb-scale">' +
+          '<div class="arb-scale" title="Note actuelle : ' + r.current.toFixed(1) + ' — Note suggérée : ' + r.suggested.toFixed(1) + '">' +
             (segWidth > 0.1 ? '<div class="arb-scale-fill" style="left:' + segLeft.toFixed(1) + '%;width:' + segWidth.toFixed(1) + '%;background:' + (r.delta >= 0 ? "var(--green)" : "var(--red)") + '"></div>' : '') +
             '<div class="arb-tick" style="left:' + curPos.toFixed(1) + '%" title="Note actuelle : ' + r.current.toFixed(1) + '"></div>' +
             '<div class="arb-tick arb-tick-sug" style="left:' + sugPos.toFixed(1) + '%" title="Note suggérée : ' + r.suggested.toFixed(1) + '"></div>' +
@@ -7461,7 +7469,8 @@
       '</div>';
     }).join("");
     return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">⚖️ Arbitrage note — note actuelle vs suggérée par la performance des ' + ARBITRAGE_WINDOW_DAYS + ' derniers jours</div>' +
-      '<div class="empty-note" style="padding:0 0 10px;">Diagnostic seulement — les notes restent codées en dur, ceci ne fait que pointer qui mérite d\'être revu, pas les modifier.</div>' +
+      '<div class="empty-note" style="padding:0 0 6px;">Diagnostic seulement — les notes restent codées en dur, ceci ne fait que pointer qui mérite d\'être revu, pas les modifier.</div>' +
+      '<div class="arb-legend"><span class="arb-legend-item"><span class="arb-legend-dot"></span>Note actuelle</span><span class="arb-legend-item"><span class="arb-legend-dot arb-legend-dot-sug"></span>Note suggérée (perf. ' + ARBITRAGE_WINDOW_DAYS + 'j)</span></div>' +
       rowsHtml +
       '</div>';
   }
