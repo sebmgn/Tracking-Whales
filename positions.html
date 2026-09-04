@@ -1896,10 +1896,21 @@
   .stat-consensus-val { font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
   .stat-consensus-bar { width: 22px; border-radius: 3px 3px 0 0; }
   .stat-consensus-lbl { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
-  .co-signal-matrix { display: grid; gap: 1px; margin-top: 4px; width: max-content; }
-  .co-signal-cell { width: 16px; height: 16px; border-radius: 2px; }
-  .co-signal-lbls { display: grid; gap: 1px; margin-top: 2px; width: max-content; }
-  .co-signal-lbls span { font-size: 7px; color: var(--text-dim); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Co-signal matrix: full names as row labels (never truncated — a row's
+     height fits a whole name), columns referenced by letter with a legend
+     spelling each one out below. Counts print directly on the cells, so
+     reading it never depends on hovering. */
+  .co-signal-row2 { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .co-signal-rowname { width: 100px; flex: none; font-size: 11px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .co-signal-cellrow { display: grid; gap: 2px; }
+  .co-signal-cell {
+    width: 22px; height: 22px; border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-family: "IBM Plex Mono", monospace; font-size: 9.5px; font-weight: 600;
+  }
+  .co-signal-colheads { margin-bottom: 1px; }
+  .co-signal-colheads span { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text-dim); }
+  .co-signal-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 10.5px; color: var(--text-dim); }
+  .co-signal-legend b { color: var(--accent); font-family: "IBM Plex Mono", monospace; margin-right: 3px; }
   /* Monthly mini chips, in the pnl-chart-stats header row */
   .pnl-chart-stat-monthly { min-width: auto; padding: 4px 8px 5px; align-items: flex-start; }
   .month-mini-row { display: flex; gap: 5px; }
@@ -6300,23 +6311,34 @@
     });
     return { names: names, matrix: matrix };
   }
+  // Full trader names never get truncated into illegibility — they're row
+  // labels (a row's height easily fits a whole name), and columns are
+  // referenced by letter with a legend spelling each one out underneath.
+  // The count sits directly on the cell too, not just in a hover title, so
+  // reading the matrix never depends on hovering at all.
+  var CO_SIGNAL_LETTERS = "ABCDEFGH";
   function coSignalMatrixHtml(list) {
     var data = computeCoSignalMatrix(list, 8);
     if (!data) return "";
     var n = data.names.length;
-    var cells = "";
-    for (var i = 0; i < n; i++) {
+    var colHeadCells = "";
+    for (var c = 0; c < n; c++) colHeadCells += '<span>' + CO_SIGNAL_LETTERS[c] + '</span>';
+    var rowsHtml = data.names.map(function (rowName, i) {
+      var cells = "";
       for (var j = 0; j < n; j++) {
-        var pct = data.matrix[i][i] > 0 ? (data.matrix[i][j] / data.matrix[i][i]) : 0;
-        var title = data.names[i] + " × " + data.names[j] + " : " + data.matrix[i][j] + " pari(s) en commun (" + (pct * 100).toFixed(0) + "% des paris de " + data.names[i] + ")";
-        cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (pct * 100).toFixed(0) + '%, var(--panel))" title="' + esc(title) + '"></div>';
+        var v = data.matrix[i][j];
+        var pct = data.matrix[i][i] > 0 ? (v / data.matrix[i][i]) : 0;
+        var title = rowName + " × " + data.names[j] + " : " + v + " pari(s) en commun (" + (pct * 100).toFixed(0) + "% des paris de " + rowName + ")";
+        var textColor = pct > 0.55 ? "#fff" : "var(--text)";
+        cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (pct * 100).toFixed(0) + '%, var(--panel));color:' + textColor + '" title="' + esc(title) + '">' + v + '</div>';
       }
-    }
-    var lblFor = function (n2) { return n2.length > 6 ? n2.slice(0, 5) + "…" : n2; };
-    var colLbls = data.names.map(function (n2) { return '<span title="' + esc(n2) + '">' + esc(lblFor(n2)) + "</span>"; }).join("");
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders vus ensemble (% des paris de la ligne partagés avec la colonne)</div>' +
-      '<div class="co-signal-matrix" style="grid-template-columns:repeat(' + n + ', 16px)">' + cells + '</div>' +
-      '<div class="co-signal-lbls" style="grid-template-columns:repeat(' + n + ', 16px)">' + colLbls + '</div>' +
+      return '<div class="co-signal-row2"><span class="co-signal-rowname" title="' + esc(rowName) + '">' + esc(rowName) + '</span><div class="co-signal-cellrow" style="grid-template-columns:repeat(' + n + ', 22px)">' + cells + '</div></div>';
+    }).join("");
+    var legend = data.names.map(function (nm, i) { return '<span><b>' + CO_SIGNAL_LETTERS[i] + '</b> ' + esc(nm) + '</span>'; }).join("");
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders vus ensemble (paris en commun)</div>' +
+      '<div class="co-signal-row2"><span class="co-signal-rowname"></span><div class="co-signal-cellrow co-signal-colheads" style="grid-template-columns:repeat(' + n + ', 22px)">' + colHeadCells + '</div></div>' +
+      rowsHtml +
+      '<div class="co-signal-legend">' + legend + '</div>' +
       '</div>';
   }
   var DAYHOUR_DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
