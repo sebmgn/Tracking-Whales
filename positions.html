@@ -1880,6 +1880,13 @@
   .trader-contrib-bar-track { height: 5px; background: var(--panel-border); border-radius: 3px; overflow: hidden; }
   .trader-contrib-bar-fill { height: 100%; }
   .trader-contrib-vals { text-align: right; white-space: nowrap; }
+  .trader-contrib-body { display: flex; gap: 14px; align-items: flex-start; }
+  .trader-contrib-rows { flex: 1; min-width: 0; }
+  .trader-contrib-select {
+    width: 130px; font-size: 11px; background: var(--panel); color: var(--text);
+    border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 2px;
+  }
+  .trader-contrib-select option { padding: 2px 4px; }
   /* Autres stats: shared divider between sub-sections (streaks, consensus,
      co-signal matrix, day×hour heatmap, monthly cards). */
   .other-stats-section { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
@@ -1889,17 +1896,16 @@
   .stat-consensus-val { font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
   .stat-consensus-bar { width: 22px; border-radius: 3px 3px 0 0; }
   .stat-consensus-lbl { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
-  .co-signal-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 12px; }
-  .co-signal-names { width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-  .co-signal-bar-track { flex: 1; height: 7px; background: var(--panel-border); border-radius: 4px; overflow: hidden; }
-  .co-signal-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
-  .co-signal-count { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
-  .co-signal-pct { color: var(--text-dim); }
-  .month-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; margin-top: 4px; }
-  .month-tile { border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 4px; text-align: center; }
-  .month-tile-m { font-size: 9px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-dim); }
-  .month-tile-v { font-family: "IBM Plex Mono", monospace; font-weight: 700; font-size: 12.5px; margin-top: 3px; }
-  .pnl-chart-monthly { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--panel-border); }
+  .co-signal-matrix { display: grid; gap: 1px; margin-top: 4px; width: max-content; }
+  .co-signal-cell { width: 16px; height: 16px; border-radius: 2px; }
+  .co-signal-lbls { display: grid; gap: 1px; margin-top: 2px; width: max-content; }
+  .co-signal-lbls span { font-size: 7px; color: var(--text-dim); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Monthly mini chips, in the pnl-chart-stats header row */
+  .pnl-chart-stat-monthly { min-width: auto; padding: 4px 8px 5px; align-items: flex-start; }
+  .month-mini-row { display: flex; gap: 5px; }
+  .month-mini-chip { display: flex; flex-direction: column; align-items: center; min-width: 30px; }
+  .month-mini-m { font-size: 8px; text-transform: uppercase; color: var(--text-dim); }
+  .month-mini-v { font-family: "IBM Plex Mono", monospace; font-weight: 700; font-size: 10.5px; }
   /* Click a week (bar or table row) to highlight that week's own dots on
      the evolution chart above — see the [data-week-key][data-first-idx]
      handler. Only the aligned weeks (weeklyTableHtml/buildWeeklyAlignedBarSvg
@@ -2645,7 +2651,8 @@
       chartSelectedId: null, chartPrevScrollY: null,
       statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
       trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
-      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false
+      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false,
+      traderContribSelected: []
     };
   }
   var rtMinValue = 0;
@@ -6273,48 +6280,44 @@
     }).join("");
     return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Force du consensus (traders d\'accord) vs winrate</div><div class="stat-consensus-row">' + cols + '</div></div>';
   }
-  // Top co-occurring PAIRS rather than a full matrix — a grid of N² tiny
-  // cells didn't read as anything; a ranked list of "these two show up
-  // together most" is the actual scannable version of the same idea.
-  // Restricted to the top 10 traders by volume first so two high-volume
-  // traders who happen to share one snapshot don't drown out a pair that's
-  // genuinely often together.
-  function computeCoSignalPairs(list, topNTraders, topNPairs) {
+  // Row-normalized co-occurrence: cell(i,j) = "of trader i's own bets, what
+  // % also had trader j" — spots redundant profiles (near-1.0 both ways,
+  // effectively the same signal followed twice) vs genuinely diversified
+  // ones. Capped to the top 8 traders by volume. Cells are a fixed small
+  // size (not 1fr stretched to the container width) so the grid stays
+  // compact regardless of how wide the panel is.
+  function computeCoSignalMatrix(list, topN) {
     var counts = {};
     list.forEach(function (s) { (s.traderNames || []).forEach(function (n) { counts[n] = (counts[n] || 0) + 1; }); });
-    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, topNTraders || 10);
-    var nameSet = {};
-    names.forEach(function (n) { nameSet[n] = true; });
-    var pairCounts = {};
+    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, topN || 8);
+    if (names.length < 2) return null;
+    var idx = {};
+    names.forEach(function (n, i) { idx[n] = i; });
+    var matrix = names.map(function () { return names.map(function () { return 0; }); });
     list.forEach(function (s) {
-      var present = (s.traderNames || []).filter(function (n) { return nameSet[n]; });
-      for (var i = 0; i < present.length; i++) {
-        for (var j = i + 1; j < present.length; j++) {
-          var a = present[i], b = present[j];
-          var key = a < b ? a + "|" + b : b + "|" + a;
-          pairCounts[key] = (pairCounts[key] || 0) + 1;
-        }
-      }
+      var present = (s.traderNames || []).filter(function (n) { return idx[n] != null; });
+      present.forEach(function (a) { present.forEach(function (b) { matrix[idx[a]][idx[b]]++; }); });
     });
-    return Object.keys(pairCounts).map(function (k) {
-      var parts = k.split("|");
-      return { a: parts[0], b: parts[1], count: pairCounts[k], aTotal: counts[parts[0]] };
-    }).sort(function (x, y) { return y.count - x.count; }).slice(0, topNPairs || 6);
+    return { names: names, matrix: matrix };
   }
-  function coSignalPairsHtml(list) {
-    var pairs = computeCoSignalPairs(list, 10, 6);
-    if (!pairs.length) return "";
-    var maxCount = Math.max.apply(null, pairs.map(function (p) { return p.count; }).concat([1]));
-    var rows = pairs.map(function (p) {
-      var pct = Math.min(100, p.count / maxCount * 100);
-      var pctOfA = p.aTotal ? Math.round(p.count / p.aTotal * 100) : 0;
-      return '<div class="co-signal-row">' +
-        '<span class="co-signal-names">' + esc(p.a) + ' &amp; ' + esc(p.b) + '</span>' +
-        '<div class="co-signal-bar-track"><div class="co-signal-bar-fill" style="width:' + pct.toFixed(0) + '%"></div></div>' +
-        '<span class="co-signal-count">' + p.count + ' pari(s) <span class="co-signal-pct">(' + pctOfA + '% de ' + esc(p.a) + ')</span></span>' +
-        '</div>';
-    }).join("");
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders vus le plus souvent ensemble</div>' + rows + '</div>';
+  function coSignalMatrixHtml(list) {
+    var data = computeCoSignalMatrix(list, 8);
+    if (!data) return "";
+    var n = data.names.length;
+    var cells = "";
+    for (var i = 0; i < n; i++) {
+      for (var j = 0; j < n; j++) {
+        var pct = data.matrix[i][i] > 0 ? (data.matrix[i][j] / data.matrix[i][i]) : 0;
+        var title = data.names[i] + " × " + data.names[j] + " : " + data.matrix[i][j] + " pari(s) en commun (" + (pct * 100).toFixed(0) + "% des paris de " + data.names[i] + ")";
+        cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (pct * 100).toFixed(0) + '%, var(--panel))" title="' + esc(title) + '"></div>';
+      }
+    }
+    var lblFor = function (n2) { return n2.length > 6 ? n2.slice(0, 5) + "…" : n2; };
+    var colLbls = data.names.map(function (n2) { return '<span title="' + esc(n2) + '">' + esc(lblFor(n2)) + "</span>"; }).join("");
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders vus ensemble (% des paris de la ligne partagés avec la colonne)</div>' +
+      '<div class="co-signal-matrix" style="grid-template-columns:repeat(' + n + ', 16px)">' + cells + '</div>' +
+      '<div class="co-signal-lbls" style="grid-template-columns:repeat(' + n + ', 16px)">' + colLbls + '</div>' +
+      '</div>';
   }
   var DAYHOUR_DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
   function computeDayOfWeekStats(list, store) {
@@ -6364,15 +6367,19 @@
     months.forEach(function (m) { m.roi = m.stake > 0 ? (m.pnl / m.stake * 100) : null; });
     return months;
   }
-  function monthlyCardsHtml(months) {
+  // Compact chips (last 6 months) living in the header stat row, to the
+  // left of the Trades/PnL/ROI pills — moved out of a separate section
+  // under the chart on request.
+  function monthlyMiniHtml(months) {
     if (months.length < 2) return "";
-    var tiles = months.map(function (m) {
+    var recent = months.slice(-6);
+    var chips = recent.map(function (m) {
       var cls = m.roi == null ? "" : (m.roi >= 0 ? "pnl-pos" : "pnl-neg");
-      var bg = m.roi == null ? "transparent" : "color-mix(in srgb, " + (m.roi >= 0 ? "var(--green)" : "var(--red)") + " 12%, var(--panel))";
-      var label = m.date.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
-      return '<div class="month-tile" style="background:' + bg + '" title="' + m.count + ' pari(s)"><div class="month-tile-m">' + esc(label) + '</div><div class="month-tile-v ' + cls + '">' + (m.roi == null ? "—" : (m.roi >= 0 ? "+" : "") + m.roi.toFixed(0) + "%") + "</div></div>";
+      var label = m.date.toLocaleDateString("fr-FR", { month: "short" });
+      var title = m.date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) + " — " + m.count + " pari(s)";
+      return '<div class="month-mini-chip" title="' + esc(title) + '"><span class="month-mini-m">' + esc(label) + '</span><span class="month-mini-v ' + cls + '">' + (m.roi == null ? "—" : (m.roi >= 0 ? "+" : "") + m.roi.toFixed(0) + "%") + '</span></div>';
     }).join("");
-    return '<div class="pnl-chart-monthly"><div class="pnl-chart-weekly-label">Bilan mensuel</div><div class="month-grid">' + tiles + '</div></div>';
+    return '<div class="pnl-chart-stat pnl-chart-stat-monthly"><span class="pnl-chart-stat-label">Bilan mensuel</span><div class="month-mini-row">' + chips + '</div></div>';
   }
   // Catch-all for secondary stats — streaks plus everything below, all
   // collapsed by default behind one toggle rather than each claiming its
@@ -6394,7 +6401,7 @@
     var blocks = [
       streaksHtml(computeStreaks(series)),
       consensusStrengthHtml(list),
-      coSignalPairsHtml(list),
+      coSignalMatrixHtml(list),
       dayOfWeekHtml(list, store)
     ].filter(function (b) { return !!b; }).join("");
     el.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
@@ -6602,10 +6609,15 @@
       // data-tier lives on the whole row, not just the 36px badge — the
       // badge alone was too small a target to hit reliably, so the click
       // handler below matches ".tier-wr-row" and the row gets a hover fill
-      // to make the bigger hit area visible.
-      return '<div class="tier-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" data-store="' + store.name + '" title="Filtrer les snapshots sur ' + esc(tier) + '">' +
+      // to make the bigger hit area visible. One rich title on the row
+      // itself (not just the inner track) so hovering anywhere on the row
+      // shows winrate/count/PnL/ROI, not just the click-to-filter hint.
+      var rowTitle = esc(tier) + " : " + countLabel + (wr != null ? " (" + wr.toFixed(0) + "% winrate)" : "") +
+        (hyp != null ? " — " + esc(fmtUSDSigned(hyp)) + " (" + (roi >= 0 ? "+" : "") + roi.toFixed(0) + "% ROI)" : "") +
+        " — clique pour filtrer les paris ci-dessous";
+      return '<div class="tier-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" data-store="' + store.name + '" title="' + rowTitle + '">' +
         '<button type="button" class="tier-wr-badge' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" style="' + badgeStyle + '">' + esc(tier) + '</button>' +
-        '<div class="tier-wr-track" title="' + esc(tier + " : " + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
+        '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
         hypHtml +
@@ -6650,9 +6662,9 @@
     });
     return byBin;
   }
-  // One dot per decided, noted bet (note in x, realized ROI% in y) plus a
-  // least-squares trend line — more granular than the bucket rows above,
-  // shows whether the note predicts ROI itself or just win/loss.
+  // One dot per decided, noted bet (note in x, realized ROI% in y) — more
+  // granular than the bucket rows above, shows whether the note predicts
+  // ROI itself or just win/loss.
   function computeNoteRoiPoints(list, store) {
     var pts = [];
     list.forEach(function (s) {
@@ -6663,16 +6675,6 @@
       pts.push({ note: s.noteAtSnapshot, roi: (pnl / stake) * 100, win: s.leaderName === s.winningSide });
     });
     return pts;
-  }
-  function linearRegression(pts, xKey, yKey) {
-    var n = pts.length;
-    if (n < 2) return null;
-    var sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-    pts.forEach(function (p) { sumX += p[xKey]; sumY += p[yKey]; sumXY += p[xKey] * p[yKey]; sumXX += p[xKey] * p[xKey]; });
-    var denom = n * sumXX - sumX * sumX;
-    if (denom === 0) return null;
-    var slope = (n * sumXY - sumX * sumY) / denom;
-    return { slope: slope, intercept: (sumY - slope * sumX) / n };
   }
   function buildNoteRoiScatterSvg(pts) {
     if (pts.length < 4) return "";
@@ -6687,13 +6689,32 @@
     function y(v) { return padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH; }
     var zeroY = y(0);
     var dots = pts.map(function (p) {
-      return '<circle cx="' + x(p.note).toFixed(2) + '" cy="' + y(p.roi).toFixed(2) + '" r="3" fill="' + (p.win ? "var(--green)" : "var(--red)") + '" opacity="0.7"><title>Note ' + p.note.toFixed(1) + ' — ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% ROI</title></circle>';
+      return '<circle cx="' + x(p.note).toFixed(2) + '" cy="' + y(p.roi).toFixed(2) + '" r="3" fill="' + (p.win ? "var(--green)" : "var(--red)") + '" opacity="0.55"><title>Note ' + p.note.toFixed(1) + ' — ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% ROI</title></circle>';
     }).join("");
-    var reg = linearRegression(pts, "note", "roi");
+    // Bucket-mean trend, not a least-squares line — every loss sits at
+    // exactly -100% ROI (the flat-stake floor), and a straight regression
+    // through that floor reads as "higher notes look worse" even when they
+    // aren't. Averaging within each 1-point note bucket first, then
+    // connecting those bucket means, isn't dragged down by the floor the
+    // same way.
+    var buckets = [];
+    for (var b = 0; b < 10; b++) buckets.push({ min: b, sum: 0, count: 0 });
+    pts.forEach(function (p) {
+      var bi = Math.min(9, Math.floor(p.note));
+      buckets[bi].sum += p.roi; buckets[bi].count++;
+    });
+    var trendPts = [];
+    buckets.forEach(function (bk) {
+      if (!bk.count) return;
+      trendPts.push({ px: x(bk.min + 0.5), py: y(bk.sum / bk.count), roi: bk.sum / bk.count, min: bk.min, count: bk.count });
+    });
     var trendLine = "";
-    if (reg) {
-      var y0 = reg.slope * xMin + reg.intercept, y1 = reg.slope * xMax + reg.intercept;
-      trendLine = '<line x1="' + x(xMin).toFixed(2) + '" y1="' + y(y0).toFixed(2) + '" x2="' + x(xMax).toFixed(2) + '" y2="' + y(y1).toFixed(2) + '" stroke="var(--accent)" stroke-width="1.8" stroke-dasharray="5 3"/>';
+    if (trendPts.length >= 2) {
+      var d = trendPts.map(function (p, i) { return (i === 0 ? "M" : "L") + p.px.toFixed(2) + "," + p.py.toFixed(2); }).join(" ");
+      trendLine = '<path d="' + d + '" fill="none" stroke="var(--accent)" stroke-width="2"/>' +
+        trendPts.map(function (p) {
+          return '<circle cx="' + p.px.toFixed(2) + '" cy="' + p.py.toFixed(2) + '" r="3" fill="var(--accent)"><title>Note ' + p.min + '-' + (p.min + 1) + ' — ROI moyen ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% (' + p.count + ' pari(s))</title></circle>';
+        }).join("");
     }
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="note-roi-scatter-svg">' +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>' +
@@ -6738,7 +6759,7 @@
       ? '<div class="tier-wr-note">Filtré sur <b>note ' + store.state.noteCardFilter + '-' + (store.state.noteCardFilter + 1) + '</b> — reclique le seuil actif pour l\'enlever.</div>'
       : '';
     var scatterSvg = buildNoteRoiScatterSvg(computeNoteRoiPoints(decidedAll, store));
-    var scatterHtml = scatterSvg ? '<div class="note-roi-scatter"><div class="pnl-chart-weekly-label">Note vs ROI réel (chaque pari, droite de tendance)</div>' + scatterSvg + '</div>' : '';
+    var scatterHtml = scatterSvg ? '<div class="note-roi-scatter"><div class="pnl-chart-weekly-label">Note vs ROI réel (chaque pari, moyenne par palier de note)</div>' + scatterSvg + '</div>' : '';
     syncSnapToggleLabel(store.ids.noteToggle, store.state.noteWinrateCollapsed, "l'analyse winrate × note");
     el.innerHTML =
       '<div class="tier-wr-collapse-wrap' + (store.state.noteWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par tranche de note</div>' +
@@ -6864,7 +6885,9 @@
     var statsCount = series.length;
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsRoiAgg.roi;
+    var monthlyMini = st.pnlChartSplitByTier ? "" : monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
     var statsHtml = '<div class="pnl-chart-stats">' +
+      monthlyMini +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
@@ -6878,17 +6901,16 @@
       wirePnlChartFilterControls(cardsList, store);
       return;
     }
-    var chartHtml, hintHtml, weeklyHtml, drawdownBlockHtml, monthlyBlockHtml;
+    var chartHtml, hintHtml, weeklyHtml, drawdownBlockHtml;
     if (st.pnlChartSplitByTier) {
       chartHtml = buildHistoryChartByTierSvg(seriesByTier) + tierLegendHtml();
       hintHtml = "";
       // No single point-per-week mapping once split into 4 overlapping
       // per-tier lines (same reason wireSnapPnlChartClicks is skipped below)
       // — the compact "vue compacte" toggle panel still covers this case.
-      // Drawdown/monthly are single-line concepts too, same reasoning.
+      // Drawdown is a single-line concept too, same reasoning.
       weeklyHtml = "";
       drawdownBlockHtml = "";
-      monthlyBlockHtml = "";
     } else {
       chartHtml = buildHistoryChartSvg(series);
       hintHtml = '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div>';
@@ -6899,9 +6921,8 @@
         weeklyTableHtml(weeks, store) +
       '</div>';
       drawdownBlockHtml = drawdownHtml(series);
-      monthlyBlockHtml = monthlyCardsHtml(computeMonthlyFromSeries(weeklySeries));
     }
-    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + monthlyBlockHtml + '</div>';
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + '</div>';
     wirePnlChartFilterControls(cardsList, store);
     var box = document.getElementById(boxId);
     // The split-by-tier view has no per-point data-id (4 overlapping lines,
@@ -7198,26 +7219,35 @@
     syncSnapToggleLabel(store.ids.statsToggle, store.state.statsCollapsed, "le récap par trader");
     el.innerHTML =
       '<div class="snap-stats-wrap table-scroll' + (store.state.statsCollapsed ? " collapsed" : "") + '">' +
-      traderContributionHtml(rowsData) +
+      traderContributionHtml(rowsData, store) +
       '<table><thead><tr>' +
       headCells +
       '</tr></thead><tbody>' + rows + '</tbody></table>' +
       '</div>';
+    var contribSelect = el.querySelector(".trader-contrib-select");
+    if (contribSelect) contribSelect.addEventListener("change", function () {
+      store.state.traderContribSelected = Array.prototype.slice.call(contribSelect.selectedOptions).map(function (o) { return o.value; });
+      renderSnapStats(list, store);
+    });
   }
   // Two bars per trader: their real PNL (own actual stakes) against what a
   // flat $1000 on every one of their picks would have returned — isolates
   // pick quality from bet sizing. A trader whose real bar dwarfs their
   // flat-stake bar is winning mostly by betting big, not by picking better;
   // hedged snapshots (present on both sides) are excluded from the flat
-  // figure rather than guessed at (see traderHypFlatPnl). Top 10 by |real
-  // PNL| — this is a supplementary read, not a full second table.
-  function traderContributionHtml(rowsData) {
+  // figure rather than guessed at (see traderHypFlatPnl). Defaults to the
+  // top 10 by |real PNL|, but the multi-select underneath covers every
+  // profile with a decided bet — pick specific traders to compare instead.
+  function traderContributionHtml(rowsData, store) {
     var withPnl = rowsData.filter(function (st) { return st.decided > 0; });
     if (!withPnl.length) return "";
-    var top = withPnl.slice().sort(function (a, b) { return Math.abs(b.pnl) - Math.abs(a.pnl); }).slice(0, 10);
+    var selected = store.state.traderContribSelected || [];
+    var shown = selected.length
+      ? withPnl.filter(function (st) { return selected.indexOf(st.name) !== -1; })
+      : withPnl.slice().sort(function (a, b) { return Math.abs(b.pnl) - Math.abs(a.pnl); }).slice(0, 10);
     var maxAbs = 1;
-    top.forEach(function (st) { maxAbs = Math.max(maxAbs, Math.abs(st.pnl), Math.abs(st.hypPnl || 0)); });
-    var rows = top.map(function (st) {
+    shown.forEach(function (st) { maxAbs = Math.max(maxAbs, Math.abs(st.pnl), Math.abs(st.hypPnl || 0)); });
+    var rows = shown.map(function (st) {
       var realPct = Math.min(100, Math.abs(st.pnl) / maxAbs * 100);
       var hypPct = st.hypPnl == null ? 0 : Math.min(100, Math.abs(st.hypPnl) / maxAbs * 100);
       var hypLabel = st.hypPnl == null ? '—' : esc(fmtUSDSigned(st.hypPnl));
@@ -7230,9 +7260,16 @@
         '<span class="trader-contrib-vals mono"><span class="' + (st.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(st.pnl)) + '</span> · <span class="' + (st.hypPnl == null ? "" : (st.hypPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + hypLabel + '</span></span>' +
       '</div>';
     }).join("");
+    var optionsHtml = withPnl.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (st) {
+      var isSel = selected.indexOf(st.name) !== -1;
+      return '<option value="' + esc(st.name) + '"' + (isSel ? " selected" : "") + '>' + esc(st.name) + '</option>';
+    }).join("");
+    var selectHtml = '<select multiple class="trader-contrib-select" data-store="' + esc(store.name) + '" size="5" title="Ctrl/Cmd-clique pour choisir plusieurs traders — aucune sélection = top 10 par PNL réel">' + optionsHtml + '</select>';
+    var emptyRow = shown.length ? "" : '<div class="empty-note">Aucun trader sélectionné.</div>';
     return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">Contribution au PnL — mise réelle vs $1000 flat par pari</div>' +
       vizMiniLegend([{ color: "var(--green)", label: "Mise réelle" }, { color: "var(--accent)", label: "$1000 flat (qualité du pick)" }]) +
-      rows + '</div>';
+      '<div class="trader-contrib-body"><div class="trader-contrib-rows">' + rows + emptyRow + '</div>' + selectHtml + '</div>' +
+      '</div>';
   }
   // A manual entry (see snapAddManualBtn) has none of the trader/consensus
   // data a real snapshot carries — no sides, no cardHtml, no note — by
@@ -8277,10 +8314,17 @@
     var pathD = linePts.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(2) + "," + p.y.toFixed(2); }).join(" ");
     var zeroY = y(0);
     var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + zeroY.toFixed(2) + " L" + x(0).toFixed(2) + "," + zeroY.toFixed(2) + " Z";
+    // Wide invisible hit targets (not just the 1.6px line itself) with a
+    // native <title> each — plain hover tooltip, no need for the main
+    // chart's own JS-driven tooltip machinery for something this small.
+    var hoverDots = points.map(function (p, i) {
+      return '<circle cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="7" fill="var(--red)" fill-opacity="0" style="pointer-events:all"><title>' + esc(fmtDateShort(p.date)) + " — " + esc(fmtUSDSigned(p.value)) + '</title></circle>';
+    }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="drawdown-svg" preserveAspectRatio="xMidYMid meet">' +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-width="1"/>' +
       '<path d="' + areaD + '" fill="var(--red)" opacity="0.16"/>' +
       '<path d="' + pathD + '" fill="none" stroke="var(--red)" stroke-width="1.6"/>' +
+      hoverDots +
       '<text x="' + (padL - 8) + '" y="' + (y(min) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + esc(fmtUSDSigned(min)) + '</text>' +
       '</svg>';
   }
@@ -9339,8 +9383,12 @@
       var tierRowStore = resolveStoreFromEl(tierRow);
       var rowTier = tierRow.getAttribute("data-tier");
       var tierIdx = tierRowStore.state.tierCardFilter.indexOf(rowTier);
-      if (tierIdx === -1) tierRowStore.state.tierCardFilter.push(rowTier); else tierRowStore.state.tierCardFilter.splice(tierIdx, 1);
+      var tierTurningOn = tierIdx === -1;
+      if (tierTurningOn) tierRowStore.state.tierCardFilter.push(rowTier); else tierRowStore.state.tierCardFilter.splice(tierIdx, 1);
       renderStoreView(tierRowStore);
+      // Jump to the now-filtered card list — activating a tier from way up
+      // in the gauge otherwise leaves the filtered result off-screen below.
+      if (tierTurningOn && tierRowStore.els.list) tierRowStore.els.list.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     var noteRow = e.target.closest ? e.target.closest(".note-wr-row") : null;
