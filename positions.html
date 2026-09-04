@@ -1892,13 +1892,17 @@
   .tier-drift { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
   .tier-drift-svg { display: block; width: 100%; height: auto; }
   /* Trader contribution: real stake vs flat-$1000 hypothetical (extends Le
-     récap par trader) — two thin bars per trader, real on top. */
+     récap par trader) — dumbbell/lollipop, both values on one shared
+     scale per trader, connected by a thin segment. */
   .trader-contrib { margin: 4px 0 14px; padding-bottom: 12px; border-bottom: 1px dashed var(--panel-border); }
-  .trader-contrib-row { display: grid; grid-template-columns: 90px 1fr 150px; align-items: center; gap: 10px; padding: 3px 0; font-size: 11.5px; }
+  .trader-contrib-row { display: grid; grid-template-columns: 90px 1fr 150px; align-items: center; gap: 10px; padding: 5px 0; font-size: 11.5px; }
   .trader-contrib-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .trader-contrib-bars { display: flex; flex-direction: column; gap: 2px; }
-  .trader-contrib-bar-track { height: 5px; background: var(--panel-border); border-radius: 3px; overflow: hidden; }
-  .trader-contrib-bar-fill { height: 100%; }
+  .trader-lolli-track { position: relative; height: 20px; }
+  .trader-lolli-zero { position: absolute; left: 50%; top: 2px; bottom: 2px; width: 1px; background: var(--panel-border); }
+  .trader-lolli-seg { position: absolute; top: 50%; height: 2px; background: var(--text-dim); transform: translateY(-50%); opacity: .6; }
+  .trader-lolli-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--panel); }
+  .trader-lolli-dot-real { background: var(--green); z-index: 2; }
+  .trader-lolli-dot-hyp { background: var(--accent); z-index: 1; }
   .trader-contrib-vals { text-align: right; white-space: nowrap; }
   .trader-contrib-body { display: flex; gap: 14px; align-items: flex-start; }
   .trader-contrib-rows { flex: 1; min-width: 0; }
@@ -1910,6 +1914,23 @@
   .trader-contrib-side { display: flex; flex-direction: column; gap: 6px; width: 130px; }
   .trader-contrib-reset { font-size: 10.5px; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
   .trader-contrib-reset:hover { text-decoration: underline; }
+  /* Arbitrage note — current vs suggested rating on a shared 0-10 scale,
+     ranked by |gap|. */
+  .arb-row { display: grid; grid-template-columns: 100px 50px 1fr 90px; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--panel-border); }
+  .arb-row:first-of-type { border-top: none; }
+  .arb-note-pair { text-align: center; }
+  .arb-note-cur { font-size: 15px; font-weight: 700; }
+  .arb-scale { position: relative; height: 6px; background: var(--panel-border); border-radius: 3px; }
+  .arb-scale-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; opacity: .3; }
+  .arb-tick { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--text); border-radius: 1px; }
+  .arb-tick-sug { background: var(--accent); }
+  .arb-meta { font-size: 10.5px; color: var(--text-dim); margin-top: 8px; }
+  .arb-badge { display: inline-block; font-size: 9px; font-family: "IBM Plex Mono", monospace; padding: 1px 6px; border-radius: 999px; margin-left: 4px; }
+  .arb-badge-solid { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+  .arb-badge-weak { background: color-mix(in srgb, var(--text-dim) 20%, transparent); color: var(--text-dim); }
+  .arb-delta { text-align: right; }
+  .arb-delta-val { display: block; font-weight: 700; font-size: 15px; }
+  .arb-delta-lbl { font-size: 9.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .03em; }
   /* Autres stats: shared divider between sub-sections (streaks, consensus,
      co-signal matrix, day×hour heatmap, monthly cards). */
   .other-stats-section { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
@@ -7292,6 +7313,7 @@
     el.innerHTML =
       '<div class="snap-stats-wrap table-scroll' + (store.state.statsCollapsed ? " collapsed" : "") + '">' +
       traderContributionHtml(rowsData, store) +
+      arbitrageNoteHtml(list, store) +
       '<table><thead><tr>' +
       headCells +
       '</tr></thead><tbody>' + rows + '</tbody></table>' +
@@ -7326,17 +7348,28 @@
     var shown = selected.length
       ? withPnl.filter(function (st) { return selected.indexOf(st.name) !== -1; }).sort(byWeight)
       : withPnl.slice().sort(byWeight).slice(0, 10);
+    // Dumbbell/lollipop: both values sit on the SAME horizontal scale for a
+    // trader, connected by a thin segment — the gap between the two dots
+    // *is* the sizing effect (mise réelle vs picking quality at a flat
+    // stake), read directly off the chart instead of comparing two
+    // separate bar lengths. Scale is shared across every shown trader
+    // (maxAbs), zero at the track's center, negative values go left.
     var maxAbs = 1;
     shown.forEach(function (st) { maxAbs = Math.max(maxAbs, Math.abs(st.pnl), Math.abs(st.hypPnl || 0)); });
     var rows = shown.map(function (st) {
-      var realPct = Math.min(100, Math.abs(st.pnl) / maxAbs * 100);
-      var hypPct = st.hypPnl == null ? 0 : Math.min(100, Math.abs(st.hypPnl) / maxAbs * 100);
+      var realPos = 50 + (st.pnl / maxAbs) * 50;
+      var hypPos = st.hypPnl == null ? null : 50 + (st.hypPnl / maxAbs) * 50;
       var hypLabel = st.hypPnl == null ? '—' : esc(fmtUSDSigned(st.hypPnl));
+      var segHtml = "", hypDotHtml = "";
+      if (hypPos != null) {
+        var segLeft = Math.min(realPos, hypPos), segWidth = Math.abs(realPos - hypPos);
+        segHtml = '<div class="trader-lolli-seg" style="left:' + segLeft.toFixed(1) + '%;width:' + segWidth.toFixed(1) + '%"></div>';
+        hypDotHtml = '<div class="trader-lolli-dot trader-lolli-dot-hyp" style="left:' + hypPos.toFixed(1) + '%" title="Si $1000 flat par pari : ' + hypLabel + '"></div>';
+      }
       return '<div class="trader-contrib-row">' +
         '<span class="trader-contrib-name mono">' + esc(st.name) + '</span>' +
-        '<div class="trader-contrib-bars">' +
-          '<div class="trader-contrib-bar-track" title="Mise réelle : ' + esc(fmtUSDSigned(st.pnl)) + '"><div class="trader-contrib-bar-fill" style="width:' + realPct.toFixed(1) + '%;background:' + (st.pnl >= 0 ? "var(--green)" : "var(--red)") + '"></div></div>' +
-          '<div class="trader-contrib-bar-track" title="Si $1000 flat par pari : ' + hypLabel + '"><div class="trader-contrib-bar-fill" style="width:' + hypPct.toFixed(1) + '%;background:var(--accent)"></div></div>' +
+        '<div class="trader-lolli-track"><div class="trader-lolli-zero"></div>' + segHtml + hypDotHtml +
+          '<div class="trader-lolli-dot trader-lolli-dot-real" style="left:' + realPos.toFixed(1) + '%" title="Mise réelle : ' + esc(fmtUSDSigned(st.pnl)) + '"></div>' +
         '</div>' +
         '<span class="trader-contrib-vals mono"><span class="' + (st.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(st.pnl)) + '</span> · <span class="' + (st.hypPnl == null ? "" : (st.hypPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + hypLabel + '</span></span>' +
       '</div>';
@@ -7351,6 +7384,80 @@
     return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">Contribution au PnL — mise réelle vs $1000 flat par pari</div>' +
       vizMiniLegend([{ color: "var(--green)", label: "Mise réelle" }, { color: "var(--accent)", label: "$1000 flat (qualité du pick)" }]) +
       '<div class="trader-contrib-body"><div class="trader-contrib-rows">' + rows + emptyRow + '</div><div class="trader-contrib-side">' + selectHtml + '</div></div>' +
+      '</div>';
+  }
+  // Arbitrage note: does each trader's RECENT performance still match the
+  // rating (WEIGHT_BY_NAME) they were given once, by hand? Recent flat-
+  // $1000 ROI is mapped onto the same 0-10 scale (0% ROI -> 6, roughly
+  // neutral; each ±10% ROI moves the estimate ~1 point), then blended
+  // toward that estimate FROM the current note, weighted by how many
+  // recent bets back it up (min(1, count/15)) — a trader with 2 recent
+  // bets barely moves off their current note no matter how those 2 went;
+  // one with 20+ moves most of the way to what the recent numbers say.
+  // This is a diagnostic only: WEIGHT_BY_NAME is hardcoded in TRADERS, so
+  // nothing here writes a note back — it just tells you who's worth a
+  // second look, and in which direction.
+  var ARBITRAGE_WINDOW_DAYS = 30;
+  var ARBITRAGE_SOLID_COUNT = 8;
+  function roiToNoteEstimate(roi) {
+    return Math.max(0, Math.min(10, 6 + roi / 10));
+  }
+  function computeArbitrageNote(list, store) {
+    var cutoff = Date.now() - ARBITRAGE_WINDOW_DAYS * 86400000;
+    var byTrader = {};
+    list.forEach(function (snap) {
+      if (!snap.winningSide) return;
+      var t = new Date(snap.savedAt).getTime();
+      if (isNaN(t) || t < cutoff) return;
+      (snap.traderNames || []).forEach(function (name) {
+        if (WEIGHT_BY_NAME[name] == null) return;
+        if (!byTrader[name]) byTrader[name] = { name: name, win: 0, decided: 0, hypPnl: 0, hypCount: 0 };
+        var cls = classifyTraderInSnapshot(snap, name);
+        if (cls === "win" || cls === "gain_nuance") byTrader[name].win++;
+        if (cls !== "pending") byTrader[name].decided++;
+        var hyp = traderHypFlatPnl(snap, name, 1000);
+        if (hyp != null) { byTrader[name].hypPnl += hyp; byTrader[name].hypCount++; }
+      });
+    });
+    return Object.keys(byTrader).map(function (name) {
+      var st = byTrader[name];
+      var current = WEIGHT_BY_NAME[name];
+      var roi = st.hypCount > 0 ? (st.hypPnl / (st.hypCount * 1000) * 100) : null;
+      var winrate = st.decided > 0 ? (st.win / st.decided * 100) : null;
+      var weight = Math.min(1, st.hypCount / 15);
+      var suggested = roi == null ? current : current + (roiToNoteEstimate(roi) - current) * weight;
+      return { name: name, current: current, suggested: suggested, delta: suggested - current, count: st.hypCount, winrate: winrate, roi: roi, solid: st.hypCount >= ARBITRAGE_SOLID_COUNT };
+    }).sort(function (a, b) { return Math.abs(b.delta) - Math.abs(a.delta); });
+  }
+  function arbitrageNoteHtml(list, store) {
+    var rows = computeArbitrageNote(list, store);
+    if (!rows.length) return "";
+    var rowsHtml = rows.slice(0, 12).map(function (r) {
+      var curPos = r.current / 10 * 100, sugPos = r.suggested / 10 * 100;
+      var segLeft = Math.min(curPos, sugPos), segWidth = Math.abs(curPos - sugPos);
+      var deltaColor = Math.abs(r.delta) < 0.3 ? "" : (r.delta > 0 ? "pnl-pos" : "pnl-neg");
+      var deltaLbl = Math.abs(r.delta) < 0.3 ? "stable" : (r.delta > 0 ? "sous-noté" : "sur-noté");
+      var meta = r.count + " pari(s) (" + ARBITRAGE_WINDOW_DAYS + "j)" +
+        (r.winrate != null ? " · " + r.winrate.toFixed(0) + "% winrate" : "") +
+        (r.roi != null ? " · ROI " + (r.roi >= 0 ? "+" : "") + r.roi.toFixed(0) + "%" : "");
+      var badge = r.solid ? '<span class="arb-badge arb-badge-solid">Signal solide</span>' : '<span class="arb-badge arb-badge-weak">Échantillon faible</span>';
+      return '<div class="arb-row">' +
+        '<span class="trader-contrib-name mono">' + esc(r.name) + '</span>' +
+        '<div class="arb-note-pair"><span class="arb-note-cur mono">' + r.current.toFixed(1) + '</span></div>' +
+        '<div>' +
+          '<div class="arb-scale">' +
+            (segWidth > 0.1 ? '<div class="arb-scale-fill" style="left:' + segLeft.toFixed(1) + '%;width:' + segWidth.toFixed(1) + '%;background:' + (r.delta >= 0 ? "var(--green)" : "var(--red)") + '"></div>' : '') +
+            '<div class="arb-tick" style="left:' + curPos.toFixed(1) + '%" title="Note actuelle : ' + r.current.toFixed(1) + '"></div>' +
+            '<div class="arb-tick arb-tick-sug" style="left:' + sugPos.toFixed(1) + '%" title="Note suggérée : ' + r.suggested.toFixed(1) + '"></div>' +
+          '</div>' +
+          '<div class="arb-meta">' + esc(meta) + ' ' + badge + '</div>' +
+        '</div>' +
+        '<div class="arb-delta"><span class="arb-delta-val mono ' + deltaColor + '">' + (Math.abs(r.delta) < 0.3 ? "—" : ((r.delta >= 0 ? "+" : "") + r.delta.toFixed(1))) + '</span><span class="arb-delta-lbl">' + deltaLbl + '</span></div>' +
+      '</div>';
+    }).join("");
+    return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">⚖️ Arbitrage note — note actuelle vs suggérée par la performance des ' + ARBITRAGE_WINDOW_DAYS + ' derniers jours</div>' +
+      '<div class="empty-note" style="padding:0 0 10px;">Diagnostic seulement — les notes restent codées en dur, ceci ne fait que pointer qui mérite d\'être revu, pas les modifier.</div>' +
+      rowsHtml +
       '</div>';
   }
   // A manual entry (see snapAddManualBtn) has none of the trader/consensus
