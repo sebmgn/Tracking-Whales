@@ -1894,7 +1894,11 @@
   /* Trader contribution: real stake vs flat-$1000 hypothetical (extends Le
      récap par trader) — dumbbell/lollipop, both values on one shared
      scale per trader, connected by a thin segment. */
-  .trader-contrib { margin: 4px 0 14px; padding-bottom: 12px; border-bottom: 1px dashed var(--panel-border); }
+  /* Horizontal padding here matters: this block sits directly inside
+     .table-scroll, which has no padding of its own (the <table> below gets
+     its inset from cell padding instead) — without it, names/dots/ticks
+     ran flush against the rounded container border, reading as cropped. */
+  .trader-contrib { margin: 4px 0 14px; padding: 0 14px 12px; border-bottom: 1px dashed var(--panel-border); }
   .trader-contrib-row { display: grid; grid-template-columns: 90px 1fr 150px; align-items: center; gap: 10px; padding: 5px 0; font-size: 11.5px; }
   .trader-contrib-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .trader-lolli-track { position: relative; height: 20px; }
@@ -5791,6 +5795,7 @@
     loadRaw: loadSnapshotsRaw, load: loadSnapshots, save: saveSnapshotsToStorage,
     stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
     allowTakePosition: true,
+    allowEditPosition: true, // "✎ Modifier" — cote only here (no per-item stake to correct, see the store.name branch in the click handler), unlike Positions' stake+cote
     allowSimStakeSlider: true, // flat-stake sim, not real money — the "et si" slider on the evolution chart only makes sense here and on All Time, not Positions (real stakeUsd)
     itemNoun: "snapshot",
     emptyHint: "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.",
@@ -7533,7 +7538,7 @@
         ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce pari manuel dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
         : '';
       var editPositionHtml = store.allowEditPosition
-        ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Corriger la mise ou la cote de cette position">✎ Modifier</button>'
+        ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
         : '';
       toolbarHtml = '<div class="snap-toolbar">' +
         (store.allowReorder ? '<span class="snap-drag-handle" draggable="true" data-snap-id="' + esc(snap.id) + '" title="Glisser pour réordonner">⠿</span>' : '') +
@@ -7660,7 +7665,7 @@
         ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce snapshot dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
         : '';
       var editPositionHtml = store.allowEditPosition
-        ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Corriger la mise ou la cote de cette position">✎ Modifier</button>'
+        ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
         : '';
       toolbarHtml = '<div class="snap-toolbar">' +
         (store.allowReorder ? '<span class="snap-drag-handle" draggable="true" data-snap-id="' + esc(snap.id) + '" title="Glisser pour réordonner">⠿</span>' : '') +
@@ -9331,24 +9336,30 @@
       takePosBtn.disabled = true;
       return;
     }
-    // "✎ Modifier" (Mes Positions only) — correct the stake/cote after the
-    // fact, same two prompts "Prendre position" itself uses, so it's the
-    // one flow the user already knows rather than a new form to learn.
+    // "✎ Modifier" — correct the stake/cote after the fact. Positions gets
+    // the full stake+cote flow (same two prompts "Prendre position" itself
+    // uses); other stores (Snapshots) have no real per-item stake, so they
+    // only get the cote prompt, propagating automatically into All Time
+    // since TEST_STORE recomputes live from the same underlying data.
     var editPosBtn = e.target.closest ? e.target.closest(".snap-edit-btn") : null;
     if (editPosBtn) {
       e.preventDefault();
       e.stopPropagation();
+      var editStore = resolveStoreFromEl(editPosBtn);
       var editId = editPosBtn.getAttribute("data-snap-id");
-      var editPos = POSITIONS_STORE.loadRaw().filter(function (s) { return s.id === editId; })[0];
+      var editPos = editStore.loadRaw().filter(function (s) { return s.id === editId; })[0];
       if (!editPos) return;
-      var rawStake = prompt("Nouvelle mise pour cette position ($) :", String(editPos.stakeUsd != null ? editPos.stakeUsd : ""));
-      if (rawStake === null) return; // cancelled
-      var newStake = parseFloat(String(rawStake).replace(",", "."));
-      if (!isFinite(newStake) || newStake <= 0) { alert("Montant invalide — entre un nombre positif."); return; }
+      var patch = {};
+      if (editStore.name === "positions") {
+        var rawStake = prompt("Nouvelle mise pour cette position ($) :", String(editPos.stakeUsd != null ? editPos.stakeUsd : ""));
+        if (rawStake === null) return; // cancelled
+        var newStake = parseFloat(String(rawStake).replace(",", "."));
+        if (!isFinite(newStake) || newStake <= 0) { alert("Montant invalide — entre un nombre positif."); return; }
+        patch.stakeUsd = newStake;
+      }
       var defaultCote2 = editPos.leaderPriceAtSnapshot != null ? (editPos.leaderPriceAtSnapshot * 100).toFixed(1) : "";
       var rawCote2 = prompt("Nouvelle cote (¢) — laisse tel quel pour ne pas la changer :", defaultCote2);
       if (rawCote2 === null) return; // cancelled
-      var patch = { stakeUsd: newStake };
       if (String(rawCote2).trim() !== "") {
         var coteCents2 = parseFloat(String(rawCote2).replace(",", "."));
         if (!isFinite(coteCents2) || coteCents2 <= 0 || coteCents2 > 100) { alert("Cote invalide — entre un nombre entre 0 et 100 (¢)."); return; }
@@ -9364,7 +9375,8 @@
           }
         }
       }
-      enqueueOp(POSITIONS_STORE, { type: "editPosition", id: editId, patch: patch });
+      if (Object.keys(patch).length === 0) return;
+      enqueueOp(editStore, { type: "editPosition", id: editId, patch: patch });
       return;
     }
     var followBtn = e.target.closest ? e.target.closest(".vt-follow-btn") : null;
