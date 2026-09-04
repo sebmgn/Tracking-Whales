@@ -1825,11 +1825,8 @@
     margin-bottom: 2px;
   }
   .pnl-chart-weekly-svg { display: block; width: 100%; height: auto; margin-bottom: 8px; }
-  /* Streaks — current run + records, most-recent-last dot row (oldest on
-     the left, matching the evolution chart's own left-to-right time axis). */
-  .pnl-streaks { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--panel-border); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  .pnl-streaks-dots { display: flex; gap: 4px; flex-wrap: wrap; }
-  .streak-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  /* Streaks — current run + records. */
+  .pnl-streaks { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--panel-border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .pnl-streaks-badges { display: flex; gap: 18px; }
   .pnl-streak-badge { text-align: right; }
   .pnl-streak-lbl { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
@@ -1845,13 +1842,16 @@
      secondary detail next to Paris/Note/ROI/Gain, kept visually quieter
      on purpose (smaller, muted) rather than as co-equal columns. */
   /* Confiance and Manuel/Auto share this: only entries with a count get
-     a bar, height relative to the tallest one present, count on top. */
-  .weekly-tierbars { display: flex; gap: 6px; align-items: flex-end; }
-  .weekly-tierbars-col { display: flex; flex-direction: column; align-items: center; width: 13px; }
-  .weekly-tierbars-track { height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
-  .weekly-tierbars-count { font-size: 8.5px; font-family: "IBM Plex Mono", monospace; color: var(--text-dim); margin-bottom: 1px; }
-  .weekly-tierbars-bar { width: 8px; border-radius: 2px 2px 0 0; }
-  .weekly-tierbars-lbl { font-size: 7.5px; color: var(--text-dim); margin-top: 2px; letter-spacing: -0.02em; }
+     a bar, height relative to the tallest one present, count on top.
+     Wrapped in its own light card (not just bare bars sitting in a table
+     cell) so it reads as one distinct unit rather than blending into the
+     row — enlarged across the board per request. */
+  .weekly-tierbars { display: flex; gap: 9px; align-items: flex-end; padding: 5px 8px; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px; }
+  .weekly-tierbars-col { display: flex; flex-direction: column; align-items: center; width: 20px; }
+  .weekly-tierbars-track { height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .weekly-tierbars-count { font-size: 11px; font-weight: 700; font-family: "IBM Plex Mono", monospace; color: var(--text); margin-bottom: 3px; }
+  .weekly-tierbars-bar { width: 13px; border-radius: 3px 3px 0 0; }
+  .weekly-tierbars-lbl { font-size: 10.5px; font-weight: 600; color: var(--text-dim); margin-top: 4px; }
   /* Totals row — full period, summed rather than averaged. Bold + a
      stronger top border to set it apart from the per-week rows above. */
   .vt-weekly-total-row td { font-weight: 700; border-top: 2px solid var(--panel-border); }
@@ -1900,21 +1900,30 @@
   .stat-consensus-bar { width: 22px; border-radius: 3px 3px 0 0; }
   .stat-consensus-lbl { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
   .stat-consensus-count { font-size: 8px; color: var(--text-dim); font-family: "IBM Plex Mono", monospace; }
+  /* ROI par jour de la semaine — same shape as the consensus bars above,
+     scaled up and given a touch more breathing room to stand apart. */
+  .stat-dow-row { gap: 22px; margin-top: 6px; }
+  .stat-dow-col { width: 56px; }
+  .stat-dow-track { height: 100px; }
+  .stat-dow-val { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .stat-dow-bar { width: 34px; border-radius: 4px 4px 0 0; }
+  .stat-dow-lbl { font-size: 13px; font-weight: 600; margin-top: 6px; }
+  .stat-dow-count { font-size: 10.5px; }
   /* Co-signal matrix: full names as row labels (never truncated — a row's
      height fits a whole name), columns referenced by letter with a legend
      spelling each one out below. Counts print directly on the cells, so
      reading it never depends on hovering. */
-  .co-signal-row2 { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-  .co-signal-rowname { width: 100px; flex: none; font-size: 11px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .co-signal-cellrow { display: grid; gap: 2px; }
+  .co-signal-row2 { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+  .co-signal-rowname { width: 150px; flex: none; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .co-signal-cellrow { display: grid; gap: 4px; }
   .co-signal-cell {
-    width: 22px; height: 22px; border-radius: 3px; display: flex; align-items: center; justify-content: center;
-    font-family: "IBM Plex Mono", monospace; font-size: 9.5px; font-weight: 600;
+    width: 44px; height: 44px; border-radius: 5px; display: flex; align-items: center; justify-content: center;
+    font-family: "IBM Plex Mono", monospace; font-size: 15px; font-weight: 600;
   }
   .co-signal-diag { background: var(--panel-border); color: var(--text-dim); border: 1px dashed var(--text-dim); }
-  .co-signal-colheads { margin-bottom: 1px; }
-  .co-signal-colheads span { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text-dim); }
-  .co-signal-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 10.5px; color: var(--text-dim); }
+  .co-signal-colheads { margin-bottom: 2px; }
+  .co-signal-colheads span { display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--text-dim); }
+  .co-signal-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 13px; color: var(--text-dim); }
   .co-signal-legend b { color: var(--accent); font-family: "IBM Plex Mono", monospace; margin-right: 3px; }
   /* Monthly mini chips, in the pnl-chart-stats header row */
   .pnl-chart-stat-monthly { min-width: auto; padding: 4px 8px 5px; align-items: flex-start; }
@@ -6354,11 +6363,11 @@
         var textColor = pct > 0.55 ? "#fff" : "var(--text)";
         cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (pct * 100).toFixed(0) + '%, var(--panel));color:' + textColor + '" title="' + esc(title) + '">' + v + '</div>';
       }
-      return '<div class="co-signal-row2"><span class="co-signal-rowname" title="' + esc(rowName) + '">' + esc(rowName) + '</span><div class="co-signal-cellrow" style="grid-template-columns:repeat(' + n + ', 22px)">' + cells + '</div></div>';
+      return '<div class="co-signal-row2"><span class="co-signal-rowname" title="' + esc(rowName) + '">' + esc(rowName) + '</span><div class="co-signal-cellrow" style="grid-template-columns:repeat(' + n + ', 44px)">' + cells + '</div></div>';
     }).join("");
     var legend = data.names.map(function (nm, i) { return '<span><b>' + CO_SIGNAL_LETTERS[i] + '</b> ' + esc(nm) + '</span>'; }).join("");
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders vus ensemble (paris en commun)</div>' +
-      '<div class="co-signal-row2"><span class="co-signal-rowname"></span><div class="co-signal-cellrow co-signal-colheads" style="grid-template-columns:repeat(' + n + ', 22px)">' + colHeadCells + '</div></div>' +
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Matrice de corrélation — paris en commun entre traders</div>' +
+      '<div class="co-signal-row2"><span class="co-signal-rowname"></span><div class="co-signal-cellrow co-signal-colheads" style="grid-template-columns:repeat(' + n + ', 44px)">' + colHeadCells + '</div></div>' +
       rowsHtml +
       '<div class="co-signal-legend">' + legend + '</div>' +
       '</div>';
@@ -6386,12 +6395,12 @@
     days.forEach(function (d) { if (d.count) maxAbsRoi = Math.max(maxAbsRoi, Math.abs(d.pnl / d.stake * 100)); });
     var cols = days.map(function (d, i) {
       var roi = d.count ? (d.pnl / d.stake * 100) : null;
-      var h = roi == null ? 3 : Math.max(4, Math.round(Math.abs(roi) / maxAbsRoi * 44));
+      var h = roi == null ? 5 : Math.max(8, Math.round(Math.abs(roi) / maxAbsRoi * 84));
       var color = roi == null ? "var(--text-dim)" : (roi >= 0 ? "var(--green)" : "var(--red)");
       var title = DAYHOUR_DAY_LABELS[i] + (roi == null ? " — aucun pari" : " — " + d.count + " pari(s), " + (roi >= 0 ? "+" : "") + roi.toFixed(0) + "% ROI");
-      return '<div class="stat-consensus-col" title="' + esc(title) + '"><div class="stat-consensus-track"><span class="stat-consensus-val">' + (roi == null ? "—" : (roi >= 0 ? "+" : "") + roi.toFixed(0) + "%") + '</span><div class="stat-consensus-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl">' + DAYHOUR_DAY_LABELS[i] + '</span><span class="stat-consensus-count">' + d.count + ' pari' + (d.count > 1 ? "s" : "") + '</span></div>';
+      return '<div class="stat-consensus-col stat-dow-col" title="' + esc(title) + '"><div class="stat-consensus-track stat-dow-track"><span class="stat-consensus-val stat-dow-val">' + (roi == null ? "—" : (roi >= 0 ? "+" : "") + roi.toFixed(0) + "%") + '</span><div class="stat-consensus-bar stat-dow-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl stat-dow-lbl">' + DAYHOUR_DAY_LABELS[i] + '</span><span class="stat-consensus-count stat-dow-count">' + d.count + ' pari' + (d.count > 1 ? "s" : "") + '</span></div>';
     }).join("");
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">ROI par jour de la semaine</div><div class="stat-consensus-row">' + cols + '</div></div>';
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">ROI par jour de la semaine</div><div class="stat-consensus-row stat-dow-row">' + cols + '</div></div>';
   }
   // Built from the same weeklySeries points the evolution chart and the
   // weekly table below it already use (not a fresh pass over the full
@@ -6565,11 +6574,14 @@
     return byTier;
   }
   // Rolling daily ROI per tier (not winrate) — a line through the daily
-  // mean, plus every individual trade's own ROI as a faint dot behind it,
-  // so a mean that's actually one huge win propping up several losses
-  // reads differently from a mean built from consistent small wins.
+  // mean, plus a dashed marker at the right edge for that tier's ROI
+  // averaged over the WHOLE period (not just the last day plotted), so
+  // "where does today sit relative to the long-run average" is a direct
+  // read instead of something you'd have to eyeball off the line itself.
   function computeTierDriftByDay(list, store) {
     var byDay = {};
+    var overall = {};
+    CONFIDENCE_TIERS.forEach(function (t) { overall[t] = { sum: 0, count: 0 }; });
     list.forEach(function (s) {
       if (!s.winningSide || !s.confidence || CONFIDENCE_TIERS.indexOf(s.confidence) === -1) return;
       var d = new Date(s.savedAt);
@@ -6577,49 +6589,56 @@
       var stake = store.stakeFor(s);
       var pnl = stake ? hypotheticalFlatPnl(s, stake) : null;
       if (pnl == null || !stake) return;
+      var roi = (pnl / stake) * 100;
+      overall[s.confidence].sum += roi; overall[s.confidence].count++;
       var key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
       if (!byDay[key]) {
         byDay[key] = { key: key, tiers: {} };
-        CONFIDENCE_TIERS.forEach(function (t) { byDay[key].tiers[t] = { sum: 0, count: 0, points: [] }; });
+        CONFIDENCE_TIERS.forEach(function (t) { byDay[key].tiers[t] = { sum: 0, count: 0 }; });
       }
-      var roi = (pnl / stake) * 100;
       var t = byDay[key].tiers[s.confidence];
-      t.sum += roi; t.count++; t.points.push(roi);
+      t.sum += roi; t.count++;
     });
-    return Object.keys(byDay).map(function (k) { return byDay[k]; }).sort(function (a, b) { return a.key - b.key; });
+    var days = Object.keys(byDay).map(function (k) { return byDay[k]; }).sort(function (a, b) { return a.key - b.key; });
+    return { days: days, overall: overall };
   }
-  function buildTierDriftSvg(days) {
+  function buildTierDriftSvg(data) {
+    var days = data.days, overall = data.overall;
     if (days.length < 2) return "";
-    var W = 700, H = 150, padL = 34, padR = 10, padT = 10, padB = 16;
+    var W = 700, H = 150, padL = 34, padR = 44, padT = 10, padB = 16;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var n = days.length;
     function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
     var allVals = [0];
-    days.forEach(function (day) { CONFIDENCE_TIERS.forEach(function (t) { allVals = allVals.concat(day.tiers[t].points); }); });
+    days.forEach(function (day) { CONFIDENCE_TIERS.forEach(function (t) { var tt = day.tiers[t]; if (tt.count) allVals.push(tt.sum / tt.count); }); });
+    CONFIDENCE_TIERS.forEach(function (t) { if (overall[t].count) allVals.push(overall[t].sum / overall[t].count); });
     var yMin = Math.min.apply(null, allVals), yMax = Math.max.apply(null, allVals);
     if (yMin === yMax) { yMin -= 1; yMax += 1; }
     function y(v) { return padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH; }
-    var dots = "", lines = "", anyLine = false;
+    var lines = "", markers = "", anyLine = false;
     CONFIDENCE_TIERS.forEach(function (tier) {
       var d = "";
       days.forEach(function (day, i) {
         var t = day.tiers[tier];
-        t.points.forEach(function (roi) {
-          dots += '<circle cx="' + x(i).toFixed(2) + '" cy="' + y(roi).toFixed(2) + '" r="2" fill="' + CONFIDENCE_COLORS[tier] + '" opacity="0.4"><title>' + esc(tier) + ' — ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI</title></circle>';
-        });
         if (t.count === 0) return;
         d += (d === "" ? "M" : "L") + x(i).toFixed(2) + "," + y(t.sum / t.count).toFixed(2) + " ";
       });
       if (d === "") return;
       anyLine = true;
-      lines += '<path d="' + d.trim() + '" fill="none" stroke="' + CONFIDENCE_COLORS[tier] + '" stroke-width="2"/>';
+      lines += '<path d="' + d.trim() + '" fill="none" stroke="' + CONFIDENCE_COLORS[tier] + '" stroke-width="2"><title>' + esc(tier) + ' — moyenne du jour</title></path>';
+      var ov = overall[tier];
+      if (ov.count) {
+        var mean = ov.sum / ov.count, my = y(mean);
+        markers += '<line x1="' + (W - padR).toFixed(2) + '" y1="' + my.toFixed(2) + '" x2="' + (W - padR + 16).toFixed(2) + '" y2="' + my.toFixed(2) + '" stroke="' + CONFIDENCE_COLORS[tier] + '" stroke-width="2" stroke-dasharray="2 2"><title>' + esc(tier) + ' — moyenne totale ' + (mean >= 0 ? "+" : "") + mean.toFixed(0) + '%</title></line>' +
+          '<text x="' + (W - padR + 19).toFixed(2) + '" y="' + (my + 3).toFixed(2) + '" font-size="9" font-weight="700" fill="' + CONFIDENCE_COLORS[tier] + '">' + (mean >= 0 ? "+" : "") + mean.toFixed(0) + '%</text>';
+      }
     });
     if (!anyLine) return "";
     var zeroY = y(0);
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="tier-drift-svg">' +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>' +
       '<text x="2" y="' + (zeroY + 3).toFixed(2) + '" font-size="8" fill="var(--text-dim)">0%</text>' +
-      dots + lines +
+      lines + markers +
       '</svg>';
   }
   function snapMatchesDistCell(s, bracket, tier) {
@@ -6699,7 +6718,7 @@
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
     var driftSvg = buildTierDriftSvg(computeTierDriftByDay(list, store));
-    var driftHtml = driftSvg ? '<div class="tier-drift"><div class="pnl-chart-weekly-label">Dérive du ROI par palier (jour par jour) — courbe = moyenne, points = chaque pari</div>' + driftSvg + tierLegendHtml() + '</div>' : '';
+    var driftHtml = driftSvg ? '<div class="tier-drift"><div class="pnl-chart-weekly-label">Dérive du ROI par palier — courbe = moyenne du jour, tirets à droite = moyenne totale</div>' + driftSvg + tierLegendHtml() + '</div>' : '';
     syncSnapToggleLabel(store.ids.tierToggle, store.state.tierWinrateCollapsed, "le winrate par conviction");
     el.innerHTML =
       '<div class="tier-wr-collapse-wrap' + (store.state.tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
@@ -8439,11 +8458,9 @@
   }
   function streaksHtml(streaks) {
     if (!streaks.recent.length) return "";
-    var dots = streaks.recent.map(function (w) { return '<span class="streak-dot" style="background:' + (w ? "var(--green)" : "var(--red)") + '"></span>'; }).join("");
     var curLabel = streaks.currentType == null ? "—" : (streaks.currentCount + " " + (streaks.currentType ? "V" : "D"));
     var curClass = streaks.currentType == null ? "" : (streaks.currentType ? "pnl-pos" : "pnl-neg");
     return '<div class="pnl-streaks">' +
-      '<div class="pnl-streaks-dots">' + dots + '</div>' +
       '<div class="pnl-streaks-badges">' +
         '<div class="pnl-streak-badge"><span class="pnl-streak-lbl">Série actuelle</span><span class="pnl-streak-val ' + curClass + '">' + curLabel + '</span></div>' +
         '<div class="pnl-streak-badge"><span class="pnl-streak-lbl">Record victoires</span><span class="pnl-streak-val pnl-pos">' + streaks.longestWin + ' V</span></div>' +
