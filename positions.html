@@ -601,7 +601,7 @@
      is its OWN class, never combined with .vt-snap-btn on the same
      element, or the delegated click handler's .vt-snap-btn check (which
      runs first and returns early) would swallow their clicks too. */
-  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn, .vt-sibling-btn, .vt-comment-btn {
+  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn, .vt-sibling-btn, .vt-comment-btn, .vt-reject-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     color: var(--gold);
@@ -615,6 +615,13 @@
   }
   .vt-snap-btn:hover { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 45%, transparent); }
   .vt-snap-btn:disabled { opacity: .6; cursor: default; }
+  /* "Snapshots non confiants" — a trade you looked at and deliberately
+     passed on, saved so you can check later whether skipping it was right.
+     Red-ish (vs. the snapshot button's gold) so the two read as opposite
+     actions at a glance, never confusable. */
+  .vt-reject-btn { color: var(--red); }
+  .vt-reject-btn:hover { border-color: var(--red); box-shadow: 0 0 8px color-mix(in srgb, var(--red) 45%, transparent); }
+  .vt-reject-btn:disabled { opacity: .6; cursor: default; }
   /* Same pill shape/size as the snapshot button — reads as one family of
      small icon actions, distinguished only by color/icon. Unfilled star =
      not followed yet, so it doesn't compete visually with an active one. */
@@ -2128,6 +2135,7 @@
   <div class="tab-bar">
     <button class="tab-btn tab-btn-primary tab-gold-1 active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary tab-gold-2" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Saison 26/27</button>
+    <button class="tab-btn tab-btn-primary" data-tab="unconfident" type="button"><span class="tab-btn-icon">✕</span>Non confiants</button>
     <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-primary tab-gold-3" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Matchs</button>
     <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="stats-profiles" type="button">Statistiques profils</button>
@@ -2230,6 +2238,37 @@
     <div id="snapOtherStatsContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-unconfident">
+    <h2 class="section-title">Snapshots non confiants <span class="count-pill" id="unconfCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Trades passés (✕ sur une carte Value Trades) plutôt que pris — pour voir après coup si les sauter était le bon choix. Même stockage/synchro que Saison 26/27 (aucune clé séparée à connecter).</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="unconfSyncRefreshBtn" class="snap-sync-link" title="Resynchroniser maintenant (via Saison 26/27)">🔄 Resynchro</button>
+      <button type="button" id="unconfExportBtn" class="snap-sync-link" title="Télécharger les snapshots non confiants (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button id="unconfTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots non confiants mis à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
+    </div>
+    <div id="unconfPnlChartContent"></div>
+    <div id="unconfDashboard"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="unconfTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="unconfident">▸ Le winrate par conviction</button>
+      <button type="button" id="unconfNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="unconfident">▸ L'analyse winrate × note</button>
+      <button type="button" id="unconfDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="unconfident">▸ L'analyse cote × confiance</button>
+      <button type="button" id="unconfStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="unconfident">▸ Le récap par trader</button>
+      <button type="button" id="unconfManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="unconfident">▸ Manuel vs suivi auto</button>
+      <button type="button" id="unconfWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="unconfident">▸ Paris par semaine</button>
+      <button type="button" id="unconfOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="unconfident">▸ Autres stats</button>
+    </div>
+    <div id="unconfTierWinrateContent"></div>
+    <div id="unconfNoteWinrateContent"></div>
+    <div id="unconfDistContent"></div>
+    <div id="unconfStatsContent"></div>
+    <div id="unconfManualVsAutoContent"></div>
+    <div id="unconfWeeklyPnlContent"></div>
+    <div id="unconfOtherStatsContent"></div>
+    <div id="unconfContent" class="value-trades-box">
+      <div class="empty-note">Aucun snapshot non confiant pour l'instant — clique sur ✕ sur une carte Value Trades pour l'enregistrer ici.</div>
     </div>
   </div>
 
@@ -2521,6 +2560,17 @@
   var snapManualVsAutoContent = document.getElementById("snapManualVsAutoContent");
   var snapWeeklyPnlContent = document.getElementById("snapWeeklyPnlContent");
   var snapOtherStatsContent = document.getElementById("snapOtherStatsContent");
+  var unconfContent = document.getElementById("unconfContent");
+  var unconfCountEl = document.getElementById("unconfCount");
+  var unconfStatsContent = document.getElementById("unconfStatsContent");
+  var unconfDashboard = document.getElementById("unconfDashboard");
+  var unconfTierWinrateContent = document.getElementById("unconfTierWinrateContent");
+  var unconfNoteWinrateContent = document.getElementById("unconfNoteWinrateContent");
+  var unconfPnlChartContent = document.getElementById("unconfPnlChartContent");
+  var unconfDistContent = document.getElementById("unconfDistContent");
+  var unconfManualVsAutoContent = document.getElementById("unconfManualVsAutoContent");
+  var unconfWeeklyPnlContent = document.getElementById("unconfWeeklyPnlContent");
+  var unconfOtherStatsContent = document.getElementById("unconfOtherStatsContent");
   var testContent = document.getElementById("testContent");
   var testCountEl = document.getElementById("testCount");
   var testStatsContent = document.getElementById("testStatsContent");
@@ -4842,6 +4892,7 @@
     var sparkHtml = sparklineHtml(stableKey);
 
     var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Saison 26/27">📌</button>';
+    var rejectBtnHtml = '<button type="button" class="vt-reject-btn" data-snap-key="' + esc(primary.key) + '" title="Pas assez confiant pour ce trade — sauvegarder dans Snapshots non confiants pour voir plus tard si c\'était intéressant ou non">✕</button>';
     var isFollowed = !!followedKeys[stableKey];
     var followBtnHtml = '<button type="button" class="vt-follow-btn' + (isFollowed ? ' active' : '') + '" data-follow-key="' + esc(stableKey) + '" title="' + (isFollowed ? "Retirer des suivis" : "Ajouter aux suivis — reste visible même si le trade devient inéligible") + '">' + (isFollowed ? '⭐' : '☆') + '</button>';
     var isTrashed = !!trashedKeys[stableKey];
@@ -4976,7 +5027,7 @@
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + '</span>' +
         statsHtml +
-        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + siblingBtnHtml + commentBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate, stableKey) + trashBtnHtml + '</span>' +
+        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + rejectBtnHtml + siblingBtnHtml + commentBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate, stableKey) + trashBtnHtml + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
     // group) — sits on the card's real bottom row, in normal flow so it
@@ -5256,7 +5307,13 @@
   // site gets correct behavior automatically, without each one needing its
   // own deletedAt filter.
   function loadSnapshots() {
-    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt; });
+    // lowConfidence ones live in the same underlying list (see
+    // UNCONFIDENT_STORE) but belong to the separate "Snapshots non
+    // confiants" tab — excluded here so Saison 26/27 never shows a trade
+    // that was actually passed on. loadSnapshotsRaw() itself stays
+    // unfiltered (sync reconciliation and the merge-safe saves both need
+    // the true full list).
+    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt && !s.lowConfidence; });
   }
   function saveSnapshotsToStorage(list) {
     try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
@@ -5298,7 +5355,11 @@
     archived.forEach(refreshSnapshotDisplay);
     var seen = {}, merged = [];
     live.concat(archived).forEach(function (s) { if (!seen[s.id]) { seen[s.id] = true; merged.push(s); } });
-    return merged;
+    // Same reasoning as loadSnapshots — a passed-on trade belongs to
+    // Snapshots non confiants, not the merged full-history view. TEST_STORE
+    // is read-only so filtering the raw list itself (rather than only the
+    // display layer) is safe here.
+    return merged.filter(function (s) { return !s.lowConfidence; });
   }
   function loadTest() {
     return loadTestRaw().filter(function (s) { return !s.deletedAt; });
@@ -5577,7 +5638,13 @@
     q.push(op);
     saveSyncQueue(store, q);
     renderStoreView(store);
-    syncNow(store);
+    // store.syncStore lets a store that's really just a filtered VIEW over
+    // another one's data (see UNCONFIDENT_STORE) delegate the actual network
+    // reconciliation to the real underlying store instead of running its
+    // own — syncNow's final `store.save(remote)` is a full overwrite, which
+    // is only safe when store.loadRaw() also returns the FULL list (true for
+    // every normal store, false for a filtered view like UNCONFIDENT_STORE).
+    syncNow(store.syncStore || store);
   }
   function buildSnapshotFromUnit(u) {
     // computeUnitCardParts fills in u.score/.scoreFactors itself when
@@ -5624,6 +5691,7 @@
       // list), meaningless on an already-frozen snapshot.
       cardHtml: (parts.headerHtml + parts.bodyHtml)
         .replace(/<button[^>]*class="vt-snap-btn"[\s\S]*?<\/button>/, "")
+        .replace(/<button[^>]*class="vt-reject-btn"[\s\S]*?<\/button>/, "")
         .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, ""),
       winningSide: null, // side name (e.g. "No") once marked, or null = result not known yet
       confidence: null // "S" | "A+" | "A" | "B" conviction tag, set once the bet is placed — lets backtests correlate tier with winrate
@@ -5632,6 +5700,17 @@
   function saveSnapshot(u) {
     var snap = buildSnapshotFromUnit(u);
     enqueueOp(SNAPSHOTS_STORE, { type: "add", id: snap.id, snapshot: snap });
+  }
+  // "✕" on a Value Trades card — a trade looked at and deliberately passed
+  // on, saved so it can be checked later ("was skipping that actually
+  // right?"). Same underlying snapshot shape as 📌, just flagged and routed
+  // through UNCONFIDENT_STORE, which is really just a filtered view over
+  // this same snapshots list (see UNCONFIDENT_STORE below) — no separate
+  // backend table needed.
+  function saveUnconfidentSnapshot(u) {
+    var snap = buildSnapshotFromUnit(u);
+    snap.lowConfidence = true;
+    enqueueOp(UNCONFIDENT_STORE, { type: "add", id: snap.id, snapshot: snap });
   }
   // A trader's stake + estimated profit on ONE side, summed across every
   // entry they have there (they can show up more than once — e.g. linked
@@ -5817,6 +5896,7 @@
   var SNAPSHOTS_STORE = {
     name: "snapshots",
     loadRaw: loadSnapshotsRaw, load: loadSnapshots, save: saveSnapshotsToStorage,
+    excludeLowConfidence: true, // rejected trades (✕) live in the same list but belong to Snapshots non confiants
     stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
     allowTakePosition: true,
     allowEditPosition: true, // "✎ Modifier" — cote only here (no per-item stake to correct, see the store.name branch in the click handler), unlike Positions' stake+cote
@@ -5835,6 +5915,60 @@
       tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn",
       manualVsAutoToggle: "manualVsAutoToggleBtn", weeklyPnlToggle: "weeklyPnlToggleBtn",
       otherStatsToggle: "snapOtherStatsToggleBtn" },
+    state: freshStoreState()
+  };
+  // "Snapshots non confiants" — trades passed on (✕ on a Value Trades
+  // card) instead of taken, kept so it's possible to check later whether
+  // skipping them was right. Not a separate backend table: these are
+  // ordinary snapshots in the SAME vtSnapshots list/DynamoDB table as
+  // Saison 26/27, just flagged (lowConfidence:true) and filtered for
+  // display — zero new sync infrastructure needed. loadRaw/save below
+  // read/write through that shared list, merging back so this view never
+  // touches the confident items sitting alongside it.
+  function loadUnconfidentRaw() {
+    return loadSnapshotsRaw().filter(function (s) { return s.lowConfidence === true; });
+  }
+  function loadUnconfident() {
+    return loadUnconfidentRaw().filter(function (s) { return !s.deletedAt; });
+  }
+  function saveUnconfidentToStorage(filteredList) {
+    var confident = loadSnapshotsRaw().filter(function (s) { return s.lowConfidence !== true; });
+    saveSnapshotsToStorage(confident.concat(filteredList));
+  }
+  var UNCONFIDENT_STORE = {
+    name: "unconfident",
+    loadRaw: loadUnconfidentRaw, load: loadUnconfident, save: saveUnconfidentToStorage,
+    stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
+    allowTakePosition: false, // the whole point of this list is trades NOT taken
+    allowEditPosition: true, // "✎ Modifier" — cote only, same as Saison 26/27
+    allowSimStakeSlider: true,
+    itemNoun: "snapshot",
+    emptyHint: "Aucun snapshot non confiant pour l\'instant — clique sur ✕ sur une carte Value Trades pour l\'enregistrer ici.",
+    dateLabelPrefix: "Sauvegardé le",
+    simSubtitle: function (stake) { return "PnL simulé si chaque pari avait quand même été misé à " + fmtUSD(stake) + " au prix du marché au moment du snapshot"; },
+    cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
+    // Same underlying table/queue as Saison 26/27 (see loadRaw/save above) —
+    // syncStore tells enqueueOp to run the actual network reconciliation
+    // against SNAPSHOTS_STORE instead of this one. syncNow's last step is an
+    // unconditional full overwrite of local storage with whatever the
+    // server returns, which is only correct when store.loadRaw() also
+    // returns the FULL list — true for SNAPSHOTS_STORE, false here (this
+    // store's loadRaw only ever returns the lowConfidence subset). Running
+    // that overwrite through THIS store's merge-based save would treat every
+    // confident item as "missing" and corrupt the shared list, so this
+    // store must never run syncNow on itself (see the resync button below,
+    // which deliberately calls syncNow(SNAPSHOTS_STORE) directly instead of
+    // going through wireSyncControls like every other store does).
+    remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY, everSyncedKey: "vtSnapshotsEverSynced",
+    syncStore: SNAPSHOTS_STORE,
+    els: { count: unconfCountEl, dashboard: unconfDashboard, pnlChart: unconfPnlChartContent,
+      tierWinrate: unconfTierWinrateContent, noteWinrate: unconfNoteWinrateContent, dist: unconfDistContent,
+      stats: unconfStatsContent, list: unconfContent,
+      manualVsAuto: unconfManualVsAutoContent, weeklyPnl: unconfWeeklyPnlContent, otherStats: unconfOtherStatsContent },
+    ids: { statsToggle: "unconfStatsToggleBtn", distToggle: "unconfDistToggleBtn",
+      tierToggle: "unconfTierWinrateToggleBtn", noteToggle: "unconfNoteWinrateToggleBtn",
+      manualVsAutoToggle: "unconfManualVsAutoToggleBtn", weeklyPnlToggle: "unconfWeeklyPnlToggleBtn",
+      otherStatsToggle: "unconfOtherStatsToggleBtn" },
     state: freshStoreState()
   };
   var POSITIONS_STORE = {
@@ -7765,6 +7899,13 @@
   // sort click handlers) keeps calling the same bare function it always did.
   function renderStoreView(store) {
     var fullList = store.loadRaw();
+    // store.loadRaw() must stay the TRUE full list for stores that run
+    // real sync (syncNow's reconciliation overwrites local with exactly
+    // what this returns) — so a store that wants to hide the OTHER
+    // confidence flag's items sets excludeLowConfidence instead of
+    // filtering inside loadRaw/save. UNCONFIDENT_STORE doesn't need this:
+    // its own loadRaw already returns only the lowConfidence subset.
+    if (store.excludeLowConfidence) fullList = fullList.filter(function (s) { return !s.lowConfidence; });
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
     // Trashed items never feed the dashboard/charts/card list below — only
     // the Corbeille view (above) shows them, until restored.
@@ -7855,6 +7996,7 @@
     return html;
   }
   function renderSnapshots() { renderStoreView(SNAPSHOTS_STORE); }
+  function renderUnconfident() { renderStoreView(UNCONFIDENT_STORE); }
   function renderPositions() { renderStoreView(POSITIONS_STORE); }
   function renderTest() { renderStoreView(TEST_STORE); }
 
@@ -8905,6 +9047,7 @@
       // the live match was right there the entire time. Render immediately
       // on the click itself instead of waiting on that.
       if (btn.getAttribute("data-tab") === "snapshots") renderSnapshots();
+      if (btn.getAttribute("data-tab") === "unconfident") renderUnconfident();
       if (btn.getAttribute("data-tab") === "positions") renderPositions();
       if (btn.getAttribute("data-tab") === "archives") renderArchives();
       if (btn.getAttribute("data-tab") === "test") renderTest();
@@ -9311,9 +9454,23 @@
     var name = el.getAttribute("data-store");
     if (name === "positions") return POSITIONS_STORE;
     if (name === "test") return TEST_STORE;
+    if (name === "unconfident") return UNCONFIDENT_STORE;
     return SNAPSHOTS_STORE;
   }
   document.addEventListener("click", function (e) {
+    var rejectBtn = e.target.closest ? e.target.closest(".vt-reject-btn") : null;
+    if (rejectBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var rejectUnitKey = rejectBtn.getAttribute("data-snap-key");
+      var rejectUnit = unitByMarketKey[rejectUnitKey];
+      if (rejectUnit) {
+        saveUnconfidentSnapshot(rejectUnit);
+        rejectBtn.textContent = "✅";
+        rejectBtn.disabled = true;
+      }
+      return;
+    }
     var snapBtn = e.target.closest ? e.target.closest(".vt-snap-btn") : null;
     if (snapBtn) {
       // The button sits inside a <summary> (Value Trades cards collapse) —
@@ -9840,6 +9997,14 @@
   wireTrashToggle(SNAPSHOTS_STORE, "snapTrashToggleBtn", renderSnapshots);
   wireExport(SNAPSHOTS_STORE, "snapExportBtn");
   wireImport(SNAPSHOTS_STORE, "snapImportBtn", "snapImportInput", renderSnapshots);
+  wireTrashToggle(UNCONFIDENT_STORE, "unconfTrashToggleBtn", renderUnconfident);
+  wireExport(UNCONFIDENT_STORE, "unconfExportBtn");
+  // Deliberately NOT wireSyncControls (see UNCONFIDENT_STORE's syncStore
+  // comment) — this button triggers the real sync against SNAPSHOTS_STORE
+  // directly, then just re-renders this tab's own view with the result.
+  document.getElementById("unconfSyncRefreshBtn").addEventListener("click", function () {
+    syncNow(SNAPSHOTS_STORE).then(renderUnconfident);
+  });
   wireTrashToggle(POSITIONS_STORE, "posTrashToggleBtn", renderPositions);
   wireExport(POSITIONS_STORE, "posExportBtn");
   wireExport(TEST_STORE, "testExportBtn");
