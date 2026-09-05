@@ -43,13 +43,12 @@
     --tier-b-gray: #6b6b6b;
     --gain-nuance: #2c4f24;
     --perte-nuance: #96481f;
-    /* Dedicated S/A+/A/B palette — 4 hues spread around the wheel
-       (purple/green/blue/orange) instead of reusing --gold (too close to
-       --bg's own cream tone to read on a chart line) and a flat grey for
-       B. Independent of --green/--red so tier colors never silently shift
-       if those win/loss colors change later. */
+    /* Dedicated S/A/B palette — 3 hues spread around the wheel
+       (purple/blue/orange) instead of reusing --gold (too close to --bg's
+       own cream tone to read on a chart line) and a flat grey for B.
+       Independent of --green/--red so tier colors never silently shift if
+       those win/loss colors change later. */
     --tier-s: #8e44ad;
-    --tier-ap: #1a8f4c;
     --tier-a: #2563eb;
     --tier-b: #c2650f;
     /* Structural corner-rounding scale — small chips/badges/buttons use
@@ -86,7 +85,6 @@
       --gain-nuance: #86c66a;
       --perte-nuance: #e0955a;
       --tier-s: #c58ce0;
-      --tier-ap: #52d98a;
       --tier-a: #6fa8f5;
       --tier-b: #f0a35f;
     }
@@ -110,7 +108,6 @@
     --gain-nuance: #86c66a;
     --perte-nuance: #e0955a;
     --tier-s: #c58ce0;
-    --tier-ap: #52d98a;
     --tier-a: #6fa8f5;
     --tier-b: #f0a35f;
   }
@@ -1434,7 +1431,7 @@
   .snap-badge-gain-nuance { color: var(--gain-nuance); background: color-mix(in srgb, var(--gain-nuance) 14%, transparent); }
   .snap-badge-perte-nuance { color: var(--perte-nuance); background: color-mix(in srgb, var(--perte-nuance) 14%, transparent); }
 
-  /* Winrate par catégorie de conviction (S / A+ / A / B) — one thin gauge
+  /* Winrate par catégorie de conviction (S / A / B) — one thin gauge
      row per tier, reusing CONFIDENCE_COLORS so a tier reads the same color
      here as on the confidence buttons of each snapshot card. */
   .tier-wr-box { margin-bottom: 16px; }
@@ -1445,7 +1442,7 @@
   .tier-wr-row:last-child { margin-bottom: 0; }
   .tier-wr-row:hover { background: var(--row-hover); }
   /* Net-winning tiers wash green, net-losing ones red — an at-a-glance
-     outcome read that's independent of the tier's own S/A+/A/B color. */
+     outcome read that's independent of the tier's own S/A/B color. */
   .tier-wr-row.tier-win { background: color-mix(in srgb, var(--green) 38%, transparent); border: 1px solid color-mix(in srgb, var(--green) 55%, transparent); }
   .tier-wr-row.tier-lose { background: color-mix(in srgb, var(--red) 38%, transparent); border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); }
   .tier-wr-row.tier-win:hover { background: color-mix(in srgb, var(--green) 48%, transparent); }
@@ -2210,7 +2207,6 @@
       <select id="manualConfSelect">
         <option value="">Confiance (optionnel)</option>
         <option value="S">S</option>
-        <option value="A+">A+</option>
         <option value="A">A</option>
         <option value="B">B</option>
       </select>
@@ -5260,8 +5256,10 @@
   var syncInFlight = {};
   // Conviction tags a snapshot can be marked with at bet time, so backtests
   // can later check whether winrate actually correlates with confidence.
-  var CONFIDENCE_TIERS = ["S", "A+", "A", "B"];
-  var CONFIDENCE_COLORS = { "S": "var(--tier-s)", "A+": "var(--tier-ap)", "A": "var(--tier-a)", "B": "var(--tier-b)" };
+  // Collapsed from 4 tiers to 3 on request (2026-09-05) — A+ merged into S
+  // (see refreshSnapshotDisplay's confidence migration below).
+  var CONFIDENCE_TIERS = ["S", "A", "B"];
+  var CONFIDENCE_COLORS = { "S": "var(--tier-s)", "A": "var(--tier-a)", "B": "var(--tier-b)" };
   // Some snapshots only ever have ONE named side — not a dust-trade gap
   // this time (that one's already handled upstream in computeMarketGroups),
   // but a genuine absence: not one of the ~20 tracked wallets ever held the
@@ -5282,6 +5280,12 @@
   // malformed legacy record — one bad snapshot's HTML then just stays
   // stale instead of taking the whole list down with it.
   function refreshSnapshotDisplay(snap) {
+    // A+ was merged into S when the tier list dropped from 4 to 3
+    // (2026-09-05) — reapplied on every read rather than a one-off write,
+    // same reasoning as the cardHtml rebuild below: a sync pulling an
+    // un-migrated "A+" back down from the server must keep landing on the
+    // now-valid "S", not resurrect a tier CONFIDENCE_TIERS no longer knows.
+    if (snap.confidence === "A+") snap.confidence = "S";
     normalizeSnapshotNumbers(snap);
     try {
       var html = rebuildFullSnapshotCardHtml(snap);
@@ -5692,7 +5696,7 @@
         .replace(/<button[^>]*class="vt-reject-btn"[\s\S]*?<\/button>/, "")
         .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, ""),
       winningSide: null, // side name (e.g. "No") once marked, or null = result not known yet
-      confidence: null // "S" | "A+" | "A" | "B" conviction tag, set once the bet is placed — lets backtests correlate tier with winrate
+      confidence: null // "S" | "A" | "B" conviction tag, set once the bet is placed — lets backtests correlate tier with winrate
     };
   }
   function saveSnapshot(u) {
@@ -5839,7 +5843,7 @@
     el.innerHTML = tilesHtml(globalTiles);
   }
   // Bet-level winrate broken down by the confidence tag set on the snapshot
-  // at bet time (CONFIDENCE_TIERS) — the whole point of tagging S/A+/A/B is
+  // at bet time (CONFIDENCE_TIERS) — the whole point of tagging S/A/B is
   // to later check whether high-conviction bets actually win more, so this
   // is one gauge row per tier rather than a per-trader breakdown.
   function sideByName(sides, name) {
@@ -7124,7 +7128,7 @@
       '<label>Confiance <select id="' + idp + 'pnlChartTierSelect"' + (st.pnlChartSplitByTier ? " disabled" : "") + '>' + tierOptionsHtml + '</select></label>' +
       '<label>Note <select id="' + idp + 'pnlChartNoteSelect">' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
-      '<label class="pnl-chart-split-toggle" title="Une courbe cumulée par palier de confiance (S/A+/A/B) au lieu d\'une seule courbe globale"><input type="checkbox" id="' + idp + 'pnlChartSplitTier"' + (st.pnlChartSplitByTier ? " checked" : "") + ' /> Diviser par confiance</label>' +
+      '<label class="pnl-chart-split-toggle" title="Une courbe cumulée par palier de confiance (S/A/B) au lieu d\'une seule courbe globale"><input type="checkbox" id="' + idp + 'pnlChartSplitTier"' + (st.pnlChartSplitByTier ? " checked" : "") + ' /> Diviser par confiance</label>' +
       (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
     // Realized PnL / avg ROI for the exact subset the 4 selects above
@@ -7303,7 +7307,7 @@
     return mul * (va - vb);
   }
   // Odds x conviction-tier cross-tab: for each cote bracket, how many
-  // decided snapshots won vs lost, both overall and split by S/A+/A/B —
+  // decided snapshots won vs lost, both overall and split by S/A/B —
   // e.g. does the "B" tier's winrate hold up across every price range, or
   // is it only carried by the cheap/expensive end? Optional (collapsed by
   // default) since it's a deeper cut than the tier gauge above, not
