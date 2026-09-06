@@ -6503,6 +6503,72 @@
   // moved out of always-visible real estate under the evolution chart on
   // request; more misc stats land here over time rather than each getting
   // its own top-level toggle.
+  // Volume tradé vs ROI — does a bigger trade actually perform better, or
+  // is the edge really in the small/thin ones? Split into quartiles (equal
+  // COUNT per bucket, not fixed dollar bands) so each row stays a
+  // meaningful sample size regardless of how skewed the real volume
+  // distribution is. ROI here is the trade's OWN realized ROI at whatever
+  // price it was taken (won: 1/price-1, lost: -100%), not a flat-stake
+  // simulation — stake size doesn't change a trade's ROI%, only its $ PnL.
+  function computeVolumeRoiBuckets(list) {
+    var pts = list.filter(function (s) { return !!s.winningSide && s.leaderName && s.totalStake > 0; })
+      .map(function (s) {
+        var price = snapLeaderPrice(s);
+        if (price == null || price <= 0) return null;
+        var won = s.leaderName === s.winningSide;
+        return { vol: s.totalStake, roi: won ? (1 / price - 1) * 100 : -100, won: won };
+      }).filter(function (p) { return p != null; });
+    if (pts.length < 8) return null; // too few for 4 meaningful quartiles
+    var sorted = pts.slice().sort(function (a, b) { return a.vol - b.vol; });
+    var n = sorted.length, qSize = Math.floor(n / 4);
+    var labels = ["Q1 (volume le plus bas)", "Q2", "Q3", "Q4 (volume le plus haut)"];
+    var buckets = [];
+    for (var i = 0; i < 4; i++) {
+      var start = i * qSize, end = (i === 3) ? n : (start + qSize);
+      var slice = sorted.slice(start, end);
+      if (!slice.length) continue;
+      var win = slice.filter(function (x) { return x.won; }).length;
+      var roiSum = slice.reduce(function (a, x) { return a + x.roi; }, 0);
+      buckets.push({
+        label: labels[i], count: slice.length,
+        minVol: slice[0].vol, maxVol: slice[slice.length - 1].vol,
+        winrate: win / slice.length * 100, avgRoi: roiSum / slice.length
+      });
+    }
+    return { buckets: buckets, points: pts };
+  }
+  function pearsonCorr(xs, ys) {
+    var n = xs.length;
+    var mx = xs.reduce(function (a, b) { return a + b; }, 0) / n;
+    var my = ys.reduce(function (a, b) { return a + b; }, 0) / n;
+    var num = 0, dx2 = 0, dy2 = 0;
+    for (var i = 0; i < n; i++) {
+      var dx = xs[i] - mx, dy = ys[i] - my;
+      num += dx * dy; dx2 += dx * dx; dy2 += dy * dy;
+    }
+    if (dx2 === 0 || dy2 === 0) return null;
+    return num / Math.sqrt(dx2 * dy2);
+  }
+  function volumeRoiCorrelationHtml(list) {
+    var data = computeVolumeRoiBuckets(list);
+    if (!data) return "";
+    // log(volume), not raw volume — the correlation is about "order of
+    // magnitude more volume", not "one more dollar", same reasoning as the
+    // log-scaled axis on the Value Trades ROI/Volume chart.
+    var r = pearsonCorr(data.points.map(function (p) { return Math.log10(Math.max(1, p.vol)); }), data.points.map(function (p) { return p.roi; }));
+    var verdict = r == null ? "" : (Math.abs(r) < 0.1 ? "aucune corrélation nette — le volume ne prédit pas la performance" : (r > 0 ? "plus de volume tend à mieux performer" : "plus de volume tend à moins bien performer"));
+    var rowsHtml = data.buckets.map(function (b) {
+      var roiColor = b.avgRoi >= 0 ? "pnl-pos" : "pnl-neg";
+      return '<tr><td>' + esc(b.label) + '<div class="market-sub">' + esc(fmtUSD(b.minVol)) + ' – ' + esc(fmtUSD(b.maxVol)) + '</div></td>' +
+        '<td class="num">' + b.count + '</td>' +
+        '<td class="num">' + b.winrate.toFixed(0) + '%</td>' +
+        '<td class="num ' + roiColor + '">' + (b.avgRoi >= 0 ? "+" : "") + b.avgRoi.toFixed(0) + '%</td></tr>';
+    }).join("");
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Volume tradé vs ROI (par quartile de volume)</div>' +
+      (r != null ? '<div class="empty-note" style="padding:0 0 8px;">Corrélation (volume × ROI) : <b>' + (r >= 0 ? "+" : "") + r.toFixed(2) + '</b> — ' + verdict + '.</div>' : '') +
+      '<table class="weekly-data-table"><thead><tr><th>Volume</th><th class="num">Paris</th><th class="num">Winrate</th><th class="num">ROI moyen</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+      '</div>';
+  }
   // Winrate bucketed by how many tracked traders agreed on the same side of
   // a snapshot — checks whether "several whales aligned" is actually a
   // stronger signal or just a feeling.
@@ -6685,6 +6751,7 @@
     var blocks = [
       streaksHtml(computeStreaks(series)),
       consensusStrengthHtml(list),
+      volumeRoiCorrelationHtml(list),
       coSignalMatrixHtml(list),
       dayOfWeekHtml(list, store)
     ].filter(function (b) { return !!b; }).join("");
