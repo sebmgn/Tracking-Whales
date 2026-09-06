@@ -1385,6 +1385,9 @@
   .snap-stats-row { cursor: pointer; }
   .snap-stats-row:hover { background: var(--row-hover); }
   .snap-stats-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
+  .trader-table-row { cursor: pointer; }
+  .trader-table-row:hover { background: var(--row-hover); }
+  .trader-table-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
   .snap-stats-caret { display: inline-block; width: 11px; color: var(--accent); font-size: 11px; font-weight: 700; }
   .snap-stats-detail-row td { padding: 0; }
   .snap-stats-detail {
@@ -2239,6 +2242,7 @@
       <button type="button" id="manualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="snapshots">▸ Manuel vs suivi auto</button>
       <button type="button" id="weeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="snapshots">▸ Paris par semaine</button>
       <button type="button" id="snapOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="snapshots">▸ Autres stats</button>
+      <button type="button" id="snapTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="snapshots">▸ Le tableau des traders</button>
     </div>
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
@@ -2247,6 +2251,7 @@
     <div id="snapManualVsAutoContent"></div>
     <div id="snapWeeklyPnlContent"></div>
     <div id="snapOtherStatsContent"></div>
+    <div id="snapTraderTableContent"></div>
     <div id="snapshotsContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot pour l'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l'enregistrer ici.</div>
     </div>
@@ -2270,6 +2275,7 @@
       <button type="button" id="unconfManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="unconfident">▸ Manuel vs suivi auto</button>
       <button type="button" id="unconfWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="unconfident">▸ Paris par semaine</button>
       <button type="button" id="unconfOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="unconfident">▸ Autres stats</button>
+      <button type="button" id="unconfTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="unconfident">▸ Le tableau des traders</button>
     </div>
     <div id="unconfTierWinrateContent"></div>
     <div id="unconfNoteWinrateContent"></div>
@@ -2278,6 +2284,7 @@
     <div id="unconfManualVsAutoContent"></div>
     <div id="unconfWeeklyPnlContent"></div>
     <div id="unconfOtherStatsContent"></div>
+    <div id="unconfTraderTableContent"></div>
     <div id="unconfContent" class="value-trades-box">
       <div class="empty-note">Aucun snapshot non confiant pour l'instant — clique sur ✕ sur une carte Value Trades pour l'enregistrer ici.</div>
     </div>
@@ -2310,6 +2317,7 @@
       <button type="button" id="posManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="positions">▸ Manuel vs suivi auto</button>
       <button type="button" id="posWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="positions">▸ Paris par semaine</button>
       <button type="button" id="posOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="positions">▸ Autres stats</button>
+      <button type="button" id="posTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="positions">▸ Le tableau des traders</button>
     </div>
     <div id="posTierWinrateContent"></div>
     <div id="posNoteWinrateContent"></div>
@@ -2318,6 +2326,7 @@
     <div id="posManualVsAutoContent"></div>
     <div id="posWeeklyPnlContent"></div>
     <div id="posOtherStatsContent"></div>
+    <div id="posTraderTableContent"></div>
     <div id="positionsContent" class="value-trades-box">
       <div class="empty-note">Aucune position pour l'instant — clique sur 🎯 Prendre position sur une carte dans Saison 26/27 pour l'enregistrer ici.</div>
     </div>
@@ -2354,6 +2363,7 @@
       <button type="button" id="testManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="test">▸ Manuel vs suivi auto</button>
       <button type="button" id="testWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="test">▸ Paris par semaine</button>
       <button type="button" id="testOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="test">▸ Autres stats</button>
+      <button type="button" id="testTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="test">▸ Le tableau des traders</button>
     </div>
     <div id="testTierWinrateContent"></div>
     <div id="testNoteWinrateContent"></div>
@@ -2362,6 +2372,7 @@
     <div id="testManualVsAutoContent"></div>
     <div id="testWeeklyPnlContent"></div>
     <div id="testOtherStatsContent"></div>
+    <div id="testTraderTableContent"></div>
     <div id="testContent" class="value-trades-box">
       <div class="empty-note">Rien à afficher — aucun snapshot actuel ni archivé.</div>
     </div>
@@ -2569,6 +2580,7 @@
   var snapManualVsAutoContent = document.getElementById("snapManualVsAutoContent");
   var snapWeeklyPnlContent = document.getElementById("snapWeeklyPnlContent");
   var snapOtherStatsContent = document.getElementById("snapOtherStatsContent");
+  var snapTraderTableContent = document.getElementById("snapTraderTableContent");
   var unconfContent = document.getElementById("unconfContent");
   var unconfCountEl = document.getElementById("unconfCount");
   var unconfStatsContent = document.getElementById("unconfStatsContent");
@@ -2580,6 +2592,7 @@
   var unconfManualVsAutoContent = document.getElementById("unconfManualVsAutoContent");
   var unconfWeeklyPnlContent = document.getElementById("unconfWeeklyPnlContent");
   var unconfOtherStatsContent = document.getElementById("unconfOtherStatsContent");
+  var unconfTraderTableContent = document.getElementById("unconfTraderTableContent");
   var testContent = document.getElementById("testContent");
   var testCountEl = document.getElementById("testCount");
   var testStatsContent = document.getElementById("testStatsContent");
@@ -2591,6 +2604,7 @@
   var testManualVsAutoContent = document.getElementById("testManualVsAutoContent");
   var testWeeklyPnlContent = document.getElementById("testWeeklyPnlContent");
   var testOtherStatsContent = document.getElementById("testOtherStatsContent");
+  var testTraderTableContent = document.getElementById("testTraderTableContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -2620,6 +2634,7 @@
   var posManualVsAutoContent = document.getElementById("posManualVsAutoContent");
   var posWeeklyPnlContent = document.getElementById("posWeeklyPnlContent");
   var posOtherStatsContent = document.getElementById("posOtherStatsContent");
+  var posTraderTableContent = document.getElementById("posTraderTableContent");
   var posSyncStatusEl = document.getElementById("posSyncStatus");
   var posSyncSetup = document.getElementById("posSyncSetup");
   var posSyncTokenInput = document.getElementById("posSyncTokenInput");
@@ -2803,6 +2818,7 @@
       pnlChartSplitByTier: false, pnlChartSimStake: null,
       chartSelectedId: null, chartPrevScrollY: null,
       statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
+      traderTableSort: { key: "total", dir: "desc" }, expandedTraderTable: {}, traderTableCollapsed: true,
       trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
       manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false,
       traderContribSelected: []
@@ -5927,11 +5943,12 @@
     els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
       tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
       stats: snapStatsContent, list: snapshotsContent, syncStatus: snapSyncStatusEl,
-      manualVsAuto: snapManualVsAutoContent, weeklyPnl: snapWeeklyPnlContent, otherStats: snapOtherStatsContent },
+      manualVsAuto: snapManualVsAutoContent, weeklyPnl: snapWeeklyPnlContent, otherStats: snapOtherStatsContent,
+      traderTable: snapTraderTableContent },
     ids: { statsToggle: "snapStatsToggleBtn", distToggle: "snapDistToggleBtn",
       tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn",
       manualVsAutoToggle: "manualVsAutoToggleBtn", weeklyPnlToggle: "weeklyPnlToggleBtn",
-      otherStatsToggle: "snapOtherStatsToggleBtn" },
+      otherStatsToggle: "snapOtherStatsToggleBtn", traderTableToggle: "snapTraderTableToggleBtn" },
     state: freshStoreState()
   };
   // "Snapshots non confiants" — trades passed on (✕ on a Value Trades
@@ -5981,11 +5998,12 @@
     els: { count: unconfCountEl, dashboard: unconfDashboard, pnlChart: unconfPnlChartContent,
       tierWinrate: unconfTierWinrateContent, noteWinrate: unconfNoteWinrateContent, dist: unconfDistContent,
       stats: unconfStatsContent, list: unconfContent,
-      manualVsAuto: unconfManualVsAutoContent, weeklyPnl: unconfWeeklyPnlContent, otherStats: unconfOtherStatsContent },
+      manualVsAuto: unconfManualVsAutoContent, weeklyPnl: unconfWeeklyPnlContent, otherStats: unconfOtherStatsContent,
+      traderTable: unconfTraderTableContent },
     ids: { statsToggle: "unconfStatsToggleBtn", distToggle: "unconfDistToggleBtn",
       tierToggle: "unconfTierWinrateToggleBtn", noteToggle: "unconfNoteWinrateToggleBtn",
       manualVsAutoToggle: "unconfManualVsAutoToggleBtn", weeklyPnlToggle: "unconfWeeklyPnlToggleBtn",
-      otherStatsToggle: "unconfOtherStatsToggleBtn" },
+      otherStatsToggle: "unconfOtherStatsToggleBtn", traderTableToggle: "unconfTraderTableToggleBtn" },
     state: freshStoreState()
   };
   var POSITIONS_STORE = {
@@ -6004,11 +6022,12 @@
     els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
       tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
       stats: posStatsContent, list: positionsContent, syncStatus: posSyncStatusEl,
-      manualVsAuto: posManualVsAutoContent, weeklyPnl: posWeeklyPnlContent, otherStats: posOtherStatsContent },
+      manualVsAuto: posManualVsAutoContent, weeklyPnl: posWeeklyPnlContent, otherStats: posOtherStatsContent,
+      traderTable: posTraderTableContent },
     ids: { statsToggle: "posStatsToggleBtn", distToggle: "posDistToggleBtn",
       tierToggle: "posTierWinrateToggleBtn", noteToggle: "posNoteWinrateToggleBtn",
       manualVsAutoToggle: "posManualVsAutoToggleBtn", weeklyPnlToggle: "posWeeklyPnlToggleBtn",
-      otherStatsToggle: "posOtherStatsToggleBtn" },
+      otherStatsToggle: "posOtherStatsToggleBtn", traderTableToggle: "posTraderTableToggleBtn" },
     state: freshStoreState()
   };
   // Test tab: same rendering pipeline as Snapshots (renderStoreView), fed
@@ -6032,11 +6051,12 @@
     els: { count: testCountEl, dashboard: testDashboard, pnlChart: testPnlChartContent,
       tierWinrate: testTierWinrateContent, noteWinrate: testNoteWinrateContent, dist: testDistContent,
       stats: testStatsContent, list: testContent,
-      manualVsAuto: testManualVsAutoContent, weeklyPnl: testWeeklyPnlContent, otherStats: testOtherStatsContent },
+      manualVsAuto: testManualVsAutoContent, weeklyPnl: testWeeklyPnlContent, otherStats: testOtherStatsContent,
+      traderTable: testTraderTableContent },
     ids: { statsToggle: "testStatsToggleBtn", distToggle: "testDistToggleBtn",
       tierToggle: "testTierWinrateToggleBtn", noteToggle: "testNoteWinrateToggleBtn",
       manualVsAutoToggle: "testManualVsAutoToggleBtn", weeklyPnlToggle: "testWeeklyPnlToggleBtn",
-      otherStatsToggle: "testOtherStatsToggleBtn" },
+      otherStatsToggle: "testOtherStatsToggleBtn", traderTableToggle: "testTraderTableToggleBtn" },
     state: freshStoreState()
   };
   // ---------- Archives (bulk "close out the season" move, reversible) ----------
@@ -7469,15 +7489,49 @@
       '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction. Clique une cellule pour filtrer les snapshots ci-dessous sur cette tranche.</div>' +
       '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody><tfoot><tr class="snap-dist-footer">' + footerCells + '</tr></tfoot></table>' + cellFilterNoteHtml + '</div>';
   }
-  function renderSnapStats(list, store) {
-    var el = store.els.stats;
+  // One snapshot-by-snapshot line per row, newest first — same
+  // date/question/result-badge vocabulary as the snapshot cards above, just
+  // condensed to one line each since this is scoped to a single trader.
+  // Shared by renderSnapStats and renderTraderTable, each passing their own
+  // expanded-state flag so expanding a row in one panel never affects the
+  // other.
+  function traderDetailRowHtml(st, isExpanded, colspan) {
+    if (!isExpanded) return '';
+    var sortedEntries = st.entries.slice().sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
+    var itemsHtml = sortedEntries.map(function (en) {
+      var d = new Date(en.snap.savedAt);
+      var dateLabel = isNaN(d.getTime()) ? en.snap.savedAt : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+      var netHtml = en.net == null ? '<span class="snap-dist-empty">en attente</span>' : '<span class="' + (en.net >= 0 ? "pnl-pos" : "pnl-neg") + '">' + fmtUSD(en.net) + '</span>';
+      return '<div class="trader-detail-row"><span class="trader-detail-date">' + esc(dateLabel) + '</span>' +
+        '<span class="trader-detail-question">' + esc(en.snap.question) + '</span>' +
+        traderResultBadge(en.cls) +
+        '<span class="trader-detail-net">' + netHtml + '</span></div>';
+    }).join("");
+    return '<tr class="snap-stats-detail-row"><td colspan="' + colspan + '"><div class="snap-stats-detail">' + itemsHtml + '</div></td></tr>';
+  }
+  // Shared by renderSnapStats (the full recap panel: lollipop + arbitrage +
+  // table) and renderTraderTable (a leaner, table-only view added on
+  // request) — one accumulation pass per trader, so the two panels can
+  // never silently disagree on PNL/winrate/ROI for the same trader.
+  function computeTraderStatsRows(list, store) {
     var byTrader = {};
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
-        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, hypPnl: 0, hypCount: 0, items: [], trend: [], entries: [] };
+        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, hypPnl: 0, hypCount: 0, realStakeSum: 0, items: [], trend: [], entries: [] };
         byTrader[name].total++;
         var pnlResult = traderNetPnlInSnapshot(snap, name);
-        if (pnlResult) byTrader[name].pnl += pnlResult.net;
+        if (pnlResult) {
+          byTrader[name].pnl += pnlResult.net;
+          // The trader's OWN real dollar stake (not a flat simulation) —
+          // summed across every side they held in this decided snapshot, so
+          // it lines up with pnlResult.net (profit on the win side minus
+          // stake lost on any other side). Feeds "ROI/trade" in the
+          // dedicated trader table: their actual realized ROI on their own
+          // money, as opposed to hypPnl's "if $1000 flat every time" ROI.
+          snap.sides.forEach(function (side) {
+            byTrader[name].realStakeSum += traderStakeAndProfitOnSide(side, name).stake;
+          });
+        }
         var hypResult = traderHypFlatPnl(snap, name, 1000);
         if (hypResult != null) { byTrader[name].hypPnl += hypResult; byTrader[name].hypCount++; }
         // Same flat-stake ROI simulation used everywhere else (tier winrate,
@@ -7509,11 +7563,17 @@
         byTrader[name].trend.push(cumByTrader[name]);
       });
     });
-    var rowsData = Object.keys(byTrader).map(function (n) {
+    return Object.keys(byTrader).map(function (n) {
       var st = byTrader[n];
       var decided = st.win + st.loss + st.gainNuance + st.perteNuance;
       st.decided = decided;
       st.roi = aggregateFlatPnl(st.items, store).roi;
+      st.realRoi = st.realStakeSum > 0 ? (st.pnl / st.realStakeSum * 100) : null;
+      // Always a true $1000 flat stake regardless of store (traderHypFlatPnl
+      // above is called with a hardcoded 1000, unlike st.roi which follows
+      // store.stakeFor — the user's own chosen amount for Positions) — the
+      // one comparable-across-every-tab "if I'd bet $1000 flat" figure.
+      st.hypRoi = st.hypCount > 0 ? (st.hypPnl / (st.hypCount * 1000) * 100) : null;
       // Raw st.pnl stays a number (0 when nothing decided yet) for display;
       // this separate field is what sorting uses so "—" rows sink to the
       // bottom instead of racing 0-PNL traders for last place.
@@ -7521,26 +7581,16 @@
       st.hypPnl = st.hypCount > 0 ? st.hypPnl : null;
       return st;
     });
+  }
+  function renderSnapStats(list, store) {
+    var el = store.els.stats;
+    var rowsData = computeTraderStatsRows(list, store);
     if (!rowsData.length) { el.innerHTML = ""; return; }
     var sortField = store.state.statsSort.key === "pnl" ? "pnlForSort" : store.state.statsSort.key;
     rowsData.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, store.state.statsSort.dir); });
     // One snapshot-by-snapshot line per row, newest first — same
     // date/question/result-badge vocabulary as the snapshot cards above, just
     // condensed to one line each since this is scoped to a single trader.
-    function traderDetailRowHtml(st) {
-      if (!store.state.expandedTraderStats[st.name]) return '';
-      var sortedEntries = st.entries.slice().sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
-      var itemsHtml = sortedEntries.map(function (en) {
-        var d = new Date(en.snap.savedAt);
-        var dateLabel = isNaN(d.getTime()) ? en.snap.savedAt : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
-        var netHtml = en.net == null ? '<span class="snap-dist-empty">en attente</span>' : '<span class="' + (en.net >= 0 ? "pnl-pos" : "pnl-neg") + '">' + fmtUSD(en.net) + '</span>';
-        return '<div class="trader-detail-row"><span class="trader-detail-date">' + esc(dateLabel) + '</span>' +
-          '<span class="trader-detail-question">' + esc(en.snap.question) + '</span>' +
-          traderResultBadge(en.cls) +
-          '<span class="trader-detail-net">' + netHtml + '</span></div>';
-      }).join("");
-      return '<tr class="snap-stats-detail-row"><td colspan="9"><div class="snap-stats-detail">' + itemsHtml + '</div></td></tr>';
-    }
     var rows = rowsData.map(function (st) {
       var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
       var isOpen = !!store.state.expandedTraderStats[st.name];
@@ -7549,7 +7599,7 @@
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
         '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
         '<td class="num ' + (st.roi == null ? '' : (st.roi >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + (st.roi == null ? '—' : (st.roi >= 0 ? '+' : '') + st.roi.toFixed(0) + '%') + '</td>' +
-        '<td>' + traderTrendSparkline(st.trend) + '</td></tr>' + traderDetailRowHtml(st);
+        '<td>' + traderTrendSparkline(st.trend) + '</td></tr>' + traderDetailRowHtml(st, isOpen, 9);
     }).join("");
     var headCells = SNAP_STATS_COLUMNS.map(function (col) {
       var isActive = store.state.statsSort.key === col.key;
@@ -7575,6 +7625,60 @@
       store.state.traderContribSelected = [];
       renderSnapStats(list, store);
     });
+  }
+  // Dedicated, table-only view of the same per-trader stats — no lollipop
+  // chart, no arbitrage note, added on request as its own toggle so it's a
+  // one-click scan instead of scrolling past the two charts above it in
+  // "Le récap par trader" (which keeps showing all three, unchanged). Own
+  // sort/expanded-row state (traderTableSort/expandedTraderTable) so
+  // interacting with this table never moves anything in the other one.
+  // Two ROI columns instead of one: "ROI/trade" is the trader's own real
+  // realized ROI (their actual dollar stakes), "ROI/trade 1000$" is always
+  // a true flat $1000 simulation regardless of store — isolates pick
+  // quality from bet sizing, same distinction the lollipop chart draws in $
+  // terms. Tendance (sparkline) dropped — this panel is for the numbers.
+  var TRADER_TABLE_COLUMNS = [
+    { key: "name", label: "Trader" },
+    { key: "pnl", label: "PNL", numeric: true },
+    { key: "total", label: "Snapshots", numeric: true },
+    { key: "win", label: "Gagnés", numeric: true },
+    { key: "loss", label: "Perdus", numeric: true },
+    { key: "gainNuance", label: "Gain nuancé", numeric: true },
+    { key: "perteNuance", label: "Perte nuancée", numeric: true },
+    { key: "realRoi", label: "ROI/trade", numeric: true },
+    { key: "hypRoi", label: "ROI/trade 1000$", numeric: true }
+  ];
+  function renderTraderTable(list, store) {
+    var el = store.els.traderTable;
+    if (!el) return;
+    syncSnapToggleLabel(store.ids.traderTableToggle, store.state.traderTableCollapsed, "le tableau des traders");
+    if (store.state.traderTableCollapsed) { el.innerHTML = ""; return; }
+    var rowsData = computeTraderStatsRows(list, store);
+    if (!rowsData.length) { el.innerHTML = '<div class="empty-note">Pas assez de paris pour ce tableau.</div>'; return; }
+    var sortField = store.state.traderTableSort.key === "pnl" ? "pnlForSort" : store.state.traderTableSort.key;
+    rowsData.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, store.state.traderTableSort.dir); });
+    function roiCell(v) {
+      return '<td class="num ' + (v == null ? '' : (v >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(0) + '%') + '</td>';
+    }
+    var rows = rowsData.map(function (st) {
+      var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
+      var isOpen = !!store.state.expandedTraderTable[st.name];
+      return '<tr class="trader-table-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '"><td><span class="snap-stats-caret">' + (isOpen ? '▾' : '▸') + '</span> ' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
+        '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
+        '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
+        '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
+        roiCell(st.realRoi) + roiCell(st.hypRoi) + '</tr>' + traderDetailRowHtml(st, isOpen, TRADER_TABLE_COLUMNS.length);
+    }).join("");
+    var headCells = TRADER_TABLE_COLUMNS.map(function (col) {
+      var isActive = store.state.traderTableSort.key === col.key;
+      var arrow = isActive ? '<span class="sort-arrow">' + (store.state.traderTableSort.dir === "asc" ? "▲" : "▼") + '</span>' : "";
+      // Same "sortable" visual treatment as the main recap table (cursor,
+      // hover, sort arrow color) — trader-table-th is a distinct class only
+      // so its own delegated click handler doesn't collide with
+      // th.sortable[data-store]'s, which renders the OTHER table.
+      return '<th class="sortable trader-table-th' + (col.numeric ? " num" : "") + (isActive ? " sorted" : "") + '" data-sort-key="' + col.key + '" data-store="' + store.name + '">' + esc(col.label) + arrow + '</th>';
+    }).join("");
+    el.innerHTML = '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
   // Two bars per trader: their real PNL (own actual stakes) against what a
   // flat $1000 on every one of their picks would have returned — isolates
@@ -8032,6 +8136,7 @@
     renderSnapPnlChart(cardsList, store);
     renderSnapDistribution(list, store);
     renderSnapStats(list, store);
+    renderTraderTable(list, store);
     renderManualVsAuto(list, store);
     renderWeeklyPnl(list, store);
     renderOtherStats(list, store);
@@ -9946,6 +10051,38 @@
       var otherStatsStore = resolveStoreFromEl(otherStatsToggleBtn);
       otherStatsStore.state.otherStatsCollapsed = !otherStatsStore.state.otherStatsCollapsed;
       renderOtherStats(otherStatsStore.load(), otherStatsStore);
+      return;
+    }
+    var traderTableToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='tradertable']") : null;
+    if (traderTableToggleBtn) {
+      var traderTableStore = resolveStoreFromEl(traderTableToggleBtn);
+      traderTableStore.state.traderTableCollapsed = !traderTableStore.state.traderTableCollapsed;
+      renderTraderTable(traderTableStore.load(), traderTableStore);
+      return;
+    }
+    // Checked ahead of th.sortable[data-store] below — .trader-table-th also
+    // carries the plain "sortable" class (for the shared hover/cursor CSS),
+    // so it would otherwise match that generic selector too and re-render
+    // the WRONG table.
+    var traderTableTh = e.target.closest ? e.target.closest("th.trader-table-th") : null;
+    if (traderTableTh) {
+      var traderTableSortStore = resolveStoreFromEl(traderTableTh);
+      var traderTableSortKey = traderTableTh.getAttribute("data-sort-key");
+      if (traderTableSortStore.state.traderTableSort.key === traderTableSortKey) {
+        traderTableSortStore.state.traderTableSort.dir = traderTableSortStore.state.traderTableSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        traderTableSortStore.state.traderTableSort.key = traderTableSortKey;
+        traderTableSortStore.state.traderTableSort.dir = traderTableSortKey === "name" ? "asc" : "desc";
+      }
+      renderTraderTable(traderTableSortStore.load(), traderTableSortStore);
+      return;
+    }
+    var traderTableRow = e.target.closest ? e.target.closest(".trader-table-row") : null;
+    if (traderTableRow) {
+      var traderTableRowStore = resolveStoreFromEl(traderTableRow);
+      var traderTableRowName = traderTableRow.getAttribute("data-trader");
+      traderTableRowStore.state.expandedTraderTable[traderTableRowName] = !traderTableRowStore.state.expandedTraderTable[traderTableRowName];
+      renderTraderTable(traderTableRowStore.load(), traderTableRowStore);
       return;
     }
     // Weekly table's own "Étendre par semaine" — a full renderStoreView
