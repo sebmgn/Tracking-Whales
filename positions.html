@@ -10721,22 +10721,31 @@
   // once it succeeds, so this is a no-op on every load after the first
   // (or after the first with a sync key connected, on a device that had
   // old archives but no key yet).
-  function migrateLegacyArchiveOnce() {
+  async function migrateLegacyArchiveOnce() {
     var legacy;
     try { legacy = JSON.parse(localStorage.getItem("vtArchive") || "[]"); } catch (e) { legacy = []; }
     if (!legacy.length || !getWriteSecret()) return;
     var existingSnapIds = {}, existingPosIds = {};
     loadSnapshotsRaw().forEach(function (s) { existingSnapIds[s.id] = true; });
     loadPositionsRaw().forEach(function (s) { existingPosIds[s.id] = true; });
+    // A season archived more than once historically (a real gap in the old
+    // flow — see the "reclique pour finir le ménage" comment this replaced)
+    // could leave the SAME id sitting in more than one legacy batch. Track
+    // ids queued THIS pass too, not just what's already live — otherwise
+    // two "add" ops for the same id would prepend it twice into the local
+    // array (a real, visible duplicate card) before the sync after this
+    // even has a chance to correct it.
     var snapOps = [], posOps = [];
     legacy.forEach(function (batch) {
       (batch.snapshots || []).forEach(function (s) {
         if (existingSnapIds[s.id]) return;
+        existingSnapIds[s.id] = true;
         snapOps.push({ type: "add", id: s.id, snapshot: s });
         snapOps.push({ type: "archive", id: s.id, archivedBatchId: batch.batchId, archivedLabel: batch.label, archivedAt: batch.archivedAt });
       });
       (batch.positions || []).forEach(function (s) {
         if (existingPosIds[s.id]) return;
+        existingPosIds[s.id] = true;
         posOps.push({ type: "add", id: s.id, snapshot: s });
         posOps.push({ type: "archive", id: s.id, archivedBatchId: batch.batchId, archivedLabel: batch.label, archivedAt: batch.archivedAt });
       });
@@ -10745,12 +10754,21 @@
     applyAndQueueOps(SNAPSHOTS_STORE, snapOps);
     applyAndQueueOps(POSITIONS_STORE, posOps);
     localStorage.removeItem("vtArchive");
+    // Rendered only AFTER the server round-trip, not right after the local
+    // apply above — the local apply is provisional (queued ops can still
+    // dedupe/settle differently once actually reconciled against the
+    // server's own copy), so rendering before that risked showing a
+    // transient state — e.g. this exact bug's duplicate — that the sync
+    // below would silently already be correcting underneath the visible
+    // page. Once dedupe-on-add above is fixed there's no known case where
+    // these differ, but the ordering itself costs nothing and stays honest
+    // about what "the current state" actually means.
+    await syncNow(SNAPSHOTS_STORE);
+    await syncNow(POSITIONS_STORE);
     renderSnapshots();
     renderPositions();
     renderArchives();
     renderTest();
-    syncNow(SNAPSHOTS_STORE);
-    syncNow(POSITIONS_STORE);
   }
   renderSnapshots();
   renderPositions();
