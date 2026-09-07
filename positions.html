@@ -2345,7 +2345,7 @@
 
   <div class="tab-panel" id="tab-test">
     <h2 class="section-title">All Time <span class="count-pill" id="testCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Saison 26/27 (actuelle) + tout ce qui est archivé — l'historique complet, toutes saisons confondues, synchronisé et identique sur tous tes appareils. Se met à jour automatiquement au fil des modifs faites dans Saison 26/27, mais rien n'est modifiable directement ici.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Saison 26/27 + Mes Positions (actuelles) + tout ce qui est archivé — l'historique complet, toutes saisons confondues, synchronisé et identique sur tous tes appareils. Un pari pris depuis un snapshot ne compte qu'une fois (la position, pas les deux). Se met à jour automatiquement au fil des modifs faites dans Saison 26/27 / Mes Positions, mais rien n'est modifiable directement ici.</div>
     <div class="snap-sync-bar">
       <button type="button" id="testExportBtn" class="snap-sync-link" title="Télécharger Saison 26/27 + Archives (y compris la corbeille) en JSON">⬇️ Exporter (tout)</button>
     </div>
@@ -5375,13 +5375,24 @@
   // All Time: every snapshot ever taken, archived or not — archived items
   // used to live in a separate local-only structure (loadArchive), which is
   // exactly why All Time used to show a different total on every browser/
-  // device. Archiving is a flag now (archivedBatchId, see the "archive" op
-  // below), not a move, so this is simply the full synced list minus
-  // lowConfidence (that's Snapshots non confiants' own tab). TEST_STORE is
-  // read-only so filtering the raw list itself (rather than only the
-  // display layer) is safe here.
+  // device. Archiving is a flag now (archivedBatchId, set via an
+  // editPosition op — see applyOpToList), not a move, so this is simply the
+  // full synced list minus lowConfidence (that's Snapshots non confiants'
+  // own tab). TEST_STORE is read-only so filtering the raw list itself
+  // (rather than only the display layer) is safe here.
+  //
+  // Positions merged in too (2026-09-07, on request — "tous les trades de
+  // tous les temps" should mean tous, not just snapshots) — deduped against
+  // their source snapshot via sourceSnapshotId (set by "🎯 Prendre
+  // position", see the takePosBtn handler): a trade that was both
+  // snapshotted AND actually taken shows once here, as the position (the
+  // more precise record — real stake, real cote obtained), not twice.
   function loadTestRaw() {
-    return loadSnapshotsRaw().filter(function (s) { return !s.lowConfidence; });
+    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.lowConfidence; });
+    var poss = loadPositionsRaw();
+    var takenFromSnapshot = {};
+    poss.forEach(function (p) { if (p.sourceSnapshotId) takenFromSnapshot[p.sourceSnapshotId] = true; });
+    return snaps.filter(function (s) { return !takenFromSnapshot[s.id]; }).concat(poss);
   }
   function loadTest() {
     return loadTestRaw().filter(function (s) { return !s.deletedAt; });
