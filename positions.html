@@ -5396,7 +5396,10 @@
     return snaps.filter(function (s) { return !takenFromSnapshot[s.id]; }).concat(poss);
   }
   function loadTest() {
-    return loadTestRaw().filter(function (s) { return !s.deletedAt; });
+    // allTimeDeletedAt, not deletedAt — see TEST_STORE's own field and the
+    // renderStoreView comment on why All Time can't share the live stores'
+    // trash flag.
+    return loadTestRaw().filter(function (s) { return !s.allTimeDeletedAt; });
   }
   // Each store keeps its own persisted queue (store.queueKey) — snapshots
   // and positions flush independently against different Lambda routes, so
@@ -6061,6 +6064,12 @@
     allowTakePosition: false,
     allowSimStakeSlider: true,
     readOnly: true,
+    // Its OWN trash field, independent of the live stores' shared
+    // deletedAt — see renderStoreView/renderSnapPosTrashView and the
+    // delete/restore handlers. All Time is meant to be a permanent record:
+    // trashing something in Saison 26/27 or Mes Positions must never make
+    // it vanish from here too.
+    deletedAtField: "allTimeDeletedAt",
     itemNoun: "snapshot",
     emptyHint: "Rien à afficher — aucun snapshot actuel ni archivé.",
     dateLabelPrefix: "Sauvegardé le",
@@ -7895,8 +7904,9 @@
       : '';
     var toolbarHtml;
     if (isTrash) {
-      var dd = new Date(snap.deletedAt);
-      var deletedLabel = isNaN(dd.getTime()) ? snap.deletedAt : dd.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      var delFieldTrash = store.deletedAtField || "deletedAt";
+      var dd = new Date(snap[delFieldTrash]);
+      var deletedLabel = isNaN(dd.getTime()) ? snap[delFieldTrash] : dd.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
       toolbarHtml = '<div class="snap-toolbar">' +
         '<span class="dim">Mis à la corbeille le ' + esc(deletedLabel) + '</span>' +
         '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '">↺ Restaurer</button>' +
@@ -8020,8 +8030,9 @@
       .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, "");
     var toolbarHtml;
     if (isTrash) {
-      var dd = new Date(snap.deletedAt);
-      var deletedLabel = isNaN(dd.getTime()) ? snap.deletedAt : dd.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      var delFieldTrash = store.deletedAtField || "deletedAt";
+      var dd = new Date(snap[delFieldTrash]);
+      var deletedLabel = isNaN(dd.getTime()) ? snap[delFieldTrash] : dd.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
       toolbarHtml = '<div class="snap-toolbar">' +
         '<span class="dim">Mis à la corbeille le ' + esc(deletedLabel) + '</span>' +
         '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '">↺ Restaurer</button>' +
@@ -8102,8 +8113,9 @@
   // whatever stale HTML was already in it, since calls actually resolved to
   // the other renderTrashView, which writes into valueTradesContent instead.
   function renderSnapPosTrashView(fullList, store) {
-    var trashed = fullList.filter(function (s) { return !!s.deletedAt; });
-    trashed.sort(function (a, b) { return new Date(b.deletedAt) - new Date(a.deletedAt); });
+    var delField = store.deletedAtField || "deletedAt";
+    var trashed = fullList.filter(function (s) { return !!s[delField]; });
+    trashed.sort(function (a, b) { return new Date(b[delField]) - new Date(a[delField]); });
     store.els.count.textContent = trashed.length + ' ' + store.itemNoun + (trashed.length > 1 ? "s" : "") + ' à la corbeille';
     if (!trashed.length) {
       store.els.list.innerHTML = '<div class="empty-note">Corbeille vide — rien à restaurer.</div>';
@@ -8129,6 +8141,14 @@
     // instead of loadRaw/save filtering them out.
     if (store.excludeArchived) fullList = fullList.filter(function (s) { return !s.archivedBatchId; });
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
+    // All Time uses its OWN independent trash field (allTimeDeletedAt) —
+    // see the store definition and the delete/restore handlers — so
+    // trashing something from Saison 26/27 / Mes Positions (their shared
+    // "deletedAt") never hides it from All Time, and vice versa. The
+    // 2026-09-07 incident this fixes: All Time used to just mirror
+    // deletedAt directly, so cleaning up Saison 26/27 silently erased
+    // those same trades from the permanent All Time record too.
+    var delField = store.deletedAtField || "deletedAt";
     // Trashed items never feed the dashboard/charts/card list below — only
     // the Corbeille view (above) shows them, until restored.
     // Explicit sort, most recent first — nothing upstream guarantees this
@@ -8138,7 +8158,7 @@
     // oldest-first, tracking DynamoDB's sort key), so without this the
     // display order would depend on whether the last render came from a
     // local edit or a sync.
-    var list = fullList.filter(function (s) { return !s.deletedAt; })
+    var list = fullList.filter(function (s) { return !s[delField]; })
       .sort(function (a, b) { return new Date(b.savedAt) - new Date(a.savedAt); });
     if (store.name === "positions") computePositionOpposedColors(list);
     // Dashboard/tier-gauge/recap table always reflect every (non-trashed)
@@ -10061,7 +10081,14 @@
       var fromTestDel = delBtn.getAttribute("data-store") === "test";
       var dStore = resolveWritableStoreFromEl(delBtn);
       var did = delBtn.getAttribute("data-snap-id");
-      var delOp = { type: "trash", id: did, deletedAt: new Date().toISOString() };
+      // All Time trashing must never touch the live stores' own deletedAt
+      // (that's what made Saison 26/27 cleanup silently erase the same
+      // trades from the permanent All Time record) — editPosition against
+      // its own separate allTimeDeletedAt field instead of the shared
+      // "trash" op.
+      var delOp = fromTestDel
+        ? { type: "editPosition", id: did, patch: { allTimeDeletedAt: new Date().toISOString() } }
+        : { type: "trash", id: did, deletedAt: new Date().toISOString() };
       enqueueOp(dStore, delOp);
       if (fromTestDel) renderTest();
       return;
@@ -10073,7 +10100,9 @@
       var fromTestRestore = restoreBtn.getAttribute("data-store") === "test";
       var rStore = resolveWritableStoreFromEl(restoreBtn);
       var rid = restoreBtn.getAttribute("data-snap-id");
-      var restoreOp = { type: "restore", id: rid };
+      var restoreOp = fromTestRestore
+        ? { type: "editPosition", id: rid, patch: { allTimeDeletedAt: null } }
+        : { type: "restore", id: rid };
       enqueueOp(rStore, restoreOp);
       if (fromTestRestore) renderTest();
       return;
