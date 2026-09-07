@@ -5437,26 +5437,16 @@
     // forever, just flagged, so it's excluded from Saison 26/27 / Mes
     // Positions (excludeArchived) but still shows in All Time everywhere,
     // on every device, without a separate sync path to build/maintain.
-    if (op.type === "archive") {
-      return list.map(function (s) {
-        if (s.id !== op.id) return s;
-        var copy = Object.assign({}, s);
-        copy.archivedBatchId = op.archivedBatchId;
-        copy.archivedLabel = op.archivedLabel;
-        copy.archivedAt = op.archivedAt || new Date().toISOString();
-        return copy;
-      });
-    }
-    if (op.type === "unarchive") {
-      return list.map(function (s) {
-        if (s.id !== op.id) return s;
-        var copy = Object.assign({}, s);
-        delete copy.archivedBatchId;
-        delete copy.archivedLabel;
-        delete copy.archivedAt;
-        return copy;
-      });
-    }
+    // Expressed as editPosition (below), not a dedicated "archive" op type —
+    // 2026-09-07 incident: a custom op type works fine locally (this
+    // function is the only thing that needs to understand it) but the
+    // Lambda validates op.type server-side and 400s anything it doesn't
+    // recognize, permanently wedging that op at the front of the queue and
+    // blocking every real op queued behind it. editPosition already has
+    // Lambda-side support (added for the cote-edit feature), and its patch
+    // is a plain merge — setting archivedBatchId/archivedLabel/archivedAt
+    // to null on "unarchive" reads as falsy everywhere those fields are
+    // checked, which is all this app has ever needed.
     if (op.type === "setSide") {
       return list.map(function (s) {
         if (s.id !== op.id) return s;
@@ -6172,8 +6162,9 @@
     if (!confirm('Réactiver "' + label + '" — ' + snaps.length + ' snapshot(s) et ' + poss.length + ' position(s) vont revenir dans Saison 26/27 / Mes Positions.\n\nContinuer ?')) return;
     var btn = archivesContent.querySelector('.archive-reactivate-btn[data-batch-id="' + batchId + '"]');
     if (btn) { btn.disabled = true; btn.textContent = "↺ Réactivation…"; }
-    applyAndQueueOps(SNAPSHOTS_STORE, snaps.map(function (s) { return { type: "unarchive", id: s.id }; }));
-    applyAndQueueOps(POSITIONS_STORE, poss.map(function (s) { return { type: "unarchive", id: s.id }; }));
+    var unarchivePatch = { archivedBatchId: null, archivedLabel: null, archivedAt: null };
+    applyAndQueueOps(SNAPSHOTS_STORE, snaps.map(function (s) { return { type: "editPosition", id: s.id, patch: unarchivePatch }; }));
+    applyAndQueueOps(POSITIONS_STORE, poss.map(function (s) { return { type: "editPosition", id: s.id, patch: unarchivePatch }; }));
     renderSnapshots();
     renderPositions();
     renderArchives();
@@ -6206,8 +6197,9 @@
     var batchId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     var label = "Avant saison 2026/2027 (archivé le " + new Date().toLocaleDateString("fr-FR") + ")";
     var archivedAt = new Date().toISOString();
-    applyAndQueueOps(SNAPSHOTS_STORE, snaps.map(function (s) { return { type: "archive", id: s.id, archivedBatchId: batchId, archivedLabel: label, archivedAt: archivedAt }; }));
-    applyAndQueueOps(POSITIONS_STORE, poss.map(function (s) { return { type: "archive", id: s.id, archivedBatchId: batchId, archivedLabel: label, archivedAt: archivedAt }; }));
+    var archivePatch = { archivedBatchId: batchId, archivedLabel: label, archivedAt: archivedAt };
+    applyAndQueueOps(SNAPSHOTS_STORE, snaps.map(function (s) { return { type: "editPosition", id: s.id, patch: archivePatch }; }));
+    applyAndQueueOps(POSITIONS_STORE, poss.map(function (s) { return { type: "editPosition", id: s.id, patch: archivePatch }; }));
     renderSnapshots();
     renderPositions();
     renderArchives();
@@ -10735,22 +10727,25 @@
     // two "add" ops for the same id would prepend it twice into the local
     // array (a real, visible duplicate card) before the sync after this
     // even has a chance to correct it.
+    // Tag baked directly into the snapshot object being added (one op, not
+    // an add followed by a separate patch) — it's a fresh insert either
+    // way, nothing to race against.
     var snapOps = [], posOps = [];
     legacy.forEach(function (batch) {
       (batch.snapshots || []).forEach(function (s) {
         if (existingSnapIds[s.id]) return;
         existingSnapIds[s.id] = true;
-        snapOps.push({ type: "add", id: s.id, snapshot: s });
-        snapOps.push({ type: "archive", id: s.id, archivedBatchId: batch.batchId, archivedLabel: batch.label, archivedAt: batch.archivedAt });
+        var tagged = Object.assign({}, s, { archivedBatchId: batch.batchId, archivedLabel: batch.label, archivedAt: batch.archivedAt });
+        snapOps.push({ type: "add", id: s.id, snapshot: tagged });
       });
       (batch.positions || []).forEach(function (s) {
         if (existingPosIds[s.id]) return;
         existingPosIds[s.id] = true;
-        posOps.push({ type: "add", id: s.id, snapshot: s });
-        posOps.push({ type: "archive", id: s.id, archivedBatchId: batch.batchId, archivedLabel: batch.label, archivedAt: batch.archivedAt });
+        var taggedPos = Object.assign({}, s, { archivedBatchId: batch.batchId, archivedLabel: batch.label, archivedAt: batch.archivedAt });
+        posOps.push({ type: "add", id: s.id, snapshot: taggedPos });
       });
     });
-    console.log("Migrating " + legacy.length + " legacy local archive batch(es) — " + (snapOps.length / 2) + " snapshot(s), " + (posOps.length / 2) + " position(s).");
+    console.log("Migrating " + legacy.length + " legacy local archive batch(es) — " + snapOps.length + " snapshot(s), " + posOps.length + " position(s).");
     applyAndQueueOps(SNAPSHOTS_STORE, snapOps);
     applyAndQueueOps(POSITIONS_STORE, posOps);
     localStorage.removeItem("vtArchive");
