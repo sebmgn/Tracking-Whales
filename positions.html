@@ -10707,12 +10707,56 @@
   wireSyncTokenControls(snapSyncTokenSave, snapSyncTokenClear, snapSyncTokenInput, snapSyncSetup);
   wireSyncTokenControls(posSyncTokenSave, posSyncTokenClear, posSyncTokenInput, posSyncSetup);
 
+  // One-time migration (2026-09-07): archives used to live in a separate
+  // LOCAL-ONLY key (vtArchive) — never synced, which is exactly why All
+  // Time used to show a different total on every device. Whatever's still
+  // sitting in that old key on this device gets folded into the new
+  // archivedBatchId tagging system (same synced lists as everything else,
+  // see the "archive" op) instead of being silently orphaned by the
+  // switch. Runs after the initial sync so it's checking against this
+  // device's true current server state, not stale pre-sync local data; a
+  // snapshot/position whose id is ALREADY present live is left completely
+  // alone (something else already reconciled it — don't second-guess the
+  // current live state with stale history). Self-limiting: clears vtArchive
+  // once it succeeds, so this is a no-op on every load after the first
+  // (or after the first with a sync key connected, on a device that had
+  // old archives but no key yet).
+  function migrateLegacyArchiveOnce() {
+    var legacy;
+    try { legacy = JSON.parse(localStorage.getItem("vtArchive") || "[]"); } catch (e) { legacy = []; }
+    if (!legacy.length || !getWriteSecret()) return;
+    var existingSnapIds = {}, existingPosIds = {};
+    loadSnapshotsRaw().forEach(function (s) { existingSnapIds[s.id] = true; });
+    loadPositionsRaw().forEach(function (s) { existingPosIds[s.id] = true; });
+    var snapOps = [], posOps = [];
+    legacy.forEach(function (batch) {
+      (batch.snapshots || []).forEach(function (s) {
+        if (existingSnapIds[s.id]) return;
+        snapOps.push({ type: "add", id: s.id, snapshot: s });
+        snapOps.push({ type: "archive", id: s.id, archivedBatchId: batch.batchId, archivedLabel: batch.label, archivedAt: batch.archivedAt });
+      });
+      (batch.positions || []).forEach(function (s) {
+        if (existingPosIds[s.id]) return;
+        posOps.push({ type: "add", id: s.id, snapshot: s });
+        posOps.push({ type: "archive", id: s.id, archivedBatchId: batch.batchId, archivedLabel: batch.label, archivedAt: batch.archivedAt });
+      });
+    });
+    console.log("Migrating " + legacy.length + " legacy local archive batch(es) — " + (snapOps.length / 2) + " snapshot(s), " + (posOps.length / 2) + " position(s).");
+    applyAndQueueOps(SNAPSHOTS_STORE, snapOps);
+    applyAndQueueOps(POSITIONS_STORE, posOps);
+    localStorage.removeItem("vtArchive");
+    renderSnapshots();
+    renderPositions();
+    renderArchives();
+    renderTest();
+    syncNow(SNAPSHOTS_STORE);
+    syncNow(POSITIONS_STORE);
+  }
   renderSnapshots();
   renderPositions();
   updateSyncStatus(SNAPSHOTS_STORE, "syncing");
   updateSyncStatus(POSITIONS_STORE, "syncing");
-  syncNow(SNAPSHOTS_STORE);
-  syncNow(POSITIONS_STORE);
+  Promise.all([syncNow(SNAPSHOTS_STORE), syncNow(POSITIONS_STORE)]).then(migrateLegacyArchiveOnce);
   // Every 2 min, not 1 — reads now happen even without a token (public repo,
   // unauthenticated GET), and GitHub's unauthenticated rate limit is a flat
   // 60 req/hour per IP, so this leaves headroom for manual resyncs too.
