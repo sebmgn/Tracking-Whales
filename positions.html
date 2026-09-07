@@ -2345,9 +2345,10 @@
 
   <div class="tab-panel" id="tab-test">
     <h2 class="section-title">All Time <span class="count-pill" id="testCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Saison 26/27 + Mes Positions (actuelles) + tout ce qui est archivé — l'historique complet, toutes saisons confondues, synchronisé et identique sur tous tes appareils. Un pari pris depuis un snapshot ne compte qu'une fois (la position, pas les deux). Se met à jour automatiquement au fil des modifs faites dans Saison 26/27 / Mes Positions, mais rien n'est modifiable directement ici.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée : Saison 26/27 + Mes Positions (actuelles) + tout ce qui est archivé — l'historique complet, toutes saisons confondues, synchronisé et identique sur tous tes appareils. Un pari pris depuis un snapshot ne compte qu'une fois (la position, pas les deux). Se met à jour automatiquement au fil des modifs faites dans Saison 26/27 / Mes Positions. Seule la corbeille est modifiable directement ici (ça agit sur le vrai snapshot ou la vraie position derrière) — le reste (camp gagnant, confiance, cote) se change depuis Saison 26/27 ou Mes Positions.</div>
     <div class="snap-sync-bar">
       <button type="button" id="testExportBtn" class="snap-sync-link" title="Télécharger Saison 26/27 + Archives (y compris la corbeille) en JSON">⬇️ Exporter (tout)</button>
+      <button id="testTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots/positions mis à la corbeille depuis All Time — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
     </div>
     <div id="testPnlChartContent"></div>
     <div id="testDashboard"></div>
@@ -7905,7 +7906,12 @@
       var isOtherWinnerRO = snap.winningSide === OTHER_SIDE_SENTINEL;
       var mSideLabel = snap.winningSide ? ' · Camp gagnant : ' + esc(isOtherWinnerRO ? "Camp adverse" : snap.winningSide) : '';
       var mConfLabel = snap.confidence ? ' · Confiance ' + esc(snap.confidence) : '';
-      toolbarHtml = '<div class="snap-toolbar"><span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + mSideLabel + mConfLabel + '</span></div>';
+      // The one exception to "read-only" — resolveWritableStoreFromEl
+      // routes this to the item's real backing store (snapshots or
+      // positions) rather than TEST_STORE itself, whose .save is a no-op.
+      toolbarHtml = '<div class="snap-toolbar"><span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + mSideLabel + mConfLabel + '</span>' +
+        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
+      '</div>';
     } else {
       // Only two possible outcomes for a manual, single-camp bet: the named
       // camp won, or it didn't — same OTHER_SIDE_SENTINEL "Camp adverse"
@@ -8023,13 +8029,17 @@
       '</div>';
     } else if (store.readOnly) {
       // Test tab: frozen mix of live + archived items with no single live
-      // store to write back to, so every editable control (side/confidence
-      // toggle, take-position, delete) is stripped — same spirit as
-      // archiveItemSummaryHtml's own read-only treatment, just keeping the
-      // full card body instead of the compact archive row.
+      // store to write back to, so side/confidence/take-position/edit-cote
+      // stay stripped, same spirit as archiveItemSummaryHtml's own
+      // read-only treatment. Corbeille is the one exception —
+      // resolveWritableStoreFromEl routes it to the item's real backing
+      // store (snapshots or positions) instead of TEST_STORE, whose .save
+      // is a no-op.
       var sideLabel = snap.winningSide ? ' · Camp gagnant : ' + esc(snap.winningSide) : '';
       var confLabel = snap.confidence ? ' · Confiance ' + esc(snap.confidence) : '';
-      toolbarHtml = '<div class="snap-toolbar"><span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + sideLabel + confLabel + '</span></div>';
+      toolbarHtml = '<div class="snap-toolbar"><span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + sideLabel + confLabel + '</span>' +
+        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
+      '</div>';
     } else {
       var sideButtonsHtml = (snap.sides || []).map(function (side) {
         var isWinner = snap.winningSide === side.name;
@@ -8408,7 +8418,7 @@
     var dots = pts.map(function (p) {
       var color = scoreColor(p.u.score != null ? p.u.score : 5);
       return '<circle class="vt-volroi-pt" cx="' + x(p.vol).toFixed(1) + '" cy="' + y(p.roi).toFixed(1) + '" r="5" fill="' + color + '" fill-opacity="0.75" stroke="' + color + '"' +
-        ' data-question="' + esc(p.u.members[0].question) + '" data-vol="' + esc(fmtUSD(p.vol)) + '" data-roi="' + p.roi.toFixed(0) + '" data-note="' + (p.u.score != null ? p.u.score.toFixed(1) : "—") + '"></circle>';
+        ' data-key="' + esc(p.u.members[0].key) + '" data-question="' + esc(p.u.members[0].question) + '" data-vol="' + esc(fmtUSD(p.vol)) + '" data-roi="' + p.roi.toFixed(0) + '" data-note="' + (p.u.score != null ? p.u.score.toFixed(1) : "—") + '"></circle>';
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="vt-volroi-svg" preserveAspectRatio="xMidYMid meet">' +
       gridLines +
@@ -8440,6 +8450,37 @@
       pt.addEventListener("mouseleave", function () { tip.classList.remove("show"); });
     });
   }
+  // Same "click a point, jump to the card, click again to come back"
+  // pattern as the snapshot PnL chart (wireSnapPnlChartClicks) — separate
+  // module-level state instead of a store's, since Value Trades isn't
+  // backed by one of the snapshot/position stores.
+  var vtVolRoiSelectedKey = null;
+  var vtVolRoiPrevScrollY = null;
+  function wireVtVolRoiClicks(box) {
+    box.querySelectorAll(".vt-volroi-pt[data-key]").forEach(function (pt) {
+      pt.addEventListener("click", function () {
+        var key = pt.getAttribute("data-key");
+        var card = document.querySelector('.value-trade-item[data-key="' + key + '"]');
+        if (!card) return;
+        if (vtVolRoiSelectedKey === key) {
+          card.classList.remove("snap-item-highlight");
+          vtVolRoiSelectedKey = null;
+          if (vtVolRoiPrevScrollY != null) window.scrollTo({ top: vtVolRoiPrevScrollY, behavior: "smooth" });
+          vtVolRoiPrevScrollY = null;
+          return;
+        }
+        if (vtVolRoiSelectedKey) {
+          var prevCard = document.querySelector('.value-trade-item[data-key="' + vtVolRoiSelectedKey + '"]');
+          if (prevCard) prevCard.classList.remove("snap-item-highlight");
+        } else {
+          vtVolRoiPrevScrollY = window.scrollY;
+        }
+        vtVolRoiSelectedKey = key;
+        card.classList.add("snap-item-highlight");
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    });
+  }
   function renderVtVolRoiChart(units) {
     var el = document.getElementById("vtVolRoiChart");
     if (!el) return;
@@ -8450,10 +8491,12 @@
     var boxId = "vtVolRoiBox";
     el.innerHTML = '<div class="chart-box vt-volroi-box" id="' + boxId + '">' +
       '<div class="vt-volroi-title">📊 ROI vs Volume tradé</div>' +
-      '<div class="vt-volroi-sub">' + pts.length + ' trade' + (pts.length > 1 ? 's' : '') + ' affiché' + (pts.length > 1 ? 's' : '') + ' ci-dessous — couleur = note, échelle log sur les deux axes</div>' +
+      '<div class="vt-volroi-sub">' + pts.length + ' trade' + (pts.length > 1 ? 's' : '') + ' affiché' + (pts.length > 1 ? 's' : '') + ' ci-dessous — couleur = note, échelle log sur les deux axes. Clique un point pour aller au trade correspondant — reclique pour revenir.</div>' +
       buildVtVolRoiSvg(pts) +
       '</div>';
-    wireVtVolRoiTooltip(document.getElementById(boxId));
+    var box = document.getElementById(boxId);
+    wireVtVolRoiTooltip(box);
+    wireVtVolRoiClicks(box);
   }
   // Always-visible pinned list, independent of every other Value Trades
   // filter — pulled from allUnitsRaw (before the decided-price / match-over
@@ -9770,6 +9813,19 @@
     if (name === "unconfident") return UNCONFIDENT_STORE;
     return SNAPSHOTS_STORE;
   }
+  // All Time is a merged VIEW (snapshots + positions, see loadTestRaw) with
+  // no backing storage of its own (TEST_STORE.save is a no-op) — trashing
+  // an item shown there has to actually land on whichever real store it
+  // came from. Used only by the trash/restore/purge handlers below; every
+  // other action stays routed through the plain resolveStoreFromEl (side/
+  // confidence/edit stay read-only from All Time, on purpose).
+  function resolveWritableStoreFromEl(el) {
+    var store = resolveStoreFromEl(el);
+    if (store.name !== "test") return store;
+    var id = el.getAttribute("data-snap-id");
+    if (loadPositionsRaw().some(function (s) { return s.id === id; })) return POSITIONS_STORE;
+    return SNAPSHOTS_STORE;
+  }
   document.addEventListener("click", function (e) {
     var rejectBtn = e.target.closest ? e.target.closest(".vt-reject-btn") : null;
     if (rejectBtn) {
@@ -10002,30 +10058,36 @@
     if (delBtn) {
       e.preventDefault();
       e.stopPropagation();
-      var dStore = resolveStoreFromEl(delBtn);
+      var fromTestDel = delBtn.getAttribute("data-store") === "test";
+      var dStore = resolveWritableStoreFromEl(delBtn);
       var did = delBtn.getAttribute("data-snap-id");
       var delOp = { type: "trash", id: did, deletedAt: new Date().toISOString() };
       enqueueOp(dStore, delOp);
+      if (fromTestDel) renderTest();
       return;
     }
     var restoreBtn = e.target.closest ? e.target.closest(".snap-restore-btn") : null;
     if (restoreBtn) {
       e.preventDefault();
       e.stopPropagation();
-      var rStore = resolveStoreFromEl(restoreBtn);
+      var fromTestRestore = restoreBtn.getAttribute("data-store") === "test";
+      var rStore = resolveWritableStoreFromEl(restoreBtn);
       var rid = restoreBtn.getAttribute("data-snap-id");
       var restoreOp = { type: "restore", id: rid };
       enqueueOp(rStore, restoreOp);
+      if (fromTestRestore) renderTest();
       return;
     }
     var purgeBtn = e.target.closest ? e.target.closest(".snap-purge-btn") : null;
     if (purgeBtn) {
       e.preventDefault();
       e.stopPropagation();
-      var pStore = resolveStoreFromEl(purgeBtn);
+      var fromTestPurge = purgeBtn.getAttribute("data-store") === "test";
+      var pStore = resolveWritableStoreFromEl(purgeBtn);
       var pid = purgeBtn.getAttribute("data-snap-id");
       var purgeOp = { type: "delete", id: pid };
       enqueueOp(pStore, purgeOp);
+      if (fromTestPurge) renderTest();
       return;
     }
     var statsToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='stats']") : null;
@@ -10353,6 +10415,7 @@
   wireTrashToggle(POSITIONS_STORE, "posTrashToggleBtn", renderPositions);
   wireExport(POSITIONS_STORE, "posExportBtn");
   wireExport(TEST_STORE, "testExportBtn");
+  wireTrashToggle(TEST_STORE, "testTrashToggleBtn", renderTest);
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
   // Archives are tagged items in the same synced lists now (see the
   // "archive" op), not a separate local structure — so there's nothing left
