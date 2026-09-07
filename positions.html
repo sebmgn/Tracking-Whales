@@ -2334,11 +2334,9 @@
 
   <div class="tab-panel" id="tab-archives">
     <h2 class="section-title">Archives</h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Saison 26/27 / Mes Positions) plus tard, rien n'est jamais supprimé ici. Stocké uniquement dans ce navigateur (jamais synchronisé) — si tu utilises plusieurs navigateurs/appareils (ou l'adresse cloudfront.net en plus de whalescorrelation-seb.com), exporte ici et importe sur l'autre pour qu'All Time voie le même historique partout.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Snapshots et positions archivés en bloc — chaque bloc peut être réactivé (renvoyé dans Saison 26/27 / Mes Positions) plus tard, rien n'est jamais supprimé ici. Synchronisé comme le reste (même clé) — visible à l'identique sur tous tes appareils.</div>
     <div class="snap-sync-bar">
-      <button type="button" id="archiveExportBtn" class="snap-sync-link" title="Télécharger toutes les archives (tous les lots) en JSON">⬇️ Exporter</button>
-      <button type="button" id="archiveImportBtn" class="snap-sync-link" title="Fusionner un fichier d'archives exporté depuis un autre navigateur — les lots déjà présents ici (même batchId) sont ignorés, rien n'est écrasé">⬆️ Importer (fusion)</button>
-      <input type="file" id="archiveImportInput" accept="application/json" style="display:none;">
+      <button type="button" id="archiveExportBtn" class="snap-sync-link" title="Télécharger tout ce qui est archivé (tous les lots) en JSON">⬇️ Exporter</button>
     </div>
     <div id="archivesContent">
       <div class="empty-note">Aucune archive pour l'instant.</div>
@@ -2347,11 +2345,9 @@
 
   <div class="tab-panel" id="tab-test">
     <h2 class="section-title">All Time <span class="count-pill" id="testCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Saison 26/27 (actuelle) + tout ce qui est dans Archives — l'historique complet, toutes saisons confondues. Se met à jour automatiquement au fil des modifs faites dans Saison 26/27, mais rien n'est modifiable ni synchronisé directement ici.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Vue fusionnée en lecture seule : Saison 26/27 (actuelle) + tout ce qui est archivé — l'historique complet, toutes saisons confondues, synchronisé et identique sur tous tes appareils. Se met à jour automatiquement au fil des modifs faites dans Saison 26/27, mais rien n'est modifiable directement ici.</div>
     <div class="snap-sync-bar">
-      <button type="button" id="testExportBtn" class="snap-sync-link" title="Télécharger Saison 26/27 + Archives fusionnés (y compris la corbeille) en JSON — le jeu complet, pas juste les archives">⬇️ Exporter (tout)</button>
-      <button type="button" id="testImportBtn" class="snap-sync-link" title="Importer un fichier exporté depuis All Time sur un autre navigateur — tout ce qui manque ici (id absent de Saison 26/27 et d'Archives) est ajouté à Archives comme nouveau lot, rien n'est écrasé">⬆️ Importer (fusion)</button>
-      <input type="file" id="testImportInput" accept="application/json" style="display:none;">
+      <button type="button" id="testExportBtn" class="snap-sync-link" title="Télécharger Saison 26/27 + Archives (y compris la corbeille) en JSON">⬇️ Exporter (tout)</button>
     </div>
     <div id="testPnlChartContent"></div>
     <div id="testDashboard"></div>
@@ -5342,11 +5338,12 @@
   function loadSnapshots() {
     // lowConfidence ones live in the same underlying list (see
     // UNCONFIDENT_STORE) but belong to the separate "Snapshots non
-    // confiants" tab — excluded here so Saison 26/27 never shows a trade
-    // that was actually passed on. loadSnapshotsRaw() itself stays
+    // confiants" tab, and archivedBatchId ones belong to a past season
+    // (see the "archive" op) — both excluded here so Saison 26/27 only
+    // ever shows current, active trades. loadSnapshotsRaw() itself stays
     // unfiltered (sync reconciliation and the merge-safe saves both need
     // the true full list).
-    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt && !s.lowConfidence; });
+    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt && !s.lowConfidence && !s.archivedBatchId; });
   }
   function saveSnapshotsToStorage(list) {
     try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
@@ -5370,29 +5367,21 @@
     return list;
   }
   function loadPositions() {
-    return loadPositionsRaw().filter(function (s) { return !s.deletedAt; });
+    return loadPositionsRaw().filter(function (s) { return !s.deletedAt && !s.archivedBatchId; });
   }
   function savePositionsToStorage(list) {
     try { localStorage.setItem(POSITIONS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
   }
-  // Test tab: current live snapshots + every archived batch's snapshots
-  // (loadArchive, defined below with the rest of Archives), merged into one
-  // read-only list — a sandbox to see how the display holds up with the
-  // full history, not just the live 20-30. De-duped by id (a live copy wins
-  // over an archived one) in case a batch was reactivated but a stale
-  // archive entry is still sitting around.
+  // All Time: every snapshot ever taken, archived or not — archived items
+  // used to live in a separate local-only structure (loadArchive), which is
+  // exactly why All Time used to show a different total on every browser/
+  // device. Archiving is a flag now (archivedBatchId, see the "archive" op
+  // below), not a move, so this is simply the full synced list minus
+  // lowConfidence (that's Snapshots non confiants' own tab). TEST_STORE is
+  // read-only so filtering the raw list itself (rather than only the
+  // display layer) is safe here.
   function loadTestRaw() {
-    var live = loadSnapshotsRaw();
-    var archived = [];
-    loadArchive().forEach(function (batch) { archived = archived.concat(batch.snapshots || []); });
-    archived.forEach(refreshSnapshotDisplay);
-    var seen = {}, merged = [];
-    live.concat(archived).forEach(function (s) { if (!seen[s.id]) { seen[s.id] = true; merged.push(s); } });
-    // Same reasoning as loadSnapshots — a passed-on trade belongs to
-    // Snapshots non confiants, not the merged full-history view. TEST_STORE
-    // is read-only so filtering the raw list itself (rather than only the
-    // display layer) is safe here.
-    return merged.filter(function (s) { return !s.lowConfidence; });
+    return loadSnapshotsRaw().filter(function (s) { return !s.lowConfidence; });
   }
   function loadTest() {
     return loadTestRaw().filter(function (s) { return !s.deletedAt; });
@@ -5440,6 +5429,31 @@
         if (s.id !== op.id) return s;
         var copy = Object.assign({}, s);
         delete copy.deletedAt;
+        return copy;
+      });
+    }
+    // "Archiver la saison" tags in place instead of moving to a separate
+    // local structure — the item stays in this same synced list/table
+    // forever, just flagged, so it's excluded from Saison 26/27 / Mes
+    // Positions (excludeArchived) but still shows in All Time everywhere,
+    // on every device, without a separate sync path to build/maintain.
+    if (op.type === "archive") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        var copy = Object.assign({}, s);
+        copy.archivedBatchId = op.archivedBatchId;
+        copy.archivedLabel = op.archivedLabel;
+        copy.archivedAt = op.archivedAt || new Date().toISOString();
+        return copy;
+      });
+    }
+    if (op.type === "unarchive") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        var copy = Object.assign({}, s);
+        delete copy.archivedBatchId;
+        delete copy.archivedLabel;
+        delete copy.archivedAt;
         return copy;
       });
     }
@@ -5930,6 +5944,7 @@
     name: "snapshots",
     loadRaw: loadSnapshotsRaw, load: loadSnapshots, save: saveSnapshotsToStorage,
     excludeLowConfidence: true, // rejected trades (✕) live in the same list but belong to Snapshots non confiants
+    excludeArchived: true, // archived (past-season) trades live in the same list but belong to All Time
     stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
     allowTakePosition: true,
     allowEditPosition: true, // "✎ Modifier" — cote only here (no per-item stake to correct, see the store.name branch in the click handler), unlike Positions' stake+cote
@@ -6009,6 +6024,7 @@
   var POSITIONS_STORE = {
     name: "positions",
     loadRaw: loadPositionsRaw, load: loadPositions, save: savePositionsToStorage,
+    excludeArchived: true, // archived (past-season) positions live in the same list, hidden here
     stakeFor: function (snap) { return snap.stakeUsd; },
     allowTakePosition: false,
     allowEditPosition: true, // "✎ Modifier" — correct the stake/cote after the fact, positions only
@@ -6059,23 +6075,14 @@
       otherStatsToggle: "testOtherStatsToggleBtn", traderTableToggle: "testTraderTableToggleBtn" },
     state: freshStoreState()
   };
-  // ---------- Archives (bulk "close out the season" move, reversible) ----------
-  // A season close-out is a different shape of operation than anything else
-  // in this file: it moves EVERY current snapshot and position (trashed
-  // ones included — loadRaw, not load) out of the live, synced stores in
-  // one go, rather than editing one item at a time. Kept local-only
-  // (unlike Snapshots/Positions themselves) — archived batches don't need
-  // cross-device sync, they're a closed history, not something edited day
-  // to day; the live data going forward stays fully synced as before.
-  // Stored as an array of batches (not one flat list) so archiving twice
-  // never merges two seasons together.
-  var ARCHIVE_KEY = "vtArchive";
-  function loadArchive() {
-    try { return JSON.parse(localStorage.getItem(ARCHIVE_KEY) || "[]"); } catch (e) { return []; }
-  }
-  function saveArchive(list) {
-    try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
-  }
+  // ---------- Archives (bulk "close out the season" tag, reversible) ----------
+  // A season close-out tags EVERY current snapshot and position (trashed
+  // ones included — loadRaw, not load) with an archivedBatchId in place,
+  // rather than moving them anywhere — they stay in the exact same synced
+  // vtSnapshots/vtPositions lists/tables as everything else (see the
+  // "archive"/"unarchive" ops in applyOpToList), so Archives and All Time
+  // are correct on every device automatically, same as Saison 26/27
+  // already was.
   function downloadJsonBackup(obj, prefix) {
     var blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
     var url = URL.createObjectURL(blob);
@@ -6107,21 +6114,38 @@
       '<span class="archive-item-result">' + resultLabel + '</span>' +
     '</div>';
   }
+  // Archives used to be a separate local-only structure (vtArchive) —
+  // never synced, so two devices could silently accumulate different
+  // archived seasons and All Time would show a different total on each
+  // one. Archiving is a tag now (archivedBatchId, set by the "archive" op
+  // above), not a move: archived snapshots/positions stay in the exact
+  // same synced vtSnapshots/vtPositions lists forever, so this just groups
+  // whatever's already flagged — no separate storage, no separate sync
+  // path, correct on every device automatically.
   function renderArchives() {
     var el = archivesContent;
     if (!el) return;
-    var archive = loadArchive();
-    if (!archive.length) { el.innerHTML = '<div class="empty-note">Aucune archive pour l\'instant.</div>'; return; }
-    el.innerHTML = archive.map(function (batch) {
+    var byBatch = {}, batchIds = [];
+    function collect(item) {
+      var bid = item.archivedBatchId;
+      if (!byBatch[bid]) { byBatch[bid] = { batchId: bid, label: item.archivedLabel, archivedAt: item.archivedAt, snapshots: [], positions: [] }; batchIds.push(bid); }
+    }
+    var snaps = loadSnapshotsRaw().filter(function (s) { return !!s.archivedBatchId; });
+    var poss = loadPositionsRaw().filter(function (s) { return !!s.archivedBatchId; });
+    snaps.forEach(function (s) { collect(s); byBatch[s.archivedBatchId].snapshots.push(s); });
+    poss.forEach(function (s) { collect(s); byBatch[s.archivedBatchId].positions.push(s); });
+    if (!batchIds.length) { el.innerHTML = '<div class="empty-note">Aucune archive pour l\'instant.</div>'; return; }
+    batchIds.sort(function (a, b) { return new Date(byBatch[b].archivedAt) - new Date(byBatch[a].archivedAt); });
+    el.innerHTML = batchIds.map(function (bid) {
+      var batch = byBatch[bid];
       var d = new Date(batch.archivedAt);
       var dateLabel = isNaN(d.getTime()) ? batch.archivedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-      var snaps = batch.snapshots || [], poss = batch.positions || [];
-      var snapCards = snaps.map(archiveItemSummaryHtml).join("");
-      var posCards = poss.map(archiveItemSummaryHtml).join("");
+      var snapCards = batch.snapshots.map(archiveItemSummaryHtml).join("");
+      var posCards = batch.positions.map(archiveItemSummaryHtml).join("");
       return '<div class="chart-box archive-batch">' +
         '<div class="archive-batch-header">' +
           '<div><div class="tier-wr-title">' + esc(batch.label) + '</div>' +
-          '<span class="dim">Archivé le ' + esc(dateLabel) + ' — ' + snaps.length + ' snapshot(s), ' + poss.length + ' position(s)</span></div>' +
+          '<span class="dim">Archivé le ' + esc(dateLabel) + ' — ' + batch.snapshots.length + ' snapshot(s), ' + batch.positions.length + ' position(s)</span></div>' +
           '<button type="button" class="snap-sync-link archive-reactivate-btn" data-batch-id="' + esc(batch.batchId) + '">↺ Réactiver ce lot</button>' +
         '</div>' +
         '<details class="archive-details"><summary>Voir le détail</summary>' +
@@ -6131,31 +6155,38 @@
       '</div>';
     }).join("");
   }
+  // Applies every op to its local list in ONE reduce pass (not one
+  // enqueueOp per item — that would trigger a render+sync per item),
+  // queues them all, then leaves the actual network push to the caller.
+  function applyAndQueueOps(store, ops) {
+    if (!ops.length) return;
+    store.save(ops.reduce(function (list, op) { return applyOpToList(list, op); }, store.loadRaw()));
+    saveSyncQueue(store, loadSyncQueue(store).concat(ops));
+  }
   async function reactivateArchiveBatch(batchId) {
-    var archive = loadArchive();
-    var idx = archive.findIndex(function (b) { return b.batchId === batchId; });
-    if (idx === -1) return;
-    var batch = archive[idx];
-    if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro dans Saison 26/27) — la réactivation doit aussi les renvoyer sur le serveur partagé, pas juste sur cet appareil."); return; }
-    var snaps = batch.snapshots || [], poss = batch.positions || [];
-    if (!confirm('Réactiver "' + batch.label + '" — ' + snaps.length + ' snapshot(s) et ' + poss.length + ' position(s) vont revenir dans Saison 26/27 / Mes Positions.\n\nContinuer ?')) return;
+    var snaps = loadSnapshotsRaw().filter(function (s) { return s.archivedBatchId === batchId; });
+    var poss = loadPositionsRaw().filter(function (s) { return s.archivedBatchId === batchId; });
+    if (!snaps.length && !poss.length) return;
+    var label = (snaps[0] || poss[0]).archivedLabel;
+    if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro dans Saison 26/27) — la réactivation doit aussi se refléter sur le serveur partagé, pas juste sur cet appareil."); return; }
+    if (!confirm('Réactiver "' + label + '" — ' + snaps.length + ' snapshot(s) et ' + poss.length + ' position(s) vont revenir dans Saison 26/27 / Mes Positions.\n\nContinuer ?')) return;
     var btn = archivesContent.querySelector('.archive-reactivate-btn[data-batch-id="' + batchId + '"]');
     if (btn) { btn.disabled = true; btn.textContent = "↺ Réactivation…"; }
+    applyAndQueueOps(SNAPSHOTS_STORE, snaps.map(function (s) { return { type: "unarchive", id: s.id }; }));
+    applyAndQueueOps(POSITIONS_STORE, poss.map(function (s) { return { type: "unarchive", id: s.id }; }));
+    renderSnapshots();
+    renderPositions();
+    renderArchives();
+    renderTest();
     try {
-      for (var i = 0; i < snaps.length; i++) { await pushOp(SNAPSHOTS_STORE, { type: "add", id: snaps[i].id, snapshot: snaps[i] }); }
-      for (var j = 0; j < poss.length; j++) { await pushOp(POSITIONS_STORE, { type: "add", id: poss[j].id, snapshot: poss[j] }); }
+      await syncNow(SNAPSHOTS_STORE);
+      await syncNow(POSITIONS_STORE);
     } catch (e) {
       console.error("Reactivate archive error", e);
-      alert("Erreur pendant la réactivation (" + e.message + ") — le lot reste dans Archives, relance depuis là pour réessayer. Ce qui a déjà été renvoyé au serveur y reste (rejouer l'opération ne duplique rien, même id).");
+      alert("Erreur pendant la synchro (" + e.message + ") — c'est déjà appliqué ici et la queue est conservée, ça se renverra tout seul (ou reclique \"Resynchro\" dans Saison 26/27).");
       if (btn) { btn.disabled = false; btn.textContent = "↺ Réactiver ce lot"; }
       return;
     }
-    archive.splice(idx, 1);
-    saveArchive(archive);
-    await syncNow(SNAPSHOTS_STORE);
-    await syncNow(POSITIONS_STORE);
-    renderArchives();
-    renderTest();
     alert("Réactivé — " + snaps.length + " snapshot(s) et " + poss.length + " position(s) sont de retour.");
   }
   archivesContent.addEventListener("click", function (e) {
@@ -6164,49 +6195,35 @@
     reactivateArchiveBatch(btn.getAttribute("data-batch-id"));
   });
   snapArchiveSeasonBtn.addEventListener("click", async function () {
-    var snaps = loadSnapshotsRaw(), poss = loadPositionsRaw();
+    // lowConfidence excluded — Snapshots non confiants is its own separate
+    // classification axis, not part of "this season"'s regular activity.
+    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.archivedBatchId && !s.lowConfidence; });
+    var poss = loadPositionsRaw().filter(function (s) { return !s.archivedBatchId; });
     if (!snaps.length && !poss.length) { alert("Rien à archiver — Saison 26/27 et Mes Positions sont déjà vides."); return; }
-    if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro) — l'archivage doit aussi les supprimer du serveur partagé, pas juste sur cet appareil."); return; }
-    if (!confirm(snaps.length + " snapshot(s) et " + poss.length + " position(s) vont être déplacés vers Archives — rien n'est supprimé, juste rangé, et réactivable plus tard depuis là. Une sauvegarde JSON va être téléchargée automatiquement d'abord.\n\nContinuer ?")) return;
+    if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro) — l'archivage doit aussi se refléter sur le serveur partagé, pas juste sur cet appareil."); return; }
+    if (!confirm(snaps.length + " snapshot(s) et " + poss.length + " position(s) vont être marqués comme archivés — rien n'est supprimé ni déplacé, ils restent synchronisés et réapparaissent dans All Time sur tous tes appareils, réactivables plus tard depuis Archives. Une sauvegarde JSON va être téléchargée automatiquement d'abord.\n\nContinuer ?")) return;
     downloadJsonBackup({ snapshots: snaps, positions: poss }, "archive-backup");
-    var batch = {
-      batchId: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-      label: "Avant saison 2026/2027 (archivé le " + new Date().toLocaleDateString("fr-FR") + ")",
-      archivedAt: new Date().toISOString(),
-      snapshots: snaps, positions: poss
-    };
-    var archive = loadArchive();
-    archive.unshift(batch);
-    saveArchive(archive);
-    saveSnapshotsToStorage([]);
-    savePositionsToStorage([]);
-    saveSyncQueue(SNAPSHOTS_STORE, []);
-    saveSyncQueue(POSITIONS_STORE, []);
-    snapArchiveSeasonBtn.disabled = true;
-    snapArchiveSeasonBtn.textContent = "🗄️ Archivage en cours…";
-    var serverCleanupFailed = false;
-    try {
-      for (var i = 0; i < snaps.length; i++) { await pushOp(SNAPSHOTS_STORE, { type: "delete", id: snaps[i].id }); }
-      for (var j = 0; j < poss.length; j++) { await pushOp(POSITIONS_STORE, { type: "delete", id: poss[j].id }); }
-    } catch (e) {
-      serverCleanupFailed = true;
-      console.error("Archive server cleanup error", e);
-      alert("Archivé localement (et sauvegardé en JSON), mais la suppression côté serveur a été interrompue (" + e.message + "). Reste calme — rien n'est perdu, le lot est dans Archives. La resynchro qui suit va faire réapparaître dans Saison 26/27/Positions tout ce qui n'a pas pu être supprimé côté serveur — reclique \"Archiver la saison\" à ce moment-là pour finir le ménage (ça ne dupliquera rien).");
-    }
-    snapArchiveSeasonBtn.disabled = false;
-    snapArchiveSeasonBtn.textContent = "🗄️ Archiver la saison";
-    // Reconciles immediately instead of waiting for the next periodic sync —
-    // if every delete above succeeded this just confirms the empty state;
-    // if some failed, this is what pulls the stragglers back into view
-    // (see the alert above) rather than leaving them silently orphaned
-    // server-side until whenever the next sync happens to run.
-    await syncNow(SNAPSHOTS_STORE);
-    await syncNow(POSITIONS_STORE);
+    var batchId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    var label = "Avant saison 2026/2027 (archivé le " + new Date().toLocaleDateString("fr-FR") + ")";
+    var archivedAt = new Date().toISOString();
+    applyAndQueueOps(SNAPSHOTS_STORE, snaps.map(function (s) { return { type: "archive", id: s.id, archivedBatchId: batchId, archivedLabel: label, archivedAt: archivedAt }; }));
+    applyAndQueueOps(POSITIONS_STORE, poss.map(function (s) { return { type: "archive", id: s.id, archivedBatchId: batchId, archivedLabel: label, archivedAt: archivedAt }; }));
     renderSnapshots();
     renderPositions();
     renderArchives();
     renderTest();
-    if (!serverCleanupFailed) alert("Archivage terminé — " + snaps.length + " snapshot(s) et " + poss.length + " position(s) déplacés vers l'onglet Archives.");
+    snapArchiveSeasonBtn.disabled = true;
+    snapArchiveSeasonBtn.textContent = "🗄️ Archivage en cours…";
+    try {
+      await syncNow(SNAPSHOTS_STORE);
+      await syncNow(POSITIONS_STORE);
+      alert("Archivage terminé — " + snaps.length + " snapshot(s) et " + poss.length + " position(s) marqués comme archivés (visibles dans All Time et Archives, sur tous tes appareils).");
+    } catch (e) {
+      console.error("Archive sync error", e);
+      alert("Marqué localement (et sauvegardé en JSON), mais la synchro a été interrompue (" + e.message + "). Rien n'est perdu — la queue est conservée et se renverra automatiquement (ou reclique \"Resynchro\" dans Saison 26/27).");
+    }
+    snapArchiveSeasonBtn.disabled = false;
+    snapArchiveSeasonBtn.textContent = "🗄️ Archiver la saison";
   });
   // Replaces the old `pnl / (count * HYPOTHETICAL_FLAT_STAKE)` formula
   // everywhere an aggregate ROI is shown — that only worked because every
@@ -8094,6 +8111,10 @@
     // filtering inside loadRaw/save. UNCONFIDENT_STORE doesn't need this:
     // its own loadRaw already returns only the lowConfidence subset.
     if (store.excludeLowConfidence) fullList = fullList.filter(function (s) { return !s.lowConfidence; });
+    // Same reasoning — a store that shouldn't show items from a past,
+    // archived season (Saison 26/27, Mes Positions) sets excludeArchived
+    // instead of loadRaw/save filtering them out.
+    if (store.excludeArchived) fullList = fullList.filter(function (s) { return !s.archivedBatchId; });
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
     // Trashed items never feed the dashboard/charts/card list below — only
     // the Corbeille view (above) shows them, until restored.
@@ -10330,91 +10351,16 @@
   wireExport(POSITIONS_STORE, "posExportBtn");
   wireExport(TEST_STORE, "testExportBtn");
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
-  // Archives is local-only (never synced — see loadArchive's own comment),
-  // so two browsers/domains (e.g. the raw cloudfront.net URL vs. the
-  // whalescorrelation-seb.com alias) can silently accumulate different
-  // archived seasons, which then makes All Time show a different total on
-  // each one. Export/import here is the manual bridge between them — import
-  // MERGES by batchId (skips a batch already present) rather than replacing,
-  // since the whole point is reconciling two divergent histories without
-  // losing either side's batches.
+  // Archives are tagged items in the same synced lists now (see the
+  // "archive" op), not a separate local structure — so there's nothing left
+  // to reconcile between browsers/devices, and the old merge-import UI that
+  // existed only to bridge that gap is gone. Export stays, as a plain
+  // backup download of whatever's currently archived.
   document.getElementById("archiveExportBtn").addEventListener("click", function () {
-    downloadJsonBackup(loadArchive(), "archive-export");
-  });
-  document.getElementById("archiveImportBtn").addEventListener("click", function () {
-    document.getElementById("archiveImportInput").click();
-  });
-  document.getElementById("archiveImportInput").addEventListener("change", function () {
-    var input = document.getElementById("archiveImportInput");
-    var file = input.files && input.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      var parsed;
-      try { parsed = JSON.parse(reader.result); } catch (e) { alert("Fichier invalide — ce n'est pas un JSON lisible."); input.value = ""; return; }
-      if (!Array.isArray(parsed)) { alert("Fichier invalide — attendu une liste de lots d'archive."); input.value = ""; return; }
-      // A "Exporter (tout)" file from All Time is a flat list of snapshots
-      // (no batchId on any item) — importing that here would silently match
-      // nothing and report a confusing "0 ajouté(s)", so redirect to the
-      // button that actually understands that shape instead.
-      if (parsed.length && !parsed.some(function (b) { return b && b.batchId; })) {
-        alert("Ce fichier ressemble à un export d'All Time (liste de snapshots), pas à un export d'Archives (liste de lots). Utilise plutôt le bouton \"Importer (fusion)\" de l'onglet All Time pour ce fichier.");
-        input.value = "";
-        return;
-      }
-      var current = loadArchive();
-      var seen = {};
-      current.forEach(function (b) { seen[b.batchId] = true; });
-      var added = 0;
-      parsed.forEach(function (b) { if (b && b.batchId && !seen[b.batchId]) { current.push(b); seen[b.batchId] = true; added++; } });
-      saveArchive(current);
-      input.value = "";
-      renderArchives();
-      renderTest();
-      alert(added + " lot(s) ajouté(s) (" + (parsed.length - added) + " déjà présent(s), ignoré(s)) — " + current.length + " lot(s) au total dans Archives sur ce navigateur.");
-    };
-    reader.readAsText(file);
-  });
-  // Counterpart to "Exporter (tout)" above — takes a flat snapshot list (an
-  // All Time export from another browser/origin) and adds only the ids
-  // missing here (checked against THIS origin's own Saison 26/27 + Archives)
-  // into Archives as one new batch. Never touches Saison 26/27 directly —
-  // these are frozen historical items with no live store to reconcile them
-  // into, same reasoning as why All Time itself is read-only.
-  document.getElementById("testImportBtn").addEventListener("click", function () {
-    document.getElementById("testImportInput").click();
-  });
-  document.getElementById("testImportInput").addEventListener("change", function () {
-    var input = document.getElementById("testImportInput");
-    var file = input.files && input.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      var parsed;
-      try { parsed = JSON.parse(reader.result); } catch (e) { alert("Fichier invalide — ce n'est pas un JSON lisible."); input.value = ""; return; }
-      if (!Array.isArray(parsed)) { alert("Fichier invalide — attendu une liste de snapshots (export All Time)."); input.value = ""; return; }
-      var existingIds = {};
-      loadTestRaw().forEach(function (s) { existingIds[s.id] = true; });
-      var missing = parsed.filter(function (s) { return s && s.id && !existingIds[s.id]; });
-      input.value = "";
-      if (!missing.length) {
-        alert("Rien à ajouter — les " + parsed.length + " snapshot(s) du fichier sont déjà tous présents ici (Saison 26/27 + Archives).");
-        return;
-      }
-      var archive = loadArchive();
-      archive.push({
-        batchId: "import-" + Date.now(),
-        label: "Import externe (" + new Date().toLocaleDateString("fr-FR") + ")",
-        archivedAt: new Date().toISOString(),
-        snapshots: missing,
-        positions: []
-      });
-      saveArchive(archive);
-      renderArchives();
-      renderTest();
-      alert(missing.length + " snapshot(s) manquant(s) ajouté(s) à Archives comme nouveau lot (\"Import externe\") — " + (parsed.length - missing.length) + " déjà présent(s) ici, ignoré(s).");
-    };
-    reader.readAsText(file);
+    downloadJsonBackup({
+      snapshots: loadSnapshotsRaw().filter(function (s) { return !!s.archivedBatchId; }),
+      positions: loadPositionsRaw().filter(function (s) { return !!s.archivedBatchId; })
+    }, "archive-export");
   });
   // Old snapshots freeze cardHtml as a static string at save time — CSS
   // class rules (like the leader/cote/ROI font-size bump) still apply to
