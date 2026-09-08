@@ -2831,10 +2831,9 @@
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   // Fixed floor now (used to be an adjustable ">= N traders" filter row,
-  // removed from the UI to keep this tab down to just sport + timing) —
-  // 5 was the default it was already left on, so this keeps the same set
-  // of cards showing, just without the control to change it.
-  var vtMinTraders = 5;
+  // removed from the UI to keep this tab down to just sport + timing).
+  // Lowered 5->3 on request (2026-09-08).
+  var vtMinTraders = 3;
   // Dust floor for Value Trades: a position staking less than this is
   // dropped entirely in computeMarketGroups — not shown, not counted, not
   // added to totalStake — so a handful of $10 positions can't inflate "7
