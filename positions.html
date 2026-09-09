@@ -2505,12 +2505,21 @@
     { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", weight: 7 },
     // Added on request — addresses resolved from the profile URLs given.
     { name: "anon2", platform: "polymarket", address: "0x78becf0a4e4f2640380af0c19ad32e2557e6bde0", weight: 7 },
-    { name: "0x2", platform: "polymarket", address: "0x228b8d11eba89bf1c554f8879a9293b7106daf4c", weight: 8 },
+    { name: "0x2", platform: "polymarket", address: "0x228b8d11eba89bf1c554f8879a9293b7106daf4c", weight: 9 },
     // Added on request — @username profile URLs given, addresses resolved
     // via the profile page's own api/profile/userData call (proxyWallet).
     { name: "lily", platform: "polymarket", address: "0x01c78f8873c0c86d6b6b92ff627e3802237ee995", weight: 7.5 },
     { name: "maksim", platform: "polymarket", address: "0x45721362269008ac5988bec2e5c22ca463af5e86", weight: 8 },
-    { name: "flawfence", platform: "polymarket", address: "0x23d81ba9371e576015c1e562db09c689f56b0288", weight: 6 }
+    { name: "flawfence", platform: "polymarket", address: "0x23d81ba9371e576015c1e562db09c689f56b0288", weight: 6 },
+    // Added on request — trouvés via find-football-whales.mjs (courbe de PnL
+    // Polymarket réelle, linéaire, sur le foot européen).
+    { name: "mishipolis", platform: "polymarket", address: "0x7a5d94f83ff0195387eaf9f4463433d03eda54db", weight: 8, stakeMultiplier: 20 },
+    { name: "ValiBB", platform: "polymarket", address: "0x9cb48ddd4185f3e947edf596589e40e574588285", weight: 6.5 },
+    // stable-winner mise très peu (positions sous MIN_TRADER_STAKE) malgré une
+    // courbe très linéaire — stakeMultiplier: 100 simule "et si il misait 100x
+    // plus" pour qu'il passe le seuil et apparaisse dans Value Trades, sans
+    // toucher à ses cotes réelles (voir normalizePolyPosition).
+    { name: "stable-winner", platform: "polymarket", address: "0xdfae74e98792d986aa36484de45b99441fa7155e", weight: 8, stakeMultiplier: 100 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -3114,7 +3123,13 @@
     return all.filter(function (p) { return p.redeemable !== true; });
   }
   function normalizePredictPosition(p, t) {
-    var shares = amountToFloat(p.amount, 18);
+    // stakeMultiplier: certains traders suivis parient avec de très petites
+    // sommes (ex. stable-winner) et n'atteindraient jamais MIN_TRADER_STAKE —
+    // ce champ optionnel sur l'entrée TRADERS simule "et si il pariait N fois
+    // plus", en gardant les cotes (avgPrice/curPrice) réelles et en ne mettant
+    // à l'échelle que les montants (parts, $, PnL).
+    var mult = t.stakeMultiplier || 1;
+    var shares = amountToFloat(p.amount, 18) * mult;
     return {
       trader: t.name, platform: "predict",
       marketKey: "predict|" + p.market.id,
@@ -3126,14 +3141,19 @@
       shares: shares,
       avgPrice: parseFloat(p.averageBuyPriceUsd) || 0,
       curPrice: currentPriceOf(p),
-      valueUsd: parseFloat(p.valueUsd) || 0,
-      pnlUsd: parseFloat(p.pnlUsd) || 0,
+      valueUsd: (parseFloat(p.valueUsd) || 0) * mult,
+      pnlUsd: (parseFloat(p.pnlUsd) || 0) * mult,
       feeRateBps: (p.market && p.market.feeRateBps) || 0,
       marketUrl: p.market.categorySlug ? "https://predict.fun/market/" + p.market.categorySlug : "https://predict.fun"
     };
   }
   function normalizePolyPosition(p, t) {
-    var shares = p.size || 0;
+    // stakeMultiplier: voir le commentaire dans normalizePredictPosition —
+    // même principe ici, appliqué avant le calcul de curPrice (qui dérive du
+    // ratio currentValue/shares et doit donc rester une cote, pas un montant).
+    var mult = t.stakeMultiplier || 1;
+    var shares = (p.size || 0) * mult;
+    var valueUsd = (p.currentValue || 0) * mult;
     return {
       trader: t.name, platform: "polymarket",
       marketKey: "polymarket|" + p.conditionId,
@@ -3156,9 +3176,9 @@
       // 70c actually buyable on the same in-play position at the same
       // moment), which is a genuinely different number from what a trader
       // could execute at right now, not just a rounding difference.
-      curPrice: typeof p.curPrice === "number" ? p.curPrice : (shares > 0 ? (p.currentValue || 0) / shares : 0),
-      valueUsd: p.currentValue || 0,
-      pnlUsd: p.cashPnl || 0,
+      curPrice: typeof p.curPrice === "number" ? p.curPrice : (shares > 0 ? valueUsd / shares : 0),
+      valueUsd: valueUsd,
+      pnlUsd: (p.cashPnl || 0) * mult,
       feeRateBps: 0,
       marketUrl: (p.eventSlug || p.slug) ? "https://polymarket.com/fr/event/" + (p.eventSlug || p.slug) : "https://polymarket.com/fr"
     };
