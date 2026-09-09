@@ -2396,6 +2396,11 @@
 
   <div class="tab-panel" id="tab-trades-profiles">
     <h2 class="section-title">Positions par profil</h2>
+    <div class="vt-filters" id="tradesProfilesSportFilters">
+      <button data-sport="all" type="button">Tous les sports</button>
+      <button data-sport="football" class="active" type="button">⚽ Football</button>
+      <button data-sport="other" type="button">Autres</button>
+    </div>
     <div class="vt-filters" id="tradesProfilesTimingFilters">
       <button data-timing="all" class="active" type="button">Tous<span class="vt-filter-count"></span></button>
       <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
@@ -2408,6 +2413,11 @@
 
   <div class="tab-panel" id="tab-recent-trades">
     <h2 class="section-title">Trades récents <span class="count-pill" id="rtCount">—</span></h2>
+    <div class="vt-filters" id="rtSportFilters">
+      <button data-sport="all" type="button">Tous les sports</button>
+      <button data-sport="football" class="active" type="button">⚽ Football</button>
+      <button data-sport="other" type="button">Autres</button>
+    </div>
     <div class="rt-filters" id="rtFilters">
       <button data-min="0" class="active" type="button">Tous</button>
       <button data-min="100" type="button">&gt; 100 $</button>
@@ -2830,6 +2840,7 @@
   }
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
+  var rtSportFilter = "football"; // "all" | "football" | "other" — same isFootball classifier Value Trades uses, defaults to football so the feed isn't a mix of every sport + politics/crypto markets
   // Fixed floor now (used to be an adjustable ">= N traders" filter row,
   // removed from the UI to keep this tab down to just sport + timing).
   // Lowered 5->3 on request (2026-09-08).
@@ -2852,6 +2863,7 @@
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
   var vtLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForUnit/renderVtLeagueFilters
   var tradesProfilesTimingFilter = "all"; // "all" | "live" | "upcoming" — same idea, for Trades par profils
+  var tradesProfilesSportFilter = "football"; // "all" | "football" | "other" — same isFootball classifier Value Trades uses
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
   // everything down to a 3 now instead of hard-hiding it. Single source of
   // truth for the hard exclusion filter, the slider's floor/default, and
@@ -3277,6 +3289,7 @@
       trader: t.name, platform: "predict",
       time: new Date(match.executedAt),
       question: (match.market && (match.market.question || match.market.title)) || "—",
+      slug: match.market && match.market.categorySlug,
       side: leg && leg.outcome ? leg.outcome.name : "—",
       direction: leg ? (leg.quoteType === "Bid" ? "Achat" : "Vente") : "—",
       price: price,
@@ -3288,6 +3301,7 @@
       trader: t.name, platform: "polymarket",
       time: new Date((m.timestamp || 0) * 1000),
       question: m.title || "—",
+      slug: m.slug || m.eventSlug,
       side: m.outcome || "—",
       direction: m.side === "BUY" ? "Achat" : "Vente",
       price: m.price || 0,
@@ -8709,6 +8723,11 @@
     var filtered = all.filter(function (x) {
       if (x.value < rtMinValue) return false;
       if (rtSelectedPlayers.length && rtSelectedPlayers.indexOf(x.trader) === -1) return false;
+      if (rtSportFilter !== "all") {
+        var f = isFootball(x.question, x.slug);
+        if (rtSportFilter === "football" && !f) return false;
+        if (rtSportFilter === "other" && f) return false;
+      }
       return true;
     });
     rtCountEl.textContent = filtered.length + " trade" + (filtered.length > 1 ? "s" : "") + (rtMinValue > 0 ? " (> " + fmtUSD(rtMinValue) + ")" : "");
@@ -8746,6 +8765,12 @@
   // ---------- trader sections rendering ----------
   function renderTraderSection(trader) {
     var positions = (tradersData[trader.name] || []).filter(function (p) { return !isPriceDecided(p.curPrice); });
+    if (tradesProfilesSportFilter !== "all") {
+      positions = positions.filter(function (p) {
+        var f = isFootball(p.question, p.slug);
+        return tradesProfilesSportFilter === "football" ? f : !f;
+      });
+    }
     if (tradesProfilesTimingFilter !== "all") {
       positions = positions.filter(function (p) {
         var unit = unitByMarketKey[p.marketKey];
@@ -9446,6 +9471,15 @@
       renderRecentTrades();
     });
   });
+  var rtSportFiltersEl = document.getElementById("rtSportFilters");
+  rtSportFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      rtSportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      rtSportFilter = btn.getAttribute("data-sport");
+      renderRecentTrades();
+    });
+  });
   var sportFiltersEl = document.getElementById("sportFilters");
   sportFiltersEl.querySelectorAll("button").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -9494,6 +9528,15 @@
       btn.classList.add("active");
       vtSortBy = btn.getAttribute("data-sort") || "note";
       renderValueTrades();
+    });
+  });
+  var tradesProfilesSportFiltersEl = document.getElementById("tradesProfilesSportFilters");
+  tradesProfilesSportFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tradesProfilesSportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      tradesProfilesSportFilter = btn.getAttribute("data-sport") || "football";
+      renderTraderSections();
     });
   });
   var tradesProfilesTimingFiltersEl = document.getElementById("tradesProfilesTimingFilters");
