@@ -1017,6 +1017,13 @@
      "what would this option show" precedent as the note-tier chart). */
   .vt-filter-count { opacity: .68; font-weight: 500; margin-left: 3px; font-variant-numeric: tabular-nums; }
   .vt-filters button.active .vt-filter-count { opacity: .85; }
+  .vt-trader-select {
+    background: var(--panel); border: 1px solid var(--panel-border); color: var(--text);
+    border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 13px;
+    font-family: inherit; cursor: pointer; max-width: 220px;
+  }
+  .vt-trader-select:hover { box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .vt-trader-select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: 1px; }
 
   .vt-title-row { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
   .vt-title-row .section-title { margin: 0; }
@@ -1639,6 +1646,7 @@
     flex-direction: column;
     gap: 10px;
     transition: box-shadow .15s ease, transform .15s ease;
+    cursor: pointer;
   }
   .profile-card:hover {
     box-shadow: 0 5px 18px color-mix(in srgb, var(--profile-accent, var(--accent)) 28%, transparent);
@@ -2183,6 +2191,12 @@
           <button data-sort="note" class="active" type="button">Note</button>
           <button data-sort="volume" type="button">Volume</button>
           <button data-sort="traders" type="button">Traders</button>
+        </div>
+        <div class="vt-filters" id="vtTraderFilterWrap">
+          <span class="vt-sort-label">Trader</span>
+          <select id="vtTraderFilterSelect" class="vt-trader-select">
+            <option value="">Tous les traders</option>
+          </select>
         </div>
       </div>
       <div class="score-tier-box" id="vtTierChart"></div>
@@ -2871,6 +2885,7 @@
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
   var vtLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForUnit/renderVtLeagueFilters
+  var vtTraderFilter = null; // null = no filter; else a trader name from TRADERS — Value Trades restricted to units that trader has a tracked position on (see unitTraderNameSet + vtBaseUnitFilter). Set via the dropdown or by clicking a card in Statistiques profils.
   var tradesProfilesTimingFilter = "all"; // "all" | "live" | "upcoming" — same idea, for Trades par profils
   var tradesProfilesSportFilter = "football"; // "all" | "football" | "other" — same isFootball classifier Value Trades uses
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
@@ -8298,6 +8313,7 @@
       var league = leagueInfoForUnit(u);
       if (!league || league.key !== vtLeagueFilter) return false;
     }
+    if (vtTraderFilter && !unitTraderNameSet(u)[vtTraderFilter]) return false;
     return true;
   }
   // Live count riding each sport/timing chip — "how many would show if you
@@ -9017,7 +9033,7 @@
       var info = PLATFORMS[t.platform];
       var accent = "hsl(" + weightHue(t.weight).toFixed(0) + ",62%,42%)";
       var label = t.weight.toFixed(1).replace(/\.0$/, "");
-      return '<div class="profile-card" style="--profile-accent:' + accent + '">' +
+      return '<div class="profile-card" style="--profile-accent:' + accent + '" data-trader-name="' + esc(t.name) + '" title="Voir les Value Trades de ' + esc(t.name) + '">' +
         '<div class="profile-card-top">' +
           '<span class="profile-avatar" style="background:' + accent + '" title="Note qualité : ' + label + '/10">' + esc(label) + '</span>' +
           '<div class="profile-card-id">' +
@@ -9522,6 +9538,41 @@
     var key = btn.getAttribute("data-league");
     vtLeagueFilter = vtLeagueFilter === key ? null : key;
     renderValueTrades();
+  });
+  // Trader dropdown — options built once from TRADERS_BY_WEIGHT (already
+  // sorted by descending note), so the busiest/best-rated traders lead.
+  var vtTraderFilterSelect = document.getElementById("vtTraderFilterSelect");
+  TRADERS_BY_WEIGHT.forEach(function (t) {
+    var opt = document.createElement("option");
+    opt.value = t.name;
+    opt.textContent = t.name + " (" + t.weight.toFixed(1).replace(/\.0$/, "") + ")";
+    vtTraderFilterSelect.appendChild(opt);
+  });
+  vtTraderFilterSelect.addEventListener("change", function () {
+    vtTraderFilter = vtTraderFilterSelect.value || null;
+    renderValueTrades();
+  });
+  // Shared by the dropdown above and by clicking a card in Statistiques
+  // profils (see renderStatsProfiles) — jumps to Value Trades pre-filtered
+  // to that one trader's markets.
+  function activateValueTradesTraderFilter(name) {
+    vtTraderFilter = name;
+    vtTraderFilterSelect.value = name;
+    // Reset sport/league to "everything" — a trader clicked from Statistiques
+    // profils should actually show up, even if their positions happen to be
+    // outside whatever sport/league filter Value Trades was left on.
+    sportFilter = "all";
+    vtLeagueFilter = null;
+    sportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.toggle("active", b.getAttribute("data-sport") === "all"); });
+    var vtTabBtn = document.querySelector('.tab-btn[data-tab="value-trades"]');
+    if (vtTabBtn && !vtTabBtn.classList.contains("active")) vtTabBtn.click();
+    renderValueTrades();
+  }
+  statsProfilesContent.addEventListener("click", function (e) {
+    if (e.target.closest(".profile-card-link")) return; // let the external profile link through untouched
+    var card = e.target.closest(".profile-card[data-trader-name]");
+    if (!card) return;
+    activateValueTradesTraderFilter(card.getAttribute("data-trader-name"));
   });
   var byMatchSportFiltersEl = document.getElementById("byMatchSportFilters");
   byMatchSportFiltersEl.querySelectorAll("button").forEach(function (btn) {
