@@ -690,6 +690,11 @@
   a.vt-trader-row-name-text { color: inherit; text-decoration: none; }
   a.vt-trader-row-name-text:hover { color: var(--accent); text-decoration: underline; }
   .vt-trader-row-name .w-badge { flex: none; }
+  /* Blue = "trader ajouté manuellement" (see MANUAL_TRADER_NAMES) — only the
+     name text, not the whole row/bar, so it stays a quiet marker rather than
+     competing with the stake bar's own color coding. */
+  .vt-trader-row-name-text.vt-trader-manual { color: #3b82f6; font-weight: 800; }
+  a.vt-trader-row-name-text.vt-trader-manual:hover { color: #3b82f6; text-decoration: underline; }
   /* Marks a trader's row on the camp that ISN'T their main position (they
      also hold a bigger stake on the other side) — a plain neutral grey so it
      reads as "secondary" regardless of which camp's color it sits next to. */
@@ -2533,12 +2538,19 @@
     // courbe très linéaire — stakeMultiplier: 100 simule "et si il misait 100x
     // plus" pour qu'il passe le seuil et apparaisse dans Value Trades, sans
     // toucher à ses cotes réelles (voir normalizePolyPosition).
-    { name: "stable-winner", platform: "polymarket", address: "0xdfae74e98792d986aa36484de45b99441fa7155e", weight: 8, stakeMultiplier: 100 }
+    { name: "stable-winner", platform: "polymarket", address: "0xdfae74e98792d986aa36484de45b99441fa7155e", weight: 8, stakeMultiplier: 100 },
+    // Added on request — manual: true means their name renders in blue in
+    // Value Trades (see MANUAL_TRADER_NAMES/renderMergedTraderRows) instead
+    // of the usual weight-hue color, to mark "added by hand" rather than
+    // found by an automated scan.
+    { name: "sainttroplay", platform: "polymarket", address: "0x9319a045cdd0c2180e5eb7ad44374383db9a6410", weight: 7, manual: true },
+    { name: "vito3corleone", platform: "polymarket", address: "0x34dd4a4b70eaf79a17878f7938263c801d4dfd83", weight: 7, manual: true }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
   var ADDRESS_BY_NAME = {};
-  TRADERS.forEach(function (t) { WEIGHT_BY_NAME[t.name] = t.weight; PLATFORM_BY_NAME[t.name] = t.platform; ADDRESS_BY_NAME[t.name] = t.address; });
+  var MANUAL_TRADER_NAMES = {}; // name -> true for traders flagged `manual: true` above — rendered in blue in Value Trades (see renderMergedTraderRows)
+  TRADERS.forEach(function (t) { WEIGHT_BY_NAME[t.name] = t.weight; PLATFORM_BY_NAME[t.name] = t.platform; ADDRESS_BY_NAME[t.name] = t.address; if (t.manual) MANUAL_TRADER_NAMES[t.name] = true; });
   // Best-rated profiles first wherever profiles are listed top-to-bottom.
   var TRADERS_BY_WEIGHT = TRADERS.slice().sort(function (a, b) { return (b.weight || 0) - (a.weight || 0); });
   // Predict = violet, Polymarket = dark blue — distinct from --accent
@@ -4156,11 +4168,13 @@
       var barPct = maxStakeInUnit > 0 ? (e.stake / maxStakeInUnit * 100) : 0;
       var isMarginal = rowCountByTrader[e.trader] > 1 && e.stake < maxStakeByTrader[e.trader];
       var isHighlighted = !!(highlightNames && highlightNames[e.trader]);
-      var nameTitle = esc(e.trader) + (isMarginal ? " — position marginale ici, camp principal sur l'autre côté" : "");
+      var isManual = !!MANUAL_TRADER_NAMES[e.trader];
+      var nameTitle = esc(e.trader) + (isMarginal ? " — position marginale ici, camp principal sur l'autre côté" : "") + (isManual ? " — ajouté manuellement" : "");
+      var nameClass = "vt-trader-row-name-text" + (isHighlighted ? " vt-trader-row-name-highlighted" : "") + (isManual ? " vt-trader-manual" : "");
       var profileUrl = traderProfileUrl(e.trader);
       var nameTag = profileUrl
-        ? '<a class="vt-trader-row-name-text' + (isHighlighted ? ' vt-trader-row-name-highlighted' : '') + '" href="' + esc(profileUrl) + '" target="_blank" rel="noopener" title="' + nameTitle + ' — ouvrir le profil">' + esc(e.trader) + '</a>'
-        : '<span class="vt-trader-row-name-text' + (isHighlighted ? ' vt-trader-row-name-highlighted' : '') + '" title="' + nameTitle + '">' + esc(e.trader) + '</span>';
+        ? '<a class="' + nameClass + '" href="' + esc(profileUrl) + '" target="_blank" rel="noopener" title="' + nameTitle + ' — ouvrir le profil">' + esc(e.trader) + '</a>'
+        : '<span class="' + nameClass + '" title="' + nameTitle + '">' + esc(e.trader) + '</span>';
       return '<div class="vt-trader-row' + (isHighlighted ? ' vt-trader-row-highlighted' : '') + '">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
         '<span class="vt-trader-row-name' + (isMarginal ? ' vt-trader-row-name-marginal' : '') + '">' + nameTag + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
