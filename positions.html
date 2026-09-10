@@ -2544,7 +2544,11 @@
     // of the usual weight-hue color, to mark "added by hand" rather than
     // found by an automated scan.
     { name: "sainttroplay", platform: "polymarket", address: "0x9319a045cdd0c2180e5eb7ad44374383db9a6410", weight: 7, manual: true },
-    { name: "vito3corleone", platform: "polymarket", address: "0x34dd4a4b70eaf79a17878f7938263c801d4dfd83", weight: 7, manual: true }
+    { name: "vito3corleone", platform: "polymarket", address: "0x34dd4a4b70eaf79a17878f7938263c801d4dfd83", weight: 7, manual: true },
+    // Added on request — trouvé via find-football-whales.mjs (R²=0.89 sur
+    // sa vraie courbe PnL Polymarket). stakeMultiplier: 5 même logique que
+    // stable-winner/mishipolis (voir normalizePolyPosition).
+    { name: "aHjCz", platform: "polymarket", address: "0x2b5920274740ca61745eeb077587bf5bb4ff9db6", weight: 7, stakeMultiplier: 5 }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
