@@ -1400,6 +1400,9 @@
   .trader-table-row { cursor: pointer; }
   .trader-table-row:hover { background: var(--row-hover); }
   .trader-table-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
+  .trader-recap-row { cursor: pointer; }
+  .trader-recap-row:hover { background: var(--row-hover); }
+  .trader-recap-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
   .snap-stats-caret { display: inline-block; width: 11px; color: var(--accent); font-size: 11px; font-weight: 700; }
   .snap-stats-detail-row td { padding: 0; }
   .snap-stats-detail {
@@ -2425,6 +2428,13 @@
       <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
       <button data-timing="upcoming" type="button">📅 À venir<span class="vt-filter-count"></span></button>
     </div>
+    <div class="vt-filters" id="tradesProfilesSortFilters">
+      <span class="vt-sort-label">Trier par</span>
+      <button data-sort="weight" class="active" type="button">Note</button>
+      <button data-sort="recent" type="button">Récemment ajoutés</button>
+    </div>
+    <div class="empty-note" style="padding:4px 4px 12px;">Clique un trader dans le tableau pour afficher ses trades en cours juste en dessous.</div>
+    <div id="tradersRecapContent"></div>
     <div id="tradersContent">
       <div class="loading-state">Chargement des positions…</div>
     </div>
@@ -2557,6 +2567,10 @@
   TRADERS.forEach(function (t) { WEIGHT_BY_NAME[t.name] = t.weight; PLATFORM_BY_NAME[t.name] = t.platform; ADDRESS_BY_NAME[t.name] = t.address; if (t.manual) MANUAL_TRADER_NAMES[t.name] = true; });
   // Best-rated profiles first wherever profiles are listed top-to-bottom.
   var TRADERS_BY_WEIGHT = TRADERS.slice().sort(function (a, b) { return (b.weight || 0) - (a.weight || 0); });
+  // TRADERS is appended to over time (see comments above), so reversing it
+  // puts the most recently added trader first — used by the "Récemment
+  // ajoutés" sort in Trades par profils.
+  var TRADERS_BY_RECENCY = TRADERS.slice().reverse();
   // Predict = violet, Polymarket = dark blue — distinct from --accent
   // (royal blue) so a platform tag is never mistaken for an active/selected
   // control, and distinct from each other at a glance.
@@ -2696,6 +2710,7 @@
   var posSyncConfigBtn = document.getElementById("posSyncConfigBtn");
   var posSyncRefreshBtn = document.getElementById("posSyncRefreshBtn");
   var tradersContent = document.getElementById("tradersContent");
+  var tradersRecapContent = document.getElementById("tradersRecapContent");
   var recentTradesContent = document.getElementById("recentTradesContent");
   var rtCountEl = document.getElementById("rtCount");
   var rtFilters = document.getElementById("rtFilters");
@@ -2904,6 +2919,7 @@
   var vtTraderFilter = null; // null = no filter; else a trader name from TRADERS — Value Trades restricted to units that trader has a tracked position on (see unitTraderNameSet + vtBaseUnitFilter). Set via the dropdown or by clicking a card in Statistiques profils.
   var tradesProfilesTimingFilter = "all"; // "all" | "live" | "upcoming" — same idea, for Trades par profils
   var tradesProfilesSportFilter = "football"; // "all" | "football" | "other" — same isFootball classifier Value Trades uses
+  var tradesProfilesSortMode = "weight"; // "weight" | "recent" — which order TRADERS render in, for Trades par profils
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
   // everything down to a 3 now instead of hard-hiding it. Single source of
   // truth for the hard exclusion filter, the slider's floor/default, and
@@ -7985,22 +8001,18 @@
         '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '">↺ Restaurer</button>' +
         '<button type="button" class="snap-purge-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Suppression définitive — pas de retour en arrière possible">🗑 Supprimer définitivement</button>' +
       '</div>';
-    } else if (store.readOnly) {
-      var isOtherWinnerRO = snap.winningSide === OTHER_SIDE_SENTINEL;
-      var mSideLabel = snap.winningSide ? ' · Camp gagnant : ' + esc(isOtherWinnerRO ? "Camp adverse" : snap.winningSide) : '';
-      var mConfLabel = snap.confidence ? ' · Confiance ' + esc(snap.confidence) : '';
-      // The one exception to "read-only" — resolveWritableStoreFromEl
-      // routes this to the item's real backing store (snapshots or
-      // positions) rather than TEST_STORE itself, whose .save is a no-op.
-      toolbarHtml = '<div class="snap-toolbar"><span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + mSideLabel + mConfLabel + '</span>' +
-        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
-      '</div>';
     } else {
       // Only two possible outcomes for a manual, single-camp bet: the named
       // camp won, or it didn't — same OTHER_SIDE_SENTINEL "Camp adverse"
       // convention a single-tracked-side real snapshot already uses, so the
-      // shared delegated click handler (resolveStoreFromEl + enqueueOp)
-      // needs no changes to understand either kind of card.
+      // shared delegated click handler (resolveWritableStoreFromEl +
+      // enqueueOp) needs no changes to understand either kind of card. Note
+      // this branch now also covers TEST_STORE (All Time) — its side/
+      // confidence buttons carry data-store="test" like everything else
+      // here, and the click handler resolves that to the item's real
+      // backing store (snapshots or positions) instead of TEST_STORE's
+      // no-op save. store.allowTakePosition/allowEditPosition/allowReorder
+      // are all falsy on TEST_STORE, so those stay hidden there same as before.
       var isLeaderWinner = snap.winningSide === snap.leaderName;
       var isOtherWinner = snap.winningSide === OTHER_SIDE_SENTINEL;
       var sideButtonsHtml =
@@ -8111,20 +8123,16 @@
         '<button type="button" class="snap-restore-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '">↺ Restaurer</button>' +
         '<button type="button" class="snap-purge-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Suppression définitive — pas de retour en arrière possible">🗑 Supprimer définitivement</button>' +
       '</div>';
-    } else if (store.readOnly) {
-      // Test tab: frozen mix of live + archived items with no single live
-      // store to write back to, so side/confidence/take-position/edit-cote
-      // stay stripped, same spirit as archiveItemSummaryHtml's own
-      // read-only treatment. Corbeille is the one exception —
-      // resolveWritableStoreFromEl routes it to the item's real backing
-      // store (snapshots or positions) instead of TEST_STORE, whose .save
-      // is a no-op.
-      var sideLabel = snap.winningSide ? ' · Camp gagnant : ' + esc(snap.winningSide) : '';
-      var confLabel = snap.confidence ? ' · Confiance ' + esc(snap.confidence) : '';
-      toolbarHtml = '<div class="snap-toolbar"><span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + sideLabel + confLabel + '</span>' +
-        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
-      '</div>';
     } else {
+      // Test tab (All Time) falls through to here too now: its items are
+      // never frozen copies, they're the exact same snapshot/position
+      // records shown in Saison 26/27 / Mes Positions / Archives (archiving
+      // only tags archivedBatchId in place, see snapArchiveSeasonBtn —
+      // nothing is ever copied or moved), so setting a result here is just
+      // as valid as setting it from there. Every button below carries
+      // data-store="test" like the delete button already did, and the
+      // shared click handler resolves that to the item's real backing store
+      // (resolveWritableStoreFromEl) instead of TEST_STORE's no-op save.
       var sideButtonsHtml = (snap.sides || []).map(function (side) {
         var isWinner = snap.winningSide === side.name;
         return '<button type="button" class="snap-side-btn' + (isWinner ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-side="' + esc(side.name) + '">' + esc(side.name) + '</button>';
@@ -8817,7 +8825,11 @@
   }
 
   // ---------- trader sections rendering ----------
-  function renderTraderSection(trader) {
+  // Same sport/timing filters + sort every trader's positions go through
+  // before rendering their section — pulled out so the recap table above
+  // (renderTradersRecapTable) can show the exact same counts/totals it's
+  // about to jump you down to, instead of a second, driftable copy.
+  function getTradesProfilesPositions(trader) {
     var positions = (tradersData[trader.name] || []).filter(function (p) { return !isPriceDecided(p.curPrice); });
     if (tradesProfilesSportFilter !== "all") {
       positions = positions.filter(function (p) {
@@ -8832,6 +8844,11 @@
       });
     }
     positions.sort(function (a, b) { return (b.valueUsd || 0) - (a.valueUsd || 0); });
+    return positions;
+  }
+  function traderSectionId(name) { return "trader-section-" + safeId(name); }
+  function renderTraderSection(trader) {
+    var positions = getTradesProfilesPositions(trader);
 
     var totalValue = positions.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
     var totalPnl = positions.reduce(function (s, p) { return s + (p.pnlUsd || 0); }, 0);
@@ -8839,6 +8856,7 @@
 
     var section = document.createElement("div");
     section.className = "trader-section";
+    section.id = traderSectionId(trader.name);
 
     // Collapsed by default (on request) — traderCollapsed[name] is only
     // ever explicitly set to false once the user expands that one profile,
@@ -9100,10 +9118,34 @@
   function renderTraderSections() {
     tradersContent.innerHTML = "";
     positionIndex = {};
-    TRADERS_BY_WEIGHT.forEach(function (t) {
+    var order = tradesProfilesSortMode === "recent" ? TRADERS_BY_RECENCY : TRADERS_BY_WEIGHT;
+    renderTradersRecapTable(order);
+    order.forEach(function (t) {
       tradersContent.appendChild(renderTraderSection(t));
     });
     wireInteractions();
+  }
+  // One row per trader — same order/filters as the sections below. Clicking
+  // a row expands (if needed) and scrolls to that trader's own section,
+  // which is where their positions actually render (see renderTraderSection)
+  // — this table never duplicates that markup, just jumps you to it.
+  function renderTradersRecapTable(order) {
+    if (!tradersRecapContent) return;
+    var rows = order.map(function (t) {
+      var positions = getTradesProfilesPositions(t);
+      var totalValue = positions.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
+      var totalPnl = positions.reduce(function (s, p) { return s + (p.pnlUsd || 0); }, 0);
+      var pnlClass = totalPnl > 0 ? "pnl-pos" : (totalPnl < 0 ? "pnl-neg" : "");
+      var isOpen = traderCollapsed[t.name] === false;
+      return '<tr class="trader-recap-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(t.name) + '">' +
+        '<td>' + esc(t.name) + platformBadge(t.platform) + weightBadge(t.weight) + '</td>' +
+        '<td class="num">' + positions.length + '</td>' +
+        '<td class="num">' + fmtUSD(totalValue) + '</td>' +
+        '<td class="num ' + pnlClass + '">' + fmtUSD(totalPnl) + '</td></tr>';
+    }).join("");
+    tradersRecapContent.innerHTML = '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' +
+      '<th>Trader</th><th class="num">Positions</th><th class="num">Valeur totale</th><th class="num">PNL</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 
   function fmtUSDSigned(n) { return (n >= 0 ? "+" : "") + fmtUSD(n); }
@@ -9637,6 +9679,26 @@
       renderTraderSections();
     });
   });
+  var tradesProfilesSortFiltersEl = document.getElementById("tradesProfilesSortFilters");
+  tradesProfilesSortFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tradesProfilesSortFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      tradesProfilesSortMode = btn.getAttribute("data-sort") || "weight";
+      renderTraderSections();
+    });
+  });
+  // Clicking a trader in the recap table expands (never collapses — this is
+  // a jump-to, not a toggle) their section below and scrolls it into view.
+  tradersRecapContent.addEventListener("click", function (e) {
+    var row = e.target.closest(".trader-recap-row");
+    if (!row) return;
+    var name = row.getAttribute("data-trader");
+    traderCollapsed[name] = false;
+    renderTraderSections();
+    var section = document.getElementById(traderSectionId(name));
+    if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   var vtDenseToggleBtn = document.getElementById("vtDenseToggleBtn");
   function syncDenseToggleBtn() {
     vtDenseToggleBtn.classList.toggle("active", vtDenseMode);
@@ -9972,11 +10034,9 @@
     return SNAPSHOTS_STORE;
   }
   // All Time is a merged VIEW (snapshots + positions, see loadTestRaw) with
-  // no backing storage of its own (TEST_STORE.save is a no-op) — trashing
-  // an item shown there has to actually land on whichever real store it
-  // came from. Used only by the trash/restore/purge handlers below; every
-  // other action stays routed through the plain resolveStoreFromEl (side/
-  // confidence/edit stay read-only from All Time, on purpose).
+  // no backing storage of its own (TEST_STORE.save is a no-op) — any write
+  // made from there (trash/restore/purge, and now side/confidence too) has
+  // to actually land on whichever real store the item came from.
   function resolveWritableStoreFromEl(el) {
     var store = resolveStoreFromEl(el);
     if (store.name !== "test") return store;
@@ -10187,7 +10247,12 @@
       // <details> open/closed.
       e.preventDefault();
       e.stopPropagation();
-      var sStore = resolveStoreFromEl(sideBtn);
+      // resolveWritableStoreFromEl (not the plain resolveStoreFromEl) so a
+      // side set from All Time actually lands on the item's real backing
+      // store (snapshots or positions) instead of TEST_STORE's no-op save —
+      // same routing trash/restore/purge already used.
+      var fromTestSide = sideBtn.getAttribute("data-store") === "test";
+      var sStore = resolveWritableStoreFromEl(sideBtn);
       var sid = sideBtn.getAttribute("data-snap-id");
       var side = sideBtn.getAttribute("data-side");
       // Resolved here (against the current local cache) instead of on the
@@ -10197,19 +10262,22 @@
       var newWinningSide = (curSideSnap && curSideSnap.winningSide === side) ? null : side;
       var sideOp = { type: "setSide", id: sid, winningSide: newWinningSide };
       enqueueOp(sStore, sideOp);
+      if (fromTestSide) renderTest();
       return;
     }
     var confBtn = e.target.closest ? e.target.closest(".snap-confidence-btn") : null;
     if (confBtn) {
       e.preventDefault();
       e.stopPropagation();
-      var cStore = resolveStoreFromEl(confBtn);
+      var fromTestConf = confBtn.getAttribute("data-store") === "test";
+      var cStore = resolveWritableStoreFromEl(confBtn);
       var cid = confBtn.getAttribute("data-snap-id");
       var tier = confBtn.getAttribute("data-tier");
       var curConfSnap = cStore.loadRaw().filter(function (s) { return s.id === cid; })[0];
       var newConfidence = (curConfSnap && curConfSnap.confidence === tier) ? null : tier;
       var confOp = { type: "setConf", id: cid, confidence: newConfidence };
       enqueueOp(cStore, confOp);
+      if (fromTestConf) renderTest();
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
