@@ -1152,6 +1152,14 @@
   .rt-row-big:hover { background: color-mix(in srgb, var(--gold) 13%, transparent); }
   .rt-amount { font-variant-numeric: tabular-nums; }
   .rt-amount-big { font-weight: 800; color: var(--gold); }
+  tr.rt-group-row { cursor: pointer; }
+  tr.rt-group-row:hover { background: var(--row-hover); }
+  tr.rt-group-member.collapsed { display: none; }
+  tr.rt-group-member td { opacity: .82; }
+  .rt-group-count {
+    font-size: 10.5px; font-weight: 700; color: var(--text-dim);
+    border: 1px solid var(--panel-border); border-radius: 999px; padding: 1px 6px; margin-left: 4px;
+  }
 
   /* --- Trader sections --- */
   .trader-section { margin-bottom: 14px; }
@@ -1567,6 +1575,12 @@
   .snap-sync-setup input[type="date"]:focus,
   .snap-sync-setup select:focus { outline: none; border-color: var(--accent); }
   #manualTitleInput, #manualSideInput { flex: 1 1 160px; min-width: 120px; }
+  .stats-profiles-search {
+    background: var(--bg); border: 1px solid var(--panel-border); color: var(--text);
+    padding: 7px 10px; border-radius: var(--radius-sm); font-size: 13px;
+    flex: 1 1 220px; min-width: 160px;
+  }
+  .stats-profiles-search:focus { outline: none; border-color: var(--accent); }
   #manualCoteInput { flex: 0 1 90px; }
   .snap-manual-badge {
     display: inline-flex;
@@ -1595,6 +1609,14 @@
   .snap-sync-setup .empty-note { flex: 1 1 100%; }
 
   tr.copy-row.collapsed { display: none; }
+  tr.match-group-member.collapsed { display: none; }
+  tr.match-group-row { cursor: pointer; background: var(--row-hover); font-weight: 600; }
+  tr.match-group-row:hover { background: color-mix(in srgb, var(--accent) 10%, var(--row-hover)); }
+  tr.match-group-row .market-title { font-weight: 600; }
+  .match-group-count {
+    font-size: 11px; font-weight: 600; color: var(--text-dim);
+    border: 1px solid var(--panel-border); border-radius: 999px; padding: 2px 8px;
+  }
   .peer-panel { padding: 4px 0; }
   .copy-panel {
     background: var(--row-hover);
@@ -2413,6 +2435,14 @@
   <div class="tab-panel" id="tab-stats-profiles">
     <h2 class="section-title">Statistiques profils</h2>
     <div class="empty-note" style="padding:8px 4px 18px;">Le PnL et le volume de trading exacts (identiques à ceux affichés sur les profils officiels) ne sont accessibles que via une API réservée à chaque plateforme — pas de calcul approximatif ici. Direction le profil officiel de chacun pour ces chiffres :</div>
+    <div class="vt-filters" id="statsProfilesToolbar">
+      <input type="search" id="statsProfilesSearch" class="stats-profiles-search" placeholder="🔍 Chercher un trader…" autocomplete="off">
+      <span class="vt-sort-label">Trier par</span>
+      <button data-sp-sort="weight" class="active" type="button">Note</button>
+      <button data-sp-sort="value" type="button">Valeur ouverte</button>
+      <button data-sp-sort="positions" type="button">Positions</button>
+      <button data-sp-sort="name" type="button">Nom</button>
+    </div>
     <div id="statsProfilesContent"></div>
   </div>
 
@@ -2869,6 +2899,7 @@
   var panelState = {};       // key -> { open, stake, peerOpen }
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
+  var matchGroupCollapsed = {}; // "trader|matchKey" -> bool — collapsed (true) by default, see renderTraderSection's per-match grouping
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var siblingPanelOpen = {}; // unit stableKey -> bool — "⇄" toggle, see findSiblingUnits
   var allUnitsGlobal = []; // every render unit, unfiltered — set once per refresh cycle in renderAll, reused by "Par match" so it doesn't need its own pass over tradersData
@@ -2902,6 +2933,12 @@
   var rtMinValue = 0;
   var rtSelectedPlayers = []; // trader names toggled on in "Trades récents" (empty = everyone); OR semantics — each trade row belongs to one trader
   var rtSportFilter = "football"; // "all" | "football" | "other" — same isFootball classifier Value Trades uses, defaults to football so the feed isn't a mix of every sport + politics/crypto markets
+  // A whale averaging into one side with a burst of small fills (e.g. ten
+  // $10 buys 4 seconds apart) otherwise reads as ten near-identical rows —
+  // merged into one "×N" row when the same trader repeats the same
+  // question+side+direction within this window, expandable to the raw fills.
+  var RT_MERGE_WINDOW_MS = 30 * 60 * 1000;
+  var rtGroupExpanded = {}; // group id -> bool, see groupRapidRecentTrades
   // Fixed floor now (used to be an adjustable ">= N traders" filter row,
   // removed from the UI to keep this tab down to just sport + timing).
   // Lowered 5->3 on request (2026-09-08).
@@ -2929,6 +2966,8 @@
   var tradesProfilesSortMode = "weight"; // "weight" | "recent" — which order TRADERS render in, for Trades par profils
   var tradesProfilesLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForPosition/renderTradesProfilesLeagueFilters
   var tradesProfilesManualFilter = "all"; // "all" | "manual" | "auto" — which TRADERS (not positions) render, by MANUAL_TRADER_NAMES
+  var statsProfilesSearch = ""; // lowercased substring on trader name, "Statistiques profils"
+  var statsProfilesSort = "weight"; // "weight" | "value" | "positions" | "name"
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
   // everything down to a 3 now instead of hard-hiding it. Single source of
   // truth for the hard exclusion filter, the slider's floor/default, and
@@ -6462,7 +6501,7 @@
         var chipStyle = tierActive
           ? "background:" + tierColor + ";border-color:" + tierColor
           : "color:" + tierColor + ";border-color:" + tierColor;
-        return '<button type="button" class="manual-auto-tier-chip' + (tierActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" data-store="' + store.name + '" style="' + chipStyle + '" title="' + esc(g.label + " · " + tier + " : " + tierWin + "/" + tierItems.length) + '">' + esc(tier) + " " + tierWr + '%</button>';
+        return '<button type="button" class="manual-auto-tier-chip' + (tierActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" data-group="' + esc(g.key) + '" data-store="' + store.name + '" style="' + chipStyle + '" title="' + esc(g.label + " · " + tier + " : " + tierWin + "/" + tierItems.length) + '">' + esc(tier) + " " + tierWr + '%</button>';
       }).join("");
       return rowHtml + (tierChips ? '<div class="manual-auto-tier-chips">' + tierChips + '</div>' : "");
     }).join("");
@@ -8964,11 +9003,11 @@
     // instead of every row reading with equal visual weight regardless of
     // size. Direction arrow (▲/▼) is the same buy/sell color already used,
     // just readable a beat faster than the word alone.
-    var rowsHtml = shown.map(function (x) {
+    function rtRowHtml(x, extraClass, extraAttr) {
       var dirClass = x.direction === "Achat" ? "rt-side buy" : "rt-side sell";
       var dirIcon = x.direction === "Achat" ? "▲" : "▼";
       var isBig = x.value >= 10000;
-      return '<tr class="' + (isBig ? "rt-row-big" : "") + '">' +
+      return '<tr class="' + (isBig ? "rt-row-big " : "") + (extraClass || "") + '"' + (extraAttr || "") + '>' +
         '<td class="rt-time">' + x.time.toLocaleString("fr-FR") + '</td>' +
         '<td><b>' + esc(x.trader) + '</b>' + platformBadge(x.platform) + weightBadge(WEIGHT_BY_NAME[x.trader]) + '</td>' +
         '<td>' + esc(x.question) + '</td>' +
@@ -8977,11 +9016,56 @@
         '<td class="num rt-amount' + (isBig ? ' rt-amount-big' : '') + '">' + fmtUSD(x.value) + '</td>' +
         '<td class="num">' + fmtCents(x.price) + '</td>' +
       '</tr>';
+    }
+    var groups = groupRapidRecentTrades(shown);
+    var rowsHtml = groups.map(function (g) {
+      if (g.items.length === 1) return rtRowHtml(g.items[0], "", "");
+      var first = g.items[0];
+      var totalValue = g.items.reduce(function (s, it) { return s + it.value; }, 0);
+      var totalShares = g.items.reduce(function (s, it) { return s + (it.price > 0 ? it.value / it.price : 0); }, 0);
+      var avgPrice = totalShares > 0 ? totalValue / totalShares : first.price;
+      var isBig = totalValue >= 10000;
+      var dirClass = first.direction === "Achat" ? "rt-side buy" : "rt-side sell";
+      var dirIcon = first.direction === "Achat" ? "▲" : "▼";
+      var groupId = first.trader + "|" + first.question + "|" + first.side + "|" + first.time.getTime();
+      var isOpen = !!rtGroupExpanded[groupId];
+      var summaryRow = '<tr class="rt-group-row' + (isBig ? " rt-row-big" : "") + '" data-rt-group-toggle="' + esc(groupId) + '">' +
+        '<td class="rt-time"><span class="snap-stats-caret">' + (isOpen ? "▾" : "▸") + '</span> ' + first.time.toLocaleString("fr-FR") + '</td>' +
+        '<td><b>' + esc(first.trader) + '</b>' + platformBadge(first.platform) + weightBadge(WEIGHT_BY_NAME[first.trader]) + '</td>' +
+        '<td>' + esc(first.question) + '</td>' +
+        '<td><span class="side" style="background:' + sideColorFor(first.side) + '22;color:' + sideColorFor(first.side) + '">' + esc(first.side) + '</span></td>' +
+        '<td class="' + dirClass + '">' + dirIcon + ' ' + first.direction + ' <span class="rt-group-count">×' + g.items.length + '</span></td>' +
+        '<td class="num rt-amount' + (isBig ? ' rt-amount-big' : '') + '">' + fmtUSD(totalValue) + '</td>' +
+        '<td class="num">' + fmtCents(avgPrice) + '</td>' +
+      '</tr>';
+      var memberRowsHtml = g.items.map(function (x) {
+        return rtRowHtml(x, "rt-group-member" + (isOpen ? "" : " collapsed"), ' data-rt-group-key="' + esc(groupId) + '"');
+      }).join("");
+      return summaryRow + memberRowsHtml;
     }).join("");
     recentTradesContent.innerHTML =
       '<table><thead><tr>' +
         '<th>Heure</th><th>Trader</th><th>Marché</th><th>Side</th><th>Sens</th><th class="num">Montant</th><th class="num">Prix</th>' +
       '</tr></thead><tbody>' + rowsHtml + '</tbody></table>';
+  }
+  // Same trader repeating the exact same question+side+direction within
+  // RT_MERGE_WINDOW_MS of their own last fill in this list — `list` is
+  // already sorted newest-first, so adjacency + a shrinking window is
+  // enough to catch a burst without an O(n²) scan.
+  function groupRapidRecentTrades(list) {
+    var groups = [];
+    list.forEach(function (x) {
+      var last = groups.length ? groups[groups.length - 1] : null;
+      var lastItem = last ? last.items[last.items.length - 1] : null;
+      if (lastItem && lastItem.trader === x.trader && lastItem.question === x.question &&
+          lastItem.side === x.side && lastItem.direction === x.direction &&
+          (lastItem.time - x.time) <= RT_MERGE_WINDOW_MS) {
+        last.items.push(x);
+      } else {
+        groups.push({ items: [x] });
+      }
+    });
+    return groups;
   }
 
   // ---------- trader sections rendering ----------
@@ -9056,7 +9140,32 @@
     var scrollWrap = document.createElement("div");
     scrollWrap.className = "table-scroll" + (collapsed ? " collapsed" : "");
 
-    var rowsHtml = positions.map(function (p) {
+    // Group by real match (matchKeyFromSlug — same key the "Matchs" tab
+    // already groups by) so a match with many sub-markets (exact scores,
+    // spreads…) collapses to one row instead of flooding this table — a
+    // single whale can otherwise show 10 rows for what's really one game.
+    // A slug with no date suffix (outright/futures) has no matchKey and
+    // stays its own solo group, one row, exactly as before this existed.
+    var matchGroups = [], matchGroupByKey = {};
+    positions.forEach(function (p) {
+      var mk = matchKeyFromSlug(p.slug);
+      var gkey = mk || ("solo:" + p.marketKey + "|" + p.outcomeKey);
+      if (!matchGroupByKey[gkey]) {
+        var mg = { key: gkey, positions: [] };
+        matchGroupByKey[gkey] = mg;
+        matchGroups.push(mg);
+      }
+      matchGroupByKey[gkey].positions.push(p);
+    });
+
+    var rowsHtml = matchGroups.map(function (mg) {
+      var isMultiMarket = mg.positions.length > 1;
+      var groupKey = trader.name + "|" + mg.key;
+      // Collapsed by default (matchGroupCollapsed[groupKey] only ever set
+      // explicitly to false once expanded) — same "unset reads as
+      // collapsed" convention as traderCollapsed above.
+      var groupHidden = isMultiMarket && matchGroupCollapsed[groupKey] !== false;
+      var memberRowsHtml = mg.positions.map(function (p) {
       var key = trader.name + "|" + p.marketKey + "|" + p.outcomeKey;
       positionIndex[key] = { position: p, trader: trader };
       if (!panelState[key]) panelState[key] = { open: false, stake: 100 };
@@ -9083,8 +9192,12 @@
       var peerCount = unit ? unit.traderCount : 1;
       var peerBtnLabel = peerOpen ? "Fermer" : ("Autres traders" + (peerCount > 1 ? " (" + peerCount + ")" : ""));
 
+      // Only multi-market groups get tagged — a solo group's rows render
+      // byte-for-byte as they always did, no attributes added.
+      var groupClass = isMultiMarket ? (' match-group-member' + (groupHidden ? ' collapsed' : '')) : '';
+      var groupAttr = isMultiMarket ? (' data-group-key="' + esc(groupKey) + '"') : '';
       var mainRow =
-        '<tr class="data-row">' +
+        '<tr class="data-row' + groupClass + '"' + groupAttr + '>' +
           '<td><div class="market-title">' + esc(title) + '</div>' + (sub ? '<div class="market-sub">' + esc(sub) + '</div>' : '') + '</td>' +
           '<td><span class="side" style="background:' + sideColorFor(side) + '22;color:' + sideColorFor(side) + '">' + esc(side) + '</span></td>' +
           '<td class="num">' + fmtShares(shares) + '</td>' +
@@ -9103,7 +9216,7 @@
       var platformLabel = PLATFORMS[p.platform].label;
 
       var panelRow =
-        '<tr class="copy-row' + (isOpen ? '' : ' collapsed') + '" data-panel-key="' + esc(key) + '">' +
+        '<tr class="copy-row' + (isOpen ? '' : ' collapsed') + groupClass + '" data-panel-key="' + esc(key) + '"' + groupAttr + '>' +
           '<td colspan="7">' +
             '<div class="copy-panel">' +
               '<label>Mise ($)<input type="number" class="stake-input" min="0" step="10" value="' + panelState[key].stake + '" data-key="' + esc(key) + '"></label>' +
@@ -9123,11 +9236,31 @@
       var peerPanelHtml = peerOpen ?
         (unit ? renderUnitCard(unit) : '<div class="empty-state">Marché introuvable parmi les positions suivies actuellement.</div>') : '';
       var peerRow =
-        '<tr class="copy-row peer-row' + (peerOpen ? '' : ' collapsed') + '" data-peer-key="' + esc(key) + '">' +
+        '<tr class="copy-row peer-row' + (peerOpen ? '' : ' collapsed') + groupClass + '" data-peer-key="' + esc(key) + '"' + groupAttr + '>' +
           '<td colspan="7"><div class="peer-panel">' + peerPanelHtml + '</div></td>' +
         '</tr>';
 
       return mainRow + panelRow + peerRow;
+      }).join("");
+
+      if (!isMultiMarket) return memberRowsHtml;
+
+      // Highest-value sub-market's own question stands in for the match's
+      // display name — same convention "Matchs" uses for its own group rows
+      // (positions is pre-sorted by valueUsd desc, so positions[0] here IS
+      // that highest-value member already).
+      var groupValue = mg.positions.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
+      var groupPnl = mg.positions.reduce(function (s, p) { return s + (p.pnlUsd || 0); }, 0);
+      var groupPnlClass = groupPnl >= 0 ? "pnl-pos" : "pnl-neg";
+      var summaryRow =
+        '<tr class="data-row match-group-row" data-group-toggle="' + esc(groupKey) + '">' +
+          '<td><span class="snap-stats-caret">' + (groupHidden ? '▸' : '▾') + '</span> <span class="market-title">' + esc(mg.positions[0].question) + '</span></td>' +
+          '<td></td><td class="num"></td><td class="num col-avg"></td>' +
+          '<td class="num">' + fmtUSD(groupValue) + '</td>' +
+          '<td class="num ' + groupPnlClass + '">' + fmtUSD(groupPnl) + '</td>' +
+          '<td class="num"><span class="match-group-count">' + mg.positions.length + ' marchés</span></td>' +
+        '</tr>';
+      return summaryRow + memberRowsHtml;
     }).join("");
 
     var table = document.createElement("table");
@@ -9168,6 +9301,22 @@
   }
 
   function wireInteractions() {
+    // Toggling a match group is a pure class flip (same convention as
+    // copy-btn/peer-btn below) — cheap enough that it never needs the full
+    // renderTraderSections re-render, which would also lose scroll position.
+    tradersContent.querySelectorAll(".match-group-row").forEach(function (row) {
+      row.addEventListener("click", function () {
+        var groupKey = row.getAttribute("data-group-toggle");
+        var wasCollapsed = matchGroupCollapsed[groupKey] !== false;
+        var nowCollapsed = !wasCollapsed;
+        matchGroupCollapsed[groupKey] = nowCollapsed;
+        var caret = row.querySelector(".snap-stats-caret");
+        if (caret) caret.textContent = nowCollapsed ? "▸" : "▾";
+        tradersContent.querySelectorAll('.match-group-member[data-group-key="' + CSS.escape(groupKey) + '"]').forEach(function (memberRow) {
+          memberRow.classList.toggle("collapsed", nowCollapsed);
+        });
+      });
+    });
     tradersContent.querySelectorAll(".copy-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var key = btn.getAttribute("data-key");
@@ -9229,9 +9378,29 @@
     // row — that class is built for a trade's own content (question, sides,
     // gauges) and left every profile here reading as a thin, near-identical
     // line with barely anything to look at. 2026-08-30, on request.
-    var html = TRADERS_BY_WEIGHT.map(function (t) {
+    // Each card's own open value/positions computed once up front so search
+    // and sort both read the exact same numbers instead of two passes
+    // risking drift, and so sort can be swapped without touching filtering.
+    var rows = TRADERS_BY_WEIGHT.map(function (t) {
       var open = tradersData[t.name] || [];
-      var openValue = open.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
+      return { t: t, open: open, openValue: open.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0) };
+    });
+    if (statsProfilesSearch) {
+      rows = rows.filter(function (r) { return r.t.name.toLowerCase().indexOf(statsProfilesSearch) !== -1; });
+    }
+    var sortField = statsProfilesSort;
+    rows.sort(function (a, b) {
+      if (sortField === "name") return a.t.name.localeCompare(b.t.name);
+      if (sortField === "value") return b.openValue - a.openValue;
+      if (sortField === "positions") return b.open.length - a.open.length;
+      return (b.t.weight || 0) - (a.t.weight || 0);
+    });
+    if (!rows.length) {
+      statsProfilesContent.innerHTML = '<div class="empty-note">Aucun trader ne correspond à « ' + esc(statsProfilesSearch) + ' ».</div>';
+      return;
+    }
+    var html = rows.map(function (r) {
+      var t = r.t, open = r.open, openValue = r.openValue;
       var info = PLATFORMS[t.platform];
       var accent = "hsl(" + weightHue(t.weight).toFixed(0) + ",62%,42%)";
       var label = t.weight.toFixed(1).replace(/\.0$/, "");
@@ -9791,6 +9960,22 @@
       renderRecentTrades();
     });
   });
+  // Delegated once on the container (its innerHTML is fully replaced every
+  // render, so re-attaching per-row would just mean more listeners doing
+  // the same job) — toggles a merged-burst row open/closed with a plain
+  // class flip, no re-render needed.
+  recentTradesContent.addEventListener("click", function (e) {
+    var groupRow = e.target.closest ? e.target.closest(".rt-group-row") : null;
+    if (!groupRow) return;
+    var groupId = groupRow.getAttribute("data-rt-group-toggle");
+    var nowOpen = !rtGroupExpanded[groupId];
+    rtGroupExpanded[groupId] = nowOpen;
+    var caret = groupRow.querySelector(".snap-stats-caret");
+    if (caret) caret.textContent = nowOpen ? "▾" : "▸";
+    recentTradesContent.querySelectorAll('.rt-group-member[data-rt-group-key="' + CSS.escape(groupId) + '"]').forEach(function (row) {
+      row.classList.toggle("collapsed", !nowOpen);
+    });
+  });
   var rtSportFiltersEl = document.getElementById("rtSportFilters");
   rtSportFiltersEl.querySelectorAll("button").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -9857,6 +10042,20 @@
     var card = e.target.closest(".profile-card[data-trader-name]");
     if (!card) return;
     activateValueTradesTraderFilter(card.getAttribute("data-trader-name"));
+  });
+  var statsProfilesSearchEl = document.getElementById("statsProfilesSearch");
+  statsProfilesSearchEl.addEventListener("input", function () {
+    statsProfilesSearch = statsProfilesSearchEl.value.trim().toLowerCase();
+    renderStatsProfiles();
+  });
+  var statsProfilesToolbarEl = document.getElementById("statsProfilesToolbar");
+  statsProfilesToolbarEl.querySelectorAll("button[data-sp-sort]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      statsProfilesToolbarEl.querySelectorAll("button[data-sp-sort]").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      statsProfilesSort = btn.getAttribute("data-sp-sort");
+      renderStatsProfiles();
+    });
   });
   var byMatchSportFiltersEl = document.getElementById("byMatchSportFilters");
   byMatchSportFiltersEl.querySelectorAll("button").forEach(function (btn) {
@@ -10732,7 +10931,16 @@
       var chipStore = resolveStoreFromEl(manualAutoChip);
       var chipTier = manualAutoChip.getAttribute("data-tier");
       var chipIdx = chipStore.state.tierCardFilter.indexOf(chipTier);
-      if (chipIdx === -1) chipStore.state.tierCardFilter.push(chipTier); else chipStore.state.tierCardFilter.splice(chipIdx, 1);
+      if (chipIdx === -1) {
+        chipStore.state.tierCardFilter.push(chipTier);
+        // The chip sits under one specific group's row (manuel/auto) — turning
+        // it on scopes the card list to THAT group too, not both, so "A" under
+        // "Paris manuels" alone shows manual+A instead of every A regardless
+        // of origin. Overwrites rather than requiring a separate row click.
+        chipStore.state.manualVsAutoFilter = manualAutoChip.getAttribute("data-group");
+      } else {
+        chipStore.state.tierCardFilter.splice(chipIdx, 1);
+      }
       renderStoreView(chipStore);
       return;
     }
