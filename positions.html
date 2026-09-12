@@ -2886,7 +2886,7 @@
       pnlChartSplitByTier: false, pnlChartSimStake: null,
       chartSelectedId: null, chartPrevScrollY: null,
       statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
-      traderTableSort: { key: "total", dir: "desc" }, expandedTraderTable: {}, traderTableCollapsed: true,
+      traderTableSort: { key: "total", dir: "desc" }, expandedTraderTable: {}, traderTableCollapsed: true, traderTableMinWeight: null,
       trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
       manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false,
       traderContribSelected: []
@@ -7807,6 +7807,10 @@
     { key: "realRoi", label: "ROI/trade", numeric: true },
     { key: "hypRoi", label: "ROI/trade 1000$", numeric: true }
   ];
+  // Rating floors offered by the "Note" filter below — matches the actual
+  // spread of TRADERS weights (5.5 to 9.5), not an arbitrary round-number
+  // scale.
+  var TRADER_TABLE_WEIGHT_FLOORS = [6, 7, 8, 9];
   function renderTraderTable(list, store) {
     var el = store.els.traderTable;
     if (!el) return;
@@ -7814,12 +7818,33 @@
     if (store.state.traderTableCollapsed) { el.innerHTML = ""; return; }
     var rowsData = computeTraderStatsRows(list, store);
     if (!rowsData.length) { el.innerHTML = '<div class="empty-note">Pas assez de paris pour ce tableau.</div>'; return; }
+    var minWeight = store.state.traderTableMinWeight;
+    // Filters on the trader's own quality rating (WEIGHT_BY_NAME, the same
+    // /10 badge shown next to their name everywhere) — not on any of the
+    // trade-level numbers in the table itself, so this stays orthogonal to
+    // the column sort.
+    var filteredRows = minWeight == null ? rowsData : rowsData.filter(function (st) {
+      var w = WEIGHT_BY_NAME[st.name];
+      return w != null && w >= minWeight;
+    });
     var sortField = store.state.traderTableSort.key === "pnl" ? "pnlForSort" : store.state.traderTableSort.key;
-    rowsData.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, store.state.traderTableSort.dir); });
+    filteredRows.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, store.state.traderTableSort.dir); });
+    var weightFilterHtml = '<div class="vt-filters trader-table-weight-filters">' +
+      '<span class="vt-sort-label">Note trader</span>' +
+      '<button type="button" class="trader-table-weight-btn' + (minWeight == null ? ' active' : '') + '" data-min-weight="">Tous</button>' +
+      TRADER_TABLE_WEIGHT_FLOORS.map(function (w) {
+        return '<button type="button" class="trader-table-weight-btn' + (minWeight === w ? ' active' : '') + '" data-min-weight="' + w + '">≥ ' + w + '</button>';
+      }).join("") +
+      '</div>';
+    if (!filteredRows.length) {
+      el.innerHTML = weightFilterHtml + '<div class="empty-note">Aucun trader avec cette note dans ' + esc(store.itemNoun) + 's.</div>';
+      wireTraderTableWeightFilter(el, store, list);
+      return;
+    }
     function roiCell(v) {
       return '<td class="num ' + (v == null ? '' : (v >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(0) + '%') + '</td>';
     }
-    var rows = rowsData.map(function (st) {
+    var rows = filteredRows.map(function (st) {
       var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
       var isOpen = !!store.state.expandedTraderTable[st.name];
       return '<tr class="trader-table-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '"><td><span class="snap-stats-caret">' + (isOpen ? '▾' : '▸') + '</span> ' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
@@ -7837,7 +7862,17 @@
       // th.sortable[data-store]'s, which renders the OTHER table.
       return '<th class="sortable trader-table-th' + (col.numeric ? " num" : "") + (isActive ? " sorted" : "") + '" data-sort-key="' + col.key + '" data-store="' + store.name + '">' + esc(col.label) + arrow + '</th>';
     }).join("");
-    el.innerHTML = '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+    el.innerHTML = weightFilterHtml + '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+    wireTraderTableWeightFilter(el, store, list);
+  }
+  function wireTraderTableWeightFilter(el, store, list) {
+    el.querySelectorAll(".trader-table-weight-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var raw = btn.getAttribute("data-min-weight");
+        store.state.traderTableMinWeight = raw === "" ? null : parseFloat(raw);
+        renderTraderTable(list, store);
+      });
+    });
   }
   // Two bars per trader: their real PNL (own actual stakes) against what a
   // flat $1000 on every one of their picks would have returned — isolates
