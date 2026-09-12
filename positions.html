@@ -978,8 +978,8 @@
      wide text pill every other .vt-filters button uses. Count sits as a
      small badge overlapping the bottom-right corner, same idea as a
      notification badge. */
-  #vtLeagueFilters { gap: 10px; }
-  #vtLeagueFilters .vt-league-btn {
+  #vtLeagueFilters, #tradesProfilesLeagueFilters { gap: 10px; }
+  #vtLeagueFilters .vt-league-btn, #tradesProfilesLeagueFilters .vt-league-btn {
     position: relative;
     width: 42px; height: 42px;
     border-radius: 50%;
@@ -989,8 +989,8 @@
     padding: 0;
     transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
   }
-  #vtLeagueFilters .vt-league-btn:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); transform: translateY(-2px); }
-  #vtLeagueFilters .vt-league-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+  #vtLeagueFilters .vt-league-btn:hover, #tradesProfilesLeagueFilters .vt-league-btn:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); transform: translateY(-2px); }
+  #vtLeagueFilters .vt-league-btn.active, #tradesProfilesLeagueFilters .vt-league-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
   .vt-league-flag { font-size: 19px; line-height: 1; }
   .vt-league-count {
     position: absolute; bottom: -5px; right: -5px;
@@ -2423,10 +2423,17 @@
       <button data-sport="football" class="active" type="button">⚽ Football</button>
       <button data-sport="other" type="button">Autres</button>
     </div>
+    <div class="vt-filters" id="tradesProfilesLeagueFilters" style="display:none;"></div>
     <div class="vt-filters" id="tradesProfilesTimingFilters">
       <button data-timing="all" class="active" type="button">Tous<span class="vt-filter-count"></span></button>
       <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
       <button data-timing="upcoming" type="button">📅 À venir<span class="vt-filter-count"></span></button>
+    </div>
+    <div class="vt-filters" id="tradesProfilesManualFilters">
+      <span class="vt-sort-label">Trader</span>
+      <button data-manual="all" class="active" type="button">Tous</button>
+      <button data-manual="manual" type="button">✍️ Manuels</button>
+      <button data-manual="auto" type="button">🤖 Auto</button>
     </div>
     <div class="vt-filters" id="tradesProfilesSortFilters">
       <span class="vt-sort-label">Trier par</span>
@@ -2920,6 +2927,8 @@
   var tradesProfilesTimingFilter = "all"; // "all" | "live" | "upcoming" — same idea, for Trades par profils
   var tradesProfilesSportFilter = "football"; // "all" | "football" | "other" — same isFootball classifier Value Trades uses
   var tradesProfilesSortMode = "weight"; // "weight" | "recent" — which order TRADERS render in, for Trades par profils
+  var tradesProfilesLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForPosition/renderTradesProfilesLeagueFilters
+  var tradesProfilesManualFilter = "all"; // "all" | "manual" | "auto" — which TRADERS (not positions) render, by MANUAL_TRADER_NAMES
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
   // everything down to a 3 now instead of hard-hiding it. Single source of
   // truth for the hard exclusion filter, the slider's floor/default, and
@@ -3659,6 +3668,13 @@
   function leagueInfoForUnit(u) {
     var primary = u.members[0];
     var slug = (primary.slug || "").toLowerCase();
+    var prefix = slug.split("-")[0];
+    return LEAGUE_INFO[prefix] || null;
+  }
+  // Same lookup, for a Trades par profils position (its own object shape —
+  // no .members — but the same .slug field isFootball already reads there).
+  function leagueInfoForPosition(p) {
+    var slug = (p.slug || "").toLowerCase();
     var prefix = slug.split("-")[0];
     return LEAGUE_INFO[prefix] || null;
   }
@@ -8912,6 +8928,12 @@
         return tradesProfilesSportFilter === "football" ? f : !f;
       });
     }
+    if (tradesProfilesLeagueFilter) {
+      positions = positions.filter(function (p) {
+        var info = leagueInfoForPosition(p);
+        return !!info && info.key === tradesProfilesLeagueFilter;
+      });
+    }
     if (tradesProfilesTimingFilter !== "all") {
       positions = positions.filter(function (p) {
         var unit = unitByMarketKey[p.marketKey];
@@ -9194,11 +9216,63 @@
     tradersContent.innerHTML = "";
     positionIndex = {};
     var order = tradesProfilesSortMode === "recent" ? TRADERS_BY_RECENCY : TRADERS_BY_WEIGHT;
+    // Filters which TRADERS render at all (not their positions) — "manuel"
+    // meaning MANUAL_TRADER_NAMES (added by hand, see TRADERS' own manual:
+    // true entries), same flag Value Trades uses to color a name blue.
+    if (tradesProfilesManualFilter !== "all") {
+      var wantManual = tradesProfilesManualFilter === "manual";
+      order = order.filter(function (t) { return !!MANUAL_TRADER_NAMES[t.name] === wantManual; });
+    }
+    renderTradesProfilesLeagueFilters(order);
     renderTradersRecapTable(order);
     order.forEach(function (t) {
       tradersContent.appendChild(renderTraderSection(t));
     });
     wireInteractions();
+  }
+  // Same flag-only league buttons as Value Trades (renderVtLeagueFilters),
+  // fed from every currently-visible trader's positions (already narrowed
+  // by the manuel/auto filter above) instead of the cross-trader Value
+  // Trades units — its own filter/counts, kept independent so switching
+  // league here never touches vtLeagueFilter or vice versa.
+  function renderTradesProfilesLeagueFilters(order) {
+    var container = document.getElementById("tradesProfilesLeagueFilters");
+    if (!container) return;
+    if (tradesProfilesSportFilter === "other") {
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+    var counts = {}, infoByKey = {};
+    order.forEach(function (t) {
+      (tradersData[t.name] || []).forEach(function (p) {
+        if (isPriceDecided(p.curPrice)) return;
+        if (!isFootball(p.question, p.slug)) return;
+        if (tradesProfilesTimingFilter !== "all") {
+          var unit = unitByMarketKey[p.marketKey];
+          if (!unit || unitTimingStatus(unit) !== tradesProfilesTimingFilter) return;
+        }
+        var info = leagueInfoForPosition(p);
+        if (!info) return;
+        counts[info.key] = (counts[info.key] || 0) + 1;
+        infoByKey[info.key] = info;
+      });
+    });
+    var keys = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+    if (!keys.length) {
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+    container.style.display = "";
+    container.innerHTML = keys.map(function (key) {
+      var info = infoByKey[key];
+      var active = tradesProfilesLeagueFilter === key;
+      return '<button type="button" class="vt-league-btn' + (active ? ' active' : '') + '" data-league="' + esc(key) + '" title="' + esc(info.name) + '">' +
+        '<span class="vt-league-flag">' + esc(info.emoji) + '</span>' +
+        '<span class="vt-league-count">' + counts[key] + '</span>' +
+      '</button>';
+    }).join("");
   }
   // One row per trader — same order/filters as the sections below. Clicking
   // a row expands (if needed) and scrolls to that trader's own section,
@@ -9742,6 +9816,28 @@
       tradesProfilesSportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       tradesProfilesSportFilter = btn.getAttribute("data-sport") || "football";
+      // Same reasoning as Value Trades' own sport handler — a league filter
+      // means nothing once you're not looking at football anymore.
+      if (tradesProfilesSportFilter !== "football") tradesProfilesLeagueFilter = null;
+      renderTraderSections();
+    });
+  });
+  // League buttons are rebuilt from scratch every render (see
+  // renderTradesProfilesLeagueFilters), so this is delegated on the
+  // container instead of re-attached per-button each time.
+  document.getElementById("tradesProfilesLeagueFilters").addEventListener("click", function (e) {
+    var leagueBtn = e.target.closest ? e.target.closest("button[data-league]") : null;
+    if (!leagueBtn) return;
+    var key = leagueBtn.getAttribute("data-league");
+    tradesProfilesLeagueFilter = tradesProfilesLeagueFilter === key ? null : key;
+    renderTraderSections();
+  });
+  var tradesProfilesManualFiltersEl = document.getElementById("tradesProfilesManualFilters");
+  tradesProfilesManualFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tradesProfilesManualFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      tradesProfilesManualFilter = btn.getAttribute("data-manual") || "all";
       renderTraderSections();
     });
   });
