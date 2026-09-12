@@ -2440,7 +2440,7 @@
       <button data-sort="weight" class="active" type="button">Note</button>
       <button data-sort="recent" type="button">Récemment ajoutés</button>
     </div>
-    <div class="empty-note" style="padding:4px 4px 12px;">Clique un trader dans le tableau pour afficher ses trades en cours juste en dessous.</div>
+    <button type="button" id="tradersRecapToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le tableau récap par trader</button>
     <div id="tradersRecapContent"></div>
     <div id="tradersContent">
       <div class="loading-state">Chargement des positions…</div>
@@ -9273,6 +9273,7 @@
     renderStatsProfiles();
   }
 
+  var tradesProfilesLastOrder = []; // set on every renderTraderSections — lets the recap table's own collapse toggle re-render just itself, see tradersRecapToggleBtn
   function renderTraderSections() {
     tradersContent.innerHTML = "";
     positionIndex = {};
@@ -9284,6 +9285,7 @@
       var wantManual = tradesProfilesManualFilter === "manual";
       order = order.filter(function (t) { return !!MANUAL_TRADER_NAMES[t.name] === wantManual; });
     }
+    tradesProfilesLastOrder = order;
     renderTradesProfilesLeagueFilters(order);
     renderTradersRecapTable(order);
     order.forEach(function (t) {
@@ -9339,8 +9341,11 @@
   // a row expands (if needed) and scrolls to that trader's own section,
   // which is where their positions actually render (see renderTraderSection)
   // — this table never duplicates that markup, just jumps you to it.
+  var tradesProfilesRecapCollapsed = true; // collapsed by default, on request
   function renderTradersRecapTable(order) {
     if (!tradersRecapContent) return;
+    syncSnapToggleLabel("tradersRecapToggleBtn", tradesProfilesRecapCollapsed, "le tableau récap par trader");
+    if (tradesProfilesRecapCollapsed) { tradersRecapContent.innerHTML = ""; return; }
     var rows = order.map(function (t) {
       var positions = getTradesProfilesPositions(t);
       var totalValue = positions.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
@@ -9353,7 +9358,8 @@
         '<td class="num">' + fmtUSD(totalValue) + '</td>' +
         '<td class="num ' + pnlClass + '">' + fmtUSD(totalPnl) + '</td></tr>';
     }).join("");
-    tradersRecapContent.innerHTML = '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' +
+    tradersRecapContent.innerHTML = '<div class="empty-note" style="padding:4px 4px 12px;">Clique un trader dans le tableau pour afficher ses trades en cours juste en dessous.</div>' +
+      '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' +
       '<th>Trader</th><th class="num">Positions</th><th class="num">Valeur totale</th><th class="num">PNL</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
@@ -9919,6 +9925,14 @@
       tradesProfilesSortMode = btn.getAttribute("data-sort") || "weight";
       renderTraderSections();
     });
+  });
+  // Collapsed by default (on request) — re-renders just the recap table
+  // itself (tradesProfilesLastOrder, set by the last full renderTraderSections)
+  // rather than the whole tab, since the trader sections below are
+  // unaffected by this toggle and are the expensive part to rebuild.
+  document.getElementById("tradersRecapToggleBtn").addEventListener("click", function () {
+    tradesProfilesRecapCollapsed = !tradesProfilesRecapCollapsed;
+    renderTradersRecapTable(tradesProfilesLastOrder);
   });
   // Clicking a trader in the recap table expands (never collapses — this is
   // a jump-to, not a toggle) their section below and scrolls it into view.
