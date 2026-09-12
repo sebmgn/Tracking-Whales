@@ -2893,7 +2893,7 @@
       pnlChartSplitByTier: false, pnlChartSimStake: null,
       chartSelectedId: null, chartPrevScrollY: null,
       statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
-      traderTableSort: { key: "total", dir: "desc" }, expandedTraderTable: {}, traderTableCollapsed: true, traderTableWeightBracket: null,
+      traderTableSort: { key: "total", dir: "desc" }, expandedTraderTable: {}, traderTableCollapsed: true, traderTableWeightBrackets: [],
       trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
       manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false,
       traderContribSelected: []
@@ -7896,22 +7896,23 @@
     var rowsData = computeTraderStatsRows(list, store);
     if (!rowsData.length) { el.innerHTML = '<div class="empty-note">Pas assez de paris pour ce tableau.</div>'; return; }
     var roiChartHtml = traderRoiByRatingHtml(rowsData);
-    var bracketKey = store.state.traderTableWeightBracket;
+    var bracketKeys = store.state.traderTableWeightBrackets;
     // Filters on the trader's own quality rating (WEIGHT_BY_NAME, the same
     // /10 badge shown next to their name everywhere) — not on any of the
     // trade-level numbers in the table itself, so this stays orthogonal to
-    // the column sort.
-    var filteredRows = !bracketKey ? rowsData : rowsData.filter(function (st) {
+    // the column sort. Multi-select (on request) — several brackets can be
+    // active at once, e.g. "9-10" + "6-7" to compare just the extremes.
+    var filteredRows = !bracketKeys.length ? rowsData : rowsData.filter(function (st) {
       var b = traderWeightBracket(WEIGHT_BY_NAME[st.name]);
-      return !!b && b.key === bracketKey;
+      return !!b && bracketKeys.indexOf(b.key) !== -1;
     });
     var sortField = store.state.traderTableSort.key === "pnl" ? "pnlForSort" : store.state.traderTableSort.key;
     filteredRows.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, store.state.traderTableSort.dir); });
     var weightFilterHtml = '<div class="vt-filters trader-table-weight-filters">' +
       '<span class="vt-sort-label">Note trader</span>' +
-      '<button type="button" class="trader-table-weight-btn' + (!bracketKey ? ' active' : '') + '" data-weight-bracket="">Tous</button>' +
+      '<button type="button" class="trader-table-weight-btn' + (!bracketKeys.length ? ' active' : '') + '" data-weight-bracket="">Tous</button>' +
       TRADER_TABLE_WEIGHT_BRACKETS.map(function (b) {
-        return '<button type="button" class="trader-table-weight-btn' + (bracketKey === b.key ? ' active' : '') + '" data-weight-bracket="' + b.key + '">' + b.label + '</button>';
+        return '<button type="button" class="trader-table-weight-btn' + (bracketKeys.indexOf(b.key) !== -1 ? ' active' : '') + '" data-weight-bracket="' + b.key + '">' + b.label + '</button>';
       }).join("") +
       '</div>';
     if (!filteredRows.length) {
@@ -7946,7 +7947,14 @@
     el.querySelectorAll(".trader-table-weight-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var raw = btn.getAttribute("data-weight-bracket");
-        store.state.traderTableWeightBracket = raw === "" ? null : raw;
+        // "Tous" always resets to no filter; any bracket button toggles
+        // itself in/out of the multi-select instead of replacing it.
+        if (raw === "") { store.state.traderTableWeightBrackets = []; }
+        else {
+          var brackets = store.state.traderTableWeightBrackets;
+          var idx = brackets.indexOf(raw);
+          if (idx === -1) brackets.push(raw); else brackets.splice(idx, 1);
+        }
         renderTraderTable(list, store);
       });
     });
