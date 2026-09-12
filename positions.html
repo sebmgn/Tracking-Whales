@@ -5477,12 +5477,52 @@
   // position", see the takePosBtn handler): a trade that was both
   // snapshotted AND actually taken shows once here, as the position (the
   // more precise record — real stake, real cote obtained), not twice.
+  //
+  // Same real-world market can also get 📌 snapshotted more than once
+  // (re-clicking as more traders piled onto the same side before kickoff) —
+  // each save gets its own id with no link back to the earlier one. Auditing
+  // an export on 2026-09-12 found 28 such duplicate groups (Atlante FC,
+  // Newcastle, etc.) inflating All Time's totals/PNL/winrate — in most of
+  // them the older, now-superseded save had already been trashed in Saison
+  // 26/27 by hand, but All Time deliberately ignores that live trash flag
+  // (see loadTest below), so both copies kept counting there. dedupeTestList
+  // collapses each group to one row — Saison 26/27 / Mes Positions are left
+  // showing every save exactly as before, nothing is deleted from the real
+  // stores, this only narrows what All Time itself displays/aggregates.
+  function dedupeTestList(list) {
+    var groups = {}, order = [];
+    list.forEach(function (item) {
+      // Falls back to the item's own id (never collides with a real
+      // question) for the one case a duplicate group can't form anyway —
+      // a blank question — so that item still gets its own group instead
+      // of being silently swallowed into every other blank-question item.
+      var key = (item.question || "").trim() || ("__id_" + item.id);
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(item);
+    });
+    return order.map(function (key) {
+      var items = groups[key];
+      if (items.length === 1) return items[0];
+      // Prefer whichever duplicate already has a result recorded — an
+      // older save the user actually decided from outranks a newer one
+      // still pending — then the most recently saved (the fullest/final
+      // trader consensus). Verified against the 2026-09-12 export: matches
+      // the copy the user had manually kept live in 15/16 groups where
+      // exactly one of the duplicates wasn't already trashed.
+      return items.slice().sort(function (a, b) {
+        var aDecided = a.winningSide ? 1 : 0, bDecided = b.winningSide ? 1 : 0;
+        if (aDecided !== bDecided) return bDecided - aDecided;
+        return new Date(b.savedAt) - new Date(a.savedAt);
+      })[0];
+    });
+  }
   function loadTestRaw() {
     var snaps = loadSnapshotsRaw().filter(function (s) { return !s.lowConfidence; });
     var poss = loadPositionsRaw();
     var takenFromSnapshot = {};
     poss.forEach(function (p) { if (p.sourceSnapshotId) takenFromSnapshot[p.sourceSnapshotId] = true; });
-    return snaps.filter(function (s) { return !takenFromSnapshot[s.id]; }).concat(poss);
+    var merged = snaps.filter(function (s) { return !takenFromSnapshot[s.id]; }).concat(poss);
+    return dedupeTestList(merged);
   }
   function loadTest() {
     // allTimeDeletedAt, not deletedAt — see TEST_STORE's own field and the
