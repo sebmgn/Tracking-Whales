@@ -1919,6 +1919,7 @@
   .vt-volroi-axis { stroke: var(--panel-border); stroke-width: 1; }
   .vt-volroi-grid { stroke: var(--panel-border); stroke-width: 1; opacity: .5; stroke-dasharray: 2 3; }
   .vt-volroi-label { font-size: 9.5px; fill: var(--text-dim); }
+  .vt-volroi-pt-label { font-size: 8px; font-weight: 700; fill: #fff; pointer-events: none; user-select: none; }
   .drawdown-stats b { font-family: "IBM Plex Mono", monospace; }
   /* Manuel/Auto split and confidence-tier counts in the weekly table —
      secondary detail next to Paris/Note/ROI/Gain, kept visually quieter
@@ -2573,17 +2574,17 @@
   // export as more trades accumulate.
   var TRADERS = [
     { name: "predict847", platform: "predict", address: "0x21f861D43B2E2E05F9974D1a27d0c8959e59a1F8", weight: 7.5 },
-    { name: "JJJJ", platform: "predict", address: "0x8Ad2C531324567a4008D9e2BCcC59CC5C8fcFC25", weight: 7.5 },
+    { name: "JJJJ", platform: "predict", address: "0x8Ad2C531324567a4008D9e2BCcC59CC5C8fcFC25", weight: 8 },
     { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496", weight: 7.5 },
     { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE", weight: 6.5 },
     { name: "sbimbg", platform: "polymarket", address: "0xf5198df69e13937a40d1c76d6f72d9aa067d906b", weight: 7 },
     { name: "Boned", platform: "polymarket", address: "0x335d3dedf02b9884db93dc4c1a90cf578e598c00", weight: 6 },
-    { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14", weight: 8 },
+    { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14", weight: 9.5 },
     { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c", weight: 5.5 },
     { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563", weight: 5.5 },
-    { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 8 },
+    { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 9.5 },
     { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", weight: 5 },
-    { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 7.5 },
+    { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 8 },
     { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", weight: 7 },
     { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74", weight: 7 },
     { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6", weight: 7 },
@@ -2604,7 +2605,7 @@
     { name: "malfunction", platform: "polymarket", address: "0xfc25f141ed27bb1787338d2c4e7f51e3a15e1f7f", weight: 7 },
     { name: "herdonia", platform: "polymarket", address: "0xd106952ebf30a3125affd8a23b6c1f30c35fc79c", weight: 7 },
     { name: "billbenter", platform: "polymarket", address: "0x84ad9c5c547a82ec9a08547b94bd922446e5bfb7", weight: 7 },
-    { name: "0xa697", platform: "polymarket", address: "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5", weight: 9 },
+    { name: "0xa697", platform: "polymarket", address: "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5", weight: 8 },
     { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2", weight: 6.5 },
     // Added on request — address resolved from the profile's embedded
     // proxyWallet, cross-checked against a live positions fetch.
@@ -7946,6 +7947,7 @@
   var TRADER_TABLE_COLUMNS = [
     { key: "name", label: "Trader" },
     { key: "pnl", label: "PNL", numeric: true },
+    { key: "hypPnl", label: "PNL pour 1000€/trade", numeric: true },
     { key: "total", label: "Snapshots", numeric: true },
     { key: "win", label: "Gagnés", numeric: true },
     { key: "loss", label: "Perdus", numeric: true },
@@ -8057,8 +8059,10 @@
     var rows = filteredRows.map(function (st) {
       var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
       var isOpen = !!store.state.expandedTraderTable[st.name];
+      var hypPnlClass = st.hypPnl == null ? '' : (st.hypPnl > 0 ? "pnl-pos" : (st.hypPnl < 0 ? "pnl-neg" : ""));
       return '<tr class="trader-table-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '"><td><span class="snap-stats-caret">' + (isOpen ? '▾' : '▸') + '</span> ' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
         '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
+        '<td class="num ' + hypPnlClass + '">' + (st.hypPnl == null ? '—' : fmtUSD(st.hypPnl)) + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
         roiCell(st.realRoi) + roiCell(st.hypRoi) + '</tr>' + traderDetailRowHtml(st, isOpen, TRADER_TABLE_COLUMNS.length);
     }).join("");
@@ -8810,8 +8814,11 @@
     }).join("");
     var dots = pts.map(function (p) {
       var color = scoreColor(p.u.score != null ? p.u.score : 5);
-      return '<circle class="vt-volroi-pt" cx="' + x(p.vol).toFixed(1) + '" cy="' + y(p.roi).toFixed(1) + '" r="5" fill="' + color + '" fill-opacity="0.75" stroke="' + color + '"' +
-        ' data-key="' + esc(p.u.members[0].key) + '" data-question="' + esc(p.u.members[0].question) + '" data-vol="' + esc(fmtUSD(p.vol)) + '" data-roi="' + p.roi.toFixed(0) + '" data-note="' + (p.u.score != null ? p.u.score.toFixed(1) : "—") + '"></circle>';
+      var cx = x(p.vol).toFixed(1), cy = y(p.roi).toFixed(1);
+      var label = p.u.score != null ? Math.round(p.u.score) : null;
+      return '<circle class="vt-volroi-pt" cx="' + cx + '" cy="' + cy + '" r="9" fill="' + color + '" fill-opacity="0.75" stroke="' + color + '"' +
+        ' data-key="' + esc(p.u.members[0].key) + '" data-question="' + esc(p.u.members[0].question) + '" data-vol="' + esc(fmtUSD(p.vol)) + '" data-roi="' + p.roi.toFixed(0) + '" data-note="' + (p.u.score != null ? p.u.score.toFixed(1) : "—") + '"></circle>' +
+        (label != null ? '<text class="vt-volroi-pt-label" x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central">' + label + '</text>' : '');
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="vt-volroi-svg" preserveAspectRatio="xMidYMid meet">' +
       gridLines +
