@@ -2506,36 +2506,50 @@
   // color-graded badge and display ordering everywhere on the page.
   // "platform" drives which API a profile is fetched from and its badge/link everywhere.
   //
-  // Recalibrated 2026-09-13 for the 19 traders below with >=2 decided All Time
+  // Recalibrated 2026-09-13 for the traders below with >=2 decided All Time
   // trades (n) as of that date, replacing the previous subjective guess.
-  // Formula: shrink each trader's own real ROI/trade (their actual $ stake and
-  // entry price, not a flat simulation) toward the tracked-pool's average
-  // ROI/trade (+6.7% at calibration time), weighted by how many trades they
-  // have — few trades trust the pool average more, many trades trust their
-  // own record more:
-  //   regressedROI = n/(n+15) * ownROI + 15/(n+15) * poolAverageROI
-  //   rating = round_to_half(clamp(1, 10, 5.5 + regressedROI * 4/15))
-  // (k=15 "pseudo-trades" of skepticism — a trader needs roughly that many
-  // decided trades before their own record outweighs the pool average; a more
-  // conservative k=25 was also evaluated and moves every rating 0.5-1.5pt
-  // toward neutral, same ranking). Traders below with no `weight` change kept
-  // their prior manual number (either untouched because <2 decided trades
-  // exist yet, or the formula landed within rounding of the old value).
-  // Re-run this against a fresh All Time export as more trades accumulate —
-  // 2-6 trade samples here (mk756, bomber, jinwen818, sulumos, sbimbg,
-  // rollobravado) are still thin and can swing hard on the next few results.
+  // Formula: shrink each trader's own real ROI/trade (their actual $ stake
+  // and entry price, not a flat simulation) toward the tracked-pool's
+  // average ROI/trade (+6.7% at calibration time), weighted by how many
+  // trades they have — few trades trust the pool average more, many trades
+  // trust their own record more:
+  //   regressedROI = n/(n+30) * ownROI + 30/(n+30) * poolAverageROI
+  //   raw = clamp(1, 10, 5.5 + regressedROI * 4/15)
+  //   rating = round_to_half(clamp(capLow(n), capHigh(n), raw))
+  // First version of this (2026-09-12) used k=15 and no cap — still let a
+  // 3-trade sample (mk756, +78% raw ROI) reach the theoretical max of 10,
+  // which is exactly as unreliable as it sounds and was correctly called
+  // out as not serious. Fixed two ways: k raised 15->30 (roughly doubles how
+  // much a thin sample gets pulled toward the pool average), AND an explicit
+  // ceiling/floor by sample size on top of that shrinkage, symmetric around
+  // the neutral 5.5 — no amount of luck on a handful of trades reaches the
+  // extremes anymore, full stop, regardless of what the shrunk ROI says:
+  //   n <  5  -> [4.5, 6.5]      n < 20 -> [2.5, 8.5]
+  //   n < 10  -> [3.5, 7.5]      n < 40 -> [1.5, 9.5]
+  //                               n >=40 -> [1.0, 10.0] (uncapped)
+  // A large, reliable sample (RN1 n=88, uptheblues n=73, VeryLucky888 n=112)
+  // is never capped — the ceiling only ever holds back a THIN sample from
+  // an extreme rating it hasn't earned yet. Traders below with no `weight`
+  // change kept their prior manual number (either untouched because <2
+  // decided trades exist yet, or the formula landed within rounding of the
+  // old value). Re-run this against a fresh All Time export as more trades
+  // accumulate — several traders here (mk756 n=3, jinwen818 n=2, 0x2 n=2,
+  // rollobravado n=2, lily n=2, 0xd9e0 n=4) are sitting at a capped rating
+  // specifically because their sample is still this thin, not because the
+  // formula is confident they're mediocre — expect these to move as soon as
+  // they cross the next threshold.
   var TRADERS = [
     { name: "predict847", platform: "predict", address: "0x21f861D43B2E2E05F9974D1a27d0c8959e59a1F8", weight: 7.5 },
     { name: "JJJJ", platform: "predict", address: "0x8Ad2C531324567a4008D9e2BCcC59CC5C8fcFC25", weight: 7.5 },
-    { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496", weight: 5.5 },
-    { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE", weight: 9.5 },
-    { name: "sbimbg", platform: "polymarket", address: "0xf5198df69e13937a40d1c76d6f72d9aa067d906b", weight: 8 },
+    { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496", weight: 6 },
+    { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE", weight: 6.5 },
+    { name: "sbimbg", platform: "polymarket", address: "0xf5198df69e13937a40d1c76d6f72d9aa067d906b", weight: 7.5 },
     { name: "Boned", platform: "polymarket", address: "0x335d3dedf02b9884db93dc4c1a90cf578e598c00", weight: 6 },
-    { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14", weight: 6.5 },
-    { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c", weight: 5.5 },
-    { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563", weight: 1 },
+    { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14", weight: 7 },
+    { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c", weight: 6 },
+    { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563", weight: 3 },
     { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", weight: 9 },
-    { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", weight: 3.5 },
+    { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", weight: 4 },
     { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", weight: 6 },
     { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", weight: 9 },
     { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74", weight: 7 },
@@ -2558,21 +2572,21 @@
     { name: "herdonia", platform: "polymarket", address: "0xd106952ebf30a3125affd8a23b6c1f30c35fc79c", weight: 7 },
     { name: "billbenter", platform: "polymarket", address: "0x84ad9c5c547a82ec9a08547b94bd922446e5bfb7", weight: 7 },
     { name: "0xa697", platform: "polymarket", address: "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5", weight: 7.5 },
-    { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2", weight: 7 },
+    { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2", weight: 6.5 },
     // Added on request — address resolved from the profile's embedded
     // proxyWallet, cross-checked against a live positions fetch.
-    { name: "uptheblues", platform: "polymarket", address: "0x2a69660046d7acc4ab204d7cc5ba78b0776cd2f7", weight: 2.5 },
-    { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8", weight: 5.5 },
+    { name: "uptheblues", platform: "polymarket", address: "0x2a69660046d7acc4ab204d7cc5ba78b0776cd2f7", weight: 3 },
+    { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8", weight: 6.5 },
     { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8", weight: 7 },
     { name: "wagerwizard", platform: "polymarket", address: "0x2c46ffe86ee500875db3c679e52f6e64854cdac9", weight: 6 },
-    { name: "sulumos", platform: "polymarket", address: "0x9db82de5a71ae539bc82f4d9ac3a007c7d742eff", weight: 9 },
-    { name: "mk756", platform: "polymarket", address: "0x15096a93fb86ea8a782574536ce3bab88e6cca95", weight: 10 },
+    { name: "sulumos", platform: "polymarket", address: "0x9db82de5a71ae539bc82f4d9ac3a007c7d742eff", weight: 7.5 },
+    { name: "mk756", platform: "polymarket", address: "0x15096a93fb86ea8a782574536ce3bab88e6cca95", weight: 6.5 },
     { name: "itdo", platform: "polymarket", address: "0xc0fd3818a930ed9404e0ac6019939ea97ff5a0a9", weight: 6 },
     { name: "supra", platform: "polymarket", address: "0x57cd939930fd119067ca9dc42b22b3e15708a0fb", weight: 7.5 },
     { name: "frib", platform: "polymarket", address: "0x6f3e7f25baa7d2d49e15e2d2957ff3dec62cbcf8", weight: 6 },
     { name: "hvab", platform: "polymarket", address: "0x8546a601f7c7cc3dae7141f20b0e09e42bbf35b8", weight: 8 },
     { name: "yesmate", platform: "polymarket", address: "0x5d7639ed5fd3c5ebf0fc69d548e1046acd0f9168", weight: 5.5 },
-    { name: "bomber", platform: "polymarket", address: "0xd776f0a066fd3014ecfac89cfd414440982bffeb", weight: 10 },
+    { name: "bomber", platform: "polymarket", address: "0xd776f0a066fd3014ecfac89cfd414440982bffeb", weight: 7.5 },
     { name: "c63amg", platform: "polymarket", address: "0xb31e41965df4ab8014de4c4d8da9deff0a6ac120", weight: 6 },
     { name: "chacha", platform: "polymarket", address: "0xe6bff499390d0988f81967d095925b44aad38380", weight: 6.5 },
     // Added on request — addresses resolved via gamma-api's public-search
@@ -2587,13 +2601,13 @@
     // Added on request — address resolved from the profile page's own
     // api/profile/userData call (proxyWallet), cross-checked against a live
     // positions fetch.
-    { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", weight: 2 },
+    { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", weight: 3.5 },
     // Added on request — addresses resolved from the profile URLs given.
     { name: "anon2", platform: "polymarket", address: "0x78becf0a4e4f2640380af0c19ad32e2557e6bde0", weight: 7 },
-    { name: "0x2", platform: "polymarket", address: "0x228b8d11eba89bf1c554f8879a9293b7106daf4c", weight: 8 },
+    { name: "0x2", platform: "polymarket", address: "0x228b8d11eba89bf1c554f8879a9293b7106daf4c", weight: 6.5 },
     // Added on request — @username profile URLs given, addresses resolved
     // via the profile page's own api/profile/userData call (proxyWallet).
-    { name: "lily", platform: "polymarket", address: "0x01c78f8873c0c86d6b6b92ff627e3802237ee995", weight: 7.5 },
+    { name: "lily", platform: "polymarket", address: "0x01c78f8873c0c86d6b6b92ff627e3802237ee995", weight: 6.5 },
     { name: "maksim", platform: "polymarket", address: "0x45721362269008ac5988bec2e5c22ca463af5e86", weight: 8 },
     { name: "flawfence", platform: "polymarket", address: "0x23d81ba9371e576015c1e562db09c689f56b0288", weight: 6 },
     // Added on request — trouvés via find-football-whales.mjs (courbe de PnL
