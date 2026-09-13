@@ -4622,6 +4622,31 @@
   // this gate was built for (SCORE_VOLUME's own calibration example) still
   // lands at 3.1 — crushed, well under the note<5 floor, just not to 2.1.
   var GATE_QUALITY_PARAMS = [1, 0.75]; // [rampHi, floor]
+  // Added 2026-09-13, user-specified tiers: a 3-of-3 unanimous consensus
+  // and an 8-of-8 unanimous consensus both hit consensusRatio's max (1.0,
+  // same as any other ratio) even though 8 independent traders agreeing is
+  // much stronger evidence than 3 — a pure ratio is blind to the sample
+  // size behind it. Scoped deliberately to consensus alone (this gate),
+  // not a blanket traderCount penalty on the whole score — traderQuality,
+  // volumeConcentration etc. stay judged on their own terms.
+  // Tried shrinking consensusRatio itself toward 0.5 by traderCount first
+  // (the same tool used for trader ratings) — backtested WORSE on real
+  // outcomes (r vs win went from +0.08 to as low as -0.12), because
+  // traderCount's own relation to outcome isn't monotonic in this data
+  // (6 traders is the best-performing count, 8 the worst) — so trusting
+  // the ratio MORE as headcount rises isn't actually justified by what's
+  // observed. This table is a flat, hand-set discount instead, not derived
+  // from that relationship: 7+ traders = full trust; below that, trust
+  // drops off — steeply below 4, where there's zero historical precedent
+  // to judge by at all (0 decided trades at 2-3 tracked traders, 1 at a
+  // single trader, out of 127). 1-2 traders extrapolated from the given
+  // 7→3 shape, not separately requested — revisit if real cases surface.
+  var GATE_CONSENSUS_TRADER_COUNT_TABLE = { 7: 1.00, 6: 0.95, 5: 0.90, 4: 0.80, 3: 0.60, 2: 0.35, 1: 0.15 };
+  function gateConsensusTraderCount(traderCount) {
+    if (traderCount >= 7) return 1.0;
+    var t = Math.max(1, Math.floor(traderCount || 0));
+    return GATE_CONSENSUS_TRADER_COUNT_TABLE[t] != null ? GATE_CONSENSUS_TRADER_COUNT_TABLE[t] : 0.15;
+  }
   function leaderWeightedQuality(traderStakes) {
     var weightedSum = 0, totalStake = 0;
     traderStakes.forEach(function (t) {
@@ -4784,7 +4809,8 @@
     var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
     var gateVolume = consensusGate(factors.volume, GATE_VOLUME_PARAMS[0], GATE_VOLUME_PARAMS[1]);
     var gateQuality = consensusGate(factors.traderQuality, GATE_QUALITY_PARAMS[0], GATE_QUALITY_PARAMS[1]);
-    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume * gateQuality;
+    var gateConsensusN = gateConsensusTraderCount(u.traderCount);
+    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume * gateQuality * gateConsensusN;
     var score = applyScoreShift(Math.round((1 + raw * 9 * gate) * 10) / 10);
     return {
       score: score,
@@ -11385,7 +11411,8 @@
     var gateWhale = consensusGate(1 - normLinear(topTraderShare, SCORE_RANGES.topTraderShare), 0.7, 0.85);
     var gateVolume = consensusGate(factors.volume, GATE_VOLUME_PARAMS[0], GATE_VOLUME_PARAMS[1]);
     var gateQuality = consensusGate(factors.traderQuality, GATE_QUALITY_PARAMS[0], GATE_QUALITY_PARAMS[1]);
-    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume * gateQuality;
+    var gateConsensusN = gateConsensusTraderCount(traderCount);
+    var gate = gateHeadcount * gateMoney * gateWhale * gateVolume * gateQuality * gateConsensusN;
     return applyScoreShift(Math.round((1 + raw * 9 * gate) * 10) / 10);
   }
   // One-time exact corrections from the 2026-08-15 calibration pass — the
