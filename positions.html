@@ -5686,11 +5686,23 @@
   function dedupeTestList(list) {
     var groups = {}, order = [];
     list.forEach(function (item) {
+      // BUG FIXED (2026-09-13, user-reported): keying on question text
+      // alone silently merged genuinely different bets on the same match —
+      // e.g. a moneyline pick ("City ou nul") and a spread pick ("Man U
+      // +1,5 gagne") on the same "Man U - Man City" question collapsed into
+      // one row, dropping the other's PNL/result entirely from All Time
+      // while Saison 26/27 correctly kept showing both. leaderName is the
+      // actual side/line chosen, so two saves only share a group now if
+      // they're really the same pick on the same match — the original
+      // re-snapshot case this function was built for (re-clicking 📌 on the
+      // same trade as more traders pile on) always keeps the same
+      // leaderName, so that case still dedupes exactly as before.
       // Falls back to the item's own id (never collides with a real
       // question) for the one case a duplicate group can't form anyway —
       // a blank question — so that item still gets its own group instead
       // of being silently swallowed into every other blank-question item.
-      var key = (item.question || "").trim() || ("__id_" + item.id);
+      var q = (item.question || "").trim(), ln = (item.leaderName || "").trim();
+      var key = (q || ln) ? (q + "|" + ln) : ("__id_" + item.id);
       if (!groups[key]) { groups[key] = []; order.push(key); }
       groups[key].push(item);
     });
