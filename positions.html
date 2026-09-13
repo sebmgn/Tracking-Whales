@@ -4590,7 +4590,15 @@
   // to this alone, on top of whatever the other gates already take.
   // Verified against the formula: an otherwise-flawless trade sitting at
   // ~$3k that would have scored ~8.3 before this change now lands ~5.0.
-  var GATE_VOLUME_PARAMS = [1, 0.5]; // [rampHi, floor]
+  // Neutralized 2026-09-13: the diagnostic backtest above found volume's
+  // correlation with real outcome is NEGATIVE (r=-0.20 vs win, r=-0.13 vs
+  // ROI, n=127) — a thin trade historically does BETTER, not worse, so this
+  // gate was penalizing exactly the trades that tend to win. Floor raised
+  // to 1.0, which makes consensusGate(x, rampHi, 1) return 1 for any x —
+  // i.e. a no-op — rather than deleting the mechanism, so the calibration
+  // history above stays legible and this is a one-line revert if a bigger
+  // sample later shows the earlier floor of 0.5 was actually right.
+  var GATE_VOLUME_PARAMS = [1, 1]; // [rampHi, floor] — floor=1 disables this gate, see note above
   // Added 2026-08-22 on request: everything above judges the SHAPE of a
   // trade (consensus, money split, volume) but was completely blind to
   // WHO is actually behind it — 9 traders unanimous on $42k could score a
