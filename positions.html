@@ -4519,12 +4519,24 @@
   // draws on TRADERS' own 2026-09-13 backtested ratings instead of the old
   // subjective numbers — re-run this backtest as more decided trades land
   // (a few hundred more would meaningfully sharpen all of this).
+  // Recalibrated 2026-09-13 (diagnostic report, per-factor backtest on 127
+  // auto-tracked decided trades): volume dropped from 0.06 to 0 — its
+  // correlation with real outcome was negative (r=-0.13 vs ROI, r=-0.20 vs
+  // win), i.e. a bigger total match volume historically means a WORSE bet,
+  // not a safer one, so weighting it upward was actively fighting the data.
+  // What matters is $ concentration on the LEADER's side specifically
+  // (already captured by volumeConcentration, a ratio) — not the match's
+  // total $, which volume measured. The freed 0.06 moved to traderQuality,
+  // the one factor with a clear positive signal (r=+0.20 vs win, the
+  // strongest of the five) — note GATE_VOLUME_PARAMS below still applies a
+  // separate multiplicative penalty for low-volume trades, independent of
+  // this weight; not touched here since that's a distinct mechanism.
   var SCORE_WEIGHTS = {
     consensusRatio: 0.32,      // share of TRADERS (not $) on the leading side — 6-of-7 now beats 7-of-9
     volumeConcentration: 0.28, // $ share sitting on the leading side vs the other camp(s)
-    traderQuality: 0.30,       // leading side's stake-weighted trader rating (real backtested ROI/trade, not a guess)
-    volume: 0.06,              // total $ staked across the whole trade — kept small, not zero: backtest says it doesn't help, but a near-zero trade is still a red flag for other reasons (liquidity, noise)
-    traderCount: 0.04          // how many tracked traders are in it at all — same reasoning as volume above
+    traderQuality: 0.36,       // leading side's stake-weighted trader rating (real backtested ROI/trade, not a guess)
+    volume: 0,                 // total $ staked across the whole trade — removed, see note above
+    traderCount: 0.04          // how many tracked traders are in it at all
   };
   var SCORE_RANGES = {
     consensusRatio: [0.5, 1],                      // leaderCount / traderCount — 0.5 = even split, 1 = unanimous
