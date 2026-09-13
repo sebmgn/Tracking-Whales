@@ -7078,6 +7078,62 @@
     }).join("");
     return '<div class="pnl-chart-stat pnl-chart-stat-monthly"><span class="pnl-chart-stat-label">Bilan mensuel</span><div class="month-mini-row">' + chips + '</div></div>';
   }
+  // Note actuelle (WEIGHT_BY_NAME, la note 1-10 recalibrée le 2026-09-13) ×
+  // ROI à mise fixe 1000€ par trader — preuve visuelle, en direct sur les
+  // vraies données de ce store, que la note capture réellement la
+  // performance : la pente devrait monter de gauche à droite. Réutilise
+  // computeTraderStatsRows (même pipeline que "Le tableau des traders" et
+  // "Le récap par trader") plutôt qu'un calcul parallèle qui pourrait
+  // diverger — st.hypRoi y est déjà la même simulation $1000 flat partout,
+  // indépendante de la mise réelle (contrairement à st.realRoi, qui suit
+  // store.stakeFor et n'a donc pas le même sens d'un store à l'autre).
+  function computeTraderNoteRoiPoints(list, store) {
+    return computeTraderStatsRows(list, store)
+      .filter(function (st) { return st.hypRoi != null && WEIGHT_BY_NAME[st.name] != null; })
+      .map(function (st) { return { name: st.name, weight: WEIGHT_BY_NAME[st.name], roi: st.hypRoi, n: st.hypCount }; });
+  }
+  function buildTraderNoteRoiSvg(pts) {
+    var W = 640, H = 280, padL = 46, padR = 14, padT = 14, padB = 26;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var xMin = 1, xMax = 10;
+    var roiVals = pts.map(function (p) { return p.roi; });
+    var yMin = Math.min.apply(null, roiVals.concat([0])) - 8;
+    var yMax = Math.max.apply(null, roiVals.concat([0])) + 8;
+    function x(w) { return padL + (w - xMin) / (xMax - xMin) * innerW; }
+    function y(r) { return padT + innerH - (r - yMin) / (yMax - yMin) * innerH; }
+    var xTicks = [1, 3, 5.5, 8, 10];
+    var gridLines = xTicks.map(function (t) {
+      var px = x(t);
+      return '<line class="vt-volroi-grid" x1="' + px.toFixed(1) + '" y1="' + padT + '" x2="' + px.toFixed(1) + '" y2="' + (H - padB) + '"/>' +
+        '<text class="vt-volroi-label" x="' + px.toFixed(1) + '" y="' + (H - padB + 14) + '" text-anchor="middle">' + t + '</text>';
+    }).join("") + '<text class="vt-volroi-label" x="' + (W - padR) + '" y="' + (H - 4) + '" text-anchor="end">note actuelle →</text>';
+    var zeroY = y(0);
+    var zeroLine = '<line class="vt-volroi-grid" x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(1) + '"/>' +
+      '<text class="vt-volroi-label" x="' + (padL - 6) + '" y="' + (zeroY + 3).toFixed(1) + '" text-anchor="end">0%</text>';
+    // <title> per point (native browser tooltip on hover) — same lightweight
+    // convention as the other Autres stats blocks (co-signal matrix, day-of-
+    // week bars), no custom JS tooltip layer for a panel this secondary.
+    var dots = pts.map(function (p) {
+      var rad = Math.max(4, Math.min(15, 4 + Math.sqrt(p.n) * 1.3));
+      var color = p.roi >= 0 ? "var(--green)" : "var(--red)";
+      return '<circle class="vt-volroi-pt" cx="' + x(p.weight).toFixed(1) + '" cy="' + y(p.roi).toFixed(1) + '" r="' + rad.toFixed(1) + '" fill="' + color + '" fill-opacity="0.6" stroke="' + color + '">' +
+        '<title>' + esc(p.name) + ' — note ' + p.weight.toFixed(1) + ' · ROI/1000€ ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% · ' + p.n + ' pari(s)</title>' +
+        '</circle>';
+    }).join("");
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="vt-volroi-svg" preserveAspectRatio="xMidYMid meet">' +
+      gridLines + zeroLine + dots +
+      '<line class="vt-volroi-axis" x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '"/>' +
+      '</svg>';
+  }
+  function traderNoteRoiHtml(list, store) {
+    var pts = computeTraderNoteRoiPoints(list, store);
+    if (pts.length < 3) return "";
+    var r = pearsonCorr(pts.map(function (p) { return p.weight; }), pts.map(function (p) { return p.roi; }));
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Note trader × ROI (mise fixe 1000€) — la recalibration tient-elle ?</div>' +
+      (r != null ? '<div class="empty-note" style="padding:0 0 8px;">Corrélation (note × ROI) : <b>' + (r >= 0 ? "+" : "") + r.toFixed(2) + '</b> sur ' + pts.length + ' traders — survole un point pour le détail.</div>' : '') +
+      buildTraderNoteRoiSvg(pts) +
+      '</div>';
+  }
   // Catch-all for secondary stats — streaks plus everything below, all
   // collapsed by default behind one toggle rather than each claiming its
   // own permanent slot in the toggle bar.
@@ -7099,6 +7155,7 @@
       streaksHtml(computeStreaks(series)),
       consensusStrengthHtml(list),
       volumeRoiCorrelationHtml(list),
+      traderNoteRoiHtml(list, store),
       coSignalMatrixHtml(list),
       dayOfWeekHtml(list, store)
     ].filter(function (b) { return !!b; }).join("");
