@@ -1183,7 +1183,8 @@
     background: var(--trader-accent, var(--accent));
     box-shadow: 0 1px 3px rgba(0,0,0,.3);
   }
-  .trader-name { font-size: 16px; font-weight: 800; }
+  .trader-name { font-size: 16px; font-weight: 800; color: var(--text); text-decoration: none; }
+  .trader-name:hover { text-decoration: underline; color: var(--accent); }
   .trader-wallet {
     color: var(--text-dim);
     text-decoration: none;
@@ -1482,6 +1483,12 @@
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .tier-wr-roi { font-style: italic; font-size: 13px; font-weight: 700; color: var(--text); }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
+  .trader-note-roi-detail { margin-top: 10px; padding: 8px 10px; font-size: 12px; background: var(--row-hover); border-radius: 6px; border: 1px solid var(--panel-border); }
+  .trader-history-collapse-wrap { margin-bottom: 16px; }
+  .trader-history-collapse-wrap #traderHistoryToggleBtn { display: block; width: 100%; margin-bottom: 8px; flex: none; }
+  .trader-history-removed-row { opacity: .6; }
+  .trader-history-removed-row td:first-child a { text-decoration: line-through; }
+  .trader-note-roi-name-label { font-size: 7px; fill: var(--text-dim); font-family: "IBM Plex Mono", monospace; }
   /* Manuel vs suivi auto — wider label badge than the 3-char conviction/
      note codes .tier-wr-badge was built for. */
   .tier-wr-badge-wide { flex: 0 0 150px; }
@@ -1691,7 +1698,8 @@
     box-shadow: 0 1px 3px rgba(0,0,0,.3);
   }
   .profile-card-id { min-width: 0; }
-  .profile-card-name { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .profile-card-name { display: block; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); text-decoration: none; }
+  .profile-card-name:hover { text-decoration: underline; color: var(--accent); }
   .profile-card-badges { margin-top: 3px; }
   .profile-card-addr { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--text-dim); }
   .profile-card-stats { display: flex; gap: 8px; }
@@ -1970,6 +1978,10 @@
   .trader-lolli-zero { position: absolute; left: 50%; top: 2px; bottom: 2px; width: 1px; background: var(--panel-border); }
   .trader-lolli-seg { position: absolute; top: 50%; height: 2px; background: var(--text-dim); transform: translateY(-50%); opacity: .6; }
   .trader-lolli-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--panel); }
+  .trader-contrib-dispersion .trader-contrib-row { grid-template-columns: 150px 1fr; }
+  .trader-dispersion-track { height: 46px; }
+  .trader-dispersion-dot { opacity: .82; cursor: default; transition: opacity .1s, transform .1s; }
+  .trader-dispersion-dot:hover { opacity: 1; transform: translate(-50%, -50%) scale(1.25); z-index: 2; }
   .trader-lolli-dot-real { background: var(--green); z-index: 2; }
   .trader-lolli-dot-hyp { background: var(--accent); z-index: 1; }
   .trader-contrib-vals { text-align: right; white-space: nowrap; }
@@ -2050,10 +2062,12 @@
     font-family: "IBM Plex Mono", monospace; font-size: 15px; font-weight: 600;
   }
   .co-signal-diag { background: var(--panel-border); color: var(--text-dim); border: 1px dashed var(--text-dim); }
-  .co-signal-colheads { margin-bottom: 2px; }
-  .co-signal-colheads span { display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--text-dim); }
-  .co-signal-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 13px; color: var(--text-dim); }
-  .co-signal-legend b { color: var(--accent); font-family: "IBM Plex Mono", monospace; margin-right: 3px; }
+  .co-signal-colheads { margin-bottom: 4px; align-items: end; }
+  .co-signal-colhead-name {
+    display: flex; align-items: flex-end; justify-content: center; height: 92px; padding-bottom: 4px;
+    writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-height: 92px; font-size: 11px; font-weight: 700; color: var(--text-dim); font-family: "IBM Plex Mono", monospace;
+  }
   /* Monthly mini chips, in the pnl-chart-stats header row */
   .pnl-chart-stat-monthly { min-width: auto; padding: 4px 8px 5px; align-items: flex-start; }
   .month-mini-row { display: flex; gap: 5px; }
@@ -2663,6 +2677,88 @@
     // sa vraie courbe PnL Polymarket). stakeMultiplier: 5 même logique que
     // stable-winner/mishipolis (voir normalizePolyPosition).
     { name: "aHjCz", platform: "polymarket", address: "0x2b5920274740ca61745eeb077587bf5bb4ff9db6", weight: 7, stakeMultiplier: 5 }
+  ];
+  // Reconstructed 2026-09-14 from git history (this file's own commit log),
+  // not tracked live anywhere — TRADERS has never recorded when a profile
+  // was added or removed, so this was rebuilt by diffing every commit that
+  // touched the TRADERS array, oldest to newest: "added" = the first commit
+  // a name appears in, "removed" = the commit it disappears from (only set
+  // if it's still absent from the CURRENT array — a name removed and later
+  // re-added shows null here, same as one never removed at all). Static on
+  // purpose: re-run the same git archaeology if TRADERS changes again and
+  // this should stay in sync, rather than trying to derive it at runtime
+  // from a git log the deployed static page has no access to.
+  var TRADER_HISTORY = [
+    { name: "0x2c33", platform: "polymarket", address: "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563", added: "2026-07-20", removed: null },
+    { name: "8a7sh2", platform: "polymarket", address: "0xbdb0e406400033ada6ffe03f8915b5e23873f8ba", added: "2026-07-20", removed: "2026-08-09" },
+    { name: "Anon", platform: "polymarket", address: "0x076daa87c4fe1a85402a9b6b8e0a866224388d4c", added: "2026-07-20", removed: "2026-07-26" },
+    { name: "Boned", platform: "polymarket", address: "0x335d3dedf02b9884db93dc4c1a90cf578e598c00", added: "2026-07-20", removed: null },
+    { name: "CandleHammerDrums", platform: "polymarket", address: "0x7c1ee865a785de4c00ee90ed86a38489fb8bbab3", added: "2026-07-20", removed: "2026-08-09" },
+    { name: "JJJJ", platform: "predict", address: "0x8Ad2C531324567a4008D9e2BCcC59CC5C8fcFC25", added: "2026-07-20", removed: null },
+    { name: "StaticNotionalSnap888", platform: "predict", address: "0x778a3EC095315283F81e730ACBfc0667393233bA", added: "2026-07-20", removed: "2026-07-26" },
+    { name: "VeryLucky888", platform: "polymarket", address: "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294", added: "2026-07-20", removed: null },
+    { name: "VestedForceLeak888", platform: "predict", address: "0xa9Dd6741383d634c7dd938aF32e39027c29f204a", added: "2026-07-20", removed: "2026-08-04" },
+    { name: "WideStrainTrend6", platform: "predict", address: "0x452b3B5e25Ee796Cc759f4cFCeE9DF482795dD1b", added: "2026-07-20", removed: "2026-07-26" },
+    { name: "WsCz", platform: "predict", address: "0x51925155f83E155592825b96AC5887505Af0aCD8", added: "2026-07-20", removed: "2026-08-16" },
+    { name: "aaaaaaa9", platform: "predict", address: "0x1faa0851074eCd1Baa4744Dbb43F9b10E2EFd636", added: "2026-07-20", removed: "2026-08-09" },
+    { name: "dated-pop", platform: "predict", address: "0x4d3A03939b2Fc9C22559d629F2228F33ee15F407", added: "2026-07-20", removed: "2026-07-26" },
+    { name: "deliveries_0nly", platform: "predict", address: "0xa635c0DFB1c5c9D8929250a8b1449C7D465F5496", added: "2026-07-20", removed: null },
+    { name: "jinwen818", platform: "predict", address: "0xDF3C3AD54B9506228f527dAd2413EF3f51A3A7CE", added: "2026-07-20", removed: null },
+    { name: "juanitooo12358", platform: "polymarket", address: "0xecdb673d790f2469f1bd9b87841ff17e6b18c4c7", added: "2026-07-20", removed: "2026-08-09" },
+    { name: "marginal-fill-moon", platform: "predict", address: "0xab5c4a6d8923d0fC6a30B15d099B4F5650bF2d9F", added: "2026-07-20", removed: "2026-07-26" },
+    { name: "mean-slippage-run", platform: "predict", address: "0x10F75A07837E4Af8B77182383443895cA7520747", added: "2026-07-20", removed: "2026-08-09" },
+    { name: "predict847", platform: "predict", address: "0x21f861D43B2E2E05F9974D1a27d0c8959e59a1F8", added: "2026-07-20", removed: null },
+    { name: "sbimbg", platform: "polymarket", address: "0xf5198df69e13937a40d1c76d6f72d9aa067d906b", added: "2026-07-20", removed: null },
+    { name: "swisstony", platform: "polymarket", address: "0x204f72f35326db932158cba6adff0b9a1da95e14", added: "2026-07-20", removed: null },
+    { name: "wapol", platform: "polymarket", address: "0xf7f0b0b1e9c0fe02ccad926916ee31aef74b912c", added: "2026-07-20", removed: null },
+    { name: "0xdbdd", platform: "polymarket", address: "0xdbdd45150249e229eb4ca8aa48a30dca21faa5de", added: "2026-07-23", removed: null },
+    { name: "GC-P", platform: "polymarket", address: "0x2d6ac4f70307102ac46e9e6ded67f3838ddf8add", added: "2026-07-23", removed: null },
+    { name: "RN1", platform: "polymarket", address: "0x2005d16a84ceefa912d4e380cd32e7ff827875ea", added: "2026-07-23", removed: null },
+    { name: "zaizoibele", platform: "polymarket", address: "0xc23dc0eca9e1c2e293de8911b9ac254f0bcd82c8", added: "2026-07-23", removed: null },
+    { name: "NM-P", platform: "polymarket", address: "0xcf7379b4b891c06d88807f6f70efa75378120215", added: "2026-07-26", removed: "2026-08-13" },
+    { name: "ena", platform: "predict", address: "0x26b820772574b9EcC86cC632dE03f1bE346577c6", added: "2026-07-26", removed: null },
+    { name: "newbie", platform: "polymarket", address: "0x43011bc04df353c8092662d13b4aaacb4b62ac39", added: "2026-07-26", removed: "2026-08-09" },
+    { name: "snakeball", platform: "polymarket", address: "0xc29198ad764bd6adaf7bb971a3757a689ece5d74", added: "2026-07-26", removed: null },
+    { name: "meister", platform: "polymarket", address: "0xdc4f58a48ed4467743609fdce11eea483c759804", added: "2026-08-04", removed: "2026-09-05" },
+    { name: "newteam", platform: "polymarket", address: "0xc46368a3374e87566eff1ffae7e6ec0163509a2f", added: "2026-08-04", removed: "2026-08-09" },
+    { name: "anon", platform: "polymarket", address: "0x076daa87c4fe1a85402a9b6b8e0a866224388d4c", added: "2026-08-08", removed: "2026-09-05" },
+    { name: "flatbarrel", platform: "polymarket", address: "0x6485f47d0344c03eb4340f985159f6eb2dcba265", added: "2026-08-08", removed: null },
+    { name: "tradecraft", platform: "polymarket", address: "0xde9f7f4e77a1595623ceb58e469f776257ccd43c", added: "2026-08-08", removed: null },
+    { name: "trmc", platform: "polymarket", address: "0x42c99f38d2b951b0dc8e8bd5371fa80c9dd19623", added: "2026-08-08", removed: null },
+    { name: "0xa697", platform: "polymarket", address: "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5", added: "2026-08-09", removed: null },
+    { name: "0xd9e0", platform: "polymarket", address: "0xd9e0aaca471f489be338fd0f91a26e8669a805f2", added: "2026-08-09", removed: null },
+    { name: "billbenter", platform: "polymarket", address: "0x84ad9c5c547a82ec9a08547b94bd922446e5bfb7", added: "2026-08-09", removed: null },
+    { name: "herdonia", platform: "polymarket", address: "0xd106952ebf30a3125affd8a23b6c1f30c35fc79c", added: "2026-08-09", removed: null },
+    { name: "homerun", platform: "polymarket", address: "0x5268527977f700f9bf9b6d5cd843859e4e70135d", added: "2026-08-09", removed: null },
+    { name: "malfunction", platform: "polymarket", address: "0xfc25f141ed27bb1787338d2c4e7f51e3a15e1f7f", added: "2026-08-09", removed: null },
+    { name: "uptheblues", platform: "polymarket", address: "0x2a69660046d7acc4ab204d7cc5ba78b0776cd2f7", added: "2026-08-09", removed: null },
+    { name: "emacron", platform: "polymarket", address: "0x1f624696c102b99bea92c75a502fa7e4a6d676f6", added: "2026-08-10", removed: "2026-09-08" },
+    { name: "rollobravado", platform: "polymarket", address: "0x3b62c64ebaee15478e8b21765b9f940458655cc8", added: "2026-08-13", removed: null },
+    { name: "wagerwizard", platform: "polymarket", address: "0x2c46ffe86ee500875db3c679e52f6e64854cdac9", added: "2026-08-13", removed: null },
+    { name: "itdo", platform: "polymarket", address: "0xc0fd3818a930ed9404e0ac6019939ea97ff5a0a9", added: "2026-08-15", removed: null },
+    { name: "mk756", platform: "polymarket", address: "0x15096a93fb86ea8a782574536ce3bab88e6cca95", added: "2026-08-15", removed: null },
+    { name: "sulumos", platform: "polymarket", address: "0x9db82de5a71ae539bc82f4d9ac3a007c7d742eff", added: "2026-08-15", removed: null },
+    { name: "supra", platform: "polymarket", address: "0x57cd939930fd119067ca9dc42b22b3e15708a0fb", added: "2026-08-15", removed: null },
+    { name: "bomber", platform: "polymarket", address: "0xd776f0a066fd3014ecfac89cfd414440982bffeb", added: "2026-08-16", removed: null },
+    { name: "c63amg", platform: "polymarket", address: "0xb31e41965df4ab8014de4c4d8da9deff0a6ac120", added: "2026-08-16", removed: null },
+    { name: "chacha", platform: "polymarket", address: "0xe6bff499390d0988f81967d095925b44aad38380", added: "2026-08-16", removed: null },
+    { name: "frib", platform: "polymarket", address: "0x6f3e7f25baa7d2d49e15e2d2957ff3dec62cbcf8", added: "2026-08-16", removed: null },
+    { name: "hvab", platform: "polymarket", address: "0x8546a601f7c7cc3dae7141f20b0e09e42bbf35b8", added: "2026-08-16", removed: null },
+    { name: "yesmate", platform: "polymarket", address: "0x5d7639ed5fd3c5ebf0fc69d548e1046acd0f9168", added: "2026-08-16", removed: null },
+    { name: "MrDouche", platform: "polymarket", address: "0xc2c89e23a69936da2991ddffdc7c99d4f0bd5471", added: "2026-08-29", removed: null },
+    { name: "kilian7kilian", platform: "polymarket", address: "0x14c7111afa871fb215339f365043d7b2837b9ccf", added: "2026-08-29", removed: null },
+    { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", added: "2026-09-01", removed: null },
+    { name: "0x2", platform: "polymarket", address: "0x228b8d11eba89bf1c554f8879a9293b7106daf4c", added: "2026-09-08", removed: null },
+    { name: "anon2", platform: "polymarket", address: "0x78becf0a4e4f2640380af0c19ad32e2557e6bde0", added: "2026-09-08", removed: null },
+    { name: "flawfence", platform: "polymarket", address: "0x23d81ba9371e576015c1e562db09c689f56b0288", added: "2026-09-08", removed: null },
+    { name: "lily", platform: "polymarket", address: "0x01c78f8873c0c86d6b6b92ff627e3802237ee995", added: "2026-09-08", removed: null },
+    { name: "maksim", platform: "polymarket", address: "0x45721362269008ac5988bec2e5c22ca463af5e86", added: "2026-09-08", removed: null },
+    { name: "ValiBB", platform: "polymarket", address: "0x9cb48ddd4185f3e947edf596589e40e574588285", added: "2026-09-09", removed: null },
+    { name: "mishipolis", platform: "polymarket", address: "0x7a5d94f83ff0195387eaf9f4463433d03eda54db", added: "2026-09-09", removed: null },
+    { name: "sainttroplay", platform: "polymarket", address: "0x9319a045cdd0c2180e5eb7ad44374383db9a6410", added: "2026-09-09", removed: null },
+    { name: "stable-winner", platform: "polymarket", address: "0xdfae74e98792d986aa36484de45b99441fa7155e", added: "2026-09-09", removed: null },
+    { name: "vito3corleone", platform: "polymarket", address: "0x34dd4a4b70eaf79a17878f7938263c801d4dfd83", added: "2026-09-09", removed: null },
+    { name: "aHjCz", platform: "polymarket", address: "0x2b5920274740ca61745eeb077587bf5bb4ff9db6", added: "2026-09-10", removed: null }
   ];
   var WEIGHT_BY_NAME = {};
   var PLATFORM_BY_NAME = {};
@@ -6954,15 +7050,25 @@
       '<table class="weekly-data-table"><thead><tr><th>Volume</th><th class="num">Paris</th><th class="num">Winrate</th><th class="num">ROI moyen</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
       '</div>';
   }
-  // Winrate bucketed by how many tracked traders agreed on the same side of
-  // a snapshot — checks whether "several whales aligned" is actually a
-  // stronger signal or just a feeling.
+  // BUG FIXED (2026-09-14, user-flagged as confusing/unreadable): this
+  // bucketed on `s.traderCount`, which is the headcount across the WHOLE
+  // market (every side combined) — not "how many traders agreed", despite
+  // the chart's own title. Since almost every real trade has 4+ traders
+  // total tracked on it somewhere (see the diagnostic's traderCount
+  // distribution — essentially nothing below 4), 3 of the 4 buckets were
+  // "—" empty in practice and the 4th was just "everything". Fixed to
+  // `s.sides[0].traderCount` — sides[0] is the LEADER side by the same
+  // convention scoreFromSnapshotSides/unitScoreInfo already rely on, so
+  // this is genuinely "how many tracked traders were on the side that
+  // ended up being followed", spread across a real range of values instead
+  // of collapsing into one bucket.
   function computeConsensusBuckets(list) {
-    var buckets = [{ label: "1", min: 1, max: 1 }, { label: "2", min: 2, max: 2 }, { label: "3", min: 3, max: 3 }, { label: "4+", min: 4, max: Infinity }];
+    var buckets = [{ label: "1", min: 1, max: 1 }, { label: "2", min: 2, max: 2 }, { label: "3", min: 3, max: 3 }, { label: "4-5", min: 4, max: 5 }, { label: "6+", min: 6, max: Infinity }];
     buckets.forEach(function (b) { b.win = 0; b.total = 0; });
     list.forEach(function (s) {
-      if (!s.winningSide || !s.traderCount) return;
-      var b = buckets.filter(function (x) { return s.traderCount >= x.min && s.traderCount <= x.max; })[0];
+      var leaderCount = s.sides && s.sides[0] ? s.sides[0].traderCount : null;
+      if (!s.winningSide || !leaderCount) return;
+      var b = buckets.filter(function (x) { return leaderCount >= x.min && leaderCount <= x.max; })[0];
       if (!b) return;
       b.total++;
       if (s.leaderName === s.winningSide) b.win++;
@@ -6978,7 +7084,9 @@
       var color = wr == null ? "var(--text-dim)" : (wr >= 50 ? "var(--green)" : "var(--red)");
       return '<div class="stat-consensus-col"><div class="stat-consensus-track"><span class="stat-consensus-val">' + (wr == null ? "—" : wr.toFixed(0) + "%") + '</span><div class="stat-consensus-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl" title="' + b.total + ' pari(s)">' + b.label + '</span></div>';
     }).join("");
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Force du consensus (traders d\'accord) vs winrate</div><div class="stat-consensus-row">' + cols + '</div></div>';
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders d\'accord sur le camp suivi, vs winrate</div>' +
+      '<div class="empty-note" style="padding:0 0 8px;">Nombre de traders suivis présents sur le CAMP effectivement suivi (pas le marché entier) — est-ce qu\'être suivi par plus de monde à la fois prédit mieux la victoire ?</div>' +
+      '<div class="stat-consensus-row">' + cols + '</div></div>';
   }
   // Row-normalized co-occurrence: cell(i,j) = "of trader i's own bets, what
   // % also had trader j" — spots redundant profiles (near-1.0 both ways,
@@ -7005,12 +7113,14 @@
     });
     return { names: names, matrix: matrix };
   }
-  // Full trader names never get truncated into illegibility — they're row
-  // labels (a row's height easily fits a whole name), and columns are
-  // referenced by letter with a legend spelling each one out underneath.
-  // The count sits directly on the cell too, not just in a hover title, so
-  // reading the matrix never depends on hovering at all.
-  var CO_SIGNAL_LETTERS = "ABCDEFGH";
+  // Full trader names on both axes now (2026-09-14, user-flagged: the A-H
+  // letter/legend indirection meant reading the grid was a constant
+  // look-up-then-look-back). Rows stay flat (a row's height easily fits a
+  // whole name); columns run the name vertically (writing-mode) instead —
+  // the only way to fit a full name in a narrow column without either
+  // truncating it or blowing the grid out to unreadable width. The count
+  // sits directly on the cell too, not just in a hover title, so reading
+  // the matrix never depends on hovering at all.
   function coSignalMatrixHtml(list) {
     var data = computeCoSignalMatrix(list, 8);
     if (!data) return "";
@@ -7025,7 +7135,7 @@
     var maxOffDiag = 1;
     for (var mi = 0; mi < n; mi++) { for (var mj = 0; mj < n; mj++) { if (mi !== mj) maxOffDiag = Math.max(maxOffDiag, data.matrix[mi][mj]); } }
     var colHeadCells = "";
-    for (var c = 0; c < n; c++) colHeadCells += '<span>' + CO_SIGNAL_LETTERS[c] + '</span>';
+    for (var c = 0; c < n; c++) colHeadCells += '<span class="co-signal-colhead-name" title="' + esc(data.names[c]) + '">' + esc(data.names[c]) + '</span>';
     var rowsHtml = data.names.map(function (rowName, i) {
       var cells = "";
       for (var j = 0; j < n; j++) {
@@ -7047,11 +7157,9 @@
       }
       return '<div class="co-signal-row2"><span class="co-signal-rowname" title="' + esc(rowName) + '">' + esc(rowName) + '</span><div class="co-signal-cellrow" style="grid-template-columns:repeat(' + n + ', 44px)">' + cells + '</div></div>';
     }).join("");
-    var legend = data.names.map(function (nm, i) { return '<span><b>' + CO_SIGNAL_LETTERS[i] + '</b> ' + esc(nm) + '</span>'; }).join("");
     return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Matrice de corrélation — paris en commun entre traders</div>' +
       '<div class="co-signal-row2"><span class="co-signal-rowname"></span><div class="co-signal-cellrow co-signal-colheads" style="grid-template-columns:repeat(' + n + ', 44px)">' + colHeadCells + '</div></div>' +
       rowsHtml +
-      '<div class="co-signal-legend">' + legend + '</div>' +
       '</div>';
   }
   var DAYHOUR_DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -7128,7 +7236,7 @@
   function computeTraderNoteRoiPoints(list, store) {
     return computeTraderStatsRows(list, store)
       .filter(function (st) { return st.hypRoi != null && WEIGHT_BY_NAME[st.name] != null; })
-      .map(function (st) { return { name: st.name, weight: WEIGHT_BY_NAME[st.name], roi: st.hypRoi, n: st.hypCount }; });
+      .map(function (st) { return { name: st.name, weight: WEIGHT_BY_NAME[st.name], roi: st.hypRoi, n: st.hypCount, realRoi: st.realRoi, decided: st.decided }; });
   }
   function buildTraderNoteRoiSvg(pts) {
     var W = 640, H = 280, padL = 46, padR = 14, padT = 14, padB = 26;
@@ -7148,17 +7256,25 @@
     var zeroY = y(0);
     var zeroLine = '<line class="vt-volroi-grid" x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(1) + '"/>' +
       '<text class="vt-volroi-label" x="' + (padL - 6) + '" y="' + (zeroY + 3).toFixed(1) + '" text-anchor="end">0%</text>';
-    // <title> per point (native browser tooltip on hover) — same lightweight
-    // convention as the other Autres stats blocks (co-signal matrix, day-of-
-    // week bars), no custom JS tooltip layer for a panel this secondary.
-    var dots = pts.map(function (p) {
+    // <title> for a native hover tooltip PLUS a small always-visible name
+    // label (on request — a hover-only label meant every name was hidden
+    // until you happened to land on that exact dot). data-* carries what
+    // the click handler below needs to show the full stat line, instead of
+    // re-deriving it from a separate JS array that could drift from what's
+    // actually drawn.
+    var dots = pts.map(function (p, i) {
       var rad = Math.max(4, Math.min(15, 4 + Math.sqrt(p.n) * 1.3));
       var color = p.roi >= 0 ? "var(--green)" : "var(--red)";
-      return '<circle class="vt-volroi-pt" cx="' + x(p.weight).toFixed(1) + '" cy="' + y(p.roi).toFixed(1) + '" r="' + rad.toFixed(1) + '" fill="' + color + '" fill-opacity="0.6" stroke="' + color + '">' +
-        '<title>' + esc(p.name) + ' — note ' + p.weight.toFixed(1) + ' · ROI/1000€ ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% · ' + p.n + ' pari(s)</title>' +
-        '</circle>';
+      var cx = x(p.weight).toFixed(1), cy = y(p.roi).toFixed(1);
+      // Label above the dot by default, flipped below when too close to the
+      // chart's top edge so it never clips out of the viewBox.
+      var labelY = (parseFloat(cy) - rad - 4) < padT ? (parseFloat(cy) + rad + 9) : (parseFloat(cy) - rad - 3);
+      return '<circle class="vt-volroi-pt trader-note-roi-pt" cx="' + cx + '" cy="' + cy + '" r="' + rad.toFixed(1) + '" fill="' + color + '" fill-opacity="0.6" stroke="' + color + '" data-name="' + esc(p.name) + '" data-weight="' + p.weight.toFixed(1) + '" data-roi="' + p.roi.toFixed(0) + '" data-realroi="' + (p.realRoi == null ? "" : p.realRoi.toFixed(0)) + '" data-n="' + p.n + '" data-decided="' + p.decided + '" style="cursor:pointer;">' +
+        '<title>' + esc(p.name) + ' — note ' + p.weight.toFixed(1) + ' · ROI/1000€ ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% · ' + p.n + ' pari(s) — clique pour le détail</title>' +
+        '</circle>' +
+        '<text class="trader-note-roi-name-label" x="' + cx + '" y="' + labelY.toFixed(1) + '" text-anchor="middle" style="pointer-events:none;">' + esc(p.name) + '</text>';
     }).join("");
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="vt-volroi-svg" preserveAspectRatio="xMidYMid meet">' +
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="vt-volroi-svg trader-note-roi-svg" preserveAspectRatio="xMidYMid meet">' +
       gridLines + zeroLine + dots +
       '<line class="vt-volroi-axis" x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '"/>' +
       '</svg>';
@@ -7168,9 +7284,42 @@
     if (pts.length < 3) return "";
     var r = pearsonCorr(pts.map(function (p) { return p.weight; }), pts.map(function (p) { return p.roi; }));
     return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Note trader × ROI (mise fixe 1000€) — la recalibration tient-elle ?</div>' +
-      (r != null ? '<div class="empty-note" style="padding:0 0 8px;">Corrélation (note × ROI) : <b>' + (r >= 0 ? "+" : "") + r.toFixed(2) + '</b> sur ' + pts.length + ' traders — survole un point pour le détail.</div>' : '') +
+      (r != null ? '<div class="empty-note" style="padding:0 0 8px;">Corrélation (note × ROI) : <b>' + (r >= 0 ? "+" : "") + r.toFixed(2) + '</b> sur ' + pts.length + ' traders — survole ou clique un point pour le détail.</div>' : '') +
       buildTraderNoteRoiSvg(pts) +
+      '<div class="trader-note-roi-detail" style="display:none;"></div>' +
       '</div>';
+  }
+  // Delegated on the whole panel (survives re-renders without re-binding) —
+  // clicking a dot fills in the detail line right under the chart with
+  // exactly what was asked: n, ROI/1000€, ROI réel, note. Clicking the same
+  // dot again hides it; clicking a different one just swaps the content.
+  function wireTraderNoteRoiClicks(root) {
+    root.addEventListener("click", function (e) {
+      var pt = e.target.closest(".trader-note-roi-pt");
+      var section = e.target.closest(".other-stats-section");
+      if (!section) return;
+      var detail = section.querySelector(".trader-note-roi-detail");
+      if (!detail) return;
+      if (!pt) { return; }
+      var name = pt.getAttribute("data-name");
+      if (detail.getAttribute("data-active") === name) {
+        detail.style.display = "none";
+        detail.removeAttribute("data-active");
+        return;
+      }
+      var roi = parseFloat(pt.getAttribute("data-roi"));
+      var realRoiRaw = pt.getAttribute("data-realroi");
+      var realRoi = realRoiRaw === "" ? null : parseFloat(realRoiRaw);
+      var weight = pt.getAttribute("data-weight");
+      var n = pt.getAttribute("data-n");
+      var decided = pt.getAttribute("data-decided");
+      detail.innerHTML = '<b>' + esc(name) + '</b> — note <b>' + esc(weight) + '</b>' +
+        ' · <span class="' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">ROI/1000€ ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span>' +
+        ' · <span class="' + (realRoi == null ? "" : (realRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">ROI réel ' + (realRoi == null ? "—" : (realRoi >= 0 ? "+" : "") + realRoi.toFixed(0) + '%') + '</span>' +
+        ' · ' + n + ' pari(s) avec simulation flat, ' + decided + ' décidé(s) au total';
+      detail.style.display = "";
+      detail.setAttribute("data-active", name);
+    });
   }
   // Catch-all for secondary stats — streaks plus everything below, all
   // collapsed by default behind one toggle rather than each claiming its
@@ -7200,6 +7349,9 @@
     el.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
       (blocks || '<div class="empty-note">Pas assez de paris décidés pour ces stats.</div>') +
       '</div>';
+    // Delegated on `el` itself (stable across re-renders, only innerHTML
+    // changes above) — bound once per store rather than once per render.
+    if (!el.dataset.noteRoiWired) { wireTraderNoteRoiClicks(el); el.dataset.noteRoiWired = "1"; }
   }
   // ---------- Paris par semaine, ALIGNÉ sur le graphique d'évolution ----------
   // Same weekly grouping as computeWeeklyPnl above, but built from the exact
@@ -7313,90 +7465,6 @@
     });
     return byTier;
   }
-  // Rolling daily ROI per tier (not winrate), plus a running cumulative
-  // mean built up day by day (day N's cumulative value averages days 1..N,
-  // not the whole period at once) — the thick line grows into "the
-  // long-run average" instead of being a flat constant, and visibly
-  // stabilizes over time.
-  function computeTierDriftByDay(list, store) {
-    var byDay = {};
-    list.forEach(function (s) {
-      if (!s.winningSide || !s.confidence || CONFIDENCE_TIERS.indexOf(s.confidence) === -1) return;
-      var d = new Date(s.savedAt);
-      if (isNaN(d.getTime())) return;
-      var stake = store.stakeFor(s);
-      var pnl = stake ? hypotheticalFlatPnl(s, stake) : null;
-      if (pnl == null || !stake) return;
-      var roi = (pnl / stake) * 100;
-      var key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-      if (!byDay[key]) {
-        byDay[key] = { key: key, tiers: {} };
-        CONFIDENCE_TIERS.forEach(function (t) { byDay[key].tiers[t] = { sum: 0, count: 0 }; });
-      }
-      var t = byDay[key].tiers[s.confidence];
-      t.sum += roi; t.count++;
-    });
-    var days = Object.keys(byDay).map(function (k) { return byDay[k]; }).sort(function (a, b) { return a.key - b.key; });
-    var cum = {};
-    CONFIDENCE_TIERS.forEach(function (t) { cum[t] = { sum: 0, count: 0 }; });
-    days.forEach(function (day) {
-      CONFIDENCE_TIERS.forEach(function (tier) {
-        var dt = day.tiers[tier];
-        cum[tier].sum += dt.sum; cum[tier].count += dt.count;
-        dt.cumMean = cum[tier].count > 0 ? cum[tier].sum / cum[tier].count : null;
-      });
-    });
-    return { days: days };
-  }
-  function buildTierDriftSvg(data) {
-    var days = data.days;
-    if (days.length < 2) return "";
-    var W = 700, H = 150, padL = 34, padR = 44, padT = 10, padB = 16;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var n = days.length;
-    function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
-    var allVals = [0];
-    days.forEach(function (day) { CONFIDENCE_TIERS.forEach(function (t) { var tt = day.tiers[t]; if (tt.count) allVals.push(tt.sum / tt.count); if (tt.cumMean != null) allVals.push(tt.cumMean); }); });
-    var yMin = Math.min.apply(null, allVals), yMax = Math.max.apply(null, allVals);
-    if (yMin === yMax) { yMin -= 1; yMax += 1; }
-    function y(v) { return padT + innerH - ((v - yMin) / (yMax - yMin)) * innerH; }
-    // Two lines per tier: a thin dashed line for the daily mean (moves
-    // around, gaps on days with no bet in that tier) and a thick solid
-    // line for the running cumulative mean through that same day — grows
-    // in from wherever the tier's first bet lands and visibly settles down
-    // as more days feed into it, instead of a flat reference constant.
-    var dailyLines = "", cumLines = "", anyLine = false;
-    CONFIDENCE_TIERS.forEach(function (tier) {
-      var dD = "", dC = "", lastCum = null, lastCumX = null, lastCumY = null;
-      days.forEach(function (day, i) {
-        var t = day.tiers[tier];
-        if (t.count > 0) dD += (dD === "" ? "M" : "L") + x(i).toFixed(2) + "," + y(t.sum / t.count).toFixed(2) + " ";
-        if (t.cumMean != null) {
-          dC += (dC === "" ? "M" : "L") + x(i).toFixed(2) + "," + y(t.cumMean).toFixed(2) + " ";
-          lastCum = t.cumMean; lastCumX = x(i); lastCumY = y(t.cumMean);
-        }
-      });
-      if (dD === "" && dC === "") return;
-      anyLine = true;
-      var color = CONFIDENCE_COLORS[tier];
-      if (dD !== "") dailyLines += '<path d="' + dD.trim() + '" fill="none" stroke="' + color + '" stroke-width="1.4" stroke-dasharray="4 3"><title>' + esc(tier) + ' — moyenne du jour</title></path>';
-      if (dC !== "") {
-        cumLines += '<path d="' + dC.trim() + '" fill="none" stroke="' + color + '" stroke-width="3"><title>' + esc(tier) + ' — moyenne cumulée</title></path>';
-        if (lastCum != null) {
-          cumLines += '<text x="' + (lastCumX + 6).toFixed(2) + '" y="' + (lastCumY + 4).toFixed(2) + '" font-size="12" font-weight="700" fill="' + color + '">' + (lastCum >= 0 ? "+" : "") + lastCum.toFixed(0) + '%</text>';
-        }
-      }
-    });
-    if (!anyLine) return "";
-    var zeroY = y(0);
-    // Cumulative (solid) drawn first, daily (dashed) drawn after so the
-    // finer dashed line stays visible even where it crosses a thick one.
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="tier-drift-svg">' +
-      '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>' +
-      '<text x="2" y="' + (zeroY + 3).toFixed(2) + '" font-size="8" fill="var(--text-dim)">0%</text>' +
-      cumLines + dailyLines +
-      '</svg>';
-  }
   function snapMatchesDistCell(s, bracket, tier) {
     if (!s.winningSide || !s.leaderName) return false;
     var p = snapLeaderPrice(s);
@@ -7473,13 +7541,11 @@
     var filterNoteHtml = store.state.tierCardFilter.length
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.tierCardFilter.join(", ")) + '</b> — reclique une catégorie active pour l\'enlever.</div>'
       : '';
-    var driftSvg = buildTierDriftSvg(computeTierDriftByDay(list, store));
-    var driftHtml = driftSvg ? '<div class="tier-drift"><div class="pnl-chart-weekly-label">Dérive du ROI par palier — pointillé fin = moyenne du jour, trait plein = moyenne cumulée (jour 1 à N)</div>' + driftSvg + tierLegendHtml() + '</div>' : '';
     syncSnapToggleLabel(store.ids.tierToggle, store.state.tierWinrateCollapsed, "le winrate par conviction");
     el.innerHTML =
       '<div class="tier-wr-collapse-wrap' + (store.state.tierWinrateCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Winrate par catégorie de conviction</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + '</div>' +
-      rows + noteHtml + filterNoteHtml + driftHtml + '</div></div>';
+      rows + noteHtml + filterNoteHtml + '</div></div>';
   }
   // Same winrate/ROI read as the conviction gauge above, but cut by the
   // trade's own computed note (noteAtSnapshot) instead of the manual
@@ -7886,30 +7952,62 @@
       var tierCells = CONFIDENCE_TIERS.map(function (tier) {
         return cell(inBucket.filter(function (s) { return s.confidence === tier; }), b, tier);
       }).join("");
-      return '<tr><td>' + b[0] + '–' + b[1] + '¢</td>' + cell(inBucket, b, null) + tierCells + '<td class="num snap-dist-roi-col">' + roiCell(inBucket) + '</td></tr>';
+      return '<tr><td>' + b[0] + '–' + b[1] + '¢</td><td class="num snap-dist-n-col">' + inBucket.length + '</td>' + cell(inBucket, b, null) + tierCells + '<td class="num snap-dist-roi-col">' + roiCell(inBucket) + '</td></tr>';
     }).join("");
     var roiTitle = store.name === "positions"
       ? "Simulation basée sur la mise choisie pour chaque position de la tranche, au prix du camp leader au moment du snapshot d'origine"
       : "Simulation " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " misés à plat sur chaque snapshot décidé de la tranche, au prix du camp leader au moment du snapshot";
-    var headCells = '<th>Cote</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("") +
+    var headCells = '<th>Cote</th><th class="num" title="Nombre de trades décidés dans cette tranche">Trades</th><th class="num">Tous</th>' + CONFIDENCE_TIERS.map(function (t) { return '<th class="num">' + esc(t) + '</th>'; }).join("") +
       '<th class="num snap-dist-roi-col" title="' + esc(roiTitle) + '">ROI</th>';
     // Footer row — same ROI simulation as each row's own rightmost cell, but
     // aggregated across every cote bracket at once, per column (Tous, then
     // each conviction tier) — the table above already lets you read a single
     // tier's ROI down one bracket at a time; this is that same number
     // collapsed to "how has S done overall", not sliced by price.
-    var footerCells = '<td><b>ROI global</b></td><td class="num"><b>' + roiCell(decided) + '</b></td>' +
+    var footerCells = '<td><b>ROI global</b></td><td class="num snap-dist-n-col"><b>' + decided.length + '</b></td><td class="num"><b>' + roiCell(decided) + '</b></td>' +
       CONFIDENCE_TIERS.map(function (tier) {
         return '<td class="num"><b>' + roiCell(decided.filter(function (s) { return s.confidence === tier; })) + '</b></td>';
       }).join("") + '<td class="num"></td>';
     var cellFilterNoteHtml = store.state.snapDistCellFilter
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(store.state.snapDistCellFilter.tier || "Tous") + ' · ' + store.state.snapDistCellFilter.bracket[0] + '–' + store.state.snapDistCellFilter.bracket[1] + '¢</b> — reclique la cellule active pour l\'enlever.</div>'
       : '';
+    // Quartile version (on request): same table, but the 7 fixed price
+    // bands above replaced with 4 bands sized so each holds the SAME COUNT
+    // of trades (not the same price width) — sorted by cote then sliced
+    // into quarters, same idea as the Volume x ROI quartiles already in
+    // Autres stats (computeVolumeRoiBuckets). Lets a thin, wide fixed band
+    // (e.g. 0-40c, rarely hit) stop diluting the read, and a crowded one
+    // (60-80c, see the fixed table above) stop being one lump.
+    var withPrice = decided.map(function (s) { var p = snapLeaderPrice(s); return p != null ? { s: s, cents: p * 100 } : null; }).filter(Boolean);
+    var quartileHtml = "";
+    if (withPrice.length >= 8) {
+      withPrice.sort(function (a, b) { return a.cents - b.cents; });
+      var qn = withPrice.length, qSize = Math.floor(qn / 4);
+      var qLabels = ["Q1 (cote la plus basse)", "Q2", "Q3", "Q4 (cote la plus haute)"];
+      var qRows = "";
+      for (var qi = 0; qi < 4; qi++) {
+        var start = qi * qSize, end = (qi === 3) ? qn : (start + qSize);
+        var slice = withPrice.slice(start, end);
+        if (!slice.length) continue;
+        var qItems = slice.map(function (x) { return x.s; });
+        var qBracket = [slice[0].cents, slice[slice.length - 1].cents];
+        var qTierCells = CONFIDENCE_TIERS.map(function (tier) {
+          return cell(qItems.filter(function (s) { return s.confidence === tier; }), qBracket, tier);
+        }).join("");
+        qRows += '<tr><td>' + qLabels[qi] + '<div class="market-sub">' + qBracket[0].toFixed(0) + '–' + qBracket[1].toFixed(0) + '¢</div></td>' +
+          '<td class="num snap-dist-n-col">' + qItems.length + '</td>' + cell(qItems, qBracket, null) + qTierCells +
+          '<td class="num snap-dist-roi-col">' + roiCell(qItems) + '</td></tr>';
+      }
+      quartileHtml = '<div class="snap-dist-subtitle" style="margin-top:16px;">Même lecture, mais en 4 tranches de taille ÉGALE en nombre de trades (quartiles) plutôt qu'+"'"+'en largeur de cote fixe — chaque ligne pèse exactement 1/4 des trades décidés.</div>' +
+        '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + qRows + '</tbody></table>';
+    }
     syncSnapToggleLabel(store.ids.distToggle, store.state.distCollapsed, "l'analyse cote × confiance");
     el.innerHTML =
       '<div class="snap-dist-wrap table-scroll' + (store.state.distCollapsed ? " collapsed" : "") + '">' +
       '<div class="snap-dist-subtitle">Gagnés / perdus par tranche de cote (au moment du snapshot) — tous trades, puis par catégorie de conviction. Clique une cellule pour filtrer les snapshots ci-dessous sur cette tranche.</div>' +
-      '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody><tfoot><tr class="snap-dist-footer">' + footerCells + '</tr></tfoot></table>' + cellFilterNoteHtml + '</div>';
+      '<table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody><tfoot><tr class="snap-dist-footer">' + footerCells + '</tr></tfoot></table>' + cellFilterNoteHtml +
+      quartileHtml +
+      '</div>';
   }
   // One snapshot-by-snapshot line per row, newest first — same
   // date/question/result-badge vocabulary as the snapshot cards above, just
@@ -8098,41 +8196,47 @@
   // bracket would defeat the comparison this exists for) — restricted to
   // the CURRENT `rowsData`, so switching tabs (Saison 26/27 vs All Time…)
   // still recomputes it for the right pool of trades.
+  // Redesigned 2026-09-14 (user-flagged): this used to plot one AVERAGED
+  // dot per bracket — but a bracket average is exactly the kind of number
+  // this whole session's trader-rating work has been arguing against: a
+  // trader on 3 decided trades with a freak +90% run pulls a bracket's
+  // average as hard as five traders on 40 trades each. Now one dot per
+  // TRADER (not per bracket), so the spread is visible instead of hidden
+  // behind a mean — a bracket that's "mostly solid traders plus one wild
+  // outlier" now looks like that, not like a single deceptively-high bar.
+  // ROI/trade 1000$ only (not real ROI too) — bet-size-independent, so
+  // traders are comparable regardless of how big they stake, and it keeps
+  // the chart legible; real ROI is still in the table's own column.
   function traderRoiByRatingHtml(rowsData) {
     var byBracket = {};
     rowsData.forEach(function (st) {
-      if (!st.decided) return;
+      if (!st.decided || st.hypRoi == null) return;
       var b = traderWeightBracket(WEIGHT_BY_NAME[st.name]);
       if (!b) return;
-      if (!byBracket[b.key]) byBracket[b.key] = { bracket: b, real: [], hyp: [] };
-      if (st.realRoi != null) byBracket[b.key].real.push(st.realRoi);
-      if (st.hypRoi != null) byBracket[b.key].hyp.push(st.hypRoi);
+      if (!byBracket[b.key]) byBracket[b.key] = { bracket: b, traders: [] };
+      byBracket[b.key].traders.push({ name: st.name, roi: st.hypRoi, n: st.hypCount || st.decided });
     });
-    function avg(arr) { return arr.length ? arr.reduce(function (s, v) { return s + v; }, 0) / arr.length : null; }
-    var computed = TRADER_TABLE_WEIGHT_BRACKETS.map(function (b) { return byBracket[b.key] ? { bracket: b, realAvg: avg(byBracket[b.key].real), hypAvg: avg(byBracket[b.key].hyp), n: byBracket[b.key].real.length } : null; }).filter(Boolean);
+    var computed = TRADER_TABLE_WEIGHT_BRACKETS.map(function (b) { return byBracket[b.key] || null; }).filter(Boolean);
     if (!computed.length) return "";
     var maxAbs = 1;
-    computed.forEach(function (c) { maxAbs = Math.max(maxAbs, Math.abs(c.realAvg || 0), Math.abs(c.hypAvg || 0)); });
+    computed.forEach(function (c) { c.traders.forEach(function (t) { maxAbs = Math.max(maxAbs, Math.abs(t.roi)); }); });
+    var JITTER = [50, 30, 70, 15, 85, 40, 60]; // vertical % lanes, cycled — spreads close-ROI dots apart so they don't fully overlap
     var rows = computed.map(function (c) {
-      var realPos = c.realAvg == null ? null : 50 + (c.realAvg / maxAbs) * 50;
-      var hypPos = c.hypAvg == null ? null : 50 + (c.hypAvg / maxAbs) * 50;
-      var segHtml = "", hypDotHtml = "", realDotHtml = "";
-      if (realPos != null && hypPos != null) {
-        var segLeft = Math.min(realPos, hypPos), segWidth = Math.abs(realPos - hypPos);
-        segHtml = '<div class="trader-lolli-seg" style="left:' + segLeft.toFixed(1) + '%;width:' + segWidth.toFixed(1) + '%"></div>';
-      }
-      if (hypPos != null) hypDotHtml = '<div class="trader-lolli-dot trader-lolli-dot-hyp" style="left:' + hypPos.toFixed(1) + '%" title="ROI/trade 1000$ moyen : ' + (c.hypAvg >= 0 ? '+' : '') + c.hypAvg.toFixed(0) + '%"></div>';
-      if (realPos != null) realDotHtml = '<div class="trader-lolli-dot trader-lolli-dot-real" style="left:' + realPos.toFixed(1) + '%" title="ROI/trade moyen : ' + (c.realAvg >= 0 ? '+' : '') + c.realAvg.toFixed(0) + '%"></div>';
-      var realLabel = c.realAvg == null ? '—' : ((c.realAvg >= 0 ? '+' : '') + c.realAvg.toFixed(0) + '%');
-      var hypLabel = c.hypAvg == null ? '—' : ((c.hypAvg >= 0 ? '+' : '') + c.hypAvg.toFixed(0) + '%');
+      var mid = c.bracket.max === Infinity ? (c.bracket.min + 1) : (c.bracket.min + c.bracket.max) / 2;
+      var color = "hsl(" + weightHue(mid).toFixed(0) + ",65%,42%)";
+      var dotsHtml = c.traders.slice().sort(function (a, b) { return a.roi - b.roi; }).map(function (t, i) {
+        var pos = 50 + (t.roi / maxAbs) * 50;
+        var size = Math.max(7, Math.min(15, 7 + Math.sqrt(t.n)));
+        var vlane = JITTER[i % JITTER.length];
+        return '<div class="trader-lolli-dot trader-dispersion-dot" style="left:' + pos.toFixed(1) + '%;top:' + vlane + '%;width:' + size.toFixed(0) + 'px;height:' + size.toFixed(0) + 'px;background:' + color + ';border-color:' + color + '" title="' + esc(t.name) + ' — ROI/trade 1000$ ' + (t.roi >= 0 ? '+' : '') + t.roi.toFixed(0) + '% · ' + t.n + ' pari(s)"></div>';
+      }).join("");
       return '<div class="trader-contrib-row">' +
-        '<span class="trader-contrib-name mono">' + esc(c.bracket.label) + ' <span class="dim">(' + c.n + ')</span></span>' +
-        '<div class="trader-lolli-track"><div class="trader-lolli-zero"></div>' + segHtml + hypDotHtml + realDotHtml + '</div>' +
-        '<span class="trader-contrib-vals mono"><span class="' + (c.realAvg == null ? '' : (c.realAvg >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + realLabel + '</span> · <span class="' + (c.hypAvg == null ? '' : (c.hypAvg >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + hypLabel + '</span></span>' +
+        '<span class="trader-contrib-name mono" style="color:' + color + '">' + esc(c.bracket.label) + ' <span class="dim">(' + c.traders.length + ' traders)</span></span>' +
+        '<div class="trader-lolli-track trader-dispersion-track"><div class="trader-lolli-zero"></div>' + dotsHtml + '</div>' +
       '</div>';
     }).join("");
-    return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">ROI moyen par palier de note — ROI/trade réel vs ROI/trade 1000$ flat</div>' +
-      vizMiniLegend([{ color: "var(--green)", label: "ROI/trade (mise réelle)" }, { color: "var(--accent)", label: "ROI/trade 1000$ (qualité du pick)" }]) +
+    return '<div class="trader-contrib trader-contrib-dispersion"><div class="pnl-chart-weekly-label">Dispersion du ROI/trade 1000$ par palier de note — un point par trader, pas une moyenne</div>' +
+      '<div class="empty-note" style="padding:0 0 8px;">Chaque point est un trader de ce palier (taille = nombre de paris). Survole un point pour son nom et son ROI.</div>' +
       '<div class="trader-contrib-body"><div class="trader-contrib-rows">' + rows + '</div></div>' +
       '</div>';
   }
@@ -8247,7 +8351,7 @@
         hypDotHtml = '<div class="trader-lolli-dot trader-lolli-dot-hyp" style="left:' + hypPos.toFixed(1) + '%" title="Si $1000 flat par pari : ' + hypLabel + '"></div>';
       }
       return '<div class="trader-contrib-row">' +
-        '<span class="trader-contrib-name mono">' + esc(st.name) + '</span>' +
+        '<span class="trader-contrib-name mono">' + esc(st.name) + ' <span class="dim">(' + st.decided + ')</span></span>' +
         '<div class="trader-lolli-track"><div class="trader-lolli-zero"></div>' + segHtml + hypDotHtml +
           '<div class="trader-lolli-dot trader-lolli-dot-real" style="left:' + realPos.toFixed(1) + '%" title="Mise réelle : ' + esc(fmtUSDSigned(st.pnl)) + '"></div>' +
         '</div>' +
@@ -9335,7 +9439,7 @@
     head.style.setProperty("--trader-accent", traderAccent);
     head.innerHTML =
       '<span class="trader-avatar" title="Note qualité : ' + esc(traderLabel) + '/10">' + esc(traderLabel) + '</span>' +
-      '<span class="trader-name">' + esc(trader.name) + '</span>' + platformBadge(trader.platform) +
+      '<a class="trader-name" href="' + info.profileUrl(trader.address) + '" target="_blank" rel="noopener" title="Voir le profil sur ' + esc(info.label) + '">' + esc(trader.name) + '</a>' + platformBadge(trader.platform) +
       '<a class="trader-wallet" href="' + info.profileUrl(trader.address) + '" target="_blank" rel="noopener">' +
         trader.address.slice(0, 6) + '…' + trader.address.slice(-4) + ' ↗</a>' +
       '<span class="trader-stats">' + positions.length + ' position' + (positions.length > 1 ? "s" : "") +
@@ -9622,7 +9726,7 @@
         '<div class="profile-card-top">' +
           '<span class="profile-avatar" style="background:' + accent + '" title="Note qualité : ' + label + '/10">' + esc(label) + '</span>' +
           '<div class="profile-card-id">' +
-            '<div class="profile-card-name">' + esc(t.name) + '</div>' +
+            '<a class="profile-card-name" href="' + info.profileUrl(t.address) + '" target="_blank" rel="noopener" title="Voir le profil sur ' + esc(info.label) + '">' + esc(t.name) + '</a>' +
             '<div class="profile-card-badges">' + platformBadge(t.platform) + '</div>' +
           '</div>' +
         '</div>' +
@@ -9634,7 +9738,42 @@
         '<a class="profile-card-link" href="' + info.profileUrl(t.address) + '" target="_blank" rel="noopener">Voir le profil sur ' + info.label + ' →</a>' +
       '</div>';
     }).join("");
-    statsProfilesContent.innerHTML = '<div class="profile-card-grid">' + html + '</div>';
+    statsProfilesContent.innerHTML = traderHistoryPreambleHtml() + '<div class="profile-card-grid">' + html + '</div>';
+    wireTraderHistoryToggle();
+  }
+  var statsProfilesHistoryCollapsed = true; // collapsed by default — 70 rows is a lot to always show above the card grid
+  // Reconstructed from git (TRADER_HISTORY above), on request — every
+  // profile ever tracked, when it was added, and if it's since been
+  // removed, when. This app has no other record of that: TRADERS is just
+  // the current live list, nothing about its own history.
+  function traderHistoryPreambleHtml() {
+    var rows = TRADER_HISTORY.map(function (h) {
+      var info = PLATFORMS[h.platform];
+      var statusHtml = h.removed
+        ? '<span class="pnl-neg">Supprimé le ' + esc(h.removed) + '</span>'
+        : '<span class="pnl-pos">Actif</span>';
+      return '<tr' + (h.removed ? ' class="trader-history-removed-row"' : '') + '>' +
+        '<td><a href="' + info.profileUrl(h.address) + '" target="_blank" rel="noopener" title="Voir le profil sur ' + esc(info.label) + '">' + esc(h.name) + '</a>' + platformBadge(h.platform) + '</td>' +
+        '<td class="num">' + esc(h.added) + '</td>' +
+        '<td class="num">' + statusHtml + '</td>' +
+      '</tr>';
+    }).join("");
+    var activeCount = TRADER_HISTORY.filter(function (h) { return !h.removed; }).length;
+    var removedCount = TRADER_HISTORY.length - activeCount;
+    return '<div class="trader-history-collapse-wrap' + (statsProfilesHistoryCollapsed ? " collapsed" : "") + '">' +
+      '<button type="button" class="collapse-btn snap-stats-toggle-btn" id="traderHistoryToggleBtn">' + (statsProfilesHistoryCollapsed ? "▸" : "▾") + ' Historique des ' + TRADER_HISTORY.length + ' profils suivis un jour ou l\'autre (' + activeCount + ' actifs, ' + removedCount + ' supprimés)</button>' +
+      '<div class="table-scroll" style="' + (statsProfilesHistoryCollapsed ? "display:none;" : "") + '">' +
+        '<table><thead><tr><th>Trader</th><th class="num">Ajouté le</th><th class="num">Statut</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '</div></div>';
+  }
+  function wireTraderHistoryToggle() {
+    var btn = document.getElementById("traderHistoryToggleBtn");
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+    btn.addEventListener("click", function () {
+      statsProfilesHistoryCollapsed = !statsProfilesHistoryCollapsed;
+      renderStatsProfiles();
+    });
   }
 
   function renderAll() {
@@ -9787,7 +9926,11 @@
       if (p.value > peak) peak = p.value;
       var d = p.value - peak;
       if (d < maxDD) maxDD = d;
-      return { date: p.date, value: d };
+      // delta/win/note/id carried straight through from the source series
+      // point (2026-09-14, on request) — this drawdown point IS that same
+      // decided trade, just replotted as distance-from-peak instead of
+      // cumulative total, so its own outcome details are just as real here.
+      return { date: p.date, value: d, delta: p.delta, win: p.win, note: p.note, id: p.id };
     });
     return { points: points, maxDD: maxDD, current: points.length ? points[points.length - 1].value : 0 };
   }
@@ -9807,13 +9950,26 @@
     var pathD = linePts.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(2) + "," + p.y.toFixed(2); }).join(" ");
     var zeroY = y(0);
     var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + zeroY.toFixed(2) + " L" + x(0).toFixed(2) + "," + zeroY.toFixed(2) + " Z";
-    // Wide hit targets (not just the 1.6px line itself), wired up by
-    // wireDrawdownTooltip below — native SVG <title> tooltips turned out to
-    // be unreliable in practice (long/inconsistent hover delay, sometimes
-    // not firing at all), so this reuses the same floating-div tooltip
-    // already proven on the main evolution chart (wireHistoryChartTooltip).
+    // Wide invisible hit targets (not just the 1.6px line itself), paired
+    // with a small VISIBLE dot per point (id-linked, opacity 0 by default)
+    // that wireDrawdownTooltip toggles on — same r=2.6 red circle the main
+    // evolution chart already uses for a losing trade (2026-09-14, on
+    // request: this chart used to show no dot at all, just the floating
+    // tooltip). Native SVG <title> tooltips turned out to be unreliable in
+    // practice (long/inconsistent hover delay, sometimes not firing at
+    // all), so this reuses the same floating-div tooltip already proven on
+    // the main evolution chart (wireHistoryChartTooltip) — including its
+    // full total/delta/note/date markup, not just date+value.
+    var svgUid = "dd" + Math.random().toString(36).slice(2, 8);
     var hoverDots = points.map(function (p, i) {
-      return '<circle class="drawdown-pt" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="7" fill="var(--red)" fill-opacity="0" style="pointer-events:all" data-date="' + esc(fmtDateShort(p.date)) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"></circle>';
+      var px = x(i).toFixed(2), py = y(p.value).toFixed(2);
+      return '<circle id="' + svgUid + '-vis-' + i + '" cx="' + px + '" cy="' + py + '" r="2.6" fill="var(--red)" stroke="var(--panel)" stroke-width="1.5" opacity="0" style="pointer-events:none;transition:opacity .08s"></circle>' +
+        '<circle class="drawdown-pt" data-vis-id="' + svgUid + '-vis-' + i + '" cx="' + px + '" cy="' + py + '" r="7" fill="var(--red)" fill-opacity="0" style="pointer-events:all" ' +
+        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' +
+        (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') +
+        (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') +
+        (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') +
+        '></circle>';
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="drawdown-svg" preserveAspectRatio="xMidYMid meet">' +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-width="1"/>' +
@@ -10047,10 +10203,14 @@
       pt.addEventListener("mouseleave", function () { tip.classList.remove("show"); });
     });
   }
-  // Same floating-div tooltip as the main chart, simplified to just
-  // date + value — the drawdown line's own points aren't decided
-  // snapshots (no win/loss, no note), so the richer markup above doesn't
-  // apply here.
+  // Same rich floating-div tooltip as the main evolution chart above it
+  // (2026-09-14, on request — this used to show only date+value, on the
+  // reasoning that a drawdown point isn't "really" a decided snapshot; it
+  // is the exact same one, just replotted, and now carries the same
+  // delta/win/note computeDrawdown was previously dropping). Also toggles
+  // that point's paired small red dot (built alongside the hit-target in
+  // buildDrawdownSvg) so hovering the curve visibly marks the trade, not
+  // just the floating box.
   function wireDrawdownTooltip(box) {
     var pts = box.querySelectorAll(".drawdown-pt");
     if (!pts.length) return;
@@ -10058,9 +10218,24 @@
     tip.className = "chart-tooltip chart-tooltip-result";
     box.appendChild(tip);
     pts.forEach(function (pt) {
+      var visId = pt.getAttribute("data-vis-id");
+      var visDot = visId ? box.querySelector("#" + visId) : null;
       pt.addEventListener("mouseenter", function () {
-        tip.style.borderColor = "var(--red)";
-        tip.innerHTML = '<span class="chart-tooltip-result-total">' + esc(pt.getAttribute("data-date")) + ' — <b>' + esc(pt.getAttribute("data-value")) + '</b></span>';
+        if (visDot) visDot.setAttribute("opacity", "1");
+        var hasWin = pt.getAttribute("data-win") != null;
+        var win = pt.getAttribute("data-win") === "1";
+        var color = hasWin ? (win ? "var(--green)" : "var(--red)") : "var(--red)";
+        var delta = pt.getAttribute("data-delta") || pt.getAttribute("data-value");
+        var note = pt.getAttribute("data-note");
+        tip.style.borderColor = color;
+        tip.innerHTML =
+          '<span class="chart-tooltip-result-total">Drawdown à ce moment : <b>' + esc(pt.getAttribute("data-value")) + '</b></span>' +
+          '<span class="chart-tooltip-result-row">' +
+            (hasWin ? '<span class="chart-tooltip-result-icon" style="background:' + color + '">' + (win ? "✓" : "✗") + '</span>' : '') +
+            '<span class="chart-tooltip-result-value">' + esc(delta) + '</span>' +
+            (note ? '<span class="chart-tooltip-result-note">Note ' + esc(note) + '</span>' : '') +
+            '<span class="chart-tooltip-result-date">' + esc(pt.getAttribute("data-date")) + '</span>' +
+          '</span>';
         tip.classList.add("show");
       });
       pt.addEventListener("mousemove", function (ev) {
@@ -10068,7 +10243,10 @@
         tip.style.left = (ev.clientX - r.left) + "px";
         tip.style.top = (ev.clientY - r.top - 10) + "px";
       });
-      pt.addEventListener("mouseleave", function () { tip.classList.remove("show"); });
+      pt.addEventListener("mouseleave", function () {
+        tip.classList.remove("show");
+        if (visDot) visDot.setAttribute("opacity", "0");
+      });
     });
   }
   // Legacy — the mise×fiabilité chart itself is gone, but old snapshots
@@ -10253,6 +10431,7 @@
   }
   statsProfilesContent.addEventListener("click", function (e) {
     if (e.target.closest(".profile-card-link")) return; // let the external profile link through untouched
+    if (e.target.closest(".profile-card-name")) return; // ditto — the name itself now links out too
     var card = e.target.closest(".profile-card[data-trader-name]");
     if (!card) return;
     activateValueTradesTraderFilter(card.getAttribute("data-trader-name"));
