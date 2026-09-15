@@ -1757,6 +1757,7 @@
   .stat-value.pos { color: var(--green); }
   .stat-value.neg { color: var(--red); }
   .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .stat-filter-note { font-size: 11.5px; font-weight: 600; color: var(--accent); margin: 0 0 8px; }
   .evolution-row { display: flex; gap: 14px; align-items: stretch; margin-bottom: 20px; }
   .evolution-row .chart-box { flex: 1 1 65%; min-width: 0; margin-bottom: 0; }
   .chart-box {
@@ -6291,10 +6292,20 @@
   // Marking a snapshot's winning side (renderSnapshots below) feeds straight
   // into this, and into the per-trader table (renderSnapStats) — both just
   // aggregate classifyTraderInSnapshot across every trader in every snapshot.
-  function renderSnapDashboard(list, store) {
+  // Takes `list` PRE-FILTERED by the caller (cardsList, same active
+  // tierCardFilter/snapDistCellFilter/noteCardFilter/manualVsAutoFilter as
+  // the PnL chart and card list below) — on request: these 3 tiles used to
+  // always reflect the full unfiltered store, silently out of step with
+  // every filter clicked elsewhere on the page. `filterLabels` (the same
+  // list the card-count line above already builds) is shown as a small
+  // note so "global" never quietly means something narrower than it says.
+  function renderSnapDashboard(list, store, filterLabels) {
     var el = store.els.dashboard;
     if (!el) return;
-    if (!list.length) { el.innerHTML = ""; return; }
+    if (!list.length) {
+      el.innerHTML = filterLabels && filterLabels.length ? '<div class="empty-note">Aucun ' + store.itemNoun + ' dans cette sélection.</div>' : "";
+      return;
+    }
     var decided = list.filter(function (s) { return !!s.winningSide; }).length;
     var pending = list.length - decided;
     // Bet-level verdict: one win/loss per snapshot (was the side the whales
@@ -6344,7 +6355,8 @@
           '</div>';
       }).join("") + '</div>';
     }
-    el.innerHTML = tilesHtml(globalTiles);
+    var filterNote = filterLabels && filterLabels.length ? '<div class="stat-filter-note">🔍 Filtré : ' + esc(filterLabels.join(", ")) + '</div>' : "";
+    el.innerHTML = filterNote + tilesHtml(globalTiles);
   }
   // Bet-level winrate broken down by the confidence tag set on the snapshot
   // at bet time (CONFIDENCE_TIERS) — the whole point of tagging S/A/B is
@@ -8861,7 +8873,7 @@
     store.els.count.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + list.length + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
-    renderSnapDashboard(list, store);
+    renderSnapDashboard(cardsList, store, activeFilterLabels);
     renderTierWinrate(list, store);
     renderNoteWinrate(list, store);
     renderSnapPnlChart(cardsList, store);
@@ -9824,40 +9836,88 @@
     wireTraderHistoryToggle();
   }
   var statsProfilesHistoryCollapsed = false; // visible by default, on request
+  var statsProfilesHistoryStatusFilter = ""; // "" | "active" | "removed", on request
+  // All Time (TEST_STORE) is the only store with the full historical
+  // record — recomputed fresh here rather than cached, same as every
+  // other per-render aggregate on this page (loadRaw() itself is already
+  // called every refresh cycle for the actual All Time tab). Counts
+  // DECIDED snapshots a trader appears in on EITHER side, un-windowed and
+  // including traders no longer in TRADERS — unlike computeArbitrageNote's
+  // 30j/current-traders-only count, this one has to reach removed traders.
+  function computeTraderHistoryTradeCounts() {
+    var list = TEST_STORE.loadRaw().filter(function (s) { return !s.allTimeDeletedAt; });
+    var counts = {};
+    list.forEach(function (snap) {
+      if (!snap.winningSide) return;
+      (snap.traderNames || []).forEach(function (name) {
+        if (classifyTraderInSnapshot(snap, name) === "pending") return;
+        counts[name] = (counts[name] || 0) + 1;
+      });
+    });
+    return counts;
+  }
   // Reconstructed from git (TRADER_HISTORY above), on request — every
   // profile ever tracked, when it was added, and if it's since been
   // removed, when. This app has no other record of that: TRADERS is just
   // the current live list, nothing about its own history. Most-recently-
   // added first (on request) — TRADER_HISTORY itself stays oldest-first
   // (matches how it was built, oldest commit to newest), sliced here.
+  // Note/Trades columns added on request: note is WEIGHT_BY_NAME, which
+  // only covers CURRENT traders (a removed one has no rating left to
+  // show) — Trades is the all-time count above, which does reach removed
+  // traders since it's keyed by name, not by TRADERS membership.
   function traderHistoryPreambleHtml() {
     var sorted = TRADER_HISTORY.slice().sort(function (a, b) { return b.added < a.added ? -1 : (b.added > a.added ? 1 : 0); });
-    var rows = sorted.map(function (h) {
+    var activeCount = TRADER_HISTORY.filter(function (h) { return !h.removed; }).length;
+    var removedCount = TRADER_HISTORY.length - activeCount;
+    var filtered = statsProfilesHistoryStatusFilter === "active" ? sorted.filter(function (h) { return !h.removed; })
+      : statsProfilesHistoryStatusFilter === "removed" ? sorted.filter(function (h) { return !!h.removed; })
+      : sorted;
+    var tradeCounts = computeTraderHistoryTradeCounts();
+    var rows = filtered.map(function (h) {
       var info = PLATFORMS[h.platform];
       var statusHtml = h.removed
         ? '<span class="pnl-neg">Supprimé le ' + esc(h.removed) + '</span>'
         : '<span class="pnl-pos">Actif</span>';
+      var weight = WEIGHT_BY_NAME[h.name];
+      var noteHtml = weight != null ? weight.toFixed(1) : '<span class="dim">—</span>';
       return '<tr' + (h.removed ? ' class="trader-history-removed-row"' : '') + '>' +
         '<td><a href="' + info.profileUrl(h.address) + '" target="_blank" rel="noopener" title="Voir le profil sur ' + esc(info.label) + '">' + esc(h.name) + '</a>' + platformBadge(h.platform) + '</td>' +
         '<td class="num">' + esc(h.added) + '</td>' +
+        '<td class="num">' + noteHtml + '</td>' +
+        '<td class="num">' + (tradeCounts[h.name] || 0) + '</td>' +
         '<td class="num">' + statusHtml + '</td>' +
       '</tr>';
     }).join("");
-    var activeCount = TRADER_HISTORY.filter(function (h) { return !h.removed; }).length;
-    var removedCount = TRADER_HISTORY.length - activeCount;
+    var statusFilterHtml = '<div class="vt-filters">' +
+      '<span class="vt-sort-label">Statut</span>' +
+      '<button type="button" class="trader-history-status-btn' + (statsProfilesHistoryStatusFilter === "" ? ' active' : '') + '" data-status="">Tous <span class="vt-filter-count">' + TRADER_HISTORY.length + '</span></button>' +
+      '<button type="button" class="trader-history-status-btn' + (statsProfilesHistoryStatusFilter === "active" ? ' active' : '') + '" data-status="active">Actifs <span class="vt-filter-count">' + activeCount + '</span></button>' +
+      '<button type="button" class="trader-history-status-btn' + (statsProfilesHistoryStatusFilter === "removed" ? ' active' : '') + '" data-status="removed">Supprimés <span class="vt-filter-count">' + removedCount + '</span></button>' +
+      '</div>';
     return '<div class="trader-history-collapse-wrap' + (statsProfilesHistoryCollapsed ? " collapsed" : "") + '">' +
       '<button type="button" class="collapse-btn snap-stats-toggle-btn" id="traderHistoryToggleBtn">' + (statsProfilesHistoryCollapsed ? "▸" : "▾") + ' Historique des ' + TRADER_HISTORY.length + ' profils suivis un jour ou l\'autre (' + activeCount + ' actifs, ' + removedCount + ' supprimés)</button>' +
-      '<div class="table-scroll" style="' + (statsProfilesHistoryCollapsed ? "display:none;" : "") + '">' +
-        '<table><thead><tr><th>Trader</th><th class="num">Ajouté le</th><th class="num">Statut</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div style="' + (statsProfilesHistoryCollapsed ? "display:none;" : "") + '">' +
+        statusFilterHtml +
+        '<div class="table-scroll">' +
+          '<table><thead><tr><th>Trader</th><th class="num">Ajouté le</th><th class="num">Note</th><th class="num">Trades</th><th class="num">Statut</th></tr></thead><tbody>' + rows + (rows ? "" : '<tr><td colspan="5" class="empty-note">Aucun trader dans cette catégorie.</td></tr>') + '</tbody></table>' +
+        '</div>' +
       '</div></div>';
   }
   function wireTraderHistoryToggle() {
     var btn = document.getElementById("traderHistoryToggleBtn");
-    if (!btn || btn.dataset.wired) return;
-    btn.dataset.wired = "1";
-    btn.addEventListener("click", function () {
-      statsProfilesHistoryCollapsed = !statsProfilesHistoryCollapsed;
-      renderStatsProfiles();
+    if (btn && !btn.dataset.wired) {
+      btn.dataset.wired = "1";
+      btn.addEventListener("click", function () {
+        statsProfilesHistoryCollapsed = !statsProfilesHistoryCollapsed;
+        renderStatsProfiles();
+      });
+    }
+    document.querySelectorAll(".trader-history-status-btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        statsProfilesHistoryStatusFilter = b.getAttribute("data-status");
+        renderStatsProfiles();
+      });
     });
   }
 
