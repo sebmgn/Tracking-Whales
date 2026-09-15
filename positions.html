@@ -6228,6 +6228,24 @@
     var side = onSides[0];
     return side.name === snap.winningSide ? flatStake * (1 / side.avgPrice - 1) : -flatStake;
   }
+  // Same per-trader simulation as traderHypFlatPnl above, but scoped to a
+  // CHECKED SUBSET of traders (the PnL chart's "Traders" filter) instead of
+  // one name — priced at whichever checked trader(s) are actually present
+  // in this snapshot, not the snapshot's overall leader/consensus side.
+  // Averages when several checked traders are in the same snapshot (so it
+  // isn't counted several times over into one chart point); null if none of
+  // them have a definable position here, same convention as
+  // traderHypFlatPnl for a single hedged trader.
+  function traderFilteredFlatPnl(snap, traderNames, flatStake) {
+    var vals = [];
+    traderNames.forEach(function (name) {
+      if ((snap.traderNames || []).indexOf(name) === -1) return;
+      var v = traderHypFlatPnl(snap, name, flatStake);
+      if (v != null) vals.push(v);
+    });
+    if (!vals.length) return null;
+    return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+  }
   function classifyTraderInSnapshot(snap, traderName) {
     var r = traderNetPnlInSnapshot(snap, traderName);
     if (!r) return "pending";
@@ -7676,10 +7694,24 @@
     var cumByTier = {};
     var seriesByTier = {};
     CONFIDENCE_TIERS.forEach(function (t) { cumByTier[t] = 0; seriesByTier[t] = []; });
+    // Stake actually counted into the ROI denominator below — only the
+    // snapshots that end up with a non-null pnl (same guard as
+    // aggregateFlatPnl), so a trader-filtered snapshot where none of the
+    // checked traders have a definable position doesn't inflate the base.
+    var statsStakeSum = 0;
     decided.forEach(function (snap) {
-      var pnl = hypotheticalFlatPnl(snap, chartStakeFor(snap));
+      var stake = chartStakeFor(snap);
+      // Priced at the CHECKED TRADERS' own side when the Traders filter is
+      // active, not the snapshot's overall leader/consensus side — on
+      // request, after "VeryLucky888 only" showed a different ROI here than
+      // their own ROI/trade 1000$ in Le tableau des traders. A trader who
+      // goes against the consensus needs their OWN side priced, not the
+      // leader's, or a contrarian pick reads as a leader-side loss even
+      // when it actually won.
+      var pnl = st.pnlChartTraderFilter.length ? traderFilteredFlatPnl(snap, st.pnlChartTraderFilter, stake) : hypotheticalFlatPnl(snap, stake);
       if (pnl == null) return;
       cum += pnl;
+      statsStakeSum += stake;
       // Each dot is colored by ITS OWN outcome (won that bet or not), not
       // by the cumulative line's overall trend — a losing trade near the
       // top of an otherwise-winning streak should still read as red.
@@ -7688,10 +7720,14 @@
       // same-lightness red/green pair is exactly what's hardest to tell
       // apart (small dots, red-green color vision deficiency, glare).
       // Pushed to near-neon (Material A400) on request for a bigger, more
-      // flashy win/loss read at a glance.
-      var won = snap.leaderName === snap.winningSide;
+      // flashy win/loss read at a glance. pnl >= 0 (not snap.leaderName ===
+      // snap.winningSide) so this still tracks the checked traders' own
+      // result, not the leader's, when the filter is active — exactly
+      // equivalent to the old leader check when it isn't (hypotheticalFlatPnl
+      // is only ever positive on a leader win, always -stake on a loss).
+      var won = pnl >= 0;
       series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
-      weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: chartStakeFor(snap), note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
+      weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
       if (snap.confidence && seriesByTier[snap.confidence]) {
         cumByTier[snap.confidence] += pnl;
         seriesByTier[snap.confidence].push({ date: new Date(snap.savedAt), value: cumByTier[snap.confidence], delta: pnl, win: won, note: snap.noteAtSnapshot });
@@ -7748,17 +7784,15 @@
       '<label class="pnl-chart-split-toggle" title="Une courbe cumulée par palier de confiance (S/A/B) au lieu d\'une seule courbe globale"><input type="checkbox" id="' + idp + 'pnlChartSplitTier"' + (st.pnlChartSplitByTier ? " checked" : "") + ' /> Diviser par confiance</label>' +
       (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
-    // Realized PnL / avg ROI for the exact subset the 4 selects above
-    // currently resolve to — same cumulative total already plotted
-    // (series' last point) and the same avg-ROI formula used everywhere
-    // else (globalRoi in renderSnapDashboard, cellRoi in the odds table).
-    // aggregateFlatPnl needs full snap objects (it calls hypotheticalFlatPnl
-    // itself) — `decided` still has those, series is just their derived
-    // points, so aggregate over `decided` and take the ROI from there.
-    var statsRoiAgg = aggregateFlatPnl(decided, { stakeFor: chartStakeFor });
+    // Realized PnL / avg ROI for the exact subset of filters above —
+    // pnl/stakeSum straight off the loop that already built `series` (same
+    // formula aggregateFlatPnl uses: pnl / stakeSum * 100), rather than a
+    // second aggregateFlatPnl(decided, ...) pass — that call always prices
+    // every snapshot at the leader side, so it would silently ignore the
+    // Traders filter and disagree with the curve it's captioning.
     var statsCount = series.length;
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
-    var statsAvgRoi = statsRoiAgg.roi;
+    var statsAvgRoi = statsStakeSum > 0 ? (cum / statsStakeSum * 100) : null;
     var monthlyMini = st.pnlChartSplitByTier ? "" : monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
     var statsHtml = '<div class="pnl-chart-stats">' +
       monthlyMini +
