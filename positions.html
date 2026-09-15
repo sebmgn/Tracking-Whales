@@ -1994,13 +1994,13 @@
   .trader-lolli-seg { position: absolute; top: 50%; height: 2px; background: var(--text-dim); transform: translateY(-50%); opacity: .6; }
   .trader-lolli-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--panel); }
   .trader-contrib-dispersion .trader-contrib-row { grid-template-columns: 150px 1fr; }
-  .trader-dispersion-track { height: 60px; }
+  .trader-dispersion-track { height: 92px; }
   .trader-dispersion-dot {
     opacity: .85; cursor: default; transition: opacity .1s, transform .1s;
     display: flex; align-items: center; justify-content: center;
   }
   .trader-dispersion-dot:hover { opacity: 1; transform: translate(-50%, -50%) scale(1.2); z-index: 3; }
-  .trader-dispersion-note { font-size: 7px; font-weight: 700; color: #fff; line-height: 1; pointer-events: none; user-select: none; }
+  .trader-dispersion-note { font-size: 10.5px; font-weight: 700; color: #fff; line-height: 1; pointer-events: none; user-select: none; }
   .trader-dispersion-label {
     position: absolute; transform: translate(-50%, 0); font-size: 7.5px; font-weight: 600;
     font-family: "IBM Plex Mono", monospace; white-space: nowrap; pointer-events: none;
@@ -8282,7 +8282,7 @@
       var color = "hsl(" + weightHue(mid).toFixed(0) + ",65%,42%)";
       var dotsHtml = c.traders.slice().sort(function (a, b) { return a.roi - b.roi; }).map(function (t, i) {
         var pos = 50 + (t.roi / maxAbs) * 50;
-        var size = Math.max(18, Math.min(27, 18 + Math.sqrt(t.n) * 1.3));
+        var size = Math.max(27, Math.min(41, 27 + Math.sqrt(t.n) * 2));
         var vlane = JITTER[i % JITTER.length];
         var labelTop = "calc(" + vlane + "% + " + (size / 2 + 3).toFixed(0) + "px)";
         return '<div class="trader-lolli-dot trader-dispersion-dot" style="left:' + pos.toFixed(1) + '%;top:' + vlane + '%;width:' + size.toFixed(0) + 'px;height:' + size.toFixed(0) + 'px;background:' + color + ';border-color:' + color + '" data-name="' + esc(t.name) + '" data-roi="' + t.roi.toFixed(0) + '" data-n="' + t.n + '" data-weight="' + t.weight.toFixed(1) + '" data-bracket="' + esc(c.bracket.label) + '"><span class="trader-dispersion-note">' + t.weight.toFixed(1) + '</span></div>' +
