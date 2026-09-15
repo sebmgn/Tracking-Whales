@@ -1483,7 +1483,6 @@
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .tier-wr-roi { font-style: italic; font-size: 13px; font-weight: 700; color: var(--text); }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
-  .trader-note-roi-detail { margin-top: 10px; padding: 8px 10px; font-size: 12px; background: var(--row-hover); border-radius: 6px; border: 1px solid var(--panel-border); }
   .trader-history-collapse-wrap { margin-bottom: 16px; }
   .trader-history-collapse-wrap #traderHistoryToggleBtn { display: block; width: 100%; margin-bottom: 8px; flex: none; }
   .trader-history-removed-row { opacity: .6; }
@@ -1849,6 +1848,15 @@
     border-radius: 4px; padding: 1px 5px;
   }
   .chart-tooltip-result-date { color: var(--text-dim); }
+  /* Bigger variant for the two trader bubble-charts (note x ROI, and the
+     rating-bracket dispersion) — on request, "beaucoup plus gros" than
+     the baseline .chart-tooltip-result used for trade-level hovers. */
+  .chart-tooltip-big { font-size: 14px; padding: 12px 16px; gap: 7px; max-width: 260px; white-space: normal; }
+  .chart-tooltip-big .chart-tooltip-result-total { font-size: 12.5px; padding-bottom: 5px; }
+  .chart-tooltip-big .chart-tooltip-result-total b { font-size: 16px; }
+  .chart-tooltip-big .chart-tooltip-result-row { flex-wrap: wrap; gap: 8px; }
+  .chart-tooltip-big .chart-tooltip-result-value { font-size: 15px; }
+  .chart-tooltip-big .chart-tooltip-result-date { font-size: 12px; }
   .chart-pt { cursor: pointer; }
   /* A bit bigger than a plain chart-pt at rest, and much bigger on hover —
      these are the ones you can click through to the underlying trade, so
@@ -1966,22 +1974,37 @@
      .table-scroll, which has no padding of its own (the <table> below gets
      its inset from cell padding instead) — without it, names/dots/ticks
      ran flush against the rounded container border, reading as cropped. */
-  .trader-contrib { margin: 4px 0 14px; padding: 0 14px 12px; border-bottom: 1px dashed var(--panel-border); }
-  .trader-contrib-row { display: grid; grid-template-columns: 90px 1fr 150px; align-items: center; gap: 10px; padding: 5px 0; font-size: 11.5px; }
+  .trader-contrib { margin: 4px 0 14px; padding: 0 14px 12px; border-bottom: 1px dashed var(--panel-border); position: relative; }
+  .trader-contrib-row { display: grid; grid-template-columns: 90px 32px 1fr 150px; align-items: center; gap: 10px; padding: 5px 0; font-size: 11.5px; }
   .trader-contrib-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Same subtle-link convention as .vt-trader-row-name-text — plain text
      color until hovered, so a resolvable profile link doesn't stand out
      from names that aren't linkable. */
   a.trader-contrib-name { color: inherit; text-decoration: none; }
   a.trader-contrib-name:hover { color: var(--accent); text-decoration: underline; }
+  /* Own column (was inline text next to the name — read as decoration,
+     not data) so "how many trades support this bar" is scannable down
+     the whole list instead of parsed out of each name cell. */
+  .trader-contrib-count { text-align: center; color: var(--text-dim); font-size: 11px; }
+  .trader-contrib-header { padding: 0 0 3px; }
+  .trader-contrib-header .trader-contrib-count { font-size: 9.5px; text-transform: uppercase; letter-spacing: .03em; }
   .trader-lolli-track { position: relative; height: 20px; }
   .trader-lolli-zero { position: absolute; left: 50%; top: 2px; bottom: 2px; width: 1px; background: var(--panel-border); }
   .trader-lolli-seg { position: absolute; top: 50%; height: 2px; background: var(--text-dim); transform: translateY(-50%); opacity: .6; }
   .trader-lolli-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--panel); }
   .trader-contrib-dispersion .trader-contrib-row { grid-template-columns: 150px 1fr; }
-  .trader-dispersion-track { height: 46px; }
-  .trader-dispersion-dot { opacity: .82; cursor: default; transition: opacity .1s, transform .1s; }
-  .trader-dispersion-dot:hover { opacity: 1; transform: translate(-50%, -50%) scale(1.25); z-index: 2; }
+  .trader-dispersion-track { height: 60px; }
+  .trader-dispersion-dot {
+    opacity: .85; cursor: default; transition: opacity .1s, transform .1s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .trader-dispersion-dot:hover { opacity: 1; transform: translate(-50%, -50%) scale(1.2); z-index: 3; }
+  .trader-dispersion-note { font-size: 7px; font-weight: 700; color: #fff; line-height: 1; pointer-events: none; user-select: none; }
+  .trader-dispersion-label {
+    position: absolute; transform: translate(-50%, 0); font-size: 7.5px; font-weight: 600;
+    font-family: "IBM Plex Mono", monospace; white-space: nowrap; pointer-events: none;
+    color: var(--text-dim); line-height: 1; z-index: 1;
+  }
   .trader-lolli-dot-real { background: var(--green); z-index: 2; }
   .trader-lolli-dot-hyp { background: var(--accent); z-index: 1; }
   .trader-contrib-vals { text-align: right; white-space: nowrap; }
@@ -2033,7 +2056,7 @@
   .arb-delta-lbl { font-size: 9.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .03em; }
   /* Autres stats: shared divider between sub-sections (streaks, consensus,
      co-signal matrix, day×hour heatmap, monthly cards). */
-  .other-stats-section { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
+  .other-stats-section { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); position: relative; }
   .stat-consensus-row { display: flex; gap: 14px; align-items: flex-end; }
   .stat-consensus-col { display: flex; flex-direction: column; align-items: center; width: 40px; }
   .stat-consensus-track { height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
@@ -2063,10 +2086,10 @@
   }
   .co-signal-diag { background: var(--panel-border); color: var(--text-dim); border: 1px dashed var(--text-dim); }
   .co-signal-colheads { margin-bottom: 4px; align-items: end; }
-  .co-signal-colhead-name {
-    display: flex; align-items: flex-end; justify-content: center; height: 92px; padding-bottom: 4px;
-    writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-height: 92px; font-size: 11px; font-weight: 700; color: var(--text-dim); font-family: "IBM Plex Mono", monospace;
+  .co-signal-colhead-name { position: relative; height: 78px; }
+  .co-signal-colhead-name span {
+    position: absolute; left: 20px; bottom: 6px; transform: rotate(-40deg); transform-origin: left bottom;
+    white-space: nowrap; font-size: 11px; font-weight: 700; color: var(--text-dim); font-family: "IBM Plex Mono", monospace;
   }
   /* Monthly mini chips, in the pnl-chart-stats header row */
   .pnl-chart-stat-monthly { min-width: auto; padding: 4px 8px 5px; align-items: flex-start; }
@@ -7135,7 +7158,7 @@
     var maxOffDiag = 1;
     for (var mi = 0; mi < n; mi++) { for (var mj = 0; mj < n; mj++) { if (mi !== mj) maxOffDiag = Math.max(maxOffDiag, data.matrix[mi][mj]); } }
     var colHeadCells = "";
-    for (var c = 0; c < n; c++) colHeadCells += '<span class="co-signal-colhead-name" title="' + esc(data.names[c]) + '">' + esc(data.names[c]) + '</span>';
+    for (var c = 0; c < n; c++) colHeadCells += '<div class="co-signal-colhead-name" title="' + esc(data.names[c]) + '"><span>' + esc(data.names[c]) + '</span></div>';
     var rowsHtml = data.names.map(function (rowName, i) {
       var cells = "";
       for (var j = 0; j < n; j++) {
@@ -7256,22 +7279,22 @@
     var zeroY = y(0);
     var zeroLine = '<line class="vt-volroi-grid" x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(1) + '"/>' +
       '<text class="vt-volroi-label" x="' + (padL - 6) + '" y="' + (zeroY + 3).toFixed(1) + '" text-anchor="end">0%</text>';
-    // <title> for a native hover tooltip PLUS a small always-visible name
-    // label (on request — a hover-only label meant every name was hidden
-    // until you happened to land on that exact dot). data-* carries what
-    // the click handler below needs to show the full stat line, instead of
-    // re-deriving it from a separate JS array that could drift from what's
-    // actually drawn.
+    // Always-visible name label near the dot, plus the note itself
+    // written inside it (floor radius raised to 9 so the digits fit even
+    // on a 1-trade dot) — a hover-only label meant every name was hidden
+    // until you happened to land on that exact dot. data-* still carries
+    // the rest for the floating hover tooltip (wireTraderNoteRoiHover),
+    // instead of re-deriving it from a separate JS array that could
+    // drift from what's actually drawn.
     var dots = pts.map(function (p, i) {
-      var rad = Math.max(4, Math.min(15, 4 + Math.sqrt(p.n) * 1.3));
+      var rad = Math.max(9, Math.min(17, 4 + Math.sqrt(p.n) * 1.3));
       var color = p.roi >= 0 ? "var(--green)" : "var(--red)";
       var cx = x(p.weight).toFixed(1), cy = y(p.roi).toFixed(1);
       // Label above the dot by default, flipped below when too close to the
       // chart's top edge so it never clips out of the viewBox.
-      var labelY = (parseFloat(cy) - rad - 4) < padT ? (parseFloat(cy) + rad + 9) : (parseFloat(cy) - rad - 3);
-      return '<circle class="vt-volroi-pt trader-note-roi-pt" cx="' + cx + '" cy="' + cy + '" r="' + rad.toFixed(1) + '" fill="' + color + '" fill-opacity="0.6" stroke="' + color + '" data-name="' + esc(p.name) + '" data-weight="' + p.weight.toFixed(1) + '" data-roi="' + p.roi.toFixed(0) + '" data-realroi="' + (p.realRoi == null ? "" : p.realRoi.toFixed(0)) + '" data-n="' + p.n + '" data-decided="' + p.decided + '" style="cursor:pointer;">' +
-        '<title>' + esc(p.name) + ' — note ' + p.weight.toFixed(1) + ' · ROI/1000€ ' + (p.roi >= 0 ? "+" : "") + p.roi.toFixed(0) + '% · ' + p.n + ' pari(s) — clique pour le détail</title>' +
-        '</circle>' +
+      var labelY = (parseFloat(cy) - rad - 4) < padT ? (parseFloat(cy) + rad + 10) : (parseFloat(cy) - rad - 4);
+      return '<circle class="vt-volroi-pt trader-note-roi-pt" cx="' + cx + '" cy="' + cy + '" r="' + rad.toFixed(1) + '" fill="' + color + '" fill-opacity="0.6" stroke="' + color + '" data-name="' + esc(p.name) + '" data-weight="' + p.weight.toFixed(1) + '" data-roi="' + p.roi.toFixed(0) + '" data-realroi="' + (p.realRoi == null ? "" : p.realRoi.toFixed(0)) + '" data-n="' + p.n + '" data-decided="' + p.decided + '"></circle>' +
+        '<text class="vt-volroi-pt-label" x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central" style="pointer-events:none;">' + p.weight.toFixed(1) + '</text>' +
         '<text class="trader-note-roi-name-label" x="' + cx + '" y="' + labelY.toFixed(1) + '" text-anchor="middle" style="pointer-events:none;">' + esc(p.name) + '</text>';
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="vt-volroi-svg trader-note-roi-svg" preserveAspectRatio="xMidYMid meet">' +
@@ -7284,41 +7307,56 @@
     if (pts.length < 3) return "";
     var r = pearsonCorr(pts.map(function (p) { return p.weight; }), pts.map(function (p) { return p.roi; }));
     return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Note trader × ROI (mise fixe 1000€) — la recalibration tient-elle ?</div>' +
-      (r != null ? '<div class="empty-note" style="padding:0 0 8px;">Corrélation (note × ROI) : <b>' + (r >= 0 ? "+" : "") + r.toFixed(2) + '</b> sur ' + pts.length + ' traders — survole ou clique un point pour le détail.</div>' : '') +
+      (r != null ? '<div class="empty-note" style="padding:0 0 8px;">Corrélation (note × ROI) : <b>' + (r >= 0 ? "+" : "") + r.toFixed(2) + '</b> sur ' + pts.length + ' traders — survole un point pour le détail.</div>' : '') +
       buildTraderNoteRoiSvg(pts) +
-      '<div class="trader-note-roi-detail" style="display:none;"></div>' +
+      '<div class="chart-tooltip chart-tooltip-result chart-tooltip-big trader-note-roi-tooltip"></div>' +
       '</div>';
   }
   // Delegated on the whole panel (survives re-renders without re-binding) —
-  // clicking a dot fills in the detail line right under the chart with
-  // exactly what was asked: n, ROI/1000€, ROI réel, note. Clicking the same
-  // dot again hides it; clicking a different one just swaps the content.
-  function wireTraderNoteRoiClicks(root) {
-    root.addEventListener("click", function (e) {
-      var pt = e.target.closest(".trader-note-roi-pt");
+  // mouseover/mouseout instead of mouseenter/mouseleave specifically
+  // because only the bubbling pair works with delegation; hovering a dot
+  // fills in a floating tooltip with exactly what was asked: n, ROI/1000€,
+  // ROI réel, note — moved from click to hover on request (survoler, pas
+  // cliquer).
+  function wireTraderNoteRoiHover(root) {
+    function findTip(e) {
       var section = e.target.closest(".other-stats-section");
-      if (!section) return;
-      var detail = section.querySelector(".trader-note-roi-detail");
-      if (!detail) return;
-      if (!pt) { return; }
+      return section && section.querySelector(".trader-note-roi-tooltip");
+    }
+    root.addEventListener("mouseover", function (e) {
+      var pt = e.target.closest(".trader-note-roi-pt");
+      if (!pt || pt.contains(e.relatedTarget)) return;
+      var tip = findTip(e);
+      if (!tip) return;
       var name = pt.getAttribute("data-name");
-      if (detail.getAttribute("data-active") === name) {
-        detail.style.display = "none";
-        detail.removeAttribute("data-active");
-        return;
-      }
       var roi = parseFloat(pt.getAttribute("data-roi"));
       var realRoiRaw = pt.getAttribute("data-realroi");
       var realRoi = realRoiRaw === "" ? null : parseFloat(realRoiRaw);
       var weight = pt.getAttribute("data-weight");
       var n = pt.getAttribute("data-n");
       var decided = pt.getAttribute("data-decided");
-      detail.innerHTML = '<b>' + esc(name) + '</b> — note <b>' + esc(weight) + '</b>' +
-        ' · <span class="' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">ROI/1000€ ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span>' +
-        ' · <span class="' + (realRoi == null ? "" : (realRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">ROI réel ' + (realRoi == null ? "—" : (realRoi >= 0 ? "+" : "") + realRoi.toFixed(0) + '%') + '</span>' +
-        ' · ' + n + ' pari(s) avec simulation flat, ' + decided + ' décidé(s) au total';
-      detail.style.display = "";
-      detail.setAttribute("data-active", name);
+      tip.style.borderColor = pt.getAttribute("stroke");
+      tip.innerHTML = '<span class="chart-tooltip-result-total"><b>' + esc(name) + '</b> — note ' + esc(weight) + '</span>' +
+        '<span class="chart-tooltip-result-row"><span class="chart-tooltip-result-value ' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">ROI/1000€ ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span>' +
+        '<span class="chart-tooltip-result-value ' + (realRoi == null ? "" : (realRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">ROI réel ' + (realRoi == null ? "—" : (realRoi >= 0 ? "+" : "") + realRoi.toFixed(0) + '%') + '</span></span>' +
+        '<span class="chart-tooltip-result-date">' + n + ' pari(s) simulé(s) · ' + decided + ' décidé(s) au total</span>';
+      tip.classList.add("show");
+    });
+    root.addEventListener("mousemove", function (e) {
+      var pt = e.target.closest(".trader-note-roi-pt");
+      if (!pt) return;
+      var section = e.target.closest(".other-stats-section");
+      var tip = findTip(e);
+      if (!tip) return;
+      var r = section.getBoundingClientRect();
+      tip.style.left = (e.clientX - r.left) + "px";
+      tip.style.top = (e.clientY - r.top - 10) + "px";
+    });
+    root.addEventListener("mouseout", function (e) {
+      var pt = e.target.closest(".trader-note-roi-pt");
+      if (!pt || pt.contains(e.relatedTarget)) return;
+      var tip = findTip(e);
+      if (tip) tip.classList.remove("show");
     });
   }
   // Catch-all for secondary stats — streaks plus everything below, all
@@ -7351,7 +7389,7 @@
       '</div>';
     // Delegated on `el` itself (stable across re-renders, only innerHTML
     // changes above) — bound once per store rather than once per render.
-    if (!el.dataset.noteRoiWired) { wireTraderNoteRoiClicks(el); el.dataset.noteRoiWired = "1"; }
+    if (!el.dataset.noteRoiWired) { wireTraderNoteRoiHover(el); el.dataset.noteRoiWired = "1"; }
   }
   // ---------- Paris par semaine, ALIGNÉ sur le graphique d'évolution ----------
   // Same weekly grouping as computeWeeklyPnl above, but built from the exact
@@ -8207,6 +8245,12 @@
   // ROI/trade 1000$ only (not real ROI too) — bet-size-independent, so
   // traders are comparable regardless of how big they stake, and it keeps
   // the chart legible; real ROI is still in the table's own column.
+  // Refined 2026-09-15 (user-flagged): a native title= only told you a
+  // name/ROI if you happened to land on that exact dot, and its number
+  // was invisible until then too — now every dot carries its own precise
+  // note (dot floor size raised so the digits fit) plus an
+  // always-visible name label underneath, and hovering still opens a
+  // bigger floating tooltip (wireTraderDispersionHover) with the rest.
   function traderRoiByRatingHtml(rowsData) {
     var byBracket = {};
     rowsData.forEach(function (st) {
@@ -8214,7 +8258,7 @@
       var b = traderWeightBracket(WEIGHT_BY_NAME[st.name]);
       if (!b) return;
       if (!byBracket[b.key]) byBracket[b.key] = { bracket: b, traders: [] };
-      byBracket[b.key].traders.push({ name: st.name, roi: st.hypRoi, n: st.hypCount || st.decided });
+      byBracket[b.key].traders.push({ name: st.name, roi: st.hypRoi, n: st.hypCount || st.decided, weight: WEIGHT_BY_NAME[st.name] });
     });
     var computed = TRADER_TABLE_WEIGHT_BRACKETS.map(function (b) { return byBracket[b.key] || null; }).filter(Boolean);
     if (!computed.length) return "";
@@ -8226,9 +8270,11 @@
       var color = "hsl(" + weightHue(mid).toFixed(0) + ",65%,42%)";
       var dotsHtml = c.traders.slice().sort(function (a, b) { return a.roi - b.roi; }).map(function (t, i) {
         var pos = 50 + (t.roi / maxAbs) * 50;
-        var size = Math.max(7, Math.min(15, 7 + Math.sqrt(t.n)));
+        var size = Math.max(18, Math.min(27, 18 + Math.sqrt(t.n) * 1.3));
         var vlane = JITTER[i % JITTER.length];
-        return '<div class="trader-lolli-dot trader-dispersion-dot" style="left:' + pos.toFixed(1) + '%;top:' + vlane + '%;width:' + size.toFixed(0) + 'px;height:' + size.toFixed(0) + 'px;background:' + color + ';border-color:' + color + '" title="' + esc(t.name) + ' — ROI/trade 1000$ ' + (t.roi >= 0 ? '+' : '') + t.roi.toFixed(0) + '% · ' + t.n + ' pari(s)"></div>';
+        var labelTop = "calc(" + vlane + "% + " + (size / 2 + 3).toFixed(0) + "px)";
+        return '<div class="trader-lolli-dot trader-dispersion-dot" style="left:' + pos.toFixed(1) + '%;top:' + vlane + '%;width:' + size.toFixed(0) + 'px;height:' + size.toFixed(0) + 'px;background:' + color + ';border-color:' + color + '" data-name="' + esc(t.name) + '" data-roi="' + t.roi.toFixed(0) + '" data-n="' + t.n + '" data-weight="' + t.weight.toFixed(1) + '" data-bracket="' + esc(c.bracket.label) + '"><span class="trader-dispersion-note">' + t.weight.toFixed(1) + '</span></div>' +
+          '<div class="trader-dispersion-label" style="left:' + pos.toFixed(1) + '%;top:' + labelTop + '">' + esc(t.name) + '</div>';
       }).join("");
       return '<div class="trader-contrib-row">' +
         '<span class="trader-contrib-name mono" style="color:' + color + '">' + esc(c.bracket.label) + ' <span class="dim">(' + c.traders.length + ' traders)</span></span>' +
@@ -8236,9 +8282,39 @@
       '</div>';
     }).join("");
     return '<div class="trader-contrib trader-contrib-dispersion"><div class="pnl-chart-weekly-label">Dispersion du ROI/trade 1000$ par palier de note — un point par trader, pas une moyenne</div>' +
-      '<div class="empty-note" style="padding:0 0 8px;">Chaque point est un trader de ce palier (taille = nombre de paris). Survole un point pour son nom et son ROI.</div>' +
+      '<div class="empty-note" style="padding:0 0 8px;">Chaque point est un trader de ce palier (taille = nombre de paris, chiffre = sa note précise). Survole un point pour le détail.</div>' +
       '<div class="trader-contrib-body"><div class="trader-contrib-rows">' + rows + '</div></div>' +
+      '<div class="chart-tooltip chart-tooltip-result chart-tooltip-big trader-dispersion-tooltip"></div>' +
       '</div>';
+  }
+  // Direct-bind (not delegated) like wireTraderTableWeightFilter just
+  // below — renderTraderTable rebuilds this innerHTML on every render, so
+  // fresh dots just get fresh listeners; nothing survives across renders
+  // for this to leak onto.
+  function wireTraderDispersionHover(el) {
+    var box = el.querySelector(".trader-contrib-dispersion");
+    var tip = el.querySelector(".trader-dispersion-tooltip");
+    if (!box || !tip) return;
+    box.querySelectorAll(".trader-dispersion-dot").forEach(function (dot) {
+      dot.addEventListener("mouseenter", function () {
+        var name = dot.getAttribute("data-name");
+        var roi = parseFloat(dot.getAttribute("data-roi"));
+        var n = dot.getAttribute("data-n");
+        var weight = dot.getAttribute("data-weight");
+        var bracket = dot.getAttribute("data-bracket");
+        tip.style.borderColor = dot.style.borderColor;
+        tip.innerHTML = '<span class="chart-tooltip-result-total"><b>' + esc(name) + '</b> — note ' + esc(weight) + ' <span class="dim">(palier ' + esc(bracket) + ')</span></span>' +
+          '<span class="chart-tooltip-result-row"><span class="chart-tooltip-result-value ' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">ROI/trade 1000$ ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span></span>' +
+          '<span class="chart-tooltip-result-date">' + n + ' pari(s)</span>';
+        tip.classList.add("show");
+      });
+      dot.addEventListener("mousemove", function (ev) {
+        var r = box.getBoundingClientRect();
+        tip.style.left = (ev.clientX - r.left) + "px";
+        tip.style.top = (ev.clientY - r.top - 10) + "px";
+      });
+      dot.addEventListener("mouseleave", function () { tip.classList.remove("show"); });
+    });
   }
   function renderTraderTable(list, store) {
     var el = store.els.traderTable;
@@ -8270,6 +8346,7 @@
     if (!filteredRows.length) {
       el.innerHTML = roiChartHtml + weightFilterHtml + '<div class="empty-note">Aucun trader avec cette note dans ' + esc(store.itemNoun) + 's.</div>';
       wireTraderTableWeightFilter(el, store, list);
+      wireTraderDispersionHover(el);
       return;
     }
     function roiCell(v) {
@@ -8296,6 +8373,7 @@
     }).join("");
     el.innerHTML = roiChartHtml + weightFilterHtml + '<div class="snap-stats-wrap table-scroll"><table><thead><tr>' + headCells + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
     wireTraderTableWeightFilter(el, store, list);
+    wireTraderDispersionHover(el);
   }
   function wireTraderTableWeightFilter(el, store, list) {
     el.querySelectorAll(".trader-table-weight-btn").forEach(function (btn) {
@@ -8351,7 +8429,8 @@
         hypDotHtml = '<div class="trader-lolli-dot trader-lolli-dot-hyp" style="left:' + hypPos.toFixed(1) + '%" title="Si $1000 flat par pari : ' + hypLabel + '"></div>';
       }
       return '<div class="trader-contrib-row">' +
-        '<span class="trader-contrib-name mono">' + esc(st.name) + ' <span class="dim">(' + st.decided + ')</span></span>' +
+        '<span class="trader-contrib-name mono">' + esc(st.name) + '</span>' +
+        '<span class="trader-contrib-count mono" title="' + st.decided + ' pari(s) décidé(s)">' + st.decided + '</span>' +
         '<div class="trader-lolli-track"><div class="trader-lolli-zero"></div>' + segHtml + hypDotHtml +
           '<div class="trader-lolli-dot trader-lolli-dot-real" style="left:' + realPos.toFixed(1) + '%" title="Mise réelle : ' + esc(fmtUSDSigned(st.pnl)) + '"></div>' +
         '</div>' +
@@ -8365,9 +8444,12 @@
     var selectHtml = '<select multiple class="trader-contrib-select" data-store="' + esc(store.name) + '" size="5" title="Ctrl/Cmd-clique pour choisir plusieurs traders — aucune sélection = top 10 par note">' + optionsHtml + '</select>' +
       (selected.length ? '<button type="button" class="trader-contrib-reset" data-store="' + esc(store.name) + '">↺ Tout afficher</button>' : '');
     var emptyRow = shown.length ? "" : '<div class="empty-note">Aucun trader sélectionné.</div>';
+    // Header row shares the same grid as the data rows below so "Paris"
+    // lands directly above the count column instead of floating unlabeled.
+    var headerRow = shown.length ? '<div class="trader-contrib-row trader-contrib-header"><span></span><span class="trader-contrib-count">Paris</span><span></span><span></span></div>' : '';
     return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">Contribution au PnL — mise réelle vs $1000 flat par pari</div>' +
       vizMiniLegend([{ color: "var(--green)", label: "Mise réelle" }, { color: "var(--accent)", label: "$1000 flat (qualité du pick)" }]) +
-      '<div class="trader-contrib-body"><div class="trader-contrib-rows">' + rows + emptyRow + '</div><div class="trader-contrib-side">' + selectHtml + '</div></div>' +
+      '<div class="trader-contrib-body"><div class="trader-contrib-rows">' + headerRow + rows + emptyRow + '</div><div class="trader-contrib-side">' + selectHtml + '</div></div>' +
       '</div>';
   }
   // Arbitrage note: does each trader's RECENT performance still match the
@@ -9741,13 +9823,16 @@
     statsProfilesContent.innerHTML = traderHistoryPreambleHtml() + '<div class="profile-card-grid">' + html + '</div>';
     wireTraderHistoryToggle();
   }
-  var statsProfilesHistoryCollapsed = true; // collapsed by default — 70 rows is a lot to always show above the card grid
+  var statsProfilesHistoryCollapsed = false; // visible by default, on request
   // Reconstructed from git (TRADER_HISTORY above), on request — every
   // profile ever tracked, when it was added, and if it's since been
   // removed, when. This app has no other record of that: TRADERS is just
-  // the current live list, nothing about its own history.
+  // the current live list, nothing about its own history. Most-recently-
+  // added first (on request) — TRADER_HISTORY itself stays oldest-first
+  // (matches how it was built, oldest commit to newest), sliced here.
   function traderHistoryPreambleHtml() {
-    var rows = TRADER_HISTORY.map(function (h) {
+    var sorted = TRADER_HISTORY.slice().sort(function (a, b) { return b.added < a.added ? -1 : (b.added > a.added ? 1 : 0); });
+    var rows = sorted.map(function (h) {
       var info = PLATFORMS[h.platform];
       var statusHtml = h.removed
         ? '<span class="pnl-neg">Supprimé le ' + esc(h.removed) + '</span>'
@@ -9963,7 +10048,11 @@
     var svgUid = "dd" + Math.random().toString(36).slice(2, 8);
     var hoverDots = points.map(function (p, i) {
       var px = x(i).toFixed(2), py = y(p.value).toFixed(2);
-      return '<circle id="' + svgUid + '-vis-' + i + '" cx="' + px + '" cy="' + py + '" r="2.6" fill="var(--red)" stroke="var(--panel)" stroke-width="1.5" opacity="0" style="pointer-events:none;transition:opacity .08s"></circle>' +
+      // r=14, stroke-width=3 — matches .chart-pt-clickable:hover exactly
+      // (the main evolution chart's own grown-on-hover size), not its
+      // small r=5.5 resting size — this dot only ever appears already
+      // "hovered", so it should read the same size, not the tiny resting one.
+      return '<circle id="' + svgUid + '-vis-' + i + '" cx="' + px + '" cy="' + py + '" r="14" fill="var(--red)" stroke="var(--panel)" stroke-width="3" opacity="0" style="pointer-events:none;transition:opacity .08s"></circle>' +
         '<circle class="drawdown-pt" data-vis-id="' + svgUid + '-vis-' + i + '" cx="' + px + '" cy="' + py + '" r="7" fill="var(--red)" fill-opacity="0" style="pointer-events:all" ' +
         'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' +
         (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') +
