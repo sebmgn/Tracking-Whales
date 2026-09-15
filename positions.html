@@ -1357,7 +1357,6 @@
   #tierWinrateToggleBtn, #tierWinrateContent, #posTierWinrateToggleBtn, #posTierWinrateContent { --neon: var(--gold); }
   #noteWinrateToggleBtn, #noteWinrateContent, #posNoteWinrateToggleBtn, #posNoteWinrateContent { --neon: #22d3ee; }
   #snapDistToggleBtn, #snapDistContent, #posDistToggleBtn, #posDistContent { --neon: #a78bfa; }
-  #snapStatsToggleBtn, #snapStatsContent, #posStatsToggleBtn, #posStatsContent { --neon: #fb923c; }
   #manualVsAutoToggleBtn, #snapManualVsAutoContent, #posManualVsAutoToggleBtn, #posManualVsAutoContent { --neon: #f472b6; }
   #weeklyPnlToggleBtn, #snapWeeklyPnlContent, #posWeeklyPnlToggleBtn, #posWeeklyPnlContent { --neon: #34d399; }
   /* flex:1 with a shared min width — the 5 buttons stretch evenly to fill
@@ -1394,18 +1393,13 @@
   #tierWinrateContent .chart-box,
   #noteWinrateContent .chart-box,
   #snapDistContent .table-scroll,
-  #snapStatsContent .table-scroll,
   #posTierWinrateContent .chart-box,
   #posNoteWinrateContent .chart-box,
   #posDistContent .table-scroll,
-  #posStatsContent .table-scroll,
   #snapManualVsAutoContent .chart-box, #posManualVsAutoContent .chart-box {
     border-color: var(--neon);
     box-shadow: 0 0 16px color-mix(in srgb, var(--neon) 28%, transparent);
   }
-  .snap-stats-row { cursor: pointer; }
-  .snap-stats-row:hover { background: var(--row-hover); }
-  .snap-stats-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
   .trader-table-row { cursor: pointer; }
   .trader-table-row:hover { background: var(--row-hover); }
   .trader-table-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
@@ -1876,6 +1870,37 @@
   }
   .pnl-chart-sim-slider input[type="range"] { width: 100px; accent-color: var(--accent); }
   .pnl-chart-sim-stake-value { color: var(--text); font-weight: 700; min-width: 44px; }
+  /* Trader filter — a popover instead of a 5th plain select since it's a
+     checklist (several traders at once), not a single value. */
+  .pnl-chart-trader-filter { position: relative; }
+  .pnl-chart-trader-filter-btn {
+    font: inherit; font-size: 11.5px; color: var(--text-dim); background: var(--panel);
+    border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 3px 8px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .pnl-chart-trader-filter-btn:hover { border-color: var(--accent); }
+  .pnl-chart-trader-filter-btn.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .pnl-chart-trader-filter-count {
+    background: var(--accent); color: #fff; font-size: 9.5px; font-weight: 700;
+    line-height: 1; border-radius: 999px; padding: 3px 5px;
+  }
+  .pnl-chart-trader-popover {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 10; width: 220px;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 6px;
+  }
+  .pnl-chart-trader-popover-reset {
+    display: block; width: 100%; text-align: left; font-size: 11px; color: var(--accent);
+    background: none; border: none; padding: 3px 6px 6px; cursor: pointer;
+  }
+  .pnl-chart-trader-popover-reset:hover { text-decoration: underline; }
+  .pnl-chart-trader-popover-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; }
+  .pnl-chart-trader-popover-list label {
+    display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text);
+    padding: 4px 6px; border-radius: var(--radius-sm); cursor: pointer;
+  }
+  .pnl-chart-trader-popover-list label:hover { background: var(--row-hover); }
+  .pnl-chart-trader-popover-list input[type="checkbox"] { accent-color: var(--accent); margin: 0; }
   /* Realized PnL / avg ROI / trade count for whatever the 4 selects above
      currently narrow the curve to — lives beside the title so it reads as
      "here's the numbers for the view you just set". Three small chips
@@ -1968,9 +1993,9 @@
   /* Confidence drift over time (extends Le winrate par conviction) */
   .tier-drift { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
   .tier-drift-svg { display: block; width: 100%; height: auto; }
-  /* Trader contribution: real stake vs flat-$1000 hypothetical (extends Le
-     récap par trader) — dumbbell/lollipop, both values on one shared
-     scale per trader, connected by a thin segment. */
+  /* Base row/track layout shared by the rating-bracket dispersion chart
+     (Le tableau des traders) — one row per bracket, dots positioned along
+     a shared horizontal scale. */
   /* Horizontal padding here matters: this block sits directly inside
      .table-scroll, which has no padding of its own (the <table> below gets
      its inset from cell padding instead) — without it, names/dots/ticks
@@ -1983,15 +2008,8 @@
      from names that aren't linkable. */
   a.trader-contrib-name { color: inherit; text-decoration: none; }
   a.trader-contrib-name:hover { color: var(--accent); text-decoration: underline; }
-  /* Own column (was inline text next to the name — read as decoration,
-     not data) so "how many trades support this bar" is scannable down
-     the whole list instead of parsed out of each name cell. */
-  .trader-contrib-count { text-align: center; color: var(--text-dim); font-size: 11px; }
-  .trader-contrib-header { padding: 0 0 3px; }
-  .trader-contrib-header .trader-contrib-count { font-size: 9.5px; text-transform: uppercase; letter-spacing: .03em; }
   .trader-lolli-track { position: relative; height: 20px; }
   .trader-lolli-zero { position: absolute; left: 50%; top: 2px; bottom: 2px; width: 1px; background: var(--panel-border); }
-  .trader-lolli-seg { position: absolute; top: 50%; height: 2px; background: var(--text-dim); transform: translateY(-50%); opacity: .6; }
   .trader-lolli-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--panel); }
   .trader-contrib-dispersion .trader-contrib-row { grid-template-columns: 150px 1fr; }
   .trader-dispersion-track { height: 92px; }
@@ -2006,55 +2024,8 @@
     font-family: "IBM Plex Mono", monospace; white-space: nowrap; pointer-events: none;
     color: var(--text-dim); line-height: 1; z-index: 1;
   }
-  .trader-lolli-dot-real { background: var(--green); z-index: 2; }
-  .trader-lolli-dot-hyp { background: var(--accent); z-index: 1; }
-  .trader-contrib-vals { text-align: right; white-space: nowrap; }
   .trader-contrib-body { display: flex; gap: 14px; align-items: flex-start; }
   .trader-contrib-rows { flex: 1; min-width: 0; }
-  .trader-contrib-select {
-    width: 130px; font-size: 11px; background: var(--panel); color: var(--text);
-    border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 2px;
-  }
-  .trader-contrib-select option { padding: 2px 4px; }
-  .trader-contrib-side { display: flex; flex-direction: column; gap: 6px; width: 130px; }
-  .trader-contrib-reset { font-size: 10.5px; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
-  .trader-contrib-reset:hover { text-decoration: underline; }
-  /* Arbitrage note — current vs suggested rating on a shared 0-10 scale,
-     every tracked trader shown, ranked by current note descending. */
-  .arb-row { display: grid; grid-template-columns: 100px 100px 1fr 90px; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--panel-border); }
-  .arb-row:first-of-type { border-top: none; }
-  .arb-note-pair { text-align: center; white-space: nowrap; }
-  .arb-note-cur { font-size: 15px; font-weight: 700; }
-  .arb-note-arrow { font-size: 12px; color: var(--text-dim); margin: 0 3px; }
-  .arb-note-sug { font-size: 15px; font-weight: 700; }
-  .arb-scale { position: relative; height: 6px; background: var(--panel-border); border-radius: 3px; }
-  .arb-scale-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; opacity: .3; }
-  .arb-tick { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--text); border-radius: 1px; }
-  .arb-tick-sug { background: var(--accent); }
-  /* Gain/ROI printed directly under the suggested-note cursor they explain,
-     instead of only in the meta line below — anchored via left:X% like the
-     tick itself so the two stay visually tied together. */
-  .arb-scale-labels { position: relative; height: 24px; margin-top: 6px; }
-  .arb-scale-label { position: absolute; top: 0; font-size: 10.5px; font-weight: 700; line-height: 1.3; white-space: nowrap; }
-  .arb-scale-label-center { transform: translateX(-50%); text-align: center; }
-  .arb-scale-label-left { text-align: left; }
-  .arb-scale-label-right { transform: translateX(-100%); text-align: right; }
-  .arb-scale-label-usd { display: block; font-size: 9.5px; font-weight: 600; color: var(--text-dim); }
-  /* Spelled out inline (not left to a legend) since these two numbers are
-     easy to mix up otherwise: one's a per-bet average %, the other's the
-     summed $ total over the whole window. */
-  .arb-scale-label-cap { font-weight: 500; text-transform: none; color: var(--text-dim); }
-  .arb-legend { font-size: 10px; color: var(--text-dim); display: flex; align-items: center; gap: 14px; margin: 2px 0 10px; }
-  .arb-legend-item { display: inline-flex; align-items: center; gap: 5px; }
-  .arb-legend-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; background: var(--text); }
-  .arb-legend-dot-sug { background: var(--accent); }
-  .arb-meta { font-size: 10.5px; color: var(--text-dim); margin-top: 8px; }
-  .arb-badge { display: inline-block; font-size: 9px; font-family: "IBM Plex Mono", monospace; padding: 1px 6px; border-radius: 999px; margin-left: 4px; }
-  .arb-badge-solid { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
-  .arb-badge-weak { background: color-mix(in srgb, var(--text-dim) 20%, transparent); color: var(--text-dim); }
-  .arb-delta { text-align: right; }
-  .arb-delta-val { display: block; font-weight: 700; font-size: 15px; }
-  .arb-delta-lbl { font-size: 9.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .03em; }
   /* Autres stats: shared divider between sub-sections (streaks, consensus,
      co-signal matrix, day×hour heatmap, monthly cards). */
   .other-stats-section { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--panel-border); position: relative; }
@@ -2321,7 +2292,6 @@
       <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="snapshots">▸ Le winrate par conviction</button>
       <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="snapshots">▸ L'analyse winrate × note</button>
       <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="snapshots">▸ L'analyse cote × confiance</button>
-      <button type="button" id="snapStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="snapshots">▸ Le récap par trader</button>
       <button type="button" id="manualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="snapshots">▸ Manuel vs suivi auto</button>
       <button type="button" id="weeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="snapshots">▸ Paris par semaine</button>
       <button type="button" id="snapOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="snapshots">▸ Autres stats</button>
@@ -2330,7 +2300,6 @@
     <div id="tierWinrateContent"></div>
     <div id="noteWinrateContent"></div>
     <div id="snapDistContent"></div>
-    <div id="snapStatsContent"></div>
     <div id="snapManualVsAutoContent"></div>
     <div id="snapWeeklyPnlContent"></div>
     <div id="snapOtherStatsContent"></div>
@@ -2354,7 +2323,6 @@
       <button type="button" id="unconfTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="unconfident">▸ Le winrate par conviction</button>
       <button type="button" id="unconfNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="unconfident">▸ L'analyse winrate × note</button>
       <button type="button" id="unconfDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="unconfident">▸ L'analyse cote × confiance</button>
-      <button type="button" id="unconfStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="unconfident">▸ Le récap par trader</button>
       <button type="button" id="unconfManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="unconfident">▸ Manuel vs suivi auto</button>
       <button type="button" id="unconfWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="unconfident">▸ Paris par semaine</button>
       <button type="button" id="unconfOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="unconfident">▸ Autres stats</button>
@@ -2363,7 +2331,6 @@
     <div id="unconfTierWinrateContent"></div>
     <div id="unconfNoteWinrateContent"></div>
     <div id="unconfDistContent"></div>
-    <div id="unconfStatsContent"></div>
     <div id="unconfManualVsAutoContent"></div>
     <div id="unconfWeeklyPnlContent"></div>
     <div id="unconfOtherStatsContent"></div>
@@ -2396,7 +2363,6 @@
       <button type="button" id="posTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="positions">▸ Le winrate par conviction</button>
       <button type="button" id="posNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="positions">▸ L'analyse winrate × note</button>
       <button type="button" id="posDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="positions">▸ L'analyse cote × confiance</button>
-      <button type="button" id="posStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="positions">▸ Le récap par trader</button>
       <button type="button" id="posManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="positions">▸ Manuel vs suivi auto</button>
       <button type="button" id="posWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="positions">▸ Paris par semaine</button>
       <button type="button" id="posOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="positions">▸ Autres stats</button>
@@ -2405,7 +2371,6 @@
     <div id="posTierWinrateContent"></div>
     <div id="posNoteWinrateContent"></div>
     <div id="posDistContent"></div>
-    <div id="posStatsContent"></div>
     <div id="posManualVsAutoContent"></div>
     <div id="posWeeklyPnlContent"></div>
     <div id="posOtherStatsContent"></div>
@@ -2439,7 +2404,6 @@
       <button type="button" id="testTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="test">▸ Le winrate par conviction</button>
       <button type="button" id="testNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="test">▸ L'analyse winrate × note</button>
       <button type="button" id="testDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="test">▸ L'analyse cote × confiance</button>
-      <button type="button" id="testStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="stats" data-store="test">▸ Le récap par trader</button>
       <button type="button" id="testManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="test">▸ Manuel vs suivi auto</button>
       <button type="button" id="testWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="test">▸ Paris par semaine</button>
       <button type="button" id="testOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="test">▸ Autres stats</button>
@@ -2448,7 +2412,6 @@
     <div id="testTierWinrateContent"></div>
     <div id="testNoteWinrateContent"></div>
     <div id="testDistContent"></div>
-    <div id="testStatsContent"></div>
     <div id="testManualVsAutoContent"></div>
     <div id="testWeeklyPnlContent"></div>
     <div id="testOtherStatsContent"></div>
@@ -2862,7 +2825,6 @@
   var valueTradesContent = document.getElementById("valueTradesContent");
   var snapshotsContent = document.getElementById("snapshotsContent");
   var snapCountEl = document.getElementById("snapCount");
-  var snapStatsContent = document.getElementById("snapStatsContent");
   var snapDashboard = document.getElementById("snapDashboard");
   var tierWinrateContent = document.getElementById("tierWinrateContent");
   var noteWinrateContent = document.getElementById("noteWinrateContent");
@@ -2874,7 +2836,6 @@
   var snapTraderTableContent = document.getElementById("snapTraderTableContent");
   var unconfContent = document.getElementById("unconfContent");
   var unconfCountEl = document.getElementById("unconfCount");
-  var unconfStatsContent = document.getElementById("unconfStatsContent");
   var unconfDashboard = document.getElementById("unconfDashboard");
   var unconfTierWinrateContent = document.getElementById("unconfTierWinrateContent");
   var unconfNoteWinrateContent = document.getElementById("unconfNoteWinrateContent");
@@ -2886,7 +2847,6 @@
   var unconfTraderTableContent = document.getElementById("unconfTraderTableContent");
   var testContent = document.getElementById("testContent");
   var testCountEl = document.getElementById("testCount");
-  var testStatsContent = document.getElementById("testStatsContent");
   var testDashboard = document.getElementById("testDashboard");
   var testTierWinrateContent = document.getElementById("testTierWinrateContent");
   var testNoteWinrateContent = document.getElementById("testNoteWinrateContent");
@@ -2916,7 +2876,6 @@
   var archivesContent = document.getElementById("archivesContent");
   var positionsContent = document.getElementById("positionsContent");
   var posCountEl = document.getElementById("posCount");
-  var posStatsContent = document.getElementById("posStatsContent");
   var posDashboard = document.getElementById("posDashboard");
   var posTierWinrateContent = document.getElementById("posTierWinrateContent");
   var posNoteWinrateContent = document.getElementById("posNoteWinrateContent");
@@ -3101,20 +3060,18 @@
   // below. Shape shared by both stores' `state`:
   //   tierCardFilter, snapDistCellFilter, noteCardFilter,
   //   pnlChartOddsFilter, pnlChartTierFilter, pnlChartDays, pnlChartNoteFilter,
-  //   chartSelectedId, chartPrevScrollY, statsSort, expandedTraderStats,
-  //   expandedItems, trashMode, statsCollapsed, distCollapsed,
-  //   tierWinrateCollapsed, noteWinrateCollapsed
+  //   pnlChartTraderFilter, pnlChartTraderFilterOpen,
+  //   chartSelectedId, chartPrevScrollY, expandedItems, trashMode,
+  //   distCollapsed, tierWinrateCollapsed, noteWinrateCollapsed
   function freshStoreState() {
     return {
       tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null, manualVsAutoFilter: null,
       pnlChartOddsFilter: null, pnlChartTierFilter: null, pnlChartDays: null, pnlChartNoteFilter: null,
-      pnlChartSplitByTier: false, pnlChartSimStake: null,
-      chartSelectedId: null, chartPrevScrollY: null,
-      statsSort: { key: "total", dir: "desc" }, expandedTraderStats: {}, expandedItems: {},
+      pnlChartSplitByTier: false, pnlChartSimStake: null, pnlChartTraderFilter: [], pnlChartTraderFilterOpen: false,
+      chartSelectedId: null, chartPrevScrollY: null, expandedItems: {},
       traderTableSort: { key: "total", dir: "desc" }, expandedTraderTable: {}, traderTableCollapsed: true, traderTableWeightBrackets: [],
-      trashMode: false, statsCollapsed: true, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
-      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false,
-      traderContribSelected: []
+      trashMode: false, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
+      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false
     };
   }
   var rtMinValue = 0;
@@ -5147,10 +5104,6 @@
     if (!hist || hist.length < 3) return '';
     return miniTrendSvg(hist.map(function (p) { return p.p; }), '', "Tendance approximative sur cette session (" + hist.length + " points, page ouverte depuis peu) — pas un historique précis, réinitialisé à chaque rechargement");
   }
-  function traderTrendSparkline(trend) {
-    if (!trend || trend.length < 2) return '';
-    return miniTrendSvg(trend, 'snap-stats-spark', "Tendance du PNL cumulé sur les snapshots décidés de ce trader");
-  }
   // Human labels + display order for the score breakdown popover — same
   // keys as SCORE_WEIGHTS/factors, ordered by weight (heaviest first).
   var SCORE_FACTOR_LABELS = {
@@ -6236,7 +6189,7 @@
   // side minus stake lost on any other side they also held (a snapshot can
   // hold a trader on both sides). Returns null if the snapshot isn't decided
   // yet or this trader isn't in it at all — used both for classification
-  // below and for the PNL column in the recap table (renderSnapStats).
+  // below and for the PNL column in the per-trader table (computeTraderStatsRows).
   function traderNetPnlInSnapshot(snap, traderName) {
     if (!snap.winningSide) return null;
     var net = 0, onWin = false, onLose = false;
@@ -6290,7 +6243,7 @@
   }
   // Overall results dashboard.
   // Marking a snapshot's winning side (renderSnapshots below) feeds straight
-  // into this, and into the per-trader table (renderSnapStats) — both just
+  // into this, and into the per-trader table (renderTraderTable) — both just
   // aggregate classifyTraderInSnapshot across every trader in every snapshot.
   // Takes `list` PRE-FILTERED by the caller (cardsList, same active
   // tierCardFilter/snapDistCellFilter/noteCardFilter/manualVsAutoFilter as
@@ -6428,10 +6381,10 @@
     remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY, everSyncedKey: "vtSnapshotsEverSynced",
     els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
       tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
-      stats: snapStatsContent, list: snapshotsContent, syncStatus: snapSyncStatusEl,
+      list: snapshotsContent, syncStatus: snapSyncStatusEl,
       manualVsAuto: snapManualVsAutoContent, weeklyPnl: snapWeeklyPnlContent, otherStats: snapOtherStatsContent,
       traderTable: snapTraderTableContent },
-    ids: { statsToggle: "snapStatsToggleBtn", distToggle: "snapDistToggleBtn",
+    ids: { distToggle: "snapDistToggleBtn",
       tierToggle: "tierWinrateToggleBtn", noteToggle: "noteWinrateToggleBtn",
       manualVsAutoToggle: "manualVsAutoToggleBtn", weeklyPnlToggle: "weeklyPnlToggleBtn",
       otherStatsToggle: "snapOtherStatsToggleBtn", traderTableToggle: "snapTraderTableToggleBtn" },
@@ -6483,10 +6436,10 @@
     syncStore: SNAPSHOTS_STORE,
     els: { count: unconfCountEl, dashboard: unconfDashboard, pnlChart: unconfPnlChartContent,
       tierWinrate: unconfTierWinrateContent, noteWinrate: unconfNoteWinrateContent, dist: unconfDistContent,
-      stats: unconfStatsContent, list: unconfContent,
+      list: unconfContent,
       manualVsAuto: unconfManualVsAutoContent, weeklyPnl: unconfWeeklyPnlContent, otherStats: unconfOtherStatsContent,
       traderTable: unconfTraderTableContent },
-    ids: { statsToggle: "unconfStatsToggleBtn", distToggle: "unconfDistToggleBtn",
+    ids: { distToggle: "unconfDistToggleBtn",
       tierToggle: "unconfTierWinrateToggleBtn", noteToggle: "unconfNoteWinrateToggleBtn",
       manualVsAutoToggle: "unconfManualVsAutoToggleBtn", weeklyPnlToggle: "unconfWeeklyPnlToggleBtn",
       otherStatsToggle: "unconfOtherStatsToggleBtn", traderTableToggle: "unconfTraderTableToggleBtn" },
@@ -6508,10 +6461,10 @@
     remotePath: "positions", queueKey: POSITIONS_QUEUE_KEY, everSyncedKey: "vtPositionsEverSynced",
     els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
       tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
-      stats: posStatsContent, list: positionsContent, syncStatus: posSyncStatusEl,
+      list: positionsContent, syncStatus: posSyncStatusEl,
       manualVsAuto: posManualVsAutoContent, weeklyPnl: posWeeklyPnlContent, otherStats: posOtherStatsContent,
       traderTable: posTraderTableContent },
-    ids: { statsToggle: "posStatsToggleBtn", distToggle: "posDistToggleBtn",
+    ids: { distToggle: "posDistToggleBtn",
       tierToggle: "posTierWinrateToggleBtn", noteToggle: "posNoteWinrateToggleBtn",
       manualVsAutoToggle: "posManualVsAutoToggleBtn", weeklyPnlToggle: "posWeeklyPnlToggleBtn",
       otherStatsToggle: "posOtherStatsToggleBtn", traderTableToggle: "posTraderTableToggleBtn" },
@@ -6543,10 +6496,10 @@
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
     els: { count: testCountEl, dashboard: testDashboard, pnlChart: testPnlChartContent,
       tierWinrate: testTierWinrateContent, noteWinrate: testNoteWinrateContent, dist: testDistContent,
-      stats: testStatsContent, list: testContent,
+      list: testContent,
       manualVsAuto: testManualVsAutoContent, weeklyPnl: testWeeklyPnlContent, otherStats: testOtherStatsContent,
       traderTable: testTraderTableContent },
-    ids: { statsToggle: "testStatsToggleBtn", distToggle: "testDistToggleBtn",
+    ids: { distToggle: "testDistToggleBtn",
       tierToggle: "testTierWinrateToggleBtn", noteToggle: "testNoteWinrateToggleBtn",
       manualVsAutoToggle: "testManualVsAutoToggleBtn", weeklyPnlToggle: "testWeeklyPnlToggleBtn",
       otherStatsToggle: "testOtherStatsToggleBtn", traderTableToggle: "testTraderTableToggleBtn" },
@@ -7263,9 +7216,9 @@
   // ROI à mise fixe 1000€ par trader — preuve visuelle, en direct sur les
   // vraies données de ce store, que la note capture réellement la
   // performance : la pente devrait monter de gauche à droite. Réutilise
-  // computeTraderStatsRows (même pipeline que "Le tableau des traders" et
-  // "Le récap par trader") plutôt qu'un calcul parallèle qui pourrait
-  // diverger — st.hypRoi y est déjà la même simulation $1000 flat partout,
+  // computeTraderStatsRows (même pipeline que "Le tableau des traders")
+  // plutôt qu'un calcul parallèle qui pourrait diverger — st.hypRoi y est
+  // déjà la même simulation $1000 flat partout,
   // indépendante de la mise réelle (contrairement à st.realRoi, qui suit
   // store.stakeFor et n'a donc pas le même sens d'un store à l'autre).
   function computeTraderNoteRoiPoints(list, store) {
@@ -7694,6 +7647,9 @@
         var cutoff = Date.now() - st.pnlChartDays * 86400000;
         if (new Date(s.savedAt).getTime() < cutoff) return false;
       }
+      // OR semantics (checking VeryLucky888 and swisstony shows trades with
+      // EITHER, not just ones with both) — same convention as rtSelectedPlayers.
+      if (st.pnlChartTraderFilter.length && !(s.traderNames || []).some(function (n) { return st.pnlChartTraderFilter.indexOf(n) !== -1; })) return false;
       return true;
     });
     var decided = decidedFiltered.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
@@ -7763,11 +7719,32 @@
     // Splitting by tier and filtering to one tier are the same idea twice —
     // the Confiance select is disabled (not hidden — its current value stays
     // visible) while split mode is on, rather than letting them fight.
+    // Trader filter (on request): checkboxes, not a select — several traders
+    // at once, OR semantics ("VeryLucky888 et swisstony" shows trades with
+    // either). A popover instead of a full chip row (TRADERS_BY_WEIGHT can
+    // be 50+ names — see the "Three plain selects" note above) — its own
+    // open/closed flag lives in store.state so it survives the re-render
+    // every checkbox click triggers, instead of closing after each pick.
+    var traderFilterCount = st.pnlChartTraderFilter.length;
+    var traderPopoverListHtml = TRADERS_BY_WEIGHT.map(function (t) {
+      var checked = st.pnlChartTraderFilter.indexOf(t.name) !== -1;
+      return '<label><input type="checkbox" data-trader="' + esc(t.name) + '"' + (checked ? ' checked' : '') + ' /> ' + esc(t.name) + '</label>';
+    }).join("");
+    var traderFilterHtml = '<div class="pnl-chart-trader-filter">' +
+      '<button type="button" id="' + idp + 'pnlChartTraderBtn" class="pnl-chart-trader-filter-btn' + (traderFilterCount ? ' active' : '') + '">Traders' + (traderFilterCount ? ' <span class="pnl-chart-trader-filter-count">' + traderFilterCount + '</span>' : '') + '</button>' +
+      (st.pnlChartTraderFilterOpen
+        ? '<div class="pnl-chart-trader-popover">' +
+            (traderFilterCount ? '<button type="button" class="pnl-chart-trader-popover-reset" id="' + idp + 'pnlChartTraderReset">✕ Tout désélectionner</button>' : '') +
+            '<div class="pnl-chart-trader-popover-list" id="' + idp + 'pnlChartTraderList">' + traderPopoverListHtml + '</div>' +
+          '</div>'
+        : '') +
+    '</div>';
     var controlsHtml = '<div class="pnl-chart-filters">' +
       '<label>Cote <select id="' + idp + 'pnlChartOddsSelect">' + oddsOptionsHtml + '</select></label>' +
       '<label>Confiance <select id="' + idp + 'pnlChartTierSelect"' + (st.pnlChartSplitByTier ? " disabled" : "") + '>' + tierOptionsHtml + '</select></label>' +
       '<label>Note <select id="' + idp + 'pnlChartNoteSelect">' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
+      traderFilterHtml +
       '<label class="pnl-chart-split-toggle" title="Une courbe cumulée par palier de confiance (S/A/B) au lieu d\'une seule courbe globale"><input type="checkbox" id="' + idp + 'pnlChartSplitTier"' + (st.pnlChartSplitByTier ? " checked" : "") + ' /> Diviser par confiance</label>' +
       (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
@@ -7863,6 +7840,27 @@
       store.state.pnlChartDays = timeSelect.value ? Number(timeSelect.value) : null;
       renderSnapPnlChart(cardsList, store);
     });
+    var traderBtn = document.getElementById(idp + "pnlChartTraderBtn");
+    if (traderBtn) traderBtn.addEventListener("click", function () {
+      store.state.pnlChartTraderFilterOpen = !store.state.pnlChartTraderFilterOpen;
+      renderSnapPnlChart(cardsList, store);
+    });
+    var traderReset = document.getElementById(idp + "pnlChartTraderReset");
+    if (traderReset) traderReset.addEventListener("click", function () {
+      store.state.pnlChartTraderFilter = [];
+      renderSnapPnlChart(cardsList, store);
+    });
+    var traderList = document.getElementById(idp + "pnlChartTraderList");
+    if (traderList) traderList.querySelectorAll("input[type=checkbox]").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        var name = cb.getAttribute("data-trader");
+        var filter = store.state.pnlChartTraderFilter;
+        var idx = filter.indexOf(name);
+        if (cb.checked) { if (idx === -1) filter.push(name); }
+        else if (idx !== -1) { filter.splice(idx, 1); }
+        renderSnapPnlChart(cardsList, store);
+      });
+    });
     var splitTierCheckbox = document.getElementById(idp + "pnlChartSplitTier");
     if (splitTierCheckbox) splitTierCheckbox.addEventListener("change", function () {
       store.state.pnlChartSplitByTier = splitTierCheckbox.checked;
@@ -7917,22 +7915,6 @@
       });
     });
   }
-  // Per-trader appearance count + win/loss/nuancé breakdown across all
-  // snapshots — the "swisstony est dans mes snapshots gagnants" pattern the
-  // user wants to spot is just this table sorted by how often a name shows up.
-  // Sortable on every column (click a header to sort by it, click again to
-  // flip direction) — snapStatsSort persists across re-renders so toggling a
-  // snapshot's result/confidence doesn't reset the sort the user picked.
-  var SNAP_STATS_COLUMNS = [
-    { key: "name", label: "Trader" },
-    { key: "pnl", label: "PNL", numeric: true },
-    { key: "total", label: "Snapshots", numeric: true },
-    { key: "win", label: "Gagnés", numeric: true },
-    { key: "loss", label: "Perdus", numeric: true },
-    { key: "gainNuance", label: "Gain nuancé", numeric: true },
-    { key: "perteNuance", label: "Perte nuancée", numeric: true },
-    { key: "roi", label: "ROI/trade", numeric: true }
-  ];
   // Rows with a null sort value (no decided snapshot yet, so PNL/% réussite
   // show "—") always sink to the bottom regardless of direction — they
   // aren't meaningfully comparable, so flipping the sort shouldn't surface
@@ -8062,9 +8044,6 @@
   // One snapshot-by-snapshot line per row, newest first — same
   // date/question/result-badge vocabulary as the snapshot cards above, just
   // condensed to one line each since this is scoped to a single trader.
-  // Shared by renderSnapStats and renderTraderTable, each passing their own
-  // expanded-state flag so expanding a row in one panel never affects the
-  // other.
   function traderDetailRowHtml(st, isExpanded, colspan) {
     if (!isExpanded) return '';
     var sortedEntries = st.entries.slice().sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
@@ -8079,10 +8058,9 @@
     }).join("");
     return '<tr class="snap-stats-detail-row"><td colspan="' + colspan + '"><div class="snap-stats-detail">' + itemsHtml + '</div></td></tr>';
   }
-  // Shared by renderSnapStats (the full recap panel: lollipop + arbitrage +
-  // table) and renderTraderTable (a leaner, table-only view added on
-  // request) — one accumulation pass per trader, so the two panels can
-  // never silently disagree on PNL/winrate/ROI for the same trader.
+  // Shared by renderTraderTable and computeTraderNoteRoiPoints — one
+  // accumulation pass per trader, so the two never silently disagree on
+  // PNL/winrate/ROI for the same trader.
   function computeTraderStatsRows(list, store) {
     var byTrader = {};
     list.forEach(function (snap) {
@@ -8152,61 +8130,12 @@
       return st;
     });
   }
-  function renderSnapStats(list, store) {
-    var el = store.els.stats;
-    var rowsData = computeTraderStatsRows(list, store);
-    if (!rowsData.length) { el.innerHTML = ""; return; }
-    var sortField = store.state.statsSort.key === "pnl" ? "pnlForSort" : store.state.statsSort.key;
-    rowsData.sort(function (a, b) { return compareSnapStatsRows(a, b, sortField, store.state.statsSort.dir); });
-    // One snapshot-by-snapshot line per row, newest first — same
-    // date/question/result-badge vocabulary as the snapshot cards above, just
-    // condensed to one line each since this is scoped to a single trader.
-    var rows = rowsData.map(function (st) {
-      var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
-      var isOpen = !!store.state.expandedTraderStats[st.name];
-      return '<tr class="snap-stats-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '"><td><span class="snap-stats-caret">' + (isOpen ? '▾' : '▸') + '</span> ' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
-        '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
-        '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
-        '<td class="num">' + st.gainNuance + '</td><td class="num">' + st.perteNuance + '</td>' +
-        '<td class="num ' + (st.roi == null ? '' : (st.roi >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + (st.roi == null ? '—' : (st.roi >= 0 ? '+' : '') + st.roi.toFixed(0) + '%') + '</td>' +
-        '<td>' + traderTrendSparkline(st.trend) + '</td></tr>' + traderDetailRowHtml(st, isOpen, 9);
-    }).join("");
-    var headCells = SNAP_STATS_COLUMNS.map(function (col) {
-      var isActive = store.state.statsSort.key === col.key;
-      var arrow = isActive ? '<span class="sort-arrow">' + (store.state.statsSort.dir === "asc" ? "▲" : "▼") + '</span>' : "";
-      return '<th class="sortable' + (col.numeric ? " num" : "") + (isActive ? " sorted" : "") + '" data-sort-key="' + col.key + '" data-store="' + store.name + '">' + esc(col.label) + arrow + '</th>';
-    }).join("") + '<th>Tendance</th>';
-    syncSnapToggleLabel(store.ids.statsToggle, store.state.statsCollapsed, "le récap par trader");
-    el.innerHTML =
-      '<div class="snap-stats-wrap table-scroll' + (store.state.statsCollapsed ? " collapsed" : "") + '">' +
-      traderContributionHtml(rowsData, store) +
-      arbitrageNoteHtml(list, store) +
-      '<table><thead><tr>' +
-      headCells +
-      '</tr></thead><tbody>' + rows + '</tbody></table>' +
-      '</div>';
-    var contribSelect = el.querySelector(".trader-contrib-select");
-    if (contribSelect) contribSelect.addEventListener("change", function () {
-      store.state.traderContribSelected = Array.prototype.slice.call(contribSelect.selectedOptions).map(function (o) { return o.value; });
-      renderSnapStats(list, store);
-    });
-    var contribReset = el.querySelector(".trader-contrib-reset");
-    if (contribReset) contribReset.addEventListener("click", function () {
-      store.state.traderContribSelected = [];
-      renderSnapStats(list, store);
-    });
-  }
-  // Dedicated, table-only view of the same per-trader stats — no lollipop
-  // chart, no arbitrage note, added on request as its own toggle so it's a
-  // one-click scan instead of scrolling past the two charts above it in
-  // "Le récap par trader" (which keeps showing all three, unchanged). Own
-  // sort/expanded-row state (traderTableSort/expandedTraderTable) so
-  // interacting with this table never moves anything in the other one.
-  // Two ROI columns instead of one: "ROI/trade" is the trader's own real
-  // realized ROI (their actual dollar stakes), "ROI/trade 1000$" is always
-  // a true flat $1000 simulation regardless of store — isolates pick
-  // quality from bet sizing, same distinction the lollipop chart draws in $
-  // terms. Tendance (sparkline) dropped — this panel is for the numbers.
+  // Table-only view of the per-trader stats (the dispersion chart above it
+  // is traderRoiByRatingHtml, not this table). Two ROI columns instead of
+  // one: "ROI/trade" is the trader's own real realized ROI (their actual
+  // dollar stakes), "ROI/trade 1000$" is always a true flat $1000
+  // simulation regardless of store — isolates pick quality from bet
+  // sizing, same distinction the dispersion chart draws in ROI% terms.
   var TRADER_TABLE_COLUMNS = [
     { key: "name", label: "Trader" },
     { key: "pnl", label: "PNL", numeric: true },
@@ -8236,9 +8165,8 @@
     }
     return null;
   }
-  // Same dumbbell/lollipop visual as traderContributionHtml just above, one
-  // row per rating bracket instead of per trader — averages ROI/trade (own
-  // real stakes) and ROI/trade 1000$ (flat-stake simulation) across every
+  // One row per rating bracket instead of per trader — averages ROI/trade
+  // (own real stakes) and ROI/trade 1000$ (flat-stake simulation) across every
   // trader whose WEIGHT_BY_NAME falls in that bracket, so "does a 9+ trader
   // actually out-perform a 6-7 one" has a one-glance answer instead of
   // scrolling the whole sorted table. Always compares every bracket
@@ -8402,164 +8330,6 @@
         renderTraderTable(list, store);
       });
     });
-  }
-  // Two bars per trader: their real PNL (own actual stakes) against what a
-  // flat $1000 on every one of their picks would have returned — isolates
-  // pick quality from bet sizing. A trader whose real bar dwarfs their
-  // flat-stake bar is winning mostly by betting big, not by picking better;
-  // hedged snapshots (present on both sides) are excluded from the flat
-  // figure rather than guessed at (see traderHypFlatPnl). Defaults to the
-  // top 10 by |real PNL|, but the multi-select underneath covers every
-  // profile with a decided bet — pick specific traders to compare instead.
-  function traderContributionHtml(rowsData, store) {
-    var withPnl = rowsData.filter(function (st) { return st.decided > 0; });
-    if (!withPnl.length) return "";
-    // Ranked by trader rating (WEIGHT_BY_NAME, same "note" the matrix above
-    // sorts by), not by |PNL| — a highly-rated trader with a smaller sample
-    // still shows ahead of a low-rated one who happened to move more money.
-    var byWeight = function (a, b) { return (WEIGHT_BY_NAME[b.name] || 0) - (WEIGHT_BY_NAME[a.name] || 0) || Math.abs(b.pnl) - Math.abs(a.pnl); };
-    var selected = store.state.traderContribSelected || [];
-    var shown = selected.length
-      ? withPnl.filter(function (st) { return selected.indexOf(st.name) !== -1; }).sort(byWeight)
-      : withPnl.slice().sort(byWeight).slice(0, 10);
-    // Dumbbell/lollipop: both values sit on the SAME horizontal scale for a
-    // trader, connected by a thin segment — the gap between the two dots
-    // *is* the sizing effect (mise réelle vs picking quality at a flat
-    // stake), read directly off the chart instead of comparing two
-    // separate bar lengths. Scale is shared across every shown trader
-    // (maxAbs), zero at the track's center, negative values go left.
-    var maxAbs = 1;
-    shown.forEach(function (st) { maxAbs = Math.max(maxAbs, Math.abs(st.pnl), Math.abs(st.hypPnl || 0)); });
-    var rows = shown.map(function (st) {
-      var realPos = 50 + (st.pnl / maxAbs) * 50;
-      var hypPos = st.hypPnl == null ? null : 50 + (st.hypPnl / maxAbs) * 50;
-      var hypLabel = st.hypPnl == null ? '—' : esc(fmtUSDSigned(st.hypPnl));
-      var segHtml = "", hypDotHtml = "";
-      if (hypPos != null) {
-        var segLeft = Math.min(realPos, hypPos), segWidth = Math.abs(realPos - hypPos);
-        segHtml = '<div class="trader-lolli-seg" style="left:' + segLeft.toFixed(1) + '%;width:' + segWidth.toFixed(1) + '%"></div>';
-        hypDotHtml = '<div class="trader-lolli-dot trader-lolli-dot-hyp" style="left:' + hypPos.toFixed(1) + '%" title="Si $1000 flat par pari : ' + hypLabel + '"></div>';
-      }
-      return '<div class="trader-contrib-row">' +
-        '<span class="trader-contrib-name mono">' + esc(st.name) + '</span>' +
-        '<span class="trader-contrib-count mono" title="' + st.decided + ' pari(s) décidé(s)">' + st.decided + '</span>' +
-        '<div class="trader-lolli-track"><div class="trader-lolli-zero"></div>' + segHtml + hypDotHtml +
-          '<div class="trader-lolli-dot trader-lolli-dot-real" style="left:' + realPos.toFixed(1) + '%" title="Mise réelle : ' + esc(fmtUSDSigned(st.pnl)) + '"></div>' +
-        '</div>' +
-        '<span class="trader-contrib-vals mono"><span class="' + (st.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(st.pnl)) + '</span> · <span class="' + (st.hypPnl == null ? "" : (st.hypPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + hypLabel + '</span></span>' +
-      '</div>';
-    }).join("");
-    var optionsHtml = withPnl.slice().sort(byWeight).map(function (st) {
-      var isSel = selected.indexOf(st.name) !== -1;
-      return '<option value="' + esc(st.name) + '"' + (isSel ? " selected" : "") + '>' + esc(st.name) + '</option>';
-    }).join("");
-    var selectHtml = '<select multiple class="trader-contrib-select" data-store="' + esc(store.name) + '" size="5" title="Ctrl/Cmd-clique pour choisir plusieurs traders — aucune sélection = top 10 par note">' + optionsHtml + '</select>' +
-      (selected.length ? '<button type="button" class="trader-contrib-reset" data-store="' + esc(store.name) + '">↺ Tout afficher</button>' : '');
-    var emptyRow = shown.length ? "" : '<div class="empty-note">Aucun trader sélectionné.</div>';
-    // Header row shares the same grid as the data rows below so "Paris"
-    // lands directly above the count column instead of floating unlabeled.
-    var headerRow = shown.length ? '<div class="trader-contrib-row trader-contrib-header"><span></span><span class="trader-contrib-count">Paris</span><span></span><span></span></div>' : '';
-    return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">Contribution au PnL — mise réelle vs $1000 flat par pari</div>' +
-      vizMiniLegend([{ color: "var(--green)", label: "Mise réelle" }, { color: "var(--accent)", label: "$1000 flat (qualité du pick)" }]) +
-      '<div class="trader-contrib-body"><div class="trader-contrib-rows">' + headerRow + rows + emptyRow + '</div><div class="trader-contrib-side">' + selectHtml + '</div></div>' +
-      '</div>';
-  }
-  // Arbitrage note: does each trader's RECENT performance still match the
-  // rating (WEIGHT_BY_NAME) they were given once, by hand? Recent flat-
-  // $1000 ROI is mapped onto the same 0-10 scale (0% ROI -> 6, roughly
-  // neutral; each ±10% ROI moves the estimate ~1 point), then blended
-  // toward that estimate FROM the current note, weighted by how many
-  // recent bets back it up (min(1, count/15)) — a trader with 2 recent
-  // bets barely moves off their current note no matter how those 2 went;
-  // one with 20+ moves most of the way to what the recent numbers say.
-  // This is a diagnostic only: WEIGHT_BY_NAME is hardcoded in TRADERS, so
-  // nothing here writes a note back — it just tells you who's worth a
-  // second look, and in which direction.
-  var ARBITRAGE_WINDOW_DAYS = 30;
-  var ARBITRAGE_SOLID_COUNT = 8;
-  function roiToNoteEstimate(roi) {
-    return Math.max(0, Math.min(10, 6 + roi / 10));
-  }
-  function computeArbitrageNote(list, store) {
-    var cutoff = Date.now() - ARBITRAGE_WINDOW_DAYS * 86400000;
-    var byTrader = {};
-    list.forEach(function (snap) {
-      if (!snap.winningSide) return;
-      var t = new Date(snap.savedAt).getTime();
-      if (isNaN(t) || t < cutoff) return;
-      (snap.traderNames || []).forEach(function (name) {
-        if (WEIGHT_BY_NAME[name] == null) return;
-        if (!byTrader[name]) byTrader[name] = { name: name, win: 0, decided: 0, hypPnl: 0, hypCount: 0 };
-        var cls = classifyTraderInSnapshot(snap, name);
-        if (cls === "win" || cls === "gain_nuance") byTrader[name].win++;
-        if (cls !== "pending") byTrader[name].decided++;
-        var hyp = traderHypFlatPnl(snap, name, 1000);
-        if (hyp != null) { byTrader[name].hypPnl += hyp; byTrader[name].hypCount++; }
-      });
-    });
-    // Every tracked trader gets a row, not just the ones with recent
-    // activity — a trader who's gone quiet for 30j is exactly the kind of
-    // gap this table should surface, not silently drop.
-    return Object.keys(WEIGHT_BY_NAME).map(function (name) {
-      var st = byTrader[name];
-      var current = WEIGHT_BY_NAME[name];
-      var roi = st && st.hypCount > 0 ? (st.hypPnl / (st.hypCount * 1000) * 100) : null;
-      var winrate = st && st.decided > 0 ? (st.win / st.decided * 100) : null;
-      var weight = st ? Math.min(1, st.hypCount / 15) : 0;
-      var suggested = roi == null ? current : current + (roiToNoteEstimate(roi) - current) * weight;
-      return { name: name, current: current, suggested: suggested, delta: suggested - current, count: st ? st.hypCount : 0, winrate: winrate, roi: roi, pnlTotal: st ? st.hypPnl : null, solid: !!st && st.hypCount >= ARBITRAGE_SOLID_COUNT };
-    }).sort(function (a, b) { return b.current - a.current; });
-  }
-  function arbitrageNoteHtml(list, store) {
-    var rows = computeArbitrageNote(list, store);
-    if (!rows.length) return "";
-    var rowsHtml = rows.map(function (r) {
-      var hasData = r.roi != null;
-      var curPos = r.current / 10 * 100, sugPos = r.suggested / 10 * 100;
-      var segLeft = Math.min(curPos, sugPos), segWidth = Math.abs(curPos - sugPos);
-      var deltaColor = Math.abs(r.delta) < 0.3 ? "" : (r.delta > 0 ? "pnl-pos" : "pnl-neg");
-      var deltaLbl = Math.abs(r.delta) < 0.3 ? "stable" : (r.delta > 0 ? "sous-noté" : "sur-noté");
-      var meta = (r.count > 0 ? r.count + " pari(s) (" + ARBITRAGE_WINDOW_DAYS + "j)" : "Aucun pari récent (" + ARBITRAGE_WINDOW_DAYS + "j)") +
-        (r.winrate != null ? " · " + r.winrate.toFixed(0) + "% winrate" : "");
-      var badge = r.solid ? '<span class="arb-badge arb-badge-solid">Signal solide</span>' : '<span class="arb-badge arb-badge-weak">Échantillon faible</span>';
-      var sugColor = Math.abs(r.delta) < 0.3 ? "" : (r.delta > 0 ? "pnl-pos" : "pnl-neg");
-      var profileUrl = traderProfileUrl(r.name);
-      var nameTag = profileUrl
-        ? '<a class="trader-contrib-name mono" href="' + esc(profileUrl) + '" target="_blank" rel="noopener" title="Ouvrir le profil de ' + esc(r.name) + '">' + esc(r.name) + '</a>'
-        : '<span class="trader-contrib-name mono">' + esc(r.name) + '</span>';
-      // Gain/ROI print directly under the cursor they justify (the
-      // suggested-note tick) instead of buried in the meta line — reading
-      // the bar top-to-bottom now tells the whole story at that x position.
-      // Anchored to whichever edge it's closest to (instead of always
-      // centered) so a cursor near either end of the 0-10 scale can't push
-      // this wider two-line label off the side of its container.
-      var labelAlign = sugPos < 25 ? "left" : (sugPos > 75 ? "right" : "center");
-      var underLabel = hasData
-        ? '<div class="arb-scale-label arb-scale-label-' + labelAlign + '" style="left:' + sugPos.toFixed(1) + '%">' +
-            '<span class="' + sugColor + '"><span class="arb-scale-label-cap">ROI moy. (1000$/pari) </span>' + (r.roi >= 0 ? "+" : "") + r.roi.toFixed(0) + '%</span>' +
-            '<span class="arb-scale-label-usd"><span class="arb-scale-label-cap">Total ' + ARBITRAGE_WINDOW_DAYS + 'j </span>' + fmtUSDSigned(r.pnlTotal) + '</span>' +
-          '</div>'
-        : '';
-      return '<div class="arb-row">' +
-        nameTag +
-        '<div class="arb-note-pair mono"><span class="arb-note-cur">' + r.current.toFixed(1) + '</span><span class="arb-note-arrow">→</span><span class="arb-note-sug ' + sugColor + '">' + r.suggested.toFixed(1) + '</span></div>' +
-        '<div>' +
-          '<div class="arb-scale" title="Note actuelle : ' + r.current.toFixed(1) + (hasData ? ' — Note suggérée : ' + r.suggested.toFixed(1) : '') + '">' +
-            (hasData && segWidth > 0.1 ? '<div class="arb-scale-fill" style="left:' + segLeft.toFixed(1) + '%;width:' + segWidth.toFixed(1) + '%;background:' + (r.delta >= 0 ? "var(--green)" : "var(--red)") + '"></div>' : '') +
-            '<div class="arb-tick" style="left:' + curPos.toFixed(1) + '%" title="Note actuelle : ' + r.current.toFixed(1) + '"></div>' +
-            (hasData ? '<div class="arb-tick arb-tick-sug" style="left:' + sugPos.toFixed(1) + '%" title="Note suggérée : ' + r.suggested.toFixed(1) + '"></div>' : '') +
-          '</div>' +
-          '<div class="arb-scale-labels">' + underLabel + '</div>' +
-          '<div class="arb-meta">' + esc(meta) + ' ' + badge + '</div>' +
-        '</div>' +
-        '<div class="arb-delta"><span class="arb-delta-val mono ' + deltaColor + '">' + (Math.abs(r.delta) < 0.3 ? "—" : ((r.delta >= 0 ? "+" : "") + r.delta.toFixed(1))) + '</span><span class="arb-delta-lbl">' + deltaLbl + '</span></div>' +
-      '</div>';
-    }).join("");
-    return '<div class="trader-contrib"><div class="pnl-chart-weekly-label">⚖️ Arbitrage note — note actuelle vs suggérée par la performance des ' + ARBITRAGE_WINDOW_DAYS + ' derniers jours</div>' +
-      '<div class="empty-note" style="padding:0 0 6px;">Diagnostic seulement — les notes restent codées en dur, ceci ne fait que pointer qui mérite d\'être revu, pas les modifier.</div>' +
-      '<div class="arb-legend"><span class="arb-legend-item"><span class="arb-legend-dot"></span>Note actuelle</span><span class="arb-legend-item"><span class="arb-legend-dot arb-legend-dot-sug"></span>Note suggérée (perf. ' + ARBITRAGE_WINDOW_DAYS + 'j)</span></div>' +
-      rowsHtml +
-      '</div>';
   }
   // A manual entry (see snapAddManualBtn) has none of the trader/consensus
   // data a real snapshot carries — no sides, no cardHtml, no note — by
@@ -8878,7 +8648,6 @@
     renderNoteWinrate(list, store);
     renderSnapPnlChart(cardsList, store);
     renderSnapDistribution(list, store);
-    renderSnapStats(list, store);
     renderTraderTable(list, store);
     renderManualVsAuto(list, store);
     renderWeeklyPnl(list, store);
@@ -9842,8 +9611,8 @@
   // other per-render aggregate on this page (loadRaw() itself is already
   // called every refresh cycle for the actual All Time tab). Counts
   // DECIDED snapshots a trader appears in on EITHER side, un-windowed and
-  // including traders no longer in TRADERS — unlike computeArbitrageNote's
-  // 30j/current-traders-only count, this one has to reach removed traders.
+  // including traders no longer in TRADERS, unlike WEIGHT_BY_NAME-keyed
+  // aggregates elsewhere — this one has to reach removed traders too.
   function computeTraderHistoryTradeCounts() {
     var list = TEST_STORE.loadRaw().filter(function (s) { return !s.allTimeDeletedAt; });
     var counts = {};
@@ -11017,7 +10786,7 @@
   // and both get their innerHTML fully rebuilt every refresh cycle.
   // Resolves which store (snapshots vs positions) a clicked card control
   // belongs to, from the data-store attribute snapCardHtml/renderTierWinrate/
-  // renderNoteWinrate/renderSnapDistribution/renderSnapStats all stamp on
+  // renderNoteWinrate/renderSnapDistribution/renderTraderTable all stamp on
   // their output — defaults to snapshots for anything that predates the
   // attribute (there isn't any left, but a stray click target failing to
   // resolve should degrade to the original single-store behavior, not throw).
@@ -11320,13 +11089,6 @@
       if (fromTestPurge) renderTest();
       return;
     }
-    var statsToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='stats']") : null;
-    if (statsToggleBtn) {
-      var statsStore = resolveStoreFromEl(statsToggleBtn);
-      statsStore.state.statsCollapsed = !statsStore.state.statsCollapsed;
-      renderSnapStats(statsStore.load(), statsStore);
-      return;
-    }
     var distToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='dist']") : null;
     if (distToggleBtn) {
       var distStore = resolveStoreFromEl(distToggleBtn);
@@ -11421,27 +11183,6 @@
       var sameCell = curFilter && curFilter.bracket[0] === cellBracket[0] && curFilter.bracket[1] === cellBracket[1] && curFilter.tier === cellTier;
       distCellStore.state.snapDistCellFilter = sameCell ? null : { bracket: cellBracket, tier: cellTier };
       renderStoreView(distCellStore);
-      return;
-    }
-    var sortTh = e.target.closest ? e.target.closest("th.sortable[data-store]") : null;
-    if (sortTh) {
-      var sortStore = resolveStoreFromEl(sortTh);
-      var sortKey = sortTh.getAttribute("data-sort-key");
-      if (sortStore.state.statsSort.key === sortKey) {
-        sortStore.state.statsSort.dir = sortStore.state.statsSort.dir === "asc" ? "desc" : "asc";
-      } else {
-        sortStore.state.statsSort.key = sortKey;
-        sortStore.state.statsSort.dir = sortKey === "name" ? "asc" : "desc";
-      }
-      renderSnapStats(sortStore.load(), sortStore);
-      return;
-    }
-    var statsRow = e.target.closest ? e.target.closest(".snap-stats-row") : null;
-    if (statsRow) {
-      var statsRowStore = resolveStoreFromEl(statsRow);
-      var statsTrader = statsRow.getAttribute("data-trader");
-      statsRowStore.state.expandedTraderStats[statsTrader] = !statsRowStore.state.expandedTraderStats[statsTrader];
-      renderSnapStats(statsRowStore.load(), statsRowStore);
       return;
     }
     var tierRow = e.target.closest ? e.target.closest(".tier-wr-row") : null;
