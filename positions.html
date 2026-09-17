@@ -7976,7 +7976,12 @@
     // Manuel's own headline number, not a caption for the console overall).
     function compareColStatsHtml(color, s) {
       var pnlCls = !s.count ? "" : (s.pnl >= 0 ? "pnl-pos" : "pnl-neg");
-      var roiTxt = s.roi == null ? "—" : (s.roi >= 0 ? "+" : "") + s.roi.toFixed(0) + "%";
+      // 1 décimale (pas .toFixed(0) comme ailleurs sur le site) — sur des
+      // sous-ensembles filtrés qui bougent de quelques trades à la fois,
+      // l'arrondi à l'entier masque de vrais changements (9,32%→9,01% se
+      // lisait "+9%" dans les deux cas, ce qui a l'air d'un bug de calcul
+      // alors que ça n'en est pas un).
+      var roiTxt = s.roi == null ? "—" : (s.roi >= 0 ? "+" : "") + s.roi.toFixed(1) + "%";
       return '<div class="compare-col-stats" style="--sub-color:' + color + '">' +
         '<div class="compare-col-stat"><span class="compare-col-stat-label">Trades</span><span class="compare-col-stat-value">' + s.count + '</span></div>' +
         '<div class="compare-col-stat"><span class="compare-col-stat-label">PnL</span><span class="compare-col-stat-value ' + pnlCls + '">' + (s.count ? esc(fmtUSDSigned(s.pnl)) : "—") + '</span></div>' +
@@ -8078,7 +8083,13 @@
       monthlyMini +
       '<div class="pnl-chart-stat" title="' + esc(statsCountTitle) + '"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
-      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
+      // 1 décimale ici (contrairement à .toFixed(0) ailleurs sur le site) —
+      // un filtre qui ne bouge que quelques trades peut déplacer ce ROI de
+      // quelques dixièmes seulement ; arrondi à l'entier, deux valeurs
+      // réellement différentes (ex: 9,32% et 9,01%) affichent toutes les
+      // deux "+9%", ce qui a l'air d'un bug de calcul alors que ça n'en
+      // est pas un — le PnL au centime près, lui, bouge bien.
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(1) + "%") + '</span></div>' +
     '</div>';
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     var boxId = store.name + "-snapPnlChartBox";
