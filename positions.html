@@ -1935,14 +1935,6 @@
   }
   .pnl-chart-console-btn:hover { border-color: var(--accent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent); }
   .pnl-chart-console-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
-  .compare-stats { gap: 12px; flex-wrap: wrap; }
-  .compare-stat {
-    border-top-width: 3px; min-width: 132px; padding: 6px 14px 7px; gap: 3px;
-    background: var(--panel);
-  }
-  .compare-stat .pnl-chart-stat-label { font-size: 10px; font-weight: 700; }
-  .compare-stat .pnl-chart-stat-value { font-size: 14px; }
-  .compare-stat-unit { font-size: 9.5px; font-weight: 500; color: var(--text-dim); text-transform: uppercase; }
   .compare-console {
     display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
     margin: 0 0 14px; padding: 16px; background: var(--row-hover);
@@ -7860,21 +7852,58 @@
     // whatever stake untracked (non-roster) participants added to that
     // side, which a trader-only average can never see.
     var traderFilterCoversEveryone = st.pnlChartTraderFilter.length > 0 && TRADERS_BY_WEIGHT.every(function (t) { return st.pnlChartTraderFilter.indexOf(t.name) !== -1; });
+    // Console avancée (on request): its own filter set per ligne (manuel/
+    // auto), merged back into the SAME single classic curve below — not
+    // two separate lines — since a second look at the split version showed
+    // it read as a different, unfamiliar chart (own dot style, no click-
+    // to-jump/drawdown/weekly). Resolved to a list + a pricing function
+    // BEFORE the loop below, so the loop itself never needs to know
+    // whether the console is open. Cote (pnlChartOddsFilter) stays
+    // genuinely global — applied here from decidedAll rather than stacking
+    // on top of the simple Confiance/Note/Période/Traders row, which would
+    // otherwise silently AND together into an impossible-to-reason-about
+    // combination with the console's own per-ligne equivalents.
+    var weekOptions = st.pnlChartConsoleOpen ? computeWeekFloorOptions(decidedAll) : null;
+    var decidedForLoop, pricingFn;
+    if (st.pnlChartConsoleOpen) {
+      var mCfg = st.pnlChartCompareFilters.manual;
+      var aCfg = st.pnlChartCompareFilters.auto;
+      var aCoversEveryone = aCfg.traders.length > 0 && TRADERS_BY_WEIGHT.every(function (t) { return aCfg.traders.indexOf(t.name) !== -1; });
+      decidedForLoop = decidedAll.filter(function (s) {
+        if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
+        return snapMatchesCompareFilters(s, s.isManual ? mCfg : aCfg, weekOptions);
+      }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+      pricingFn = function (snap, stake) {
+        // Same leader-vs-trader-own pricing rule as the simple Traders
+        // filter below — a manual bet has no trader to price against, so
+        // it's always leader-priced.
+        return (!snap.isManual && aCfg.traders.length && !aCoversEveryone) ? traderFilteredFlatPnl(snap, aCfg.traders, stake) : hypotheticalFlatPnl(snap, stake);
+      };
+    } else {
+      decidedForLoop = decided;
+      pricingFn = function (snap, stake) {
+        // "Tout sélectionner" on request: checking every tracked trader now
+        // reads exactly like Manuel vs suivi auto's "Suivi des whales"
+        // (leader price), not a trader-averaged price — verified by hand
+        // that the two are otherwise the SAME 128 trades, priced
+        // differently (leader-side 8 554,58 $ vs trader-averaged
+        // 13 526,03 $, a ~4 971 $ gap coming entirely from the formula, not
+        // from a different trade set). The averaged trader-own price is
+        // structurally never going to match the leader price at full
+        // roster anyway — the leader price blends in whatever stake
+        // untracked (non-roster) participants added to that side, which a
+        // trader-only average can never see.
+        return (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone) ? traderFilteredFlatPnl(snap, st.pnlChartTraderFilter, stake) : hypotheticalFlatPnl(snap, stake);
+      };
+    }
     // Stake actually counted into the ROI denominator below — only the
     // snapshots that end up with a non-null pnl (same guard as
     // aggregateFlatPnl), so a trader-filtered snapshot where none of the
     // checked traders have a definable position doesn't inflate the base.
     var statsStakeSum = 0;
-    decided.forEach(function (snap) {
+    decidedForLoop.forEach(function (snap) {
       var stake = chartStakeFor(snap);
-      // Priced at the CHECKED TRADERS' own side for a partial selection —
-      // on request, after "VeryLucky888 only" showed a different ROI here
-      // than their own ROI/trade 1000$ in Le tableau des traders. A trader
-      // who goes against the consensus needs their OWN side priced, not
-      // the leader's, or a contrarian pick reads as a leader-side loss even
-      // when it actually won. Selecting everyone falls back to the plain
-      // leader price instead (see traderFilterCoversEveryone above).
-      var pnl = (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone) ? traderFilteredFlatPnl(snap, st.pnlChartTraderFilter, stake) : hypotheticalFlatPnl(snap, stake);
+      var pnl = pricingFn(snap, stake);
       if (pnl == null) return;
       cum += pnl;
       statsStakeSum += stake;
@@ -7887,10 +7916,11 @@
       // apart (small dots, red-green color vision deficiency, glare).
       // Pushed to near-neon (Material A400) on request for a bigger, more
       // flashy win/loss read at a glance. pnl >= 0 (not snap.leaderName ===
-      // snap.winningSide) so this still tracks the checked traders' own
-      // result, not the leader's, when the filter is active — exactly
-      // equivalent to the old leader check when it isn't (hypotheticalFlatPnl
-      // is only ever positive on a leader win, always -stake on a loss).
+      // snap.winningSide) so this still tracks the checked/console-matched
+      // trader(s)' own result, not the leader's, when a filter is active —
+      // exactly equivalent to the old leader check when it isn't
+      // (hypotheticalFlatPnl is only ever positive on a leader win, always
+      // -stake on a loss).
       var won = pnl >= 0;
       series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
       weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
@@ -7899,53 +7929,7 @@
         seriesByTier[snap.confidence].push({ date: new Date(snap.savedAt), value: cumByTier[snap.confidence], delta: pnl, win: won, note: snap.noteAtSnapshot });
       }
     });
-    // Console avancée (on request): 2 lignes fixes, manuel et auto, chacune
-    // avec son propre jeu de filtres multi-select — this supersedes the
-    // simple Confiance/Note/Période/Traders row above rather than stacking
-    // with it (both would otherwise silently AND together into an
-    // impossible-to-reason-about combination), so it's built from
-    // decidedAll filtered by ONLY Cote (still genuinely global) instead of
-    // `decided`.
-    var GROUPS_META = [
-      { key: "manual", color: "#f472b6", label: "Manuel" },
-      { key: "auto", color: "#38bdf8", label: "Auto" }
-    ];
-    var seriesByGroup = null, groupStats = null, weekOptions = null;
-    if (st.pnlChartConsoleOpen) {
-      weekOptions = computeWeekFloorOptions(decidedAll);
-      var decidedForCompare = decidedAll.filter(function (s) {
-        return !st.pnlChartOddsFilter || snapMatchesDistCell(s, st.pnlChartOddsFilter, null);
-      }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
-      seriesByGroup = { manual: [], auto: [] };
-      groupStats = {
-        manual: { count: 0, pnl: 0, stakeSum: 0 },
-        auto: { count: 0, pnl: 0, stakeSum: 0 }
-      };
-      var cumByGroup = { manual: 0, auto: 0 };
-      var autoCfg = st.pnlChartCompareFilters.auto;
-      var autoCoversEveryone = autoCfg.traders.length > 0 && TRADERS_BY_WEIGHT.every(function (t) { return autoCfg.traders.indexOf(t.name) !== -1; });
-      decidedForCompare.forEach(function (snap) {
-        var groupKey = snap.isManual ? "manual" : "auto";
-        var cfg = st.pnlChartCompareFilters[groupKey];
-        if (!snapMatchesCompareFilters(snap, cfg, weekOptions)) return;
-        var gStake = chartStakeFor(snap);
-        // Same leader-vs-trader-own pricing rule as the simple Traders
-        // filter above (traderFilterCoversEveryone) — a manual bet has no
-        // trader to price against, so it's always leader-priced.
-        var gPnl = (groupKey === "auto" && autoCfg.traders.length && !autoCoversEveryone)
-          ? traderFilteredFlatPnl(snap, autoCfg.traders, gStake)
-          : hypotheticalFlatPnl(snap, gStake);
-        if (gPnl == null) return;
-        cumByGroup[groupKey] += gPnl;
-        groupStats[groupKey].count++;
-        groupStats[groupKey].pnl += gPnl;
-        groupStats[groupKey].stakeSum += gStake;
-        seriesByGroup[groupKey].push({ date: new Date(snap.savedAt), value: cumByGroup[groupKey], delta: gPnl, win: gPnl >= 0, note: snap.noteAtSnapshot });
-      });
-      groupStats.manual.roi = groupStats.manual.stakeSum > 0 ? (groupStats.manual.pnl / groupStats.manual.stakeSum * 100) : null;
-      groupStats.auto.roi = groupStats.auto.stakeSum > 0 ? (groupStats.auto.pnl / groupStats.auto.stakeSum * 100) : null;
-    }
-    var filterNote = st.tierCardFilter.length ? ' — <b>' + esc(st.tierCardFilter.join(", ")) + '</b> uniquement' : '';
+    var filterNote = st.pnlChartConsoleOpen ? ' — <b>console avancée</b>' : (st.tierCardFilter.length ? ' — <b>' + esc(st.tierCardFilter.join(", ")) + '</b> uniquement' : '');
     var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
       var sel = st.pnlChartOddsFilter && st.pnlChartOddsFilter[0] === b[0] && st.pnlChartOddsFilter[1] === b[1] ? ' selected' : '';
       return '<option value="' + b[0] + '-' + b[1] + '"' + sel + '>' + b[0] + '–' + b[1] + '¢</option>';
@@ -8024,42 +8008,27 @@
     var statsCount = series.length;
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsStakeSum > 0 ? (cum / statsStakeSum * 100) : null;
-    var monthlyMini = (st.pnlChartSplitByTier || st.pnlChartConsoleOpen) ? "" : monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
+    var monthlyMini = st.pnlChartSplitByTier ? "" : monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
     // On request, after "Trades" here not matching Snapshots in Le tableau
     // des traders for the same trader filter: this count (like PnL/ROI next
     // to it) excludes pending snapshots and, when Traders is active, ones
     // where the checked trader(s) are hedged (both sides) — same set
     // Le tableau des traders' own PNL pour 1000€/trade and ROI/trade 1000$
     // columns are built from, just not its broader Snapshots column.
-    var statsCountTitle = (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone)
+    var statsCountTitle = st.pnlChartConsoleOpen
+      ? "Paris décidés (hors paris en attente) qui passent les filtres Manuel/Auto de la console avancée."
+      : (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone)
       ? "Paris décidés où le(s) trader(s) coché(s) ont une position sur un seul camp (hors paris en attente et hors couverture des deux camps) — le même ensemble que « PNL pour 1000€/trade » et « ROI/trade 1000$ » dans Le tableau des traders, qui peut être plus petit que sa colonne Snapshots."
       : (st.pnlChartTraderFilter.length ? "Paris décidés (hors paris en attente), tous traders suivis cochés — prix leader du marché, identique à « Suivi des whales » dans Manuel vs suivi auto, hors les paris manuels." : "Paris décidés (hors paris en attente) sur les filtres actuels.");
-    // Console avancée : deux tuiles de stats (une par ligne) à la place des
-    // trois chips normales — chacune calculée sur sa propre config, donc
-    // avec ses propres Trades/PnL/ROI, plutôt qu'un seul total qui
-    // mélangerait les deux lignes.
-    var statsHtml;
-    if (st.pnlChartConsoleOpen && groupStats) {
-      statsHtml = '<div class="pnl-chart-stats compare-stats">' + GROUPS_META.map(function (g) {
-        var gs = groupStats[g.key];
-        return '<div class="pnl-chart-stat compare-stat" style="border-color:' + g.color + '"><span class="pnl-chart-stat-label" style="color:' + g.color + '">' + esc(g.label) + '</span>' +
-          '<span class="pnl-chart-stat-value">' + gs.count + ' <span class="compare-stat-unit">trades</span></span>' +
-          '<span class="pnl-chart-stat-value ' + (gs.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(gs.pnl)) + '</span>' +
-          '<span class="pnl-chart-stat-value ' + (gs.roi == null ? "" : (gs.roi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (gs.roi == null ? "—" : (gs.roi >= 0 ? "+" : "") + gs.roi.toFixed(0) + "%") + ' <span class="compare-stat-unit">ROI</span></span>' +
-        '</div>';
-      }).join("") + '</div>';
-    } else {
-      statsHtml = '<div class="pnl-chart-stats">' +
-        monthlyMini +
-        '<div class="pnl-chart-stat" title="' + esc(statsCountTitle) + '"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
-        '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
-        '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
-      '</div>';
-    }
+    var statsHtml = '<div class="pnl-chart-stats">' +
+      monthlyMini +
+      '<div class="pnl-chart-stat" title="' + esc(statsCountTitle) + '"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
+    '</div>';
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     var boxId = store.name + "-snapPnlChartBox";
-    var compareTotalPts = seriesByGroup ? (seriesByGroup.manual.length + seriesByGroup.auto.length) : 0;
-    if (st.pnlChartConsoleOpen ? compareTotalPts < 1 : series.length < 2) {
+    if (series.length < 2) {
       el.innerHTML = '<div class="chart-box" id="' + boxId + '">' +
         headerHtml + consoleToggleHtml + controlsHtml + consolePanelHtml +
         '<div class="empty-note" style="padding:14px 0;">Pas assez de snapshots décidés pour ces critères.</div></div>';
@@ -8068,12 +8037,7 @@
       return;
     }
     var chartHtml, hintHtml, weeklyHtml, drawdownBlockHtml;
-    if (st.pnlChartConsoleOpen) {
-      chartHtml = buildHistoryChartByGroupSvg(seriesByGroup, GROUPS_META);
-      hintHtml = "";
-      weeklyHtml = "";
-      drawdownBlockHtml = "";
-    } else if (st.pnlChartSplitByTier) {
+    if (st.pnlChartSplitByTier) {
       chartHtml = buildHistoryChartByTierSvg(seriesByTier) + tierLegendHtml();
       hintHtml = "";
       // No single point-per-week mapping once split into 4 overlapping
@@ -8097,16 +8061,18 @@
     wirePnlChartFilterControls(cardsList, store);
     wireCompareConsole(el, cardsList, store);
     var box = document.getElementById(boxId);
-    // Neither the split-by-tier nor the console avancée view has a single
-    // point-per-week mapping (overlapping lines, no single "the" snapshot
-    // for a given dot) — wiring click navigation there would just silently
-    // find nothing, so it's skipped outright rather than calling it to no
-    // effect. The tooltip still works either way — it only needs the
-    // data-* attributes stamped on .chart-pt, same as the single-line chart.
+    // The split-by-tier view has no single point-per-week mapping
+    // (overlapping lines, no single "the" snapshot for a given dot) —
+    // wiring click navigation there would just silently find nothing, so
+    // it's skipped outright rather than calling it to no effect. Console
+    // avancée is back to one merged line, so it gets the click-to-jump like
+    // any other single-line view. The tooltip still works either way — it
+    // only needs the data-* attributes stamped on .chart-pt, same as the
+    // single-line chart.
     if (box) {
       wireHistoryChartTooltip(box);
       wireDrawdownTooltip(box);
-      if (!st.pnlChartSplitByTier && !st.pnlChartConsoleOpen) wireSnapPnlChartClicks(box, store);
+      if (!st.pnlChartSplitByTier) wireSnapPnlChartClicks(box, store);
     }
   }
   // Re-attached on every render (the selects are rebuilt from scratch each
@@ -10451,57 +10417,6 @@
         zeroLine + linesHtml + yLabels + xLabels + pointsHtml + endLabelsHtml +
       '</svg>';
   }
-  // Same shape as buildHistoryChartByTierSvg just above, generalized to an
-  // explicit {key,color,label} list instead of the hardcoded confidence
-  // tiers — used by the PnL chart's console avancée (Manuel/Auto compare),
-  // a separate function rather than reworking the tier one so neither risks
-  // the other.
-  function buildHistoryChartByGroupSvg(seriesByGroup, groups) {
-    var active = groups.filter(function (g) { return seriesByGroup[g.key] && seriesByGroup[g.key].length; });
-    if (!active.length) return "";
-    var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var allPts = [];
-    active.forEach(function (g) { allPts = allPts.concat(seriesByGroup[g.key]); });
-    var dates = allPts.map(function (p) { return p.date.getTime(); });
-    var minDate = Math.min.apply(null, dates), maxDate = Math.max.apply(null, dates);
-    var values = allPts.map(function (p) { return p.value; }).concat([0]);
-    var minV = Math.min.apply(null, values), maxV = Math.max.apply(null, values);
-    if (minV === maxV) { minV -= 1; maxV += 1; }
-    var vRange = maxV - minV;
-    function x(t) { return padL + (maxDate === minDate ? innerW / 2 : (t - minDate) / (maxDate - minDate) * innerW); }
-    function y(v) { return padT + innerH - (v - minV) / vRange * innerH; }
-    var zeroY = y(0);
-    var zeroLine = (minV < 0 && maxV > 0)
-      ? '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>'
-      : "";
-    var xLabelCount = 6;
-    var xLabels = "";
-    for (var li = 0; li < xLabelCount; li++) {
-      var t = minDate + (maxDate - minDate) * (li / (xLabelCount - 1 || 1));
-      xLabels += '<text x="' + x(t).toFixed(2) + '" y="' + (H - 6) + '" font-size="10" fill="var(--text-dim)" text-anchor="middle">' + fmtDateShort(new Date(t)) + '</text>';
-    }
-    var yLabels =
-      '<text x="' + (padL - 8) + '" y="' + (y(maxV) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(maxV) + '</text>' +
-      '<text x="' + (padL - 8) + '" y="' + (y(minV) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(minV) + '</text>';
-    var linesHtml = "", pointsHtml = "", endLabelsHtml = "";
-    active.forEach(function (g) {
-      var color = g.color;
-      var pts = seriesByGroup[g.key];
-      var linePts = pts.map(function (p) { return { x: x(p.date.getTime()), y: y(p.value) }; });
-      if (linePts.length > 1) linesHtml += '<path d="' + smoothPathD(linePts) + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round"/>';
-      pts.forEach(function (p, i) {
-        pointsHtml += '<circle class="chart-pt" cx="' + linePts[i].x.toFixed(2) + '" cy="' + linePts[i].y.toFixed(2) + '" r="2.6" fill="' + color + '" stroke="var(--panel)" stroke-width="1.5" ' +
-          'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '" data-delta="' + esc(fmtUSDSigned(p.delta)) + '" data-win="' + (p.win ? "1" : "0") + '"' + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + '></circle>';
-      });
-      var last = linePts[linePts.length - 1];
-      endLabelsHtml += '<text x="' + (last.x + 4).toFixed(2) + '" y="' + (last.y - 6).toFixed(2) + '" font-size="9.5" font-weight="700" fill="' + color + '">' + esc(g.label) + '</text>';
-    });
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-        zeroLine + linesHtml + yLabels + xLabels + pointsHtml + endLabelsHtml +
-      '</svg>';
-  }
-
   function wireHistoryChartTooltip(box) {
     var tip = document.createElement("div");
     tip.className = "chart-tooltip chart-tooltip-result";
