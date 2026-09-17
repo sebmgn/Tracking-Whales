@@ -1959,7 +1959,7 @@
     border: 1px solid var(--panel-border); border-radius: var(--radius-md);
   }
   .compare-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-  .compare-col-title { font-size: 13px; font-weight: 700; color: var(--text); padding-bottom: 6px; border-bottom: 1px solid var(--panel-border); }
+  .compare-col-title { font-size: 19px; font-weight: 800; text-align: center; color: var(--sub-color); padding-bottom: 8px; border-bottom: 1px solid var(--panel-border); }
   .compare-field { display: flex; flex-direction: column; gap: 5px; }
   .compare-field-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
   .compare-chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -6978,9 +6978,11 @@
     if (w.manualPct == null) return '—';
     var mRoiTxt = w.manualRoi == null ? '' : ' · ROI ' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + '%';
     var aRoiTxt = w.autoRoi == null ? '' : ' · ROI ' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%';
+    // #f472b6/#38bdf8 — same manuel/auto color convention as the console
+    // avancée and Manuel vs suivi auto (MANUAL_VS_AUTO_GROUPS) above.
     return labeledBarsHtml([
-      { label: '✍️', count: w.manualCount || 0, color: 'var(--accent)', title: '✍️ Manuel ' + (w.manualCount || 0) + mRoiTxt },
-      { label: '🎯', count: w.autoCount || 0, color: 'var(--tier-b-gray)', title: '🎯 Suivi whales ' + (w.autoCount || 0) + aRoiTxt }
+      { label: '✍️', count: w.manualCount || 0, color: '#f472b6', title: '✍️ Manuel ' + (w.manualCount || 0) + mRoiTxt },
+      { label: '🎯', count: w.autoCount || 0, color: '#38bdf8', title: '🎯 Suivi whales ' + (w.autoCount || 0) + aRoiTxt }
     ]);
   }
   // Cells shared by both a normal week row and the bold totals row below —
@@ -7784,7 +7786,7 @@
   // Note du pari / Note du trader / Traders would only ever filter it to
   // zero results — omitted rather than shown as dead controls (verified
   // live: checking a Note du pari bin on Manuel dropped it to 0 trades).
-  function compareLineFiltersHtml(groupKey, groupLabel, cfg, includeTraderDims, weekOptions, statsHtml) {
+  function compareLineFiltersHtml(groupKey, groupLabel, cfg, includeTraderDims, weekOptions, statsHtml, color) {
     function chipRow(dim, options, isActive) {
       return '<div class="compare-chip-row">' + options.map(function (opt) {
         return '<button type="button" class="compare-chip' + (isActive(opt) ? ' active' : '') + '" data-compare-group="' + groupKey + '" data-compare-dim="' + dim + '" data-compare-val="' + esc(String(opt.val)) + '">' + esc(opt.label) + '</button>';
@@ -7813,7 +7815,7 @@
     fieldsHtml += '<div class="compare-field"><span class="compare-field-label">Période</span>' +
       chipRow("sinceWeek", periodOptions, function (opt) { return opt.val === "" ? cfg.sinceWeek == null : cfg.sinceWeek === opt.val; }) +
     '</div>';
-    return '<div class="compare-col"><div class="compare-col-title">' + esc(groupLabel) + '</div>' + fieldsHtml + '</div>';
+    return '<div class="compare-col" style="--sub-color:' + color + '"><div class="compare-col-title">' + esc(groupLabel) + '</div>' + fieldsHtml + '</div>';
   }
   function renderSnapPnlChart(cardsList, store) {
     var el = store.els.pnlChart;
@@ -8054,8 +8056,8 @@
     var consolePanelHtml = "";
     if (st.pnlChartConsoleOpen) {
       consolePanelHtml = '<div class="compare-console">' +
-        compareLineFiltersHtml("manual", "✍️ Manuel", st.pnlChartCompareFilters.manual, false, weekOptions, compareColStatsHtml("#f472b6", subStats.manual)) +
-        compareLineFiltersHtml("auto", "🎯 Auto", st.pnlChartCompareFilters.auto, true, weekOptions, compareColStatsHtml("#38bdf8", subStats.auto)) +
+        compareLineFiltersHtml("manual", "✍️ Manuel", st.pnlChartCompareFilters.manual, false, weekOptions, compareColStatsHtml("#f472b6", subStats.manual), "#f472b6") +
+        compareLineFiltersHtml("auto", "🎯 Auto", st.pnlChartCompareFilters.auto, true, weekOptions, compareColStatsHtml("#38bdf8", subStats.auto), "#38bdf8") +
       '</div>';
     }
     // Realized PnL / avg ROI for the exact subset of filters above —
