@@ -1923,6 +1923,56 @@
     white-space: nowrap; text-align: center;
   }
   .pnl-chart-stat-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Console avancée — gros bouton (on request), the console panel itself,
+     and its per-ligne compare-stat tiles. */
+  .pnl-chart-console-btn {
+    display: block; width: 100%; margin: 2px 0 10px; padding: 11px 16px;
+    font: inherit; font-size: 13px; font-weight: 700; color: var(--text);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 12%, var(--panel)), var(--panel));
+    border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+    cursor: pointer; text-align: center; letter-spacing: .01em;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .pnl-chart-console-btn:hover { border-color: var(--accent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .pnl-chart-console-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+  .compare-stats { gap: 12px; flex-wrap: wrap; }
+  .compare-stat {
+    border-top-width: 3px; min-width: 132px; padding: 6px 14px 7px; gap: 3px;
+    background: var(--panel);
+  }
+  .compare-stat .pnl-chart-stat-label { font-size: 10px; font-weight: 700; }
+  .compare-stat .pnl-chart-stat-value { font-size: 14px; }
+  .compare-stat-unit { font-size: 9.5px; font-weight: 500; color: var(--text-dim); text-transform: uppercase; }
+  .compare-console {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    margin: 0 0 14px; padding: 16px; background: var(--row-hover);
+    border: 1px solid var(--panel-border); border-radius: var(--radius-md);
+  }
+  .compare-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .compare-col-title { font-size: 13px; font-weight: 700; color: var(--text); padding-bottom: 6px; border-bottom: 1px solid var(--panel-border); }
+  .compare-field { display: flex; flex-direction: column; gap: 5px; }
+  .compare-field-label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
+  .compare-chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .compare-chip {
+    font: inherit; font-size: 11px; font-weight: 600; color: var(--text-dim);
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 999px;
+    padding: 3px 10px; cursor: pointer; transition: border-color .12s ease, color .12s ease;
+  }
+  .compare-chip:hover { border-color: var(--accent); color: var(--text); }
+  .compare-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  .compare-trader-list {
+    max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-sm); padding: 4px;
+  }
+  .compare-trader-list label {
+    display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text);
+    padding: 3px 5px; border-radius: 4px; cursor: pointer;
+  }
+  .compare-trader-list label:hover { background: var(--row-hover); }
+  .compare-trader-list input[type="checkbox"] { accent-color: var(--accent); margin: 0; }
+  @media (max-width: 700px) {
+    .compare-console { grid-template-columns: 1fr; }
+  }
   /* "Paris par semaine", embedded directly under the evolution chart (on
      request — used to live only behind its own collapsible toggle further
      down, see .tier-wr-box's "vue compacte" variant, still there as an
@@ -3062,6 +3112,7 @@
   //   tierCardFilter, snapDistCellFilter, noteCardFilter,
   //   pnlChartOddsFilter, pnlChartTierFilter, pnlChartDays, pnlChartNoteFilter,
   //   pnlChartTraderFilter, pnlChartTraderFilterOpen,
+  //   pnlChartConsoleOpen, pnlChartCompareFilters,
   //   chartSelectedId, chartPrevScrollY, expandedItems, trashMode,
   //   distCollapsed, tierWinrateCollapsed, noteWinrateCollapsed
   function freshStoreState() {
@@ -3069,6 +3120,15 @@
       tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null, manualVsAutoFilter: null,
       pnlChartOddsFilter: null, pnlChartTierFilter: null, pnlChartDays: null, pnlChartNoteFilter: null,
       pnlChartSplitByTier: false, pnlChartSimStake: null, pnlChartTraderFilter: [], pnlChartTraderFilterOpen: false,
+      // Console avancée (on request): 2 lignes fixes (manuel/auto), chacune
+      // avec ses propres filtres multi-select — indépendant de
+      // pnlChartTierFilter/pnlChartNoteFilter/pnlChartTraderFilter au-dessus,
+      // qui restent la vue simple à une ligne.
+      pnlChartConsoleOpen: false,
+      pnlChartCompareFilters: {
+        manual: { tiers: [], noteBins: [], sinceWeek: null },
+        auto: { tiers: [], noteBins: [], traderWeightBrackets: [], traders: [], sinceWeek: null }
+      },
       chartSelectedId: null, chartPrevScrollY: null, expandedItems: {},
       traderTableSort: { key: "total", dir: "desc" }, expandedTraderTable: {}, traderTableCollapsed: true, traderTableWeightBrackets: [],
       trashMode: false, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
@@ -7647,6 +7707,100 @@
   // own time control — kept short since this is meant to be a quick,
   // low-friction toggle, not a full date-range picker.
   var PNL_CHART_DAY_OPTIONS = [7, 30, 90];
+  // "Depuis Sn" floor options for the console avancée's Période filter —
+  // Monday-start weeks (weekStartOf, same bucketing "Paris par semaine"
+  // already uses), numbered from the EARLIEST item in `list` — S1 always
+  // means "this store's first tracked week", not a fixed calendar week, so
+  // it stays meaningful as more history accumulates.
+  function computeWeekFloorOptions(list) {
+    if (!list.length) return [];
+    var minMonday = null;
+    list.forEach(function (s) {
+      var wk = weekStartOf(new Date(s.savedAt));
+      if (!minMonday || wk < minMonday) minMonday = wk;
+    });
+    var nowMonday = weekStartOf(new Date());
+    var weeks = [];
+    var cur = minMonday;
+    var idx = 1;
+    while (cur <= nowMonday) {
+      weeks.push({ idx: idx, start: cur });
+      cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7);
+      idx++;
+    }
+    return weeks;
+  }
+  // One line's filter set in the PnL chart's console avancée (Manuel/Auto
+  // compare mode) — every field is multi-select, OR within itself, ANDed
+  // together across fields, same convention as every other filter on this
+  // page (tierCardFilter, pnlChartTraderFilter, etc.).
+  function snapMatchesCompareFilters(snap, cfg, weekOptions) {
+    if (cfg.tiers && cfg.tiers.length && cfg.tiers.indexOf(snap.confidence) === -1) return false;
+    if (cfg.noteBins && cfg.noteBins.length) {
+      if (snap.noteAtSnapshot == null) return false;
+      var noteOk = cfg.noteBins.some(function (floor) {
+        var bin = NOTE_WR_BINS.filter(function (b) { return b[0] === floor; })[0];
+        if (!bin) return false;
+        var isLast = NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === floor;
+        return noteInBin(snap.noteAtSnapshot, bin, isLast);
+      });
+      if (!noteOk) return false;
+    }
+    if (cfg.traderWeightBrackets && cfg.traderWeightBrackets.length) {
+      var names = snap.traderNames || [];
+      var traderNoteOk = names.some(function (n) {
+        var b = traderWeightBracket(WEIGHT_BY_NAME[n]);
+        return b && cfg.traderWeightBrackets.indexOf(b.key) !== -1;
+      });
+      if (!traderNoteOk) return false;
+    }
+    if (cfg.traders && cfg.traders.length) {
+      if (!(snap.traderNames || []).some(function (n) { return cfg.traders.indexOf(n) !== -1; })) return false;
+    }
+    if (cfg.sinceWeek != null && weekOptions[cfg.sinceWeek - 1]) {
+      if (new Date(snap.savedAt) < weekOptions[cfg.sinceWeek - 1].start) return false;
+    }
+    return true;
+  }
+  // One column of the console avancée — chip buttons for every multi-select
+  // dimension (data-compare-group/dim/val, read generically by
+  // wireCompareConsole below) plus a checkbox list for individual traders.
+  // includeTraderDims is false for "manuel": a manual bet has no trader
+  // attached (no consensus computed at all — see snapAddManualBtn), so
+  // Note du pari / Note du trader / Traders would only ever filter it to
+  // zero results — omitted rather than shown as dead controls (verified
+  // live: checking a Note du pari bin on Manuel dropped it to 0 trades).
+  function compareLineFiltersHtml(groupKey, groupLabel, cfg, includeTraderDims, weekOptions) {
+    function chipRow(dim, options, isActive) {
+      return '<div class="compare-chip-row">' + options.map(function (opt) {
+        return '<button type="button" class="compare-chip' + (isActive(opt) ? ' active' : '') + '" data-compare-group="' + groupKey + '" data-compare-dim="' + dim + '" data-compare-val="' + esc(String(opt.val)) + '">' + esc(opt.label) + '</button>';
+      }).join("") + '</div>';
+    }
+    var fieldsHtml =
+      '<div class="compare-field"><span class="compare-field-label">Confiance</span>' +
+        chipRow("tiers", CONFIDENCE_TIERS.map(function (t) { return { val: t, label: t }; }), function (opt) { return cfg.tiers.indexOf(opt.val) !== -1; }) +
+      '</div>';
+    if (includeTraderDims) {
+      fieldsHtml += '<div class="compare-field"><span class="compare-field-label">Note du pari</span>' +
+        chipRow("noteBins", NOTE_WR_BINS.map(function (b) { return { val: b[0], label: b[0] + "–" + b[1] }; }), function (opt) { return cfg.noteBins.indexOf(opt.val) !== -1; }) +
+      '</div>';
+      fieldsHtml += '<div class="compare-field"><span class="compare-field-label">Note du trader</span>' +
+        chipRow("traderWeightBrackets", TRADER_TABLE_WEIGHT_BRACKETS.map(function (b) { return { val: b.key, label: b.label }; }), function (opt) { return cfg.traderWeightBrackets.indexOf(opt.val) !== -1; }) +
+      '</div>';
+      var traderCount = cfg.traders.length;
+      var traderListHtml = TRADERS_BY_WEIGHT.map(function (t) {
+        var checked = cfg.traders.indexOf(t.name) !== -1;
+        return '<label><input type="checkbox" data-trader="' + esc(t.name) + '"' + (checked ? ' checked' : '') + ' /> ' + esc(t.name) + '</label>';
+      }).join("");
+      fieldsHtml += '<div class="compare-field"><span class="compare-field-label">Traders' + (traderCount ? ' <span class="pnl-chart-trader-filter-count">' + traderCount + '</span>' : '') + '</span>' +
+        '<div class="compare-trader-list">' + traderListHtml + '</div></div>';
+    }
+    var periodOptions = [{ val: "", label: "Tout" }].concat(weekOptions.map(function (w) { return { val: w.idx, label: "≥ S" + w.idx }; }));
+    fieldsHtml += '<div class="compare-field"><span class="compare-field-label">Période</span>' +
+      chipRow("sinceWeek", periodOptions, function (opt) { return opt.val === "" ? cfg.sinceWeek == null : cfg.sinceWeek === opt.val; }) +
+    '</div>';
+    return '<div class="compare-col"><div class="compare-col-title">' + esc(groupLabel) + '</div>' + fieldsHtml + '</div>';
+  }
   function renderSnapPnlChart(cardsList, store) {
     var el = store.els.pnlChart;
     if (!el) return;
@@ -7745,6 +7899,52 @@
         seriesByTier[snap.confidence].push({ date: new Date(snap.savedAt), value: cumByTier[snap.confidence], delta: pnl, win: won, note: snap.noteAtSnapshot });
       }
     });
+    // Console avancée (on request): 2 lignes fixes, manuel et auto, chacune
+    // avec son propre jeu de filtres multi-select — this supersedes the
+    // simple Confiance/Note/Période/Traders row above rather than stacking
+    // with it (both would otherwise silently AND together into an
+    // impossible-to-reason-about combination), so it's built from
+    // decidedAll filtered by ONLY Cote (still genuinely global) instead of
+    // `decided`.
+    var GROUPS_META = [
+      { key: "manual", color: "#f472b6", label: "Manuel" },
+      { key: "auto", color: "#38bdf8", label: "Auto" }
+    ];
+    var seriesByGroup = null, groupStats = null, weekOptions = null;
+    if (st.pnlChartConsoleOpen) {
+      weekOptions = computeWeekFloorOptions(decidedAll);
+      var decidedForCompare = decidedAll.filter(function (s) {
+        return !st.pnlChartOddsFilter || snapMatchesDistCell(s, st.pnlChartOddsFilter, null);
+      }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+      seriesByGroup = { manual: [], auto: [] };
+      groupStats = {
+        manual: { count: 0, pnl: 0, stakeSum: 0 },
+        auto: { count: 0, pnl: 0, stakeSum: 0 }
+      };
+      var cumByGroup = { manual: 0, auto: 0 };
+      var autoCfg = st.pnlChartCompareFilters.auto;
+      var autoCoversEveryone = autoCfg.traders.length > 0 && TRADERS_BY_WEIGHT.every(function (t) { return autoCfg.traders.indexOf(t.name) !== -1; });
+      decidedForCompare.forEach(function (snap) {
+        var groupKey = snap.isManual ? "manual" : "auto";
+        var cfg = st.pnlChartCompareFilters[groupKey];
+        if (!snapMatchesCompareFilters(snap, cfg, weekOptions)) return;
+        var gStake = chartStakeFor(snap);
+        // Same leader-vs-trader-own pricing rule as the simple Traders
+        // filter above (traderFilterCoversEveryone) — a manual bet has no
+        // trader to price against, so it's always leader-priced.
+        var gPnl = (groupKey === "auto" && autoCfg.traders.length && !autoCoversEveryone)
+          ? traderFilteredFlatPnl(snap, autoCfg.traders, gStake)
+          : hypotheticalFlatPnl(snap, gStake);
+        if (gPnl == null) return;
+        cumByGroup[groupKey] += gPnl;
+        groupStats[groupKey].count++;
+        groupStats[groupKey].pnl += gPnl;
+        groupStats[groupKey].stakeSum += gStake;
+        seriesByGroup[groupKey].push({ date: new Date(snap.savedAt), value: cumByGroup[groupKey], delta: gPnl, win: gPnl >= 0, note: snap.noteAtSnapshot });
+      });
+      groupStats.manual.roi = groupStats.manual.stakeSum > 0 ? (groupStats.manual.pnl / groupStats.manual.stakeSum * 100) : null;
+      groupStats.auto.roi = groupStats.auto.stakeSum > 0 ? (groupStats.auto.pnl / groupStats.auto.stakeSum * 100) : null;
+    }
     var filterNote = st.tierCardFilter.length ? ' — <b>' + esc(st.tierCardFilter.join(", ")) + '</b> uniquement' : '';
     var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
       var sel = st.pnlChartOddsFilter && st.pnlChartOddsFilter[0] === b[0] && st.pnlChartOddsFilter[1] === b[1] ? ' selected' : '';
@@ -7794,13 +7994,27 @@
     '</div>';
     var controlsHtml = '<div class="pnl-chart-filters">' +
       '<label>Cote <select id="' + idp + 'pnlChartOddsSelect">' + oddsOptionsHtml + '</select></label>' +
-      '<label>Confiance <select id="' + idp + 'pnlChartTierSelect"' + (st.pnlChartSplitByTier ? " disabled" : "") + '>' + tierOptionsHtml + '</select></label>' +
-      '<label>Note <select id="' + idp + 'pnlChartNoteSelect">' + noteOptionsHtml + '</select></label>' +
-      '<label>Période <select id="' + idp + 'pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' +
+      '<label>Confiance <select id="' + idp + 'pnlChartTierSelect"' + (st.pnlChartSplitByTier || st.pnlChartConsoleOpen ? " disabled" : "") + '>' + tierOptionsHtml + '</select></label>' +
+      '<label>Note <select id="' + idp + 'pnlChartNoteSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + noteOptionsHtml + '</select></label>' +
+      '<label>Période <select id="' + idp + 'pnlChartTimeSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + timeOptionsHtml + '</select></label>' +
       traderFilterHtml +
-      '<label class="pnl-chart-split-toggle" title="Une courbe cumulée par palier de confiance (S/A/B) au lieu d\'une seule courbe globale"><input type="checkbox" id="' + idp + 'pnlChartSplitTier"' + (st.pnlChartSplitByTier ? " checked" : "") + ' /> Diviser par confiance</label>' +
+      '<label class="pnl-chart-split-toggle" title="Une courbe cumulée par palier de confiance (S/A/B) au lieu d\'une seule courbe globale"><input type="checkbox" id="' + idp + 'pnlChartSplitTier"' + (st.pnlChartSplitByTier ? " checked" : "") + (st.pnlChartConsoleOpen ? " disabled" : "") + ' /> Diviser par confiance</label>' +
       (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
+    // Console avancée (on request): big button above everything else —
+    // opening it disables the simple Confiance/Note/Période/Diviser
+    // controls above (still visible so their current value isn't hidden,
+    // same convention as Diviser-par-confiance disabling Confiance) rather
+    // than hiding them, since the console's own per-ligne filters take
+    // over computing the curve while it's open.
+    var consoleToggleHtml = '<button type="button" id="' + idp + 'pnlChartConsoleBtn" class="pnl-chart-console-btn' + (st.pnlChartConsoleOpen ? ' active' : '') + '">⚙ Console avancée — Manuel vs Auto, filtres détaillés' + (st.pnlChartConsoleOpen ? ' · fermer ▴' : ' ▾') + '</button>';
+    var consolePanelHtml = "";
+    if (st.pnlChartConsoleOpen) {
+      consolePanelHtml = '<div class="compare-console">' +
+        compareLineFiltersHtml("manual", "✍️ Manuel", st.pnlChartCompareFilters.manual, false, weekOptions) +
+        compareLineFiltersHtml("auto", "🎯 Auto", st.pnlChartCompareFilters.auto, true, weekOptions) +
+      '</div>';
+    }
     // Realized PnL / avg ROI for the exact subset of filters above —
     // pnl/stakeSum straight off the loop that already built `series` (same
     // formula aggregateFlatPnl uses: pnl / stakeSum * 100), rather than a
@@ -7810,7 +8024,7 @@
     var statsCount = series.length;
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsStakeSum > 0 ? (cum / statsStakeSum * 100) : null;
-    var monthlyMini = st.pnlChartSplitByTier ? "" : monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
+    var monthlyMini = (st.pnlChartSplitByTier || st.pnlChartConsoleOpen) ? "" : monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
     // On request, after "Trades" here not matching Snapshots in Le tableau
     // des traders for the same trader filter: this count (like PnL/ROI next
     // to it) excludes pending snapshots and, when Traders is active, ones
@@ -7820,23 +8034,46 @@
     var statsCountTitle = (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone)
       ? "Paris décidés où le(s) trader(s) coché(s) ont une position sur un seul camp (hors paris en attente et hors couverture des deux camps) — le même ensemble que « PNL pour 1000€/trade » et « ROI/trade 1000$ » dans Le tableau des traders, qui peut être plus petit que sa colonne Snapshots."
       : (st.pnlChartTraderFilter.length ? "Paris décidés (hors paris en attente), tous traders suivis cochés — prix leader du marché, identique à « Suivi des whales » dans Manuel vs suivi auto, hors les paris manuels." : "Paris décidés (hors paris en attente) sur les filtres actuels.");
-    var statsHtml = '<div class="pnl-chart-stats">' +
-      monthlyMini +
-      '<div class="pnl-chart-stat" title="' + esc(statsCountTitle) + '"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
-      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
-      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
-    '</div>';
+    // Console avancée : deux tuiles de stats (une par ligne) à la place des
+    // trois chips normales — chacune calculée sur sa propre config, donc
+    // avec ses propres Trades/PnL/ROI, plutôt qu'un seul total qui
+    // mélangerait les deux lignes.
+    var statsHtml;
+    if (st.pnlChartConsoleOpen && groupStats) {
+      statsHtml = '<div class="pnl-chart-stats compare-stats">' + GROUPS_META.map(function (g) {
+        var gs = groupStats[g.key];
+        return '<div class="pnl-chart-stat compare-stat" style="border-color:' + g.color + '"><span class="pnl-chart-stat-label" style="color:' + g.color + '">' + esc(g.label) + '</span>' +
+          '<span class="pnl-chart-stat-value">' + gs.count + ' <span class="compare-stat-unit">trades</span></span>' +
+          '<span class="pnl-chart-stat-value ' + (gs.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(gs.pnl)) + '</span>' +
+          '<span class="pnl-chart-stat-value ' + (gs.roi == null ? "" : (gs.roi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (gs.roi == null ? "—" : (gs.roi >= 0 ? "+" : "") + gs.roi.toFixed(0) + "%") + ' <span class="compare-stat-unit">ROI</span></span>' +
+        '</div>';
+      }).join("") + '</div>';
+    } else {
+      statsHtml = '<div class="pnl-chart-stats">' +
+        monthlyMini +
+        '<div class="pnl-chart-stat" title="' + esc(statsCountTitle) + '"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
+        '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
+        '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
+      '</div>';
+    }
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     var boxId = store.name + "-snapPnlChartBox";
-    if (series.length < 2) {
+    var compareTotalPts = seriesByGroup ? (seriesByGroup.manual.length + seriesByGroup.auto.length) : 0;
+    if (st.pnlChartConsoleOpen ? compareTotalPts < 1 : series.length < 2) {
       el.innerHTML = '<div class="chart-box" id="' + boxId + '">' +
-        headerHtml + controlsHtml +
+        headerHtml + consoleToggleHtml + controlsHtml + consolePanelHtml +
         '<div class="empty-note" style="padding:14px 0;">Pas assez de snapshots décidés pour ces critères.</div></div>';
       wirePnlChartFilterControls(cardsList, store);
+      wireCompareConsole(el, cardsList, store);
       return;
     }
     var chartHtml, hintHtml, weeklyHtml, drawdownBlockHtml;
-    if (st.pnlChartSplitByTier) {
+    if (st.pnlChartConsoleOpen) {
+      chartHtml = buildHistoryChartByGroupSvg(seriesByGroup, GROUPS_META);
+      hintHtml = "";
+      weeklyHtml = "";
+      drawdownBlockHtml = "";
+    } else if (st.pnlChartSplitByTier) {
       chartHtml = buildHistoryChartByTierSvg(seriesByTier) + tierLegendHtml();
       hintHtml = "";
       // No single point-per-week mapping once split into 4 overlapping
@@ -7856,19 +8093,20 @@
       '</div>';
       drawdownBlockHtml = drawdownHtml(series);
     }
-    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + controlsHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + '</div>';
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + consoleToggleHtml + controlsHtml + consolePanelHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + '</div>';
     wirePnlChartFilterControls(cardsList, store);
+    wireCompareConsole(el, cardsList, store);
     var box = document.getElementById(boxId);
-    // The split-by-tier view has no per-point data-id (4 overlapping lines,
-    // no single "the" snapshot to jump to for a given dot) — wiring click
-    // navigation there would just silently find nothing, so it's skipped
-    // outright rather than calling it to no effect. The tooltip still
-    // works either way — it only needs the data-* attributes stamped on
-    // .chart-pt, same as the single-line chart.
+    // Neither the split-by-tier nor the console avancée view has a single
+    // point-per-week mapping (overlapping lines, no single "the" snapshot
+    // for a given dot) — wiring click navigation there would just silently
+    // find nothing, so it's skipped outright rather than calling it to no
+    // effect. The tooltip still works either way — it only needs the
+    // data-* attributes stamped on .chart-pt, same as the single-line chart.
     if (box) {
       wireHistoryChartTooltip(box);
       wireDrawdownTooltip(box);
-      if (!st.pnlChartSplitByTier) wireSnapPnlChartClicks(box, store);
+      if (!st.pnlChartSplitByTier && !st.pnlChartConsoleOpen) wireSnapPnlChartClicks(box, store);
     }
   }
   // Re-attached on every render (the selects are rebuilt from scratch each
@@ -7935,6 +8173,16 @@
       if (splitTierCheckbox.checked) store.state.pnlChartTierFilter = null;
       renderSnapPnlChart(cardsList, store);
     });
+    var consoleBtn = document.getElementById(idp + "pnlChartConsoleBtn");
+    if (consoleBtn) consoleBtn.addEventListener("click", function () {
+      store.state.pnlChartConsoleOpen = !store.state.pnlChartConsoleOpen;
+      // Same reasoning as Diviser par confiance above — the console's two
+      // lignes and the tier-split's up-to-3 lignes are two different ways
+      // to multi-line this chart; only one can actually be drawn, so
+      // opening one turns the other off instead of silently ignoring it.
+      if (store.state.pnlChartConsoleOpen) store.state.pnlChartSplitByTier = false;
+      renderSnapPnlChart(cardsList, store);
+    });
     // "Et si" stake slider: live-updates its own label while dragging
     // (input) but only rebuilds the chart on release (change) — a full
     // renderSnapPnlChart replaces this very <input>, which would interrupt
@@ -7950,6 +8198,45 @@
         renderSnapPnlChart(cardsList, store);
       });
     }
+  }
+  // Console avancée's own controls — scoped to `el` (this store's stable
+  // pnlChart container, innerHTML fully rebuilt every render) rather than
+  // document-wide, so re-binding on every render never leaks a duplicate
+  // listener onto a stale node the way a document-wide querySelectorAll
+  // would. One generic handler covers every chip (tiers/noteBins/
+  // traderWeightBrackets all toggle a value in/out of their array;
+  // sinceWeek instead SETS a single value, "" meaning null/Tout) since
+  // they all share the same data-compare-group/dim/val markup.
+  function wireCompareConsole(el, cardsList, store) {
+    el.querySelectorAll(".compare-chip[data-compare-group]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var group = btn.getAttribute("data-compare-group");
+        var dim = btn.getAttribute("data-compare-dim");
+        var rawVal = btn.getAttribute("data-compare-val");
+        var cfg = store.state.pnlChartCompareFilters[group];
+        if (dim === "sinceWeek") {
+          cfg.sinceWeek = rawVal === "" ? null : Number(rawVal);
+        } else if (dim === "noteBins") {
+          var numVal = Number(rawVal);
+          var numIdx = cfg.noteBins.indexOf(numVal);
+          if (numIdx === -1) cfg.noteBins.push(numVal); else cfg.noteBins.splice(numIdx, 1);
+        } else {
+          var idx = cfg[dim].indexOf(rawVal);
+          if (idx === -1) cfg[dim].push(rawVal); else cfg[dim].splice(idx, 1);
+        }
+        renderSnapPnlChart(cardsList, store);
+      });
+    });
+    el.querySelectorAll(".compare-trader-list input[type=checkbox]").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        var name = cb.getAttribute("data-trader");
+        var filter = store.state.pnlChartCompareFilters.auto.traders;
+        var idx = filter.indexOf(name);
+        if (cb.checked) { if (idx === -1) filter.push(name); }
+        else if (idx !== -1) { filter.splice(idx, 1); }
+        renderSnapPnlChart(cardsList, store);
+      });
+    });
   }
   // Clicking a point jumps to (and highlights) the matching snapshot card
   // below; clicking that same point again undoes it — removes the
@@ -10159,6 +10446,56 @@
       });
       var last = linePts[linePts.length - 1];
       endLabelsHtml += '<text x="' + (last.x + 4).toFixed(2) + '" y="' + (last.y - 6).toFixed(2) + '" font-size="9.5" font-weight="700" fill="' + color + '">' + esc(t) + '</text>';
+    });
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+        zeroLine + linesHtml + yLabels + xLabels + pointsHtml + endLabelsHtml +
+      '</svg>';
+  }
+  // Same shape as buildHistoryChartByTierSvg just above, generalized to an
+  // explicit {key,color,label} list instead of the hardcoded confidence
+  // tiers — used by the PnL chart's console avancée (Manuel/Auto compare),
+  // a separate function rather than reworking the tier one so neither risks
+  // the other.
+  function buildHistoryChartByGroupSvg(seriesByGroup, groups) {
+    var active = groups.filter(function (g) { return seriesByGroup[g.key] && seriesByGroup[g.key].length; });
+    if (!active.length) return "";
+    var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var allPts = [];
+    active.forEach(function (g) { allPts = allPts.concat(seriesByGroup[g.key]); });
+    var dates = allPts.map(function (p) { return p.date.getTime(); });
+    var minDate = Math.min.apply(null, dates), maxDate = Math.max.apply(null, dates);
+    var values = allPts.map(function (p) { return p.value; }).concat([0]);
+    var minV = Math.min.apply(null, values), maxV = Math.max.apply(null, values);
+    if (minV === maxV) { minV -= 1; maxV += 1; }
+    var vRange = maxV - minV;
+    function x(t) { return padL + (maxDate === minDate ? innerW / 2 : (t - minDate) / (maxDate - minDate) * innerW); }
+    function y(v) { return padT + innerH - (v - minV) / vRange * innerH; }
+    var zeroY = y(0);
+    var zeroLine = (minV < 0 && maxV > 0)
+      ? '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--text-dim)" stroke-dasharray="3,3" stroke-width="1"/>'
+      : "";
+    var xLabelCount = 6;
+    var xLabels = "";
+    for (var li = 0; li < xLabelCount; li++) {
+      var t = minDate + (maxDate - minDate) * (li / (xLabelCount - 1 || 1));
+      xLabels += '<text x="' + x(t).toFixed(2) + '" y="' + (H - 6) + '" font-size="10" fill="var(--text-dim)" text-anchor="middle">' + fmtDateShort(new Date(t)) + '</text>';
+    }
+    var yLabels =
+      '<text x="' + (padL - 8) + '" y="' + (y(maxV) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(maxV) + '</text>' +
+      '<text x="' + (padL - 8) + '" y="' + (y(minV) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(minV) + '</text>';
+    var linesHtml = "", pointsHtml = "", endLabelsHtml = "";
+    active.forEach(function (g) {
+      var color = g.color;
+      var pts = seriesByGroup[g.key];
+      var linePts = pts.map(function (p) { return { x: x(p.date.getTime()), y: y(p.value) }; });
+      if (linePts.length > 1) linesHtml += '<path d="' + smoothPathD(linePts) + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round"/>';
+      pts.forEach(function (p, i) {
+        pointsHtml += '<circle class="chart-pt" cx="' + linePts[i].x.toFixed(2) + '" cy="' + linePts[i].y.toFixed(2) + '" r="2.6" fill="' + color + '" stroke="var(--panel)" stroke-width="1.5" ' +
+          'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '" data-delta="' + esc(fmtUSDSigned(p.delta)) + '" data-win="' + (p.win ? "1" : "0") + '"' + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + '></circle>';
+      });
+      var last = linePts[linePts.length - 1];
+      endLabelsHtml += '<text x="' + (last.x + 4).toFixed(2) + '" y="' + (last.y - 6).toFixed(2) + '" font-size="9.5" font-weight="700" fill="' + color + '">' + esc(g.label) + '</text>';
     });
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         zeroLine + linesHtml + yLabels + xLabels + pointsHtml + endLabelsHtml +
