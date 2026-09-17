@@ -1923,18 +1923,24 @@
     white-space: nowrap; text-align: center;
   }
   .pnl-chart-stat-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  /* Manuel/Auto breakdown, console avancée only — same colors as Manuel vs
+  /* Manuel/Auto breakdown — one bigger 3-tile row per console column, sat
+     above that column's own fields (on request, after a first pass put both
+     shared and small above the whole console). Same colors as Manuel vs
      suivi auto (#f472b6/#38bdf8) so the two views read as the same split.
-     flex-basis:100% forces its own row under pnl-chart-stats instead of
-     fighting it for space on the header's flex line. */
-  .pnl-chart-substats { display: flex; gap: 8px; flex-basis: 100%; flex-wrap: wrap; }
-  .pnl-chart-substat {
-    font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 3px;
-    padding: 3px 8px; border-radius: var(--radius-sm);
-    border-left: 2px solid var(--sub-color);
-    background: color-mix(in srgb, var(--sub-color) 8%, var(--panel));
+     No explicit color on compare-col-stat-value (same convention as
+     pnl-chart-stat-value) so pnl-pos/pnl-neg's color always wins instead of
+     fighting a same-specificity, later-declared rule here. */
+  .compare-col-stats { display: flex; gap: 7px; }
+  .compare-col-stat {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 9px 4px 10px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--sub-color) 18%, var(--panel)), color-mix(in srgb, var(--sub-color) 6%, var(--panel)));
+    border: 1px solid color-mix(in srgb, var(--sub-color) 45%, var(--panel-border));
+    border-top: 3px solid var(--sub-color);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
   }
-  .pnl-chart-substat b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .compare-col-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-weight: 600; }
+  .compare-col-stat-value { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; text-align: center; }
   /* Console avancée — gros bouton (on request), the console panel itself,
      and its per-ligne compare-stat tiles. */
   .pnl-chart-console-btn {
@@ -1976,6 +1982,10 @@
   .compare-trader-list input[type="checkbox"] { accent-color: var(--accent); margin: 0; }
   @media (max-width: 700px) {
     .compare-console { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 420px) {
+    .compare-col-stat-value { font-size: 17px; }
+    .compare-col-stat { padding: 7px 3px 8px; }
   }
   /* "Paris par semaine", embedded directly under the evolution chart (on
      request — used to live only behind its own collapsible toggle further
@@ -7774,13 +7784,13 @@
   // Note du pari / Note du trader / Traders would only ever filter it to
   // zero results — omitted rather than shown as dead controls (verified
   // live: checking a Note du pari bin on Manuel dropped it to 0 trades).
-  function compareLineFiltersHtml(groupKey, groupLabel, cfg, includeTraderDims, weekOptions) {
+  function compareLineFiltersHtml(groupKey, groupLabel, cfg, includeTraderDims, weekOptions, statsHtml) {
     function chipRow(dim, options, isActive) {
       return '<div class="compare-chip-row">' + options.map(function (opt) {
         return '<button type="button" class="compare-chip' + (isActive(opt) ? ' active' : '') + '" data-compare-group="' + groupKey + '" data-compare-dim="' + dim + '" data-compare-val="' + esc(String(opt.val)) + '">' + esc(opt.label) + '</button>';
       }).join("") + '</div>';
     }
-    var fieldsHtml =
+    var fieldsHtml = statsHtml +
       '<div class="compare-field"><span class="compare-field-label">Confiance</span>' +
         chipRow("tiers", CONFIDENCE_TIERS.map(function (t) { return { val: t, label: t }; }), function (opt) { return cfg.tiers.indexOf(opt.val) !== -1; }) +
       '</div>';
@@ -7958,6 +7968,21 @@
         seriesByTier[snap.confidence].push({ date: new Date(snap.savedAt), value: cumByTier[snap.confidence], delta: pnl, win: won, note: snap.noteAtSnapshot });
       }
     });
+    subStats.manual.roi = subStats.manual.stakeSum > 0 ? (subStats.manual.pnl / subStats.manual.stakeSum * 100) : null;
+    subStats.auto.roi = subStats.auto.stakeSum > 0 ? (subStats.auto.pnl / subStats.auto.stakeSum * 100) : null;
+    // Rendered inside each console column, above its own filter fields (on
+    // request — was a single small shared row above the whole console, now
+    // one bigger block per ligne so "17 trades / +1768,92$ / +10%" reads as
+    // Manuel's own headline number, not a caption for the console overall).
+    function compareColStatsHtml(color, s) {
+      var pnlCls = !s.count ? "" : (s.pnl >= 0 ? "pnl-pos" : "pnl-neg");
+      var roiTxt = s.roi == null ? "—" : (s.roi >= 0 ? "+" : "") + s.roi.toFixed(0) + "%";
+      return '<div class="compare-col-stats" style="--sub-color:' + color + '">' +
+        '<div class="compare-col-stat"><span class="compare-col-stat-label">Trades</span><span class="compare-col-stat-value">' + s.count + '</span></div>' +
+        '<div class="compare-col-stat"><span class="compare-col-stat-label">PnL</span><span class="compare-col-stat-value ' + pnlCls + '">' + (s.count ? esc(fmtUSDSigned(s.pnl)) : "—") + '</span></div>' +
+        '<div class="compare-col-stat"><span class="compare-col-stat-label">ROI</span><span class="compare-col-stat-value ' + pnlCls + '">' + roiTxt + '</span></div>' +
+      '</div>';
+    }
     var filterNote = st.pnlChartConsoleOpen ? ' — <b>console avancée</b>' : (st.tierCardFilter.length ? ' — <b>' + esc(st.tierCardFilter.join(", ")) + '</b> uniquement' : '');
     var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
       var sel = st.pnlChartOddsFilter && st.pnlChartOddsFilter[0] === b[0] && st.pnlChartOddsFilter[1] === b[1] ? ' selected' : '';
@@ -8024,8 +8049,8 @@
     var consolePanelHtml = "";
     if (st.pnlChartConsoleOpen) {
       consolePanelHtml = '<div class="compare-console">' +
-        compareLineFiltersHtml("manual", "✍️ Manuel", st.pnlChartCompareFilters.manual, false, weekOptions) +
-        compareLineFiltersHtml("auto", "🎯 Auto", st.pnlChartCompareFilters.auto, true, weekOptions) +
+        compareLineFiltersHtml("manual", "✍️ Manuel", st.pnlChartCompareFilters.manual, false, weekOptions, compareColStatsHtml("#f472b6", subStats.manual)) +
+        compareLineFiltersHtml("auto", "🎯 Auto", st.pnlChartCompareFilters.auto, true, weekOptions, compareColStatsHtml("#38bdf8", subStats.auto)) +
       '</div>';
     }
     // Realized PnL / avg ROI for the exact subset of filters above —
@@ -8037,16 +8062,6 @@
     var statsCount = series.length;
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsStakeSum > 0 ? (cum / statsStakeSum * 100) : null;
-    subStats.manual.roi = subStats.manual.stakeSum > 0 ? (subStats.manual.pnl / subStats.manual.stakeSum * 100) : null;
-    subStats.auto.roi = subStats.auto.stakeSum > 0 ? (subStats.auto.pnl / subStats.auto.stakeSum * 100) : null;
-    function subStatPillHtml(label, color, s) {
-      var pnlCls = !s.count ? "" : (s.pnl >= 0 ? "pnl-pos" : "pnl-neg");
-      var roiTxt = s.roi == null ? "—" : (s.roi >= 0 ? "+" : "") + s.roi.toFixed(0) + "%";
-      return '<span class="pnl-chart-substat" style="--sub-color:' + color + '">' + label + ' <b>' + s.count + '</b> · <span class="' + pnlCls + '">' + (s.count ? esc(fmtUSDSigned(s.pnl)) : "—") + '</span> · <span class="' + pnlCls + '">' + roiTxt + '</span></span>';
-    }
-    var subStatsHtml = st.pnlChartConsoleOpen
-      ? '<div class="pnl-chart-substats">' + subStatPillHtml("✍️ Manuel", "#f472b6", subStats.manual) + subStatPillHtml("🎯 Auto", "#38bdf8", subStats.auto) + '</div>'
-      : "";
     var monthlyMini = st.pnlChartSplitByTier ? "" : monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
     // On request, after "Trades" here not matching Snapshots in Le tableau
     // des traders for the same trader filter: this count (like PnL/ROI next
@@ -8065,7 +8080,7 @@
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
     '</div>';
-    var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + subStatsHtml + '</div>';
+    var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     var boxId = store.name + "-snapPnlChartBox";
     if (series.length < 2) {
       el.innerHTML = '<div class="chart-box" id="' + boxId + '">' +
