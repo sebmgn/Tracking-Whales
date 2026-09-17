@@ -7695,6 +7695,17 @@
     var cumByTier = {};
     var seriesByTier = {};
     CONFIDENCE_TIERS.forEach(function (t) { cumByTier[t] = 0; seriesByTier[t] = []; });
+    // "Tout sélectionner" on request: checking every tracked trader now
+    // reads exactly like Manuel vs suivi auto's "Suivi des whales" (leader
+    // price), not a trader-averaged price — verified by hand that the two
+    // are otherwise the SAME 128 trades, priced differently (leader-side
+    // 8 554,58 $ vs trader-averaged 13 526,03 $, a ~4 971 $ gap coming
+    // entirely from the formula, not from a different trade set). The
+    // averaged trader-own price is structurally never going to match the
+    // leader price at full roster anyway — the leader price blends in
+    // whatever stake untracked (non-roster) participants added to that
+    // side, which a trader-only average can never see.
+    var traderFilterCoversEveryone = st.pnlChartTraderFilter.length > 0 && TRADERS_BY_WEIGHT.every(function (t) { return st.pnlChartTraderFilter.indexOf(t.name) !== -1; });
     // Stake actually counted into the ROI denominator below — only the
     // snapshots that end up with a non-null pnl (same guard as
     // aggregateFlatPnl), so a trader-filtered snapshot where none of the
@@ -7702,14 +7713,14 @@
     var statsStakeSum = 0;
     decided.forEach(function (snap) {
       var stake = chartStakeFor(snap);
-      // Priced at the CHECKED TRADERS' own side when the Traders filter is
-      // active, not the snapshot's overall leader/consensus side — on
-      // request, after "VeryLucky888 only" showed a different ROI here than
-      // their own ROI/trade 1000$ in Le tableau des traders. A trader who
-      // goes against the consensus needs their OWN side priced, not the
-      // leader's, or a contrarian pick reads as a leader-side loss even
-      // when it actually won.
-      var pnl = st.pnlChartTraderFilter.length ? traderFilteredFlatPnl(snap, st.pnlChartTraderFilter, stake) : hypotheticalFlatPnl(snap, stake);
+      // Priced at the CHECKED TRADERS' own side for a partial selection —
+      // on request, after "VeryLucky888 only" showed a different ROI here
+      // than their own ROI/trade 1000$ in Le tableau des traders. A trader
+      // who goes against the consensus needs their OWN side priced, not
+      // the leader's, or a contrarian pick reads as a leader-side loss even
+      // when it actually won. Selecting everyone falls back to the plain
+      // leader price instead (see traderFilterCoversEveryone above).
+      var pnl = (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone) ? traderFilteredFlatPnl(snap, st.pnlChartTraderFilter, stake) : hypotheticalFlatPnl(snap, stake);
       if (pnl == null) return;
       cum += pnl;
       statsStakeSum += stake;
@@ -7806,9 +7817,9 @@
     // where the checked trader(s) are hedged (both sides) — same set
     // Le tableau des traders' own PNL pour 1000€/trade and ROI/trade 1000$
     // columns are built from, just not its broader Snapshots column.
-    var statsCountTitle = st.pnlChartTraderFilter.length
+    var statsCountTitle = (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone)
       ? "Paris décidés où le(s) trader(s) coché(s) ont une position sur un seul camp (hors paris en attente et hors couverture des deux camps) — le même ensemble que « PNL pour 1000€/trade » et « ROI/trade 1000$ » dans Le tableau des traders, qui peut être plus petit que sa colonne Snapshots."
-      : "Paris décidés (hors paris en attente) sur les filtres actuels.";
+      : (st.pnlChartTraderFilter.length ? "Paris décidés (hors paris en attente), tous traders suivis cochés — prix leader du marché, identique à « Suivi des whales » dans Manuel vs suivi auto, hors les paris manuels." : "Paris décidés (hors paris en attente) sur les filtres actuels.");
     var statsHtml = '<div class="pnl-chart-stats">' +
       monthlyMini +
       '<div class="pnl-chart-stat" title="' + esc(statsCountTitle) + '"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
