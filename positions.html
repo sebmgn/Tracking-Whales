@@ -8169,6 +8169,14 @@
       var st = byTrader[n];
       var decided = st.win + st.loss + st.gainNuance + st.perteNuance;
       st.decided = decided;
+      // "Snapshots" (Le tableau des traders), on request: a hedged pari (both
+      // camps at once — gain_nuance/perte_nuance) no longer counts here. It
+      // never counted toward hypCount either (traderHypFlatPnl needs exactly
+      // one side), so this is what made "Snapshots" read higher than "PNL
+      // pour 1000€/trade"/"ROI/trade 1000$"'s own trade count right next to
+      // it — entries/decided (the expandable detail row, Note×ROI's "décidé"
+      // count) still include them, only this displayed total drops them.
+      st.total = st.total - st.gainNuance - st.perteNuance;
       st.roi = aggregateFlatPnl(st.items, store).roi;
       st.realRoi = st.realStakeSum > 0 ? (st.pnl / st.realStakeSum * 100) : null;
       // Always a true $1000 flat stake regardless of store (traderHypFlatPnl
@@ -9664,16 +9672,20 @@
   // record — recomputed fresh here rather than cached, same as every
   // other per-render aggregate on this page (loadRaw() itself is already
   // called every refresh cycle for the actual All Time tab). Counts
-  // DECIDED snapshots a trader appears in on EITHER side, un-windowed and
-  // including traders no longer in TRADERS, unlike WEIGHT_BY_NAME-keyed
-  // aggregates elsewhere — this one has to reach removed traders too.
+  // DECIDED, non-hedged snapshots a trader appears in on EITHER side (same
+  // "Snapshots" convention as computeTraderStatsRows, on request — a
+  // gain_nuance/perte_nuance, both camps at once, isn't a clean trade),
+  // un-windowed and including traders no longer in TRADERS, unlike
+  // WEIGHT_BY_NAME-keyed aggregates elsewhere — this one has to reach
+  // removed traders too.
   function computeTraderHistoryTradeCounts() {
     var list = TEST_STORE.loadRaw().filter(function (s) { return !s.allTimeDeletedAt; });
     var counts = {};
     list.forEach(function (snap) {
       if (!snap.winningSide) return;
       (snap.traderNames || []).forEach(function (name) {
-        if (classifyTraderInSnapshot(snap, name) === "pending") return;
+        var cls = classifyTraderInSnapshot(snap, name);
+        if (cls === "pending" || cls === "gain_nuance" || cls === "perte_nuance") return;
         counts[name] = (counts[name] || 0) + 1;
       });
     });
