@@ -978,8 +978,8 @@
      wide text pill every other .vt-filters button uses. Count sits as a
      small badge overlapping the bottom-right corner, same idea as a
      notification badge. */
-  #vtLeagueFilters, #tradesProfilesLeagueFilters { gap: 10px; }
-  #vtLeagueFilters .vt-league-btn, #tradesProfilesLeagueFilters .vt-league-btn {
+  #vtLeagueFilters, #tradesProfilesLeagueFilters, #byMatchLeagueFilters { gap: 10px; }
+  #vtLeagueFilters .vt-league-btn, #tradesProfilesLeagueFilters .vt-league-btn, #byMatchLeagueFilters .vt-league-btn {
     position: relative;
     width: 42px; height: 42px;
     border-radius: 50%;
@@ -989,8 +989,8 @@
     padding: 0;
     transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
   }
-  #vtLeagueFilters .vt-league-btn:hover, #tradesProfilesLeagueFilters .vt-league-btn:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); transform: translateY(-2px); }
-  #vtLeagueFilters .vt-league-btn.active, #tradesProfilesLeagueFilters .vt-league-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+  #vtLeagueFilters .vt-league-btn:hover, #tradesProfilesLeagueFilters .vt-league-btn:hover, #byMatchLeagueFilters .vt-league-btn:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); transform: translateY(-2px); }
+  #vtLeagueFilters .vt-league-btn.active, #tradesProfilesLeagueFilters .vt-league-btn.active, #byMatchLeagueFilters .vt-league-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
   .vt-league-flag { font-size: 19px; line-height: 1; }
   .vt-league-count {
     position: absolute; bottom: -5px; right: -5px;
@@ -2494,6 +2494,7 @@
       <button data-sport="football" class="active" type="button">⚽ Football</button>
       <button data-sport="other" type="button">Autres</button>
     </div>
+    <div class="vt-filters" id="byMatchLeagueFilters" style="display:none;"></div>
     <div id="byMatchContent">
       <div class="loading-state">Chargement…</div>
     </div>
@@ -3118,6 +3119,7 @@
   var byMatchTraderFilter = false; // "Par match" — only show trades where swisstony or RN1 has a position
   var byMatchHighlighted = {}; // "Par match" — trader name -> bool, toggled by clicking their name in a trade row
   var byMatchSportFilter = "football"; // "all" | "football" | "other" — same convention/default as Value Trades' own sportFilter
+  var byMatchLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForUnit/renderByMatchLeagueFilters
   // Every bit of mutable UI state that used to be its own bare module-level
   // var (one collapsed-flag/filter/sort per concept) now lives per-store
   // instead, so Mes Snapshots and Mes Positions each keep their own filters/
@@ -4598,11 +4600,18 @@
     var countEl = document.getElementById("byMatchCount");
     if (!container) return;
     var allGroups = computeMatchGroups();
+    renderByMatchLeagueFilters(allGroups);
     var sportFiltered = byMatchSportFilter === "all" ? allGroups : allGroups.filter(function (g) {
       var primary = g.primaryUnit.members[0];
       var football = isFootball(primary.question, primary.slug);
       return byMatchSportFilter === "football" ? football : !football;
     });
+    if (byMatchLeagueFilter) {
+      sportFiltered = sportFiltered.filter(function (g) {
+        var info = leagueInfoForUnit(g.primaryUnit);
+        return !!info && info.key === byMatchLeagueFilter;
+      });
+    }
     var groups = sportFiltered.slice(0, BY_MATCH_MAX_ROWS);
     if (countEl) countEl.textContent = sportFiltered.length > groups.length ? (groups.length + " / " + sportFiltered.length) : String(sportFiltered.length);
     if (!groups.length) {
@@ -4633,6 +4642,46 @@
         '</summary>' +
         '<div class="match-detail">' + renderMatchDetail(g) + '</div>' +
       '</details>';
+    }).join("");
+  }
+  // Same flag-only round-button row as Value Trades/Trades par profils (see
+  // renderVtLeagueFilters/renderTradesProfilesLeagueFilters) — on request,
+  // for filtering "Matchs" by championship too. Takes the pre-sport-filter
+  // allGroups (not `groups`/`sportFiltered` above) so every league button
+  // always shows its true total count, independent of whichever league (or
+  // sport) happens to be selected right now — same convention as the other
+  // two. Hidden under "Autres" since every LEAGUE_INFO entry is football.
+  function renderByMatchLeagueFilters(allGroups) {
+    var container = document.getElementById("byMatchLeagueFilters");
+    if (!container) return;
+    if (byMatchSportFilter === "other") {
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+    var counts = {}, infoByKey = {};
+    allGroups.forEach(function (g) {
+      var primary = g.primaryUnit.members[0];
+      if (!isFootball(primary.question, primary.slug)) return;
+      var info = leagueInfoForUnit(g.primaryUnit);
+      if (!info) return;
+      counts[info.key] = (counts[info.key] || 0) + 1;
+      infoByKey[info.key] = info;
+    });
+    var keys = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+    if (!keys.length) {
+      container.style.display = "none";
+      container.innerHTML = "";
+      return;
+    }
+    container.style.display = "";
+    container.innerHTML = keys.map(function (key) {
+      var info = infoByKey[key];
+      var active = byMatchLeagueFilter === key;
+      return '<button type="button" class="vt-league-btn' + (active ? ' active' : '') + '" data-league="' + esc(key) + '" title="' + esc(info.name) + '">' +
+        '<span class="vt-league-flag">' + esc(info.emoji) + '</span>' +
+        '<span class="vt-league-count">' + counts[key] + '</span>' +
+      '</button>';
     }).join("");
   }
 
@@ -10772,8 +10821,22 @@
       byMatchSportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       byMatchSportFilter = btn.getAttribute("data-sport") || "all";
+      // Same reasoning as Value Trades/Trades par profils' own sport
+      // handlers — a league filter means nothing once you're not looking
+      // at football anymore.
+      if (byMatchSportFilter !== "football") byMatchLeagueFilter = null;
       renderByMatch();
     });
+  });
+  // League buttons are rebuilt from scratch every render (see
+  // renderByMatchLeagueFilters), so this is delegated on the container
+  // instead of re-attached per-button each time.
+  document.getElementById("byMatchLeagueFilters").addEventListener("click", function (e) {
+    var leagueBtn = e.target.closest ? e.target.closest("button[data-league]") : null;
+    if (!leagueBtn) return;
+    var key = leagueBtn.getAttribute("data-league");
+    byMatchLeagueFilter = byMatchLeagueFilter === key ? null : key;
+    renderByMatch();
   });
   var timingFiltersEl = document.getElementById("timingFilters");
   timingFiltersEl.querySelectorAll("button").forEach(function (btn) {
