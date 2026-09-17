@@ -6280,36 +6280,40 @@
   // Per-trader verdict for one snapshot: "win"/"loss" if they were only on
   // one side, "gain_nuance"/"perte_nuance" if they hedged both sides and the
   // net PNL comes out positive or negative, "pending" if not decided yet.
-  // What this trader's own pick would have returned at a flat $1000 stake,
-  // isolating "is the pick good" from "how big did they actually bet" — a
-  // trader whose real PNL is high mostly because they staked huge sums can
-  // look very different here. Uses the trader's OWN avgPrice (not the
-  // snapshot's blended leaderPriceAtSnapshot), stake-weighted if they have
-  // more than one entry on the same side. Returns null for a hedged trader
-  // (present on both sides of the same snapshot) rather than guessing how
-  // to split a single flat stake between two opposing bets.
+  // What this trader's own PICK would have returned at a flat $1000 stake —
+  // isolating "did they call the right side" from both "how big did they
+  // actually bet" AND "did they happen to get in at a good price" (on
+  // request: was priced at the trader's own avgPrice before, which let a
+  // trader who simply entered early/cheap outscore one who picked the exact
+  // same side later at a worse price — not a measure of picking skill).
+  // Priced uniformly at snapLeaderPrice — the value trade's own live price
+  // at snapshot time (see leaderPriceAtSnapshot) — so every trader is
+  // artificially quoted the SAME cote for a given snapshot regardless of
+  // where they personally got in; only which SIDE they were on (win or
+  // lose) still comes from their own position. Returns null for a hedged
+  // trader (present on both sides of the same snapshot) rather than
+  // guessing how to split a single flat stake between two opposing bets.
   function traderHypFlatPnl(snap, traderName, flatStake) {
     if (!snap.winningSide) return null;
-    var onSides = [];
+    var onSideNames = [];
     (snap.sides || []).forEach(function (side) {
-      var totalStake = 0, totalShares = 0;
-      side.traders.forEach(function (t) {
-        if (t.trader !== traderName || !(t.avgPrice > 0)) return;
-        totalStake += t.stake; totalShares += t.stake / t.avgPrice;
-      });
-      if (totalStake > 0) onSides.push({ name: side.name, avgPrice: totalStake / totalShares });
+      var hasStake = side.traders.some(function (t) { return t.trader === traderName && t.stake > 0; });
+      if (hasStake) onSideNames.push(side.name);
     });
-    if (onSides.length !== 1) return null;
-    var side = onSides[0];
-    return side.name === snap.winningSide ? flatStake * (1 / side.avgPrice - 1) : -flatStake;
+    if (onSideNames.length !== 1) return null;
+    var valuePrice = snapLeaderPrice(snap);
+    if (!valuePrice || valuePrice <= 0) return null;
+    return onSideNames[0] === snap.winningSide ? flatStake * (1 / valuePrice - 1) : -flatStake;
   }
-  // Same per-trader simulation as traderHypFlatPnl above, but scoped to a
-  // CHECKED SUBSET of traders (the PnL chart's "Traders" filter) instead of
-  // one name — priced at whichever checked trader(s) are actually present
-  // in this snapshot, not the snapshot's overall leader/consensus side.
-  // Averages when several checked traders are in the same snapshot (so it
-  // isn't counted several times over into one chart point); null if none of
-  // them have a definable position here, same convention as
+  // Same per-trader simulation as traderHypFlatPnl above (same uniform
+  // value-trade price, just each checked trader's own SIDE decides win/
+  // loss), but scoped to a CHECKED SUBSET of traders (the PnL chart's
+  // "Traders" filter) instead of one name — so a snapshot the whole market
+  // leaned one way on can still read as a loss here if the checked trader
+  // was the contrarian, unlike hypotheticalFlatPnl's snapshot-wide leader
+  // side. Averages when several checked traders are in the same snapshot
+  // (so it isn't counted several times over into one chart point); null if
+  // none of them have a definable position here, same convention as
   // traderHypFlatPnl for a single hedged trader.
   function traderFilteredFlatPnl(snap, traderNames, flatStake) {
     var vals = [];
@@ -7865,16 +7869,16 @@
     var cumByTier = {};
     var seriesByTier = {};
     CONFIDENCE_TIERS.forEach(function (t) { cumByTier[t] = 0; seriesByTier[t] = []; });
-    // "Tout sélectionner" on request: checking every tracked trader now
-    // reads exactly like Manuel vs suivi auto's "Suivi des whales" (leader
-    // price), not a trader-averaged price — verified by hand that the two
-    // are otherwise the SAME 128 trades, priced differently (leader-side
-    // 8 554,58 $ vs trader-averaged 13 526,03 $, a ~4 971 $ gap coming
-    // entirely from the formula, not from a different trade set). The
-    // averaged trader-own price is structurally never going to match the
-    // leader price at full roster anyway — the leader price blends in
-    // whatever stake untracked (non-roster) participants added to that
-    // side, which a trader-only average can never see.
+    // "Tout sélectionner" safety net: traderFilteredFlatPnl (below) and
+    // hypotheticalFlatPnl now both price at the same value-trade price
+    // (traderHypFlatPnl was switched off each trader's own avgPrice on
+    // request — see its own comment), so "every tracked trader checked"
+    // and "no trader filter at all" land extremely close already. This
+    // fallback still exists to make them land EXACTLY identical rather
+    // than merely close: the per-trader path can still differ on a
+    // contrarian (a checked trader on the non-leader side of a snapshot
+    // the market overall leaned the other way on), which the leader-only
+    // hypotheticalFlatPnl never sees.
     var traderFilterCoversEveryone = st.pnlChartTraderFilter.length > 0 && TRADERS_BY_WEIGHT.every(function (t) { return st.pnlChartTraderFilter.indexOf(t.name) !== -1; });
     // Console avancée (on request): its own filter set per ligne (manuel/
     // auto), merged back into the SAME single classic curve below — not
@@ -7896,30 +7900,28 @@
         if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
         return snapMatchesCompareFilters(s, s.isManual ? mCfg : aCfg, weekOptions);
       }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
-      // Always leader price here, even with Traders coché côté Auto (on
-      // request, after checking one prolific trader dropped the trade count
-      // by only 2 — they sit in almost every snapshot already — yet jumped
-      // the PnL by thousands: cfg.traders in snapMatchesCompareFilters is a
-      // pure presence/membership test, exactly like Confiance/Note du
-      // pari/Note du trader right next to it in the same console column —
-      // none of THOSE switch the pricing formula, so Traders shouldn't
-      // either. Reprice-at-this-trader's-own-entry is what the simple
-      // Traders popover below (outside the console) is specifically for.
+      // Always the snapshot's leader/value-trade price here, even with
+      // Traders coché côté Auto (on request, after checking one prolific
+      // trader dropped the trade count by only 2 — they sit in almost
+      // every snapshot already — yet moved the PnL by thousands back when
+      // traderHypFlatPnl still used each trader's own entry price):
+      // cfg.traders in snapMatchesCompareFilters is a pure presence/
+      // membership test, exactly like Confiance/Note du pari/Note du
+      // trader right next to it in the same console column — none of
+      // THOSE switch the pricing formula, so Traders shouldn't either. The
+      // simple Traders popover below (outside the console) still differs
+      // from this: it evaluates each checked trader's OWN side (win/lose),
+      // not just the snapshot's overall leader side — see
+      // traderFilteredFlatPnl.
       pricingFn = function (snap, stake) { return hypotheticalFlatPnl(snap, stake); };
     } else {
       decidedForLoop = decided;
       pricingFn = function (snap, stake) {
-        // "Tout sélectionner" on request: checking every tracked trader now
-        // reads exactly like Manuel vs suivi auto's "Suivi des whales"
-        // (leader price), not a trader-averaged price — verified by hand
-        // that the two are otherwise the SAME 128 trades, priced
-        // differently (leader-side 8 554,58 $ vs trader-averaged
-        // 13 526,03 $, a ~4 971 $ gap coming entirely from the formula, not
-        // from a different trade set). The averaged trader-own price is
-        // structurally never going to match the leader price at full
-        // roster anyway — the leader price blends in whatever stake
-        // untracked (non-roster) participants added to that side, which a
-        // trader-only average can never see.
+        // See traderFilterCoversEveryone above: with a trader filter active
+        // but not covering everyone, price at the checked trader(s)' own
+        // side via traderFilteredFlatPnl (value-trade price, their own
+        // pick) — covering the whole roster falls back to the plain
+        // snapshot-leader price so it matches "Suivi des whales" exactly.
         return (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone) ? traderFilteredFlatPnl(snap, st.pnlChartTraderFilter, stake) : hypotheticalFlatPnl(snap, stake);
       };
     }
