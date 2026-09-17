@@ -1889,11 +1889,12 @@
     background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-md);
     box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 6px;
   }
+  .pnl-chart-trader-popover-actions { display: flex; gap: 4px; padding: 0 0 4px; }
   .pnl-chart-trader-popover-reset {
-    display: block; width: 100%; text-align: left; font-size: 11px; color: var(--accent);
-    background: none; border: none; padding: 3px 6px 6px; cursor: pointer;
+    flex: 1; text-align: left; font-size: 11px; color: var(--accent);
+    background: none; border: none; padding: 3px 6px; border-radius: var(--radius-sm); cursor: pointer;
   }
-  .pnl-chart-trader-popover-reset:hover { text-decoration: underline; }
+  .pnl-chart-trader-popover-reset:hover { text-decoration: underline; background: var(--row-hover); }
   .pnl-chart-trader-popover-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; }
   .pnl-chart-trader-popover-list label {
     display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text);
@@ -7762,15 +7763,20 @@
     // open/closed flag lives in store.state so it survives the re-render
     // every checkbox click triggers, instead of closing after each pick.
     var traderFilterCount = st.pnlChartTraderFilter.length;
+    var traderFilterAllSelected = traderFilterCount >= TRADERS_BY_WEIGHT.length;
     var traderPopoverListHtml = TRADERS_BY_WEIGHT.map(function (t) {
       var checked = st.pnlChartTraderFilter.indexOf(t.name) !== -1;
       return '<label><input type="checkbox" data-trader="' + esc(t.name) + '"' + (checked ? ' checked' : '') + ' /> ' + esc(t.name) + '</label>';
     }).join("");
+    var traderPopoverActionsHtml = '<div class="pnl-chart-trader-popover-actions">' +
+      (!traderFilterAllSelected ? '<button type="button" class="pnl-chart-trader-popover-reset" id="' + idp + 'pnlChartTraderSelectAll">✓ Tout sélectionner</button>' : '') +
+      (traderFilterCount ? '<button type="button" class="pnl-chart-trader-popover-reset" id="' + idp + 'pnlChartTraderReset">✕ Tout désélectionner</button>' : '') +
+    '</div>';
     var traderFilterHtml = '<div class="pnl-chart-trader-filter">' +
       '<button type="button" id="' + idp + 'pnlChartTraderBtn" class="pnl-chart-trader-filter-btn' + (traderFilterCount ? ' active' : '') + '">Traders' + (traderFilterCount ? ' <span class="pnl-chart-trader-filter-count">' + traderFilterCount + '</span>' : '') + '</button>' +
       (st.pnlChartTraderFilterOpen
         ? '<div class="pnl-chart-trader-popover">' +
-            (traderFilterCount ? '<button type="button" class="pnl-chart-trader-popover-reset" id="' + idp + 'pnlChartTraderReset">✕ Tout désélectionner</button>' : '') +
+            traderPopoverActionsHtml +
             '<div class="pnl-chart-trader-popover-list" id="' + idp + 'pnlChartTraderList">' + traderPopoverListHtml + '</div>' +
           '</div>'
         : '') +
@@ -7794,9 +7800,18 @@
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsStakeSum > 0 ? (cum / statsStakeSum * 100) : null;
     var monthlyMini = st.pnlChartSplitByTier ? "" : monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
+    // On request, after "Trades" here not matching Snapshots in Le tableau
+    // des traders for the same trader filter: this count (like PnL/ROI next
+    // to it) excludes pending snapshots and, when Traders is active, ones
+    // where the checked trader(s) are hedged (both sides) — same set
+    // Le tableau des traders' own PNL pour 1000€/trade and ROI/trade 1000$
+    // columns are built from, just not its broader Snapshots column.
+    var statsCountTitle = st.pnlChartTraderFilter.length
+      ? "Paris décidés où le(s) trader(s) coché(s) ont une position sur un seul camp (hors paris en attente et hors couverture des deux camps) — le même ensemble que « PNL pour 1000€/trade » et « ROI/trade 1000$ » dans Le tableau des traders, qui peut être plus petit que sa colonne Snapshots."
+      : "Paris décidés (hors paris en attente) sur les filtres actuels.";
     var statsHtml = '<div class="pnl-chart-stats">' +
       monthlyMini +
-      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
+      '<div class="pnl-chart-stat" title="' + esc(statsCountTitle) + '"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(0) + "%") + '</span></div>' +
     '</div>';
@@ -7877,6 +7892,11 @@
     var traderBtn = document.getElementById(idp + "pnlChartTraderBtn");
     if (traderBtn) traderBtn.addEventListener("click", function () {
       store.state.pnlChartTraderFilterOpen = !store.state.pnlChartTraderFilterOpen;
+      renderSnapPnlChart(cardsList, store);
+    });
+    var traderSelectAll = document.getElementById(idp + "pnlChartTraderSelectAll");
+    if (traderSelectAll) traderSelectAll.addEventListener("click", function () {
+      store.state.pnlChartTraderFilter = TRADERS_BY_WEIGHT.map(function (t) { return t.name; });
       renderSnapPnlChart(cardsList, store);
     });
     var traderReset = document.getElementById(idp + "pnlChartTraderReset");
