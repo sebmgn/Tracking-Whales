@@ -7949,20 +7949,19 @@
         if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
         return snapMatchesCompareFilters(s, s.isManual ? mCfg : aCfg, weekOptions);
       }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
-      // Always the snapshot's leader/value-trade price here, even with
-      // Traders coché côté Auto (on request, after checking one prolific
-      // trader dropped the trade count by only 2 — they sit in almost
-      // every snapshot already — yet moved the PnL by thousands back when
-      // traderHypFlatPnl still used each trader's own entry price):
-      // cfg.traders in snapMatchesCompareFilters is a pure presence/
-      // membership test, exactly like Confiance/Note du pari/Note du
-      // trader right next to it in the same console column — none of
-      // THOSE switch the pricing formula, so Traders shouldn't either. The
-      // simple Traders popover below (outside the console) still differs
-      // from this: it evaluates each checked trader's OWN side (win/lose),
-      // not just the snapshot's overall leader side — see
-      // traderFilteredFlatPnl.
-      pricingFn = function (snap, stake) { return hypotheticalFlatPnl(snap, stake); };
+      // Same rule as the simple Traders popover below (traderFilterCoversEveryone):
+      // with specific Auto traders checked (not the whole roster), score
+      // each snapshot on THOSE traders' own side via traderFilteredFlatPnl —
+      // on request, after a checked trader who went against the group
+      // consensus (and lost) still read as a win here, because this used to
+      // stay on the snapshot's overall leader side regardless of which way
+      // the checked trader(s) actually went. Checking the whole roster (or
+      // nobody) falls back to the plain snapshot-leader price, same as
+      // "Suivi des whales" and the console with no Traders filter at all.
+      var aCoversEveryone = aCfg.traders.length > 0 && TRADERS_BY_WEIGHT.every(function (t) { return aCfg.traders.indexOf(t.name) !== -1; });
+      pricingFn = function (snap, stake) {
+        return (!snap.isManual && aCfg.traders.length && !aCoversEveryone) ? traderFilteredFlatPnl(snap, aCfg.traders, stake) : hypotheticalFlatPnl(snap, stake);
+      };
     } else {
       decidedForLoop = decided;
       pricingFn = function (snap, stake) {
