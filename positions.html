@@ -41,8 +41,6 @@
     --tab-gold-2: #a37f34;
     --tab-gold-3: #bf9642;
     --tier-b-gray: #6b6b6b;
-    --gain-nuance: #2c4f24;
-    --perte-nuance: #96481f;
     /* Dedicated S/A/B palette — 3 hues spread around the wheel
        (purple/blue/orange) instead of reusing --gold (too close to --bg's
        own cream tone to read on a chart line) and a flat grey for B.
@@ -82,8 +80,6 @@
       --tab-gold-2: #c9a355;
       --tab-gold-3: #ba9040;
       --tier-b-gray: #a39c8e;
-      --gain-nuance: #86c66a;
-      --perte-nuance: #e0955a;
       --tier-s: #c58ce0;
       --tier-a: #6fa8f5;
       --tier-b: #f0a35f;
@@ -105,8 +101,6 @@
     --tab-gold-1: #d8b86a;
     --tab-gold-2: #c9a355;
     --tier-b-gray: #a39c8e;
-    --gain-nuance: #86c66a;
-    --perte-nuance: #e0955a;
     --tier-s: #c58ce0;
     --tier-a: #6fa8f5;
     --tier-b: #f0a35f;
@@ -1449,8 +1443,6 @@
   .snap-trader-badge { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
   .snap-badge-win { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
   .snap-badge-loss { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
-  .snap-badge-gain-nuance { color: var(--gain-nuance); background: color-mix(in srgb, var(--gain-nuance) 14%, transparent); }
-  .snap-badge-perte-nuance { color: var(--perte-nuance); background: color-mix(in srgb, var(--perte-nuance) 14%, transparent); }
 
   /* Winrate par catégorie de conviction (S / A / B) — one thin gauge
      row per tier, reusing CONFIDENCE_COLORS so a tier reads the same color
@@ -6309,26 +6301,44 @@
     });
     return { stake: stake, profit: profit };
   }
-  // Net $ PNL for one trader in one decided snapshot: profit on the winning
-  // side minus stake lost on any other side they also held (a snapshot can
-  // hold a trader on both sides). Returns null if the snapshot isn't decided
-  // yet or this trader isn't in it at all — used both for classification
-  // below and for the PNL column in the per-trader table (computeTraderStatsRows).
+  // Which side a trader is really "on" for this snapshot, when they hold
+  // stake on more than one — their majority side by $ stake (on request:
+  // a trader hedged on both camps used to get its own separate "gain
+  // nuancé"/"perte nuancé" treatment everywhere downstream, which fragmented
+  // Gagnés/Perdus, the flat-stake hypothetical, and the real $ PNL into
+  // three different conventions for the exact same hedge. Now every
+  // computation just asks "which side did they really back" and answers it
+  // once, here). Ties (equal stake both sides) fall to whichever side
+  // appears first in snap.sides — arbitrary but deterministic, and rare
+  // enough in practice not to warrant its own rule. Returns null if the
+  // trader has no stake in this snapshot at all.
+  function traderMajoritySide(snap, traderName) {
+    var best = null;
+    (snap.sides || []).forEach(function (side) {
+      var stake = 0;
+      side.traders.forEach(function (t) { if (t.trader === traderName) stake += t.stake; });
+      if (stake > 0 && (!best || stake > best.stake)) best = { name: side.name, stake: stake };
+    });
+    return best;
+  }
+  // Net $ PNL for one trader in one decided snapshot, counting only their
+  // majority side (see traderMajoritySide) — profit if it won, the stake
+  // they actually put on it if it lost. Returns null if the snapshot isn't
+  // decided yet or this trader isn't in it at all — used both for
+  // classification below and for the PNL column in the per-trader table
+  // (computeTraderStatsRows).
   function traderNetPnlInSnapshot(snap, traderName) {
     if (!snap.winningSide) return null;
-    var net = 0, onWin = false, onLose = false;
-    snap.sides.forEach(function (side) {
-      var r = traderStakeAndProfitOnSide(side, traderName);
-      if (r.stake <= 0) return;
-      if (side.name === snap.winningSide) { onWin = true; net += r.profit; }
-      else { onLose = true; net -= r.stake; }
-    });
-    if (!onWin && !onLose) return null;
-    return { net: net, onWin: onWin, onLose: onLose };
+    var maj = traderMajoritySide(snap, traderName);
+    if (!maj) return null;
+    var r = traderStakeAndProfitOnSide(sideByName(snap.sides, maj.name), traderName);
+    var onWin = maj.name === snap.winningSide;
+    return { net: onWin ? r.profit : -r.stake, stake: r.stake, onWin: onWin };
   }
-  // Per-trader verdict for one snapshot: "win"/"loss" if they were only on
-  // one side, "gain_nuance"/"perte_nuance" if they hedged both sides and the
-  // net PNL comes out positive or negative, "pending" if not decided yet.
+  // Per-trader verdict for one snapshot: "win"/"loss" on their majority
+  // side (see traderMajoritySide — a hedged trader is no longer its own
+  // "gain nuancé"/"perte nuancé" category, just a win or loss on whichever
+  // side they backed harder), "pending" if not decided yet.
   // What this trader's own PICK would have returned at a flat $1000 stake —
   // isolating "did they call the right side" from both "how big did they
   // actually bet" AND "did they happen to get in at a good price" (on
@@ -6339,31 +6349,24 @@
   // at snapshot time (see leaderPriceAtSnapshot) — so every trader is
   // artificially quoted the SAME cote for a given snapshot regardless of
   // where they personally got in; only which SIDE they were on (win or
-  // lose) still comes from their own position. Returns null for a hedged
-  // trader (present on both sides of the same snapshot) rather than
-  // guessing how to split a single flat stake between two opposing bets.
+  // lose) still comes from their own position.
   function traderHypFlatPnl(snap, traderName, flatStake) {
     if (!snap.winningSide) return null;
-    var onSideNames = [];
-    (snap.sides || []).forEach(function (side) {
-      var hasStake = side.traders.some(function (t) { return t.trader === traderName && t.stake > 0; });
-      if (hasStake) onSideNames.push(side.name);
-    });
-    if (onSideNames.length !== 1) return null;
+    var maj = traderMajoritySide(snap, traderName);
+    if (!maj) return null;
     var valuePrice = snapLeaderPrice(snap);
     if (!valuePrice || valuePrice <= 0) return null;
-    return onSideNames[0] === snap.winningSide ? flatStake * (1 / valuePrice - 1) : -flatStake;
+    return maj.name === snap.winningSide ? flatStake * (1 / valuePrice - 1) : -flatStake;
   }
   // Same per-trader simulation as traderHypFlatPnl above (same uniform
-  // value-trade price, just each checked trader's own SIDE decides win/
-  // loss), but scoped to a CHECKED SUBSET of traders (the PnL chart's
+  // value-trade price, just each checked trader's own majority side decides
+  // win/loss), but scoped to a CHECKED SUBSET of traders (the PnL chart's
   // "Traders" filter) instead of one name — so a snapshot the whole market
   // leaned one way on can still read as a loss here if the checked trader
   // was the contrarian, unlike hypotheticalFlatPnl's snapshot-wide leader
   // side. Averages when several checked traders are in the same snapshot
   // (so it isn't counted several times over into one chart point); null if
-  // none of them have a definable position here, same convention as
-  // traderHypFlatPnl for a single hedged trader.
+  // none of them have a definable position here at all.
   function traderFilteredFlatPnl(snap, traderNames, flatStake) {
     var vals = [];
     traderNames.forEach(function (name) {
@@ -6377,14 +6380,11 @@
   function classifyTraderInSnapshot(snap, traderName) {
     var r = traderNetPnlInSnapshot(snap, traderName);
     if (!r) return "pending";
-    if (r.onWin && r.onLose) return r.net >= 0 ? "gain_nuance" : "perte_nuance";
     return r.onWin ? "win" : "loss";
   }
   function traderResultBadge(cls) {
     if (cls === "win") return '<span class="snap-trader-badge snap-badge-win">✅ Gagné</span>';
     if (cls === "loss") return '<span class="snap-trader-badge snap-badge-loss">❌ Perdu</span>';
-    if (cls === "gain_nuance") return '<span class="snap-trader-badge snap-badge-gain-nuance">➕ Gain nuancé</span>';
-    if (cls === "perte_nuance") return '<span class="snap-trader-badge snap-badge-perte-nuance">➖ Perte nuancée</span>';
     return "";
   }
   // Overall results dashboard.
@@ -8500,20 +8500,19 @@
     var byTrader = {};
     list.forEach(function (snap) {
       (snap.traderNames || []).forEach(function (name) {
-        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, gainNuance: 0, perteNuance: 0, pnl: 0, hypPnl: 0, hypCount: 0, realStakeSum: 0, items: [], trend: [], entries: [] };
+        if (!byTrader[name]) byTrader[name] = { name: name, total: 0, win: 0, loss: 0, pnl: 0, hypPnl: 0, hypCount: 0, realStakeSum: 0, items: [], trend: [], entries: [] };
         byTrader[name].total++;
         var pnlResult = traderNetPnlInSnapshot(snap, name);
         if (pnlResult) {
           byTrader[name].pnl += pnlResult.net;
-          // The trader's OWN real dollar stake (not a flat simulation) —
-          // summed across every side they held in this decided snapshot, so
-          // it lines up with pnlResult.net (profit on the win side minus
-          // stake lost on any other side). Feeds "ROI/trade" in the
-          // dedicated trader table: their actual realized ROI on their own
-          // money, as opposed to hypPnl's "if $1000 flat every time" ROI.
-          snap.sides.forEach(function (side) {
-            byTrader[name].realStakeSum += traderStakeAndProfitOnSide(side, name).stake;
-          });
+          // The trader's OWN real dollar stake on their majority side (not a
+          // flat simulation, and — since pnlResult.net above is majority-
+          // side-only too, see traderMajoritySide — not their minority-side
+          // stake either) so this lines up with pnlResult.net exactly. Feeds
+          // "ROI/trade" in the dedicated trader table: their actual realized
+          // ROI on their own money, as opposed to hypPnl's "if $1000 flat
+          // every time" ROI.
+          byTrader[name].realStakeSum += pnlResult.stake;
         }
         var hypResult = traderHypFlatPnl(snap, name, 1000);
         if (hypResult != null) { byTrader[name].hypPnl += hypResult; byTrader[name].hypCount++; }
@@ -8526,8 +8525,6 @@
         var cls = classifyTraderInSnapshot(snap, name);
         if (cls === "win") byTrader[name].win++;
         else if (cls === "loss") byTrader[name].loss++;
-        else if (cls === "gain_nuance") byTrader[name].gainNuance++;
-        else if (cls === "perte_nuance") byTrader[name].perteNuance++;
         byTrader[name].entries.push({ snap: snap, cls: cls, net: pnlResult ? pnlResult.net : null });
       });
     });
@@ -8548,16 +8545,8 @@
     });
     return Object.keys(byTrader).map(function (n) {
       var st = byTrader[n];
-      var decided = st.win + st.loss + st.gainNuance + st.perteNuance;
+      var decided = st.win + st.loss;
       st.decided = decided;
-      // "Snapshots" (Le tableau des traders), on request: a hedged pari (both
-      // camps at once — gain_nuance/perte_nuance) no longer counts here. It
-      // never counted toward hypCount either (traderHypFlatPnl needs exactly
-      // one side), so this is what made "Snapshots" read higher than "PNL
-      // pour 1000€/trade"/"ROI/trade 1000$"'s own trade count right next to
-      // it — entries/decided (the expandable detail row, Note×ROI's "décidé"
-      // count) still include them, only this displayed total drops them.
-      st.total = st.total - st.gainNuance - st.perteNuance;
       st.roi = aggregateFlatPnl(st.items, store).roi;
       st.realRoi = st.realStakeSum > 0 ? (st.pnl / st.realStakeSum * 100) : null;
       // Always a true $1000 flat stake regardless of store (traderHypFlatPnl
@@ -10053,12 +10042,11 @@
   // record — recomputed fresh here rather than cached, same as every
   // other per-render aggregate on this page (loadRaw() itself is already
   // called every refresh cycle for the actual All Time tab). Counts
-  // DECIDED, non-hedged snapshots a trader appears in on EITHER side (same
-  // "Snapshots" convention as computeTraderStatsRows, on request — a
-  // gain_nuance/perte_nuance, both camps at once, isn't a clean trade),
-  // un-windowed and including traders no longer in TRADERS, unlike
-  // WEIGHT_BY_NAME-keyed aggregates elsewhere — this one has to reach
-  // removed traders too.
+  // DECIDED snapshots a trader appears in, classified on their majority
+  // side (same "Snapshots" convention as computeTraderStatsRows — see
+  // classifyTraderInSnapshot/traderMajoritySide), un-windowed and
+  // including traders no longer in TRADERS, unlike WEIGHT_BY_NAME-keyed
+  // aggregates elsewhere — this one has to reach removed traders too.
   function computeTraderHistoryTradeCounts() {
     var list = TEST_STORE.loadRaw().filter(function (s) { return !s.allTimeDeletedAt; });
     var counts = {};
@@ -10066,7 +10054,7 @@
       if (!snap.winningSide) return;
       (snap.traderNames || []).forEach(function (name) {
         var cls = classifyTraderInSnapshot(snap, name);
-        if (cls === "pending" || cls === "gain_nuance" || cls === "perte_nuance") return;
+        if (cls === "pending") return;
         counts[name] = (counts[name] || 0) + 1;
       });
     });
