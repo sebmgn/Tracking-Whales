@@ -1412,6 +1412,11 @@
   .trader-detail-date { color: var(--text-dim); width: 54px; flex: none; font-variant-numeric: tabular-nums; }
   .trader-detail-question { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .trader-detail-net { width: 84px; flex: none; text-align: right; font-family: ui-monospace, monospace; }
+  .trader-detail-section-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700;
+    color: var(--text-dim); margin-top: 6px;
+  }
+  .trader-detail-section-label:first-child { margin-top: 0; }
   .snap-dist-wrap { margin-bottom: 16px; max-height: none; }
   .snap-dist-subtitle { font-size: 11px; font-style: italic; color: var(--text-dim); padding: 10px 12px 0; }
   .snap-dist-empty { color: var(--text-dim); }
@@ -4546,6 +4551,16 @@
     return mergeUnitSides(u).some(function (m) {
       return m.items.some(function (it) {
         return it.s.entries.some(function (e) { return BY_MATCH_TARGET_TRADERS.indexOf((e.trader || "").toLowerCase()) !== -1; });
+      });
+    });
+  }
+  // Same idea, for an arbitrary single trader name (exact match) instead of
+  // the fixed BY_MATCH_TARGET_TRADERS pair — feeds "Value trades actuels"
+  // under a clicked row in Le tableau des traders (see traderDetailRowHtml).
+  function unitHasTrader(u, traderName) {
+    return mergeUnitSides(u).some(function (m) {
+      return m.items.some(function (it) {
+        return it.s.entries.some(function (e) { return e.trader === traderName; });
       });
     });
   }
@@ -8476,11 +8491,28 @@
       quartileHtml +
       '</div>';
   }
+  // Capped like BY_MATCH_MAX_ROWS — a busy whale can have dozens of open
+  // Value Trades at once, and renderUnitCard builds a full detailed card
+  // (side grid, per-trader rows, everything), not a cheap one-liner.
+  var TRADER_DETAIL_VALUE_TRADES_MAX = 20;
   // One snapshot-by-snapshot line per row, newest first — same
   // date/question/result-badge vocabulary as the snapshot cards above, just
   // condensed to one line each since this is scoped to a single trader.
+  // Also shows that trader's CURRENT open Value Trades on request, above the
+  // history — allUnitsGlobal already covers every open position across
+  // every tracked trader (see its own comment, "Par match" reuses it the
+  // same way), filtered here to just this one name via unitHasTrader.
   function traderDetailRowHtml(st, isExpanded, colspan) {
     if (!isExpanded) return '';
+    var liveUnits = allUnitsGlobal.filter(function (u) { return unitHasTrader(u, st.name); });
+    liveUnits.forEach(function (u) { if (u.score == null) { var si = unitScoreInfo(u); u.score = si.score; u.scoreFactors = si.factors; u.scoreGate = si.gate; } });
+    liveUnits.sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+    var shownUnits = liveUnits.slice(0, TRADER_DETAIL_VALUE_TRADES_MAX);
+    var highlightSet = {};
+    highlightSet[st.name] = true;
+    var valueTradesHtml = !liveUnits.length ? '' :
+      '<div class="trader-detail-section-label">🎯 Value trades actuels (' + (liveUnits.length > shownUnits.length ? shownUnits.length + ' / ' + liveUnits.length : liveUnits.length) + ')</div>' +
+      '<div class="match-unit-cards">' + shownUnits.map(function (u) { return renderUnitCard(u, highlightSet); }).join("") + '</div>';
     var sortedEntries = st.entries.slice().sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
     var itemsHtml = sortedEntries.map(function (en) {
       var d = new Date(en.snap.savedAt);
@@ -8491,7 +8523,11 @@
         traderResultBadge(en.cls) +
         '<span class="trader-detail-net">' + netHtml + '</span></div>';
     }).join("");
-    return '<tr class="snap-stats-detail-row"><td colspan="' + colspan + '"><div class="snap-stats-detail">' + itemsHtml + '</div></td></tr>';
+    return '<tr class="snap-stats-detail-row"><td colspan="' + colspan + '"><div class="snap-stats-detail">' +
+      valueTradesHtml +
+      (valueTradesHtml ? '<div class="trader-detail-section-label">Historique</div>' : '') +
+      itemsHtml +
+    '</div></td></tr>';
   }
   // Shared by renderTraderTable and computeTraderNoteRoiPoints — one
   // accumulation pass per trader, so the two never silently disagree on
