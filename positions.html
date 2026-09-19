@@ -1408,10 +1408,6 @@
     background: color-mix(in srgb, var(--panel-border) 18%, transparent);
     border-bottom: 1px solid var(--panel-border);
   }
-  .trader-detail-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
-  .trader-detail-date { color: var(--text-dim); width: 54px; flex: none; font-variant-numeric: tabular-nums; }
-  .trader-detail-question { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .trader-detail-net { width: 84px; flex: none; text-align: right; font-family: ui-monospace, monospace; }
   .trader-detail-section-label {
     font-size: 10px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700;
     color: var(--text-dim); margin-top: 6px;
@@ -8618,14 +8614,20 @@
   // Value Trades at once, and renderUnitCard builds a full detailed card
   // (side grid, per-trader rows, everything), not a cheap one-liner.
   var TRADER_DETAIL_VALUE_TRADES_MAX = 20;
-  // One snapshot-by-snapshot line per row, newest first — same
-  // date/question/result-badge vocabulary as the snapshot cards above, just
-  // condensed to one line each since this is scoped to a single trader.
+  // Newest first, full interactive card per entry (on request, replacing
+  // the earlier one-line-per-row list) — snapCardHtml is the exact same
+  // renderer the store's own main list uses, frozen cardHtml and all (see
+  // buildSnapshotFromUnit), so a recorded value trade looks and behaves
+  // identically here: mark a result, retag confidence, send to corbeille —
+  // every click carries the entry's own data-store, so it writes back to
+  // st's real backing store, not some detail-only copy. Capped like the
+  // live section below it — a trader with hundreds of recorded snapshots
+  // would otherwise render hundreds of full cards on one click.
   // Also shows that trader's CURRENT open Value Trades on request, above the
   // history — allUnitsGlobal already covers every open position across
   // every tracked trader (see its own comment, "Par match" reuses it the
   // same way), filtered here to just this one name via unitHasTrader.
-  function traderDetailRowHtml(st, isExpanded, colspan) {
+  function traderDetailRowHtml(st, isExpanded, colspan, store) {
     if (!isExpanded) return '';
     var liveUnits = allUnitsGlobal.filter(function (u) { return unitHasTrader(u, st.name); });
     liveUnits.forEach(function (u) { if (u.score == null) { var si = unitScoreInfo(u); u.score = si.score; u.scoreFactors = si.factors; u.scoreGate = si.gate; } });
@@ -8637,19 +8639,13 @@
       '<div class="trader-detail-section-label">🎯 Value trades actuels (' + (liveUnits.length > shownUnits.length ? shownUnits.length + ' / ' + liveUnits.length : liveUnits.length) + ')</div>' +
       '<div class="match-unit-cards">' + shownUnits.map(function (u) { return renderUnitCard(u, highlightSet); }).join("") + '</div>';
     var sortedEntries = st.entries.slice().sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
-    var itemsHtml = sortedEntries.map(function (en) {
-      var d = new Date(en.snap.savedAt);
-      var dateLabel = isNaN(d.getTime()) ? en.snap.savedAt : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
-      var netHtml = en.net == null ? '<span class="snap-dist-empty">en attente</span>' : '<span class="' + (en.net >= 0 ? "pnl-pos" : "pnl-neg") + '">' + fmtUSD(en.net) + '</span>';
-      return '<div class="trader-detail-row"><span class="trader-detail-date">' + esc(dateLabel) + '</span>' +
-        '<span class="trader-detail-question">' + esc(en.snap.question) + '</span>' +
-        traderResultBadge(en.cls) +
-        '<span class="trader-detail-net">' + netHtml + '</span></div>';
-    }).join("");
+    var shownEntries = sortedEntries.slice(0, TRADER_DETAIL_VALUE_TRADES_MAX);
+    var historyHtml = !sortedEntries.length ? '' :
+      '<div class="trader-detail-section-label">Historique (' + (sortedEntries.length > shownEntries.length ? shownEntries.length + ' / ' + sortedEntries.length : sortedEntries.length) + ')</div>' +
+      '<div class="match-unit-cards">' + shownEntries.map(function (en) { return snapCardHtml(en.snap, false, store); }).join("") + '</div>';
     return '<tr class="snap-stats-detail-row"><td colspan="' + colspan + '"><div class="snap-stats-detail">' +
       valueTradesHtml +
-      (valueTradesHtml ? '<div class="trader-detail-section-label">Historique</div>' : '') +
-      itemsHtml +
+      historyHtml +
     '</div></td></tr>';
   }
   // Shared by renderTraderTable and computeTraderNoteRoiPoints — one
@@ -8891,7 +8887,7 @@
         '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
         '<td class="num ' + hypPnlClass + '">' + (st.hypPnl == null ? '—' : fmtUSD(st.hypPnl)) + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
-        roiCell(st.realRoi) + roiCell(st.hypRoi) + '</tr>' + traderDetailRowHtml(st, isOpen, TRADER_TABLE_COLUMNS.length);
+        roiCell(st.realRoi) + roiCell(st.hypRoi) + '</tr>' + traderDetailRowHtml(st, isOpen, TRADER_TABLE_COLUMNS.length, store);
     }).join("");
     var headCells = TRADER_TABLE_COLUMNS.map(function (col) {
       var isActive = store.state.traderTableSort.key === col.key;
