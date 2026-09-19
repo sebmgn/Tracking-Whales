@@ -1299,7 +1299,7 @@
   .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover { border-color: var(--accent); }
   .snap-edit-btn { color: var(--accent); }
   .snap-edit-btn:hover { background: var(--accent); color: #fff; }
-  /* Drag-and-drop reorder (Mes Positions only) */
+  /* Drag-and-drop reorder (store.allowReorder — Mes Positions, Saison 26/27) */
   .snap-drag-handle {
     cursor: grab; color: var(--text-dim); font-size: 15px; line-height: 1;
     padding: 2px 4px; user-select: none; flex: none;
@@ -2714,7 +2714,7 @@
     // Added on request — address resolved from the profile page's own
     // api/profile/userData call (proxyWallet), cross-checked against a live
     // positions fetch.
-    { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", weight: 4.5 },
+    { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", weight: 9 },
     // Added on request — addresses resolved from the profile URLs given.
     { name: "anon2", platform: "polymarket", address: "0x78becf0a4e4f2640380af0c19ad32e2557e6bde0", weight: 7 },
     { name: "0x2", platform: "polymarket", address: "0x228b8d11eba89bf1c554f8879a9293b7106daf4c", weight: 6.5 },
@@ -6560,6 +6560,12 @@
     allowTakePosition: true,
     allowEditPosition: true, // "✎ Modifier" — cote only here (no per-item stake to correct, see the store.name branch in the click handler), unlike Positions' stake+cote
     allowSimStakeSlider: true, // flat-stake sim, not real money — the "et si" slider on the evolution chart only makes sense here and on All Time, not Positions (real stakeUsd)
+    // Drag ⠿ to fix a wrong chronological order (on request — Value Trades'
+    // own kickoff/save timing can occasionally land two snapshots the wrong
+    // way round). Same setSavedAt trick Mes Positions already uses — see
+    // attachReorderHandlers — reused as-is, not Positions-specific despite
+    // the comment there predating this.
+    allowReorder: true,
     itemNoun: "snapshot",
     emptyHint: "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.",
     dateLabelPrefix: "Sauvegardé le",
@@ -11206,8 +11212,8 @@
     }
   }
   positionsContent.addEventListener("toggle", trackPositionToggle, true);
-  // Drag-and-drop reorder (Mes Positions only, via store.allowReorder — see
-  // POSITIONS_STORE). There's no separate "order" field: display order IS
+  // Drag-and-drop reorder — gated per-store via store.allowReorder (Mes
+  // Positions and Saison 26/27 so far). There's no separate "order" field: display order IS
   // savedAt order (see renderStoreView's sort), so "reorder" means giving the
   // dragged item a new savedAt that sits between its new neighbors' — same
   // trick a lot of drag-to-reorder UIs use instead of maintaining a whole
@@ -11276,6 +11282,7 @@
     });
   }
   if (POSITIONS_STORE.allowReorder) attachReorderHandlers(positionsContent, POSITIONS_STORE);
+  if (SNAPSHOTS_STORE.allowReorder) attachReorderHandlers(snapshotsContent, SNAPSHOTS_STORE);
   function trackMatchToggle(e) {
     if (e.target && e.target.classList.contains("match-item")) {
       expandedMatches[e.target.getAttribute("data-key")] = e.target.open;
