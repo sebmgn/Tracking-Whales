@@ -11652,6 +11652,22 @@
       var newWinningSide = (curSideSnap && curSideSnap.winningSide === side) ? null : side;
       var sideOp = { type: "setSide", id: sid, winningSide: newWinningSide };
       enqueueOp(sStore, sideOp);
+      // A position "graduated" from a snapshot (🎯 Prendre position) is its
+      // own separate record with its own winningSide — marking one used to
+      // leave the other stuck showing "pending" forever (user-reported
+      // 2026-09-20: a resolved trade's PNL/All Time still counted it as
+      // undecided because only the source snapshot had been marked, days
+      // earlier — the position taken from it never got the same click).
+      // Mirror the result across the sourceSnapshotId link, both
+      // directions, so whichever one gets marked first, the other follows
+      // automatically instead of needing the exact same click twice.
+      if (sStore.name === "snapshots") {
+        loadPositionsRaw().filter(function (p) { return p.sourceSnapshotId === sid; }).forEach(function (p) {
+          enqueueOp(POSITIONS_STORE, { type: "setSide", id: p.id, winningSide: newWinningSide });
+        });
+      } else if (sStore.name === "positions" && curSideSnap && curSideSnap.sourceSnapshotId) {
+        enqueueOp(SNAPSHOTS_STORE, { type: "setSide", id: curSideSnap.sourceSnapshotId, winningSide: newWinningSide });
+      }
       if (fromTestSide) renderTest();
       return;
     }
