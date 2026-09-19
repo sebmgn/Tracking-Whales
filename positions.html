@@ -6776,6 +6776,53 @@
     });
     if (added.length) saveAutoNote7ToStorage(added.concat(existing));
   }
+  // Auto-fills "camp gagnant" once a captured trade's real-world market has
+  // actually resolved (on request) — Polymarket-linked entries only for now
+  // (see the slug regex below); a Predict.fun-only capture still needs its
+  // result set by hand, same as before. gamma-api's own event/market record
+  // (already used elsewhere for match-key lookups, see GAMMA_EVENTS_BASE) is
+  // the source of truth here, NOT tradersData/fetchAllPolyPositions — those
+  // are deliberately fetched with redeemable=false/isResolved=false (see
+  // their own comments) to skip exactly the settled positions this needs.
+  // Runs on a slow interval (checkAutoNote7ResolutionsInterval below), not
+  // every refresh cycle — a real match takes hours to resolve, and this is a
+  // real network call per still-pending entry through the same throttled
+  // queue every other fetch here shares.
+  async function checkAutoNote7Resolutions() {
+    var full = AUTO_NOTE7_STORE.loadRaw();
+    var pending = full.filter(function (s) { return !s.winningSide && !s.deletedAt; });
+    if (!pending.length) return;
+    var changed = false;
+    await Promise.all(pending.map(async function (snap) {
+      var m = (snap.cardHtml || "").match(/polymarket\.com\/[a-z-]+\/event\/([a-z0-9-]+)/i);
+      if (!m) return; // Predict.fun-only capture — no gamma-api equivalent wired up yet, stays manual
+      try {
+        var res = await throttledFetch(GAMMA_EVENTS_BASE + "?slug=" + encodeURIComponent(m[1]));
+        if (!res.ok) return;
+        var events = await res.json();
+        var event = events && events[0];
+        if (!event || !event.markets) return;
+        var market = event.markets.find(function (mk) { return mk.question === snap.question; }) || event.markets[0];
+        if (!market || !market.closed || !market.outcomePrices || !market.outcomes) return;
+        var outcomes = JSON.parse(market.outcomes);
+        var prices = JSON.parse(market.outcomePrices).map(Number);
+        var maxPrice = Math.max.apply(null, prices);
+        // Anything less than a near-certain settle (a voided/refunded market
+        // can close with no side near 1) is left for a human to look at
+        // rather than guessing a "winner" out of noise.
+        if (maxPrice < 0.95) return;
+        var winName = outcomes[prices.indexOf(maxPrice)];
+        var matchedSide = (snap.sides || []).filter(function (s) { return s.name === winName; })[0]
+          || (snap.sides || []).filter(function (s) { return (s.name || "").toLowerCase() === (winName || "").toLowerCase(); })[0];
+        if (matchedSide) { snap.winningSide = matchedSide.name; changed = true; }
+      } catch (e) { /* best-effort — retried next interval */ }
+    }));
+    if (changed) {
+      saveAutoNote7ToStorage(full);
+      var autoNote7Tab = document.getElementById("tab-auto-note7");
+      if (autoNote7Tab && autoNote7Tab.classList.contains("active")) renderAutoNote7();
+    }
+  }
   function renderAutoNote7() { renderStoreView(AUTO_NOTE7_STORE); }
   // ---------- Archives (bulk "close out the season" tag, reversible) ----------
   // A season close-out tags EVERY current snapshot and position (trashed
@@ -12411,6 +12458,12 @@
   // 60 req/hour per IP, so this leaves headroom for manual resyncs too.
   setInterval(function () { syncNow(SNAPSHOTS_STORE); }, 120000);
   setInterval(function () { syncNow(POSITIONS_STORE); }, 120000);
+  // Every 5 min — a real match takes hours to resolve, no need for this on
+  // the 10s refresh cadence (see checkAutoNote7Resolutions's own comment).
+  // Once on load too, so a result already settled since the last visit
+  // shows up right away instead of waiting a full interval.
+  checkAutoNote7Resolutions();
+  setInterval(checkAutoNote7Resolutions, 300000);
   // ---------- 🔔 notification center ----------
   // Read-only history of the emails tracking-whales-notify actually sent
   // (see AWS_NOTIFY_URL) — useful when an alert email is missed, deleted, or
