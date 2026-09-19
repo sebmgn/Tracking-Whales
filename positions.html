@@ -2470,7 +2470,7 @@
 
   <div class="tab-panel" id="tab-auto-note7">
     <h2 class="section-title">🤖 Auto Note&gt;7 <span class="count-pill" id="autoNote7Count">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte complète, tout value trade dont la note dépasse 7 — pas besoin de cliquer 📌. Ne repart pas de l'historique : commence vide et n'enregistre qu'à partir de maintenant, une seule fois par marché. Simulé à mise plate (voir "Et si je misais"), même prix value-trade que partout ailleurs sur ce site. Local à ce navigateur — pas synchronisé sur tes autres appareils.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte complète, tout value trade dont la note dépasse 7 — pas besoin de cliquer 📌. Ne repart pas de l'historique : commence vide et n'enregistre qu'à partir de maintenant, une seule fois par marché. Une fois capturé, un trade reste ici pour toujours, même si sa note retombe sous 7 ensuite (ou qu'il disparaît carrément de Value Trades) — rien n'est jamais retiré automatiquement. Simulé à mise plate (voir "Et si je misais"), même prix value-trade que partout ailleurs sur ce site. Local à ce navigateur — pas synchronisé sur tes autres appareils.</div>
     <div class="snap-sync-bar">
       <button type="button" id="autoNote7ExportBtn" class="snap-sync-link" title="Télécharger les captures automatiques (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button id="autoNote7TrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
@@ -6749,7 +6749,15 @@
   // a second filter pass that could quietly drift from what that tab shows.
   // Captured once per real-world market, forever (unitStableKey, the same
   // "seen before" key markUnitSeen already uses) — never re-captured just
-  // because a market's note is still above the bar three cycles later.
+  // because a market's note is still above the bar three cycles later. The
+  // reverse holds too, explicitly on request: this function only ever
+  // CONCATS onto the existing list (added.concat(existing) below), never
+  // filters it — so a captured entry survives its market's note later
+  // dropping back under the threshold, or the market disappearing from
+  // valueTradesUnitsGlobal entirely (decided, price moved outside 5-99¢,
+  // trashed). Nothing anywhere in this store's write path (this function,
+  // or the shared trash/restore ops) ever drops an entry for score reasons —
+  // only a user's own 🗑 does.
   function captureAutoNote7Signals() {
     if (!valueTradesUnitsGlobal.length) return;
     var existing = AUTO_NOTE7_STORE.loadRaw();
