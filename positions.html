@@ -2267,6 +2267,7 @@
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="auto-note7" type="button"><span class="tab-btn-icon">🤖</span>Auto Note&gt;7</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
@@ -2480,6 +2481,36 @@
     <div id="testTraderTableContent"></div>
     <div id="testContent" class="value-trades-box">
       <div class="empty-note">Rien à afficher — aucun snapshot actuel ni archivé.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-auto-note7">
+    <h2 class="section-title">🤖 Auto Note&gt;7 <span class="count-pill" id="autoNote7Count">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte complète, tout value trade dont la note dépasse 7 — pas besoin de cliquer 📌. Ne repart pas de l'historique : commence vide et n'enregistre qu'à partir de maintenant, une seule fois par marché. Simulé à mise plate (voir "Et si je misais"), même prix value-trade que partout ailleurs sur ce site. Local à ce navigateur — pas synchronisé sur tes autres appareils.</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="autoNote7ExportBtn" class="snap-sync-link" title="Télécharger les captures automatiques (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button id="autoNote7TrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
+    </div>
+    <div id="autoNote7PnlChartContent"></div>
+    <div id="autoNote7Dashboard"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="autoNote7TierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="autoNote7">▸ Le winrate par conviction</button>
+      <button type="button" id="autoNote7NoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="autoNote7">▸ L'analyse winrate × note</button>
+      <button type="button" id="autoNote7DistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="autoNote7">▸ L'analyse cote × confiance</button>
+      <button type="button" id="autoNote7ManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="autoNote7">▸ Manuel vs suivi auto</button>
+      <button type="button" id="autoNote7WeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="autoNote7">▸ Paris par semaine</button>
+      <button type="button" id="autoNote7OtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="autoNote7">▸ Autres stats</button>
+      <button type="button" id="autoNote7TraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="autoNote7">▸ Le tableau des traders</button>
+    </div>
+    <div id="autoNote7TierWinrateContent"></div>
+    <div id="autoNote7NoteWinrateContent"></div>
+    <div id="autoNote7DistContent"></div>
+    <div id="autoNote7ManualVsAutoContent"></div>
+    <div id="autoNote7WeeklyPnlContent"></div>
+    <div id="autoNote7OtherStatsContent"></div>
+    <div id="autoNote7TraderTableContent"></div>
+    <div id="autoNote7Content" class="value-trades-box">
+      <div class="empty-note">Rien capturé pour l'instant.</div>
     </div>
   </div>
 
@@ -2923,6 +2954,17 @@
   var testWeeklyPnlContent = document.getElementById("testWeeklyPnlContent");
   var testOtherStatsContent = document.getElementById("testOtherStatsContent");
   var testTraderTableContent = document.getElementById("testTraderTableContent");
+  var autoNote7Content = document.getElementById("autoNote7Content");
+  var autoNote7CountEl = document.getElementById("autoNote7Count");
+  var autoNote7Dashboard = document.getElementById("autoNote7Dashboard");
+  var autoNote7TierWinrateContent = document.getElementById("autoNote7TierWinrateContent");
+  var autoNote7NoteWinrateContent = document.getElementById("autoNote7NoteWinrateContent");
+  var autoNote7PnlChartContent = document.getElementById("autoNote7PnlChartContent");
+  var autoNote7DistContent = document.getElementById("autoNote7DistContent");
+  var autoNote7ManualVsAutoContent = document.getElementById("autoNote7ManualVsAutoContent");
+  var autoNote7WeeklyPnlContent = document.getElementById("autoNote7WeeklyPnlContent");
+  var autoNote7OtherStatsContent = document.getElementById("autoNote7OtherStatsContent");
+  var autoNote7TraderTableContent = document.getElementById("autoNote7TraderTableContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -3116,6 +3158,7 @@
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var siblingPanelOpen = {}; // unit stableKey -> bool — "⇄" toggle, see findSiblingUnits
   var allUnitsGlobal = []; // every render unit, unfiltered — set once per refresh cycle in renderAll, reused by "Par match" so it doesn't need its own pass over tradersData
+  var valueTradesUnitsGlobal = []; // Value Trades' own filtered/scored allUnits (5-99¢, not over, not trashed, note>=floor) — stashed in renderValueTrades, reused by captureAutoNote7Signals so it never invents its own definition of "value trade"
   var expandedMatches = {}; // match key -> bool, same "survives a rebuild" purpose as expandedValueTrades
   var byMatchTraderFilter = false; // "Par match" — only show trades where swisstony or RN1 has a position
   var byMatchHighlighted = {}; // "Par match" — trader name -> bool, toggled by clicking their name in a trade row
@@ -6229,6 +6272,11 @@
   // enqueueSnapshotOp / positions-only local-write applyPositionOp.
   function enqueueOp(store, op) {
     store.save(applyOpToList(store.loadRaw(), op));
+    // A store with no remotePath (AUTO_NOTE7_STORE — local-only, nothing to
+    // reconcile against) has nothing to queue or sync either: skip both
+    // rather than push into a queue that would only ever grow, unconsumed,
+    // and attempt a fetch against an undefined endpoint.
+    if (!store.remotePath) { renderStoreView(store); return; }
     var q = loadSyncQueue(store);
     q.push(op);
     saveSyncQueue(store, q);
@@ -6670,6 +6718,77 @@
       otherStatsToggle: "testOtherStatsToggleBtn", traderTableToggle: "testTraderTableToggleBtn" },
     state: freshStoreState()
   };
+  // ---------- Auto Note>7 (on request: a blank, forward-only auto-follow —
+  // captures every value trade that ever crosses the note threshold from
+  // the moment this shipped, never backfilled from history) ----------
+  // Its own localStorage key, genuinely independent data (not a view over
+  // snapshots/positions like TEST_STORE) — but purely local: no remotePath/
+  // queueKey means enqueueOp (see its own comment) skips the sync queue and
+  // network fetch entirely for this store, so trashing/marking a result
+  // here never touches AWS. That also means this list does NOT sync across
+  // devices/browsers — only the one that was open and auto-capturing.
+  var AUTO_NOTE7_KEY = "vtAutoNote7Snapshots";
+  var AUTO_NOTE7_THRESHOLD = 7;
+  function loadAutoNote7Raw() {
+    try { return JSON.parse(localStorage.getItem(AUTO_NOTE7_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function loadAutoNote7() {
+    return loadAutoNote7Raw().filter(function (s) { return !s.deletedAt; });
+  }
+  function saveAutoNote7ToStorage(list) {
+    try { localStorage.setItem(AUTO_NOTE7_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
+  }
+  var AUTO_NOTE7_STORE = {
+    name: "autoNote7",
+    loadRaw: loadAutoNote7Raw, load: loadAutoNote7, save: saveAutoNote7ToStorage,
+    stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
+    allowTakePosition: false,
+    allowEditPosition: false, // no cote/manual correction — this list is meant to stay an untouched record of what the rule actually captured
+    allowSimStakeSlider: true,
+    itemNoun: "snapshot",
+    emptyHint: "Rien capturé pour l'instant — dès qu'un value trade passe au-dessus de la note seuil, il atterrit ici tout seul, plus besoin de cliquer 📌.",
+    dateLabelPrefix: "Capturé le",
+    simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment de la capture"; },
+    cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
+    els: { count: autoNote7CountEl, dashboard: autoNote7Dashboard, pnlChart: autoNote7PnlChartContent,
+      tierWinrate: autoNote7TierWinrateContent, noteWinrate: autoNote7NoteWinrateContent, dist: autoNote7DistContent,
+      list: autoNote7Content,
+      manualVsAuto: autoNote7ManualVsAutoContent, weeklyPnl: autoNote7WeeklyPnlContent, otherStats: autoNote7OtherStatsContent,
+      traderTable: autoNote7TraderTableContent },
+    ids: { distToggle: "autoNote7DistToggleBtn",
+      tierToggle: "autoNote7TierWinrateToggleBtn", noteToggle: "autoNote7NoteWinrateToggleBtn",
+      manualVsAutoToggle: "autoNote7ManualVsAutoToggleBtn", weeklyPnlToggle: "autoNote7WeeklyPnlToggleBtn",
+      otherStatsToggle: "autoNote7OtherStatsToggleBtn", traderTableToggle: "autoNote7TraderTableToggleBtn" },
+    state: freshStoreState()
+  };
+  // Same "legitimate value trade" definition Value Trades itself shows —
+  // not the wider, unfiltered allUnitsGlobal (Par match's own pool, which
+  // includes decided/over/trashed markets — see its own comment) — reuses
+  // renderValueTrades' own already-filtered list (stashed there as
+  // valueTradesUnitsGlobal, zero extra computation) rather than recomputing
+  // a second filter pass that could quietly drift from what that tab shows.
+  // Captured once per real-world market, forever (unitStableKey, the same
+  // "seen before" key markUnitSeen already uses) — never re-captured just
+  // because a market's note is still above the bar three cycles later.
+  function captureAutoNote7Signals() {
+    if (!valueTradesUnitsGlobal.length) return;
+    var existing = AUTO_NOTE7_STORE.loadRaw();
+    var alreadyCaptured = {};
+    existing.forEach(function (s) { if (s.autoCaptureKey) alreadyCaptured[s.autoCaptureKey] = true; });
+    var added = [];
+    valueTradesUnitsGlobal.forEach(function (u) {
+      if (u.score == null || u.score <= AUTO_NOTE7_THRESHOLD) return;
+      var key = unitStableKey(u);
+      if (alreadyCaptured[key]) return;
+      alreadyCaptured[key] = true;
+      var snap = buildSnapshotFromUnit(u);
+      snap.autoCaptureKey = key;
+      snap.isAutoCaptured = true;
+      added.push(snap);
+    });
+    if (added.length) saveAutoNote7ToStorage(added.concat(existing));
+  }
+  function renderAutoNote7() { renderStoreView(AUTO_NOTE7_STORE); }
   // ---------- Archives (bulk "close out the season" tag, reversible) ----------
   // A season close-out tags EVERY current snapshot and position (trashed
   // ones included — loadRaw, not load) with an archivedBatchId in place,
@@ -9545,6 +9664,7 @@
       if (u.score != null && u.score < VT_SCORE_FLOOR) return false;
       return true;
     });
+    valueTradesUnitsGlobal = allUnits;
     if (vtTrashMode) {
       var volRoiElTrash = document.getElementById("vtVolRoiChart");
       if (volRoiElTrash) volRoiElTrash.innerHTML = "";
@@ -10731,6 +10851,7 @@
       if (btn.getAttribute("data-tab") === "positions") renderPositions();
       if (btn.getAttribute("data-tab") === "archives") renderArchives();
       if (btn.getAttribute("data-tab") === "test") renderTest();
+      if (btn.getAttribute("data-tab") === "auto-note7") renderAutoNote7();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
       if (btn.getAttribute("data-tab") === "by-match") renderByMatch();
@@ -11041,6 +11162,12 @@
         await applyLivePolyPricesForDisplayedMarkets();
         hasLoadedOnce = true;
         renderAll();
+        // Runs every cycle regardless of which tab is open — the whole
+        // point is capturing a signal the moment it crosses the bar, not
+        // only while someone happens to be looking at this tab (unlike the
+        // "only re-render if active" snapshots/positions/autoNote7 checks
+        // right below, which are purely a rendering-cost optimization).
+        captureAutoNote7Signals();
         // Snapshots aren't part of renderAll (rebuilding that list every
         // cycle would fight the user's scroll/expand state for no reason
         // most of the time) — but now that a snapshot can track a live
@@ -11051,6 +11178,8 @@
         if (snapTab && snapTab.classList.contains("active")) renderSnapshots();
         var posTab = document.getElementById("tab-positions");
         if (posTab && posTab.classList.contains("active")) renderPositions();
+        var autoNote7Tab = document.getElementById("tab-auto-note7");
+        if (autoNote7Tab && autoNote7Tab.classList.contains("active")) renderAutoNote7();
         lastUpdateEl.textContent = new Date().toLocaleTimeString("fr-FR");
         // "Live" alone used to mean this exact thing even when a chunk of
         // traders silently failed this cycle and are showing whatever price
@@ -11283,6 +11412,7 @@
     if (name === "positions") return POSITIONS_STORE;
     if (name === "test") return TEST_STORE;
     if (name === "unconfident") return UNCONFIDENT_STORE;
+    if (name === "autoNote7") return AUTO_NOTE7_STORE;
     return SNAPSHOTS_STORE;
   }
   // All Time is a merged VIEW (snapshots + positions, see loadTestRaw) with
@@ -11884,6 +12014,8 @@
   wireExport(POSITIONS_STORE, "posExportBtn");
   wireExport(TEST_STORE, "testExportBtn");
   wireTrashToggle(TEST_STORE, "testTrashToggleBtn", renderTest);
+  wireExport(AUTO_NOTE7_STORE, "autoNote7ExportBtn");
+  wireTrashToggle(AUTO_NOTE7_STORE, "autoNote7TrashToggleBtn", renderAutoNote7);
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
   // Archives are tagged items in the same synced lists now (see the
   // "archive" op), not a separate local structure — so there's nothing left
