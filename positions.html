@@ -1401,18 +1401,6 @@
   .trader-recap-row:hover { background: var(--row-hover); }
   .trader-recap-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
   .snap-stats-caret { display: inline-block; width: 11px; color: var(--accent); font-size: 11px; font-weight: 700; }
-  .snap-stats-detail-row td { padding: 0; }
-  .snap-stats-detail {
-    display: flex; flex-direction: column; gap: 5px;
-    padding: 10px 16px 12px 30px;
-    background: color-mix(in srgb, var(--panel-border) 18%, transparent);
-    border-bottom: 1px solid var(--panel-border);
-  }
-  .trader-detail-section-label {
-    font-size: 10px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700;
-    color: var(--text-dim); margin-top: 6px;
-  }
-  .trader-detail-section-label:first-child { margin-top: 0; }
   .snap-dist-wrap { margin-bottom: 16px; max-height: none; }
   .snap-dist-subtitle { font-size: 11px; font-style: italic; color: var(--text-dim); padding: 10px 12px 0; }
   .snap-dist-empty { color: var(--text-dim); }
@@ -3186,7 +3174,7 @@
         auto: { tiers: [], noteBins: [], traderWeightBrackets: [], traders: [], sinceWeek: null }
       },
       chartSelectedId: null, chartPrevScrollY: null, expandedItems: {},
-      traderTableSort: { key: "total", dir: "desc" }, expandedTraderTable: {}, traderTableCollapsed: true, traderTableWeightBrackets: [],
+      traderTableSort: { key: "total", dir: "desc" }, traderCardFilter: null, traderTableCollapsed: true, traderTableWeightBrackets: [],
       trashMode: false, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
       manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false
     };
@@ -4594,16 +4582,6 @@
     return mergeUnitSides(u).some(function (m) {
       return m.items.some(function (it) {
         return it.s.entries.some(function (e) { return BY_MATCH_TARGET_TRADERS.indexOf((e.trader || "").toLowerCase()) !== -1; });
-      });
-    });
-  }
-  // Same idea, for an arbitrary single trader name (exact match) instead of
-  // the fixed BY_MATCH_TARGET_TRADERS pair — feeds "Value trades actuels"
-  // under a clicked row in Le tableau des traders (see traderDetailRowHtml).
-  function unitHasTrader(u, traderName) {
-    return mergeUnitSides(u).some(function (m) {
-      return m.items.some(function (it) {
-        return it.s.entries.some(function (e) { return e.trader === traderName; });
       });
     });
   }
@@ -8610,44 +8588,6 @@
       quartileHtml +
       '</div>';
   }
-  // Capped like BY_MATCH_MAX_ROWS — a busy whale can have dozens of open
-  // Value Trades at once, and renderUnitCard builds a full detailed card
-  // (side grid, per-trader rows, everything), not a cheap one-liner.
-  var TRADER_DETAIL_VALUE_TRADES_MAX = 20;
-  // Newest first, full interactive card per entry (on request, replacing
-  // the earlier one-line-per-row list) — snapCardHtml is the exact same
-  // renderer the store's own main list uses, frozen cardHtml and all (see
-  // buildSnapshotFromUnit), so a recorded value trade looks and behaves
-  // identically here: mark a result, retag confidence, send to corbeille —
-  // every click carries the entry's own data-store, so it writes back to
-  // st's real backing store, not some detail-only copy. Capped like the
-  // live section below it — a trader with hundreds of recorded snapshots
-  // would otherwise render hundreds of full cards on one click.
-  // Also shows that trader's CURRENT open Value Trades on request, above the
-  // history — allUnitsGlobal already covers every open position across
-  // every tracked trader (see its own comment, "Par match" reuses it the
-  // same way), filtered here to just this one name via unitHasTrader.
-  function traderDetailRowHtml(st, isExpanded, colspan, store) {
-    if (!isExpanded) return '';
-    var liveUnits = allUnitsGlobal.filter(function (u) { return unitHasTrader(u, st.name); });
-    liveUnits.forEach(function (u) { if (u.score == null) { var si = unitScoreInfo(u); u.score = si.score; u.scoreFactors = si.factors; u.scoreGate = si.gate; } });
-    liveUnits.sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
-    var shownUnits = liveUnits.slice(0, TRADER_DETAIL_VALUE_TRADES_MAX);
-    var highlightSet = {};
-    highlightSet[st.name] = true;
-    var valueTradesHtml = !liveUnits.length ? '' :
-      '<div class="trader-detail-section-label">🎯 Value trades actuels (' + (liveUnits.length > shownUnits.length ? shownUnits.length + ' / ' + liveUnits.length : liveUnits.length) + ')</div>' +
-      '<div class="match-unit-cards">' + shownUnits.map(function (u) { return renderUnitCard(u, highlightSet); }).join("") + '</div>';
-    var sortedEntries = st.entries.slice().sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
-    var shownEntries = sortedEntries.slice(0, TRADER_DETAIL_VALUE_TRADES_MAX);
-    var historyHtml = !sortedEntries.length ? '' :
-      '<div class="trader-detail-section-label">Historique (' + (sortedEntries.length > shownEntries.length ? shownEntries.length + ' / ' + sortedEntries.length : sortedEntries.length) + ')</div>' +
-      '<div class="match-unit-cards">' + shownEntries.map(function (en) { return snapCardHtml(en.snap, false, store); }).join("") + '</div>';
-    return '<tr class="snap-stats-detail-row"><td colspan="' + colspan + '"><div class="snap-stats-detail">' +
-      valueTradesHtml +
-      historyHtml +
-    '</div></td></tr>';
-  }
   // Shared by renderTraderTable and computeTraderNoteRoiPoints — one
   // accumulation pass per trader, so the two never silently disagree on
   // PNL/winrate/ROI for the same trader.
@@ -8881,13 +8821,16 @@
     }
     var rows = filteredRows.map(function (st) {
       var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
-      var isOpen = !!store.state.expandedTraderTable[st.name];
+      // Highlights (not expands) the row currently filtering the card list
+      // below — see traderCardFilter in renderStoreView. Title doubles as
+      // the "click again to clear" hint every other click-filter here gives.
+      var isActive = store.state.traderCardFilter === st.name;
       var hypPnlClass = st.hypPnl == null ? '' : (st.hypPnl > 0 ? "pnl-pos" : (st.hypPnl < 0 ? "pnl-neg" : ""));
-      return '<tr class="trader-table-row' + (isOpen ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '"><td><span class="snap-stats-caret">' + (isOpen ? '▾' : '▸') + '</span> ' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
+      return '<tr class="trader-table-row' + (isActive ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '" title="' + (isActive ? "Enlever le filtre sur ce trader" : "Filtrer la liste ci-dessous sur ce trader") + '"><td>' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
         '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
         '<td class="num ' + hypPnlClass + '">' + (st.hypPnl == null ? '—' : fmtUSD(st.hypPnl)) + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
-        roiCell(st.realRoi) + roiCell(st.hypRoi) + '</tr>' + traderDetailRowHtml(st, isOpen, TRADER_TABLE_COLUMNS.length, store);
+        roiCell(st.realRoi) + roiCell(st.hypRoi) + '</tr>';
     }).join("");
     var headCells = TRADER_TABLE_COLUMNS.map(function (col) {
       var isActive = store.state.traderTableSort.key === col.key;
@@ -9223,10 +9166,17 @@
       var wantManual = st.manualVsAutoFilter === "manual";
       cardsList = cardsList.filter(function (s) { return !!s.isManual === wantManual; });
     }
+    // Le tableau des traders' own row click (on request — was an inline
+    // expand under that row before, now filters this same list instead,
+    // same mechanism as every other click-a-thing-above-to-narrow-the-list-
+    // below filter here) — reclick the active row to clear, same convention
+    // as manualVsAutoFilter.
+    if (st.traderCardFilter != null) cardsList = cardsList.filter(function (s) { return (s.traderNames || []).indexOf(st.traderCardFilter) !== -1; });
     var activeFilterLabels = st.tierCardFilter.slice();
     if (st.snapDistCellFilter) activeFilterLabels.push((st.snapDistCellFilter.tier || "Tous") + " " + st.snapDistCellFilter.bracket[0] + "–" + st.snapDistCellFilter.bracket[1] + "¢");
     if (st.noteCardFilter != null) activeFilterLabels.push("note " + st.noteCardFilter + "-" + (st.noteCardFilter + 1));
     if (st.manualVsAutoFilter != null) activeFilterLabels.push(st.manualVsAutoFilter === "manual" ? "paris manuels" : "suivi auto");
+    if (st.traderCardFilter != null) activeFilterLabels.push("trader " + st.traderCardFilter);
     store.els.count.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + list.length + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
@@ -11773,8 +11723,12 @@
     if (traderTableRow) {
       var traderTableRowStore = resolveStoreFromEl(traderTableRow);
       var traderTableRowName = traderTableRow.getAttribute("data-trader");
-      traderTableRowStore.state.expandedTraderTable[traderTableRowName] = !traderTableRowStore.state.expandedTraderTable[traderTableRowName];
-      renderTraderTable(traderTableRowStore.load(), traderTableRowStore);
+      // Filters the card list below (on request — used to expand an inline
+      // detail right under this row instead) — a full renderStoreView, not
+      // just renderTraderTable, since the count pill/dashboard/card list
+      // all need to reflect the new filter too, not just this table.
+      traderTableRowStore.state.traderCardFilter = traderTableRowStore.state.traderCardFilter === traderTableRowName ? null : traderTableRowName;
+      renderStoreView(traderTableRowStore);
       return;
     }
     // Weekly table's own "Étendre par semaine" — a full renderStoreView
