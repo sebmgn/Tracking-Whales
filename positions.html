@@ -2745,7 +2745,14 @@
     // Added on request — @username profile URL given, address resolved via
     // the profile page's own api/profile/userData call (proxyWallet),
     // cross-checked against a live positions fetch.
-    { name: "ameisgoat11", platform: "polymarket", address: "0x2da325618fff9b2ffe64a49253fbcae8c7b9f258", weight: 7 }
+    { name: "ameisgoat11", platform: "polymarket", address: "0x2da325618fff9b2ffe64a49253fbcae8c7b9f258", weight: 7 },
+    // Added on request — @username profile URLs given, addresses resolved
+    // via the profile page's own api/profile/userData call (proxyWallet).
+    // stakeMultiplier per request, same "what if they bet N× bigger"
+    // simulation as stable-winner/mishipolis/aHjCz above.
+    { name: "anse-bundren", platform: "polymarket", address: "0x1cef57d1db14791a71cb743f00c57c2cb4432c8d", weight: 6, stakeMultiplier: 100 },
+    { name: "b118801", platform: "polymarket", address: "0x841291db37019d4e31f6d08cfb34cc3681487fc8", weight: 6, stakeMultiplier: 3 },
+    { name: "frenali", platform: "polymarket", address: "0xd79a48e622a2b65438e17b9a4e3f285f5d9c6d72", weight: 6, stakeMultiplier: 10 }
   ];
   // Reconstructed 2026-09-14 from git history (this file's own commit log),
   // not tracked live anywhere — TRADERS has never recorded when a profile
