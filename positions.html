@@ -1397,6 +1397,7 @@
   .trader-table-row { cursor: pointer; }
   .trader-table-row:hover { background: var(--row-hover); }
   .trader-table-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
+  .trader-table-plat-link { text-decoration: none; }
   .trader-recap-row { cursor: pointer; }
   .trader-recap-row:hover { background: var(--row-hover); }
   .trader-recap-row.open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
@@ -2058,7 +2059,7 @@
   .trader-lolli-zero { position: absolute; left: 50%; top: 2px; bottom: 2px; width: 1px; background: var(--panel-border); }
   .trader-lolli-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--panel); }
   .trader-contrib-dispersion .trader-contrib-row { grid-template-columns: 150px 1fr; }
-  .trader-dispersion-track { height: 92px; }
+  .trader-dispersion-track { height: 116px; }
   .trader-dispersion-dot {
     opacity: .85; cursor: default; transition: opacity .1s, transform .1s;
     display: flex; align-items: center; justify-content: center;
@@ -8799,16 +8800,23 @@
     if (!computed.length) return "";
     var maxAbs = 1;
     computed.forEach(function (c) { c.traders.forEach(function (t) { maxAbs = Math.max(maxAbs, Math.abs(t.roi)); }); });
-    var JITTER = [50, 30, 70, 15, 85, 40, 60]; // vertical % lanes, cycled — spreads close-ROI dots apart so they don't fully overlap
+    var JITTER = [50, 38, 62, 28, 72, 44, 58]; // vertical % lanes, cycled — spreads close-ROI dots apart so they don't fully overlap; kept off the 92px→116px track's extreme edges now that dots can reach 48px (see size below)
     var rows = computed.map(function (c) {
       var mid = c.bracket.max === Infinity ? (c.bracket.min + 1) : (c.bracket.min + c.bracket.max) / 2;
       var color = "hsl(" + weightHue(mid).toFixed(0) + ",65%,42%)";
       var dotsHtml = c.traders.slice().sort(function (a, b) { return a.roi - b.roi; }).map(function (t, i) {
         var pos = 50 + (t.roi / maxAbs) * 50;
-        var size = Math.max(27, Math.min(41, 27 + Math.sqrt(t.n) * 2));
+        // Widened 2026-09-21 (user-flagged): the old 27-41px range barely
+        // moved once sqrt-compressed — a 1-trade dot and a 50-trade dot
+        // looked nearly identical. 20-48px makes volume actually readable
+        // at a glance; the note number's own font size now scales with it
+        // (dot-size.toFixed(0)+'px' circle needs a smaller digit at 20px
+        // than at 48px to still fit).
+        var size = Math.max(20, Math.min(48, 18 + Math.sqrt(t.n) * 3));
+        var noteFontPx = Math.max(8, Math.min(12, size * 0.27));
         var vlane = JITTER[i % JITTER.length];
         var labelTop = "calc(" + vlane + "% + " + (size / 2 + 3).toFixed(0) + "px)";
-        return '<div class="trader-lolli-dot trader-dispersion-dot" style="left:' + pos.toFixed(1) + '%;top:' + vlane + '%;width:' + size.toFixed(0) + 'px;height:' + size.toFixed(0) + 'px;background:' + color + ';border-color:' + color + '" data-name="' + esc(t.name) + '" data-roi="' + t.roi.toFixed(0) + '" data-n="' + t.n + '" data-weight="' + t.weight.toFixed(1) + '" data-bracket="' + esc(c.bracket.label) + '"><span class="trader-dispersion-note">' + t.weight.toFixed(1) + '</span></div>' +
+        return '<div class="trader-lolli-dot trader-dispersion-dot" style="left:' + pos.toFixed(1) + '%;top:' + vlane + '%;width:' + size.toFixed(0) + 'px;height:' + size.toFixed(0) + 'px;background:' + color + ';border-color:' + color + '" data-name="' + esc(t.name) + '" data-roi="' + t.roi.toFixed(0) + '" data-n="' + t.n + '" data-weight="' + t.weight.toFixed(1) + '" data-bracket="' + esc(c.bracket.label) + '"><span class="trader-dispersion-note" style="font-size:' + noteFontPx.toFixed(1) + 'px">' + t.weight.toFixed(1) + '</span></div>' +
           '<div class="trader-dispersion-label" style="left:' + pos.toFixed(1) + '%;top:' + labelTop + '">' + esc(t.name) + '</div>';
       }).join("");
       return '<div class="trader-contrib-row">' +
@@ -8894,7 +8902,15 @@
       // the "click again to clear" hint every other click-filter here gives.
       var isActive = store.state.traderCardFilter === st.name;
       var hypPnlClass = st.hypPnl == null ? '' : (st.hypPnl > 0 ? "pnl-pos" : (st.hypPnl < 0 ? "pnl-neg" : ""));
-      return '<tr class="trader-table-row' + (isActive ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '" title="' + (isActive ? "Enlever le filtre sur ce trader" : "Filtrer la liste ci-dessous sur ce trader") + '"><td>' + esc(st.name) + platformBadge(PLATFORM_BY_NAME[st.name]) + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
+      // Platform badge doubles as a link to the trader's real profile (on
+      // request) — its own click is caught and short-circuited before the
+      // row's filter-toggle handler below, so opening the profile doesn't
+      // also toggle the card-list filter underneath it.
+      var rowProfileUrl = traderProfileUrl(st.name);
+      var platBadgeHtml = rowProfileUrl
+        ? '<a class="trader-table-plat-link" href="' + esc(rowProfileUrl) + '" target="_blank" rel="noopener" title="Voir le profil sur ' + esc((PLATFORMS[PLATFORM_BY_NAME[st.name]] || {}).label || "") + '">' + platformBadge(PLATFORM_BY_NAME[st.name]) + '</a>'
+        : platformBadge(PLATFORM_BY_NAME[st.name]);
+      return '<tr class="trader-table-row' + (isActive ? ' open' : '') + '" data-trader="' + esc(st.name) + '" data-store="' + store.name + '" title="' + (isActive ? "Enlever le filtre sur ce trader" : "Filtrer la liste ci-dessous sur ce trader") + '"><td>' + esc(st.name) + platBadgeHtml + weightBadge(WEIGHT_BY_NAME[st.name]) + '</td>' +
         '<td class="num ' + pnlClass + '">' + (st.decided > 0 ? fmtUSD(st.pnl) : '—') + '</td>' +
         '<td class="num ' + hypPnlClass + '">' + (st.hypPnl == null ? '—' : fmtUSD(st.hypPnl)) + '</td>' +
         '<td class="num">' + st.total + '</td><td class="num">' + st.win + '</td><td class="num">' + st.loss + '</td>' +
@@ -10624,6 +10640,36 @@
     var firstPt = linePts[0];
     var trendLine = '<line x1="' + firstPt.x.toFixed(2) + '" y1="' + firstPt.y.toFixed(2) + '" x2="' + lastPt.x.toFixed(2) + '" y2="' + lastPt.y.toFixed(2) + '" stroke="var(--gold)" stroke-width="1.6" stroke-dasharray="6,4" stroke-linecap="round" opacity="0.55"/>';
 
+    // One-off policy marker (user-requested 2026-09-21): from this date on,
+    // no more manual "B"-tier positions — only "A". A hardcoded date/label
+    // baked in here rather than a general annotation system, since it's a
+    // single dated policy change, not a recurring feature. x() is index-
+    // based (points aren't evenly spaced in time), so the marker's date is
+    // located between the two straddling points and interpolated the same
+    // way, rather than just picking the nearest point's x.
+    var POLICY_MARKER_DATE = new Date(2026, 8, 21);
+    var POLICY_MARKER_LABEL = ["21/09 — fin du", "manuel B, que du A"];
+    var policyX = null;
+    if (POLICY_MARKER_DATE >= series[0].date) {
+      if (POLICY_MARKER_DATE >= series[n - 1].date) {
+        policyX = x(n - 1);
+      } else {
+        for (var pmi = 0; pmi < n - 1; pmi++) {
+          if (series[pmi].date <= POLICY_MARKER_DATE && POLICY_MARKER_DATE < series[pmi + 1].date) {
+            var pmSpan = series[pmi + 1].date - series[pmi].date;
+            var pmT = pmSpan > 0 ? (POLICY_MARKER_DATE - series[pmi].date) / pmSpan : 0;
+            policyX = x(pmi) + pmT * (x(pmi + 1) - x(pmi));
+            break;
+          }
+        }
+      }
+    }
+    var policyMarker = policyX == null ? "" :
+      '<line x1="' + policyX.toFixed(2) + '" y1="' + padT + '" x2="' + policyX.toFixed(2) + '" y2="' + (H - padB) + '" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round"><title>À partir du 21/09/2026 : plus de position manuelle en tier B, uniquement en A.</title></line>' +
+      POLICY_MARKER_LABEL.map(function (line, pmli) {
+        return '<text x="' + (policyX - 6).toFixed(2) + '" y="' + (padT + 10 + pmli * 10) + '" font-size="9" font-weight="700" fill="#7c3aed" text-anchor="end">' + esc(line) + '</text>';
+      }).join("");
+
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
           '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.4"/>' +
@@ -10637,7 +10683,7 @@
         // now — so the eye lands there first regardless of how the curve
         // wanders before it.
         '<circle cx="' + lastPt.x.toFixed(2) + '" cy="' + lastPt.y.toFixed(2) + '" r="11" fill="' + lineColor + '" opacity="0.16"/>' +
-        yLabels + xLabels + points + extremaLabels +
+        yLabels + xLabels + points + extremaLabels + policyMarker +
       '</svg>';
   }
   // "Diviser par confiance" variant of the chart above — up to 4 cumulative
@@ -11804,6 +11850,8 @@
       renderTraderTable(traderTableSortStore.load(), traderTableSortStore);
       return;
     }
+    var traderTablePlatLink = e.target.closest ? e.target.closest(".trader-table-plat-link") : null;
+    if (traderTablePlatLink) return; // let the profile link open in its own tab — don't also toggle the row's card-list filter
     var traderTableRow = e.target.closest ? e.target.closest(".trader-table-row") : null;
     if (traderTableRow) {
       var traderTableRowStore = resolveStoreFromEl(traderTableRow);
