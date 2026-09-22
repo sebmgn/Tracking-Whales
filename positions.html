@@ -302,8 +302,9 @@
      as one deliberate family, not just "bold". Mes Positions is bold too
      but plain-colored — no gold assigned to it specifically, on request.
      tab-btn-group-start's margin-left:auto is what actually pushes
-     Statistiques profils/Trades par profils/Trades récents/Archives to the
-     right as one cluster, Archives trailing naturally last within it. */
+     Trades par profils/Trades récents/Archives/All Time/Auto Note>7/Auto
+     Big Trades to the right as one cluster, trailing naturally in order
+     within it. */
   .tab-gold-1 { color: var(--tab-gold-1); }
   .tab-gold-2 { color: var(--tab-gold-2); }
   .tab-gold-3 { color: var(--tab-gold-3); }
@@ -2258,12 +2259,12 @@
     <button class="tab-btn tab-btn-primary" data-tab="unconfident" type="button"><span class="tab-btn-icon">✕</span>Non confiants</button>
     <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-primary tab-gold-3" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Matchs</button>
-    <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="stats-profiles" type="button">Statistiques profils</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="trades-profiles" type="button">Trades par profils</button>
+    <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
     <button class="tab-btn tab-btn-quiet" data-tab="auto-note7" type="button"><span class="tab-btn-icon">🤖</span>Auto Note&gt;7</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="auto-bigtrade" type="button"><span class="tab-btn-icon">🐋</span>Auto Big Trades</button>
   </div>
 
   <div class="tab-panel active" id="tab-value-trades">
@@ -2516,6 +2517,36 @@
     </div>
   </div>
 
+  <div class="tab-panel" id="tab-auto-bigtrade">
+    <h2 class="section-title">🐋 Auto Big Trades <span class="count-pill" id="autoBigTradeCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte complète, tout value trade où un trader suivi a mis 50 000 $+ — pas besoin de cliquer 📌. Suivi LOCAL uniquement : ceci n'exécute jamais de vrai ordre sur Polymarket/Predict.fun, aucune clé/wallet n'est branché ici — c'est un enregistrement pour voir ce que ça aurait donné si tu avais pris la position dans le sens de cette grosse mise. Capturé seulement quand la grosse mise est sur le camp déjà leader du trade (voir l'astuce sur la carte) — ne repart pas de l'historique, une seule fois par marché, pour toujours une fois capturé. Simulé à mise plate (voir "Et si je misais"). Local à ce navigateur — pas synchronisé sur tes autres appareils.</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="autoBigTradeExportBtn" class="snap-sync-link" title="Télécharger les captures automatiques (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button id="autoBigTradeTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
+    </div>
+    <div id="autoBigTradePnlChartContent"></div>
+    <div id="autoBigTradeDashboard"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="autoBigTradeTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="autoBigTrade">▸ Le winrate par conviction</button>
+      <button type="button" id="autoBigTradeNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="autoBigTrade">▸ L'analyse winrate × note</button>
+      <button type="button" id="autoBigTradeDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="autoBigTrade">▸ L'analyse cote × confiance</button>
+      <button type="button" id="autoBigTradeManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="autoBigTrade">▸ Manuel vs suivi auto</button>
+      <button type="button" id="autoBigTradeWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="autoBigTrade">▸ Paris par semaine</button>
+      <button type="button" id="autoBigTradeOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="autoBigTrade">▸ Autres stats</button>
+      <button type="button" id="autoBigTradeTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="autoBigTrade">▸ Le tableau des traders</button>
+    </div>
+    <div id="autoBigTradeTierWinrateContent"></div>
+    <div id="autoBigTradeNoteWinrateContent"></div>
+    <div id="autoBigTradeDistContent"></div>
+    <div id="autoBigTradeManualVsAutoContent"></div>
+    <div id="autoBigTradeWeeklyPnlContent"></div>
+    <div id="autoBigTradeOtherStatsContent"></div>
+    <div id="autoBigTradeTraderTableContent"></div>
+    <div id="autoBigTradeContent" class="value-trades-box">
+      <div class="empty-note">Rien capturé pour l'instant.</div>
+    </div>
+  </div>
+
   <div class="tab-panel" id="tab-by-match">
     <h2 class="section-title">Matchs <span class="count-pill" id="byMatchCount">—</span></h2>
     <div class="empty-note" style="padding:0 4px 14px;">Tous les marchés d'un même événement (moneyline, spread, O/U…) regroupés sous un seul match, classés par nombre total de trades trackés — top 60. Clique un match pour voir chaque trade en détail, triés par note décroissante.</div>
@@ -2530,9 +2561,9 @@
     </div>
   </div>
 
-  <div class="tab-panel" id="tab-stats-profiles">
-    <h2 class="section-title">Statistiques profils</h2>
-    <div class="empty-note" style="padding:8px 4px 18px;">Le PnL et le volume de trading exacts (identiques à ceux affichés sur les profils officiels) ne sont accessibles que via une API réservée à chaque plateforme — pas de calcul approximatif ici. Direction le profil officiel de chacun pour ces chiffres :</div>
+  <div class="tab-panel" id="tab-trades-profiles">
+    <div class="pnl-chart-weekly-label">Statistiques profils</div>
+    <div class="empty-note" style="padding:2px 4px 12px;">Le PnL et le volume de trading exacts (identiques à ceux affichés sur les profils officiels) ne sont accessibles que via une API réservée à chaque plateforme — pas de calcul approximatif ici. Direction le profil officiel de chacun pour ces chiffres :</div>
     <div class="vt-filters" id="statsProfilesToolbar">
       <input type="search" id="statsProfilesSearch" class="stats-profiles-search" placeholder="🔍 Chercher un trader…" autocomplete="off">
       <span class="vt-sort-label">Trier par</span>
@@ -2542,10 +2573,7 @@
       <button data-sp-sort="name" type="button">Nom</button>
     </div>
     <div id="statsProfilesContent"></div>
-  </div>
-
-  <div class="tab-panel" id="tab-trades-profiles">
-    <h2 class="section-title">Positions par profil</h2>
+    <h2 class="section-title" style="margin-top:20px;padding-top:14px;border-top:1px dashed var(--panel-border);">Positions par profil</h2>
     <div class="vt-filters" id="tradesProfilesSportFilters">
       <button data-sport="all" type="button">Tous les sports</button>
       <button data-sport="football" class="active" type="button">⚽ Football</button>
@@ -2975,6 +3003,17 @@
   var autoNote7OtherStatsContent = document.getElementById("autoNote7OtherStatsContent");
   var autoNote7TraderTableContent = document.getElementById("autoNote7TraderTableContent");
   var autoNote7InvertSimContent = document.getElementById("autoNote7InvertSimContent");
+  var autoBigTradeContent = document.getElementById("autoBigTradeContent");
+  var autoBigTradeCountEl = document.getElementById("autoBigTradeCount");
+  var autoBigTradeDashboard = document.getElementById("autoBigTradeDashboard");
+  var autoBigTradeTierWinrateContent = document.getElementById("autoBigTradeTierWinrateContent");
+  var autoBigTradeNoteWinrateContent = document.getElementById("autoBigTradeNoteWinrateContent");
+  var autoBigTradePnlChartContent = document.getElementById("autoBigTradePnlChartContent");
+  var autoBigTradeDistContent = document.getElementById("autoBigTradeDistContent");
+  var autoBigTradeManualVsAutoContent = document.getElementById("autoBigTradeManualVsAutoContent");
+  var autoBigTradeWeeklyPnlContent = document.getElementById("autoBigTradeWeeklyPnlContent");
+  var autoBigTradeOtherStatsContent = document.getElementById("autoBigTradeOtherStatsContent");
+  var autoBigTradeTraderTableContent = document.getElementById("autoBigTradeTraderTableContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -6855,12 +6894,14 @@
   // the source of truth here, NOT tradersData/fetchAllPolyPositions — those
   // are deliberately fetched with redeemable=false/isResolved=false (see
   // their own comments) to skip exactly the settled positions this needs.
-  // Runs on a slow interval (checkAutoNote7ResolutionsInterval below), not
-  // every refresh cycle — a real match takes hours to resolve, and this is a
-  // real network call per still-pending entry through the same throttled
-  // queue every other fetch here shares.
-  async function checkAutoNote7Resolutions() {
-    var full = AUTO_NOTE7_STORE.loadRaw();
+  // Runs on a slow interval (see the setInterval calls near the bottom of
+  // this file), not every refresh cycle — a real match takes hours to
+  // resolve, and this is a real network call per still-pending entry through
+  // the same throttled queue every other fetch here shares. Shared by Auto
+  // Note>7 and Auto Big Trades (2026-09-22) — identical mechanism, just
+  // parameterized by which store/tab it's resolving for.
+  async function checkAutoStoreResolutions(store, tabId, renderFn) {
+    var full = store.loadRaw();
     var pending = full.filter(function (s) { return !s.winningSide && !s.deletedAt; });
     if (!pending.length) return;
     var changed = false;
@@ -6889,11 +6930,12 @@
       } catch (e) { /* best-effort — retried next interval */ }
     }));
     if (changed) {
-      saveAutoNote7ToStorage(full);
-      var autoNote7Tab = document.getElementById("tab-auto-note7");
-      if (autoNote7Tab && autoNote7Tab.classList.contains("active")) renderAutoNote7();
+      store.save(full);
+      var tab = document.getElementById(tabId);
+      if (tab && tab.classList.contains("active")) renderFn();
     }
   }
+  function checkAutoNote7Resolutions() { return checkAutoStoreResolutions(AUTO_NOTE7_STORE, "tab-auto-note7", renderAutoNote7); }
   function renderAutoNote7() { renderStoreView(AUTO_NOTE7_STORE); }
   // Auto Note>7 only (on request, 2026-09-22) — "et si on avait fadé les
   // whales à chaque fois ?" A collapsible section under the real chart
@@ -6944,6 +6986,92 @@
     var box = document.getElementById(boxId);
     if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box, store); }
   }
+  // ---------- Auto Big Trades (on request, 2026-09-22) ----------
+  // LOCAL TRACKING ONLY — this never places a real order. No wallet, key or
+  // trading API is touched anywhere in this file; captureAutoBigTradeSignals
+  // below only ever writes a frozen card into localStorage, the exact same
+  // "what would this have done" record Auto Note>7 already keeps. Same
+  // reasoning as that store's own comment: its own localStorage key, no
+  // remotePath/queueKey (enqueueOp skips sync/network for it entirely), so
+  // it's local to this browser only.
+  var AUTO_BIGTRADE_KEY = "vtAutoBigTradeSnapshots";
+  function loadAutoBigTradeRaw() {
+    try { return JSON.parse(localStorage.getItem(AUTO_BIGTRADE_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function loadAutoBigTrade() {
+    return loadAutoBigTradeRaw().filter(function (s) { return !s.deletedAt; });
+  }
+  function saveAutoBigTradeToStorage(list) {
+    try { localStorage.setItem(AUTO_BIGTRADE_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
+  }
+  var AUTO_BIGTRADE_STORE = {
+    name: "autoBigTrade",
+    loadRaw: loadAutoBigTradeRaw, load: loadAutoBigTrade, save: saveAutoBigTradeToStorage,
+    stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
+    allowTakePosition: false,
+    allowEditPosition: false, // no cote/manual correction — this list is meant to stay an untouched record of what the rule actually captured
+    allowSimStakeSlider: true,
+    itemNoun: "snapshot",
+    emptyHint: "Rien capturé pour l'instant — dès qu'un trader suivi met 50 000 $+ sur un value trade (dans le sens du camp déjà leader), il atterrit ici tout seul, plus besoin de cliquer 📌.",
+    dateLabelPrefix: "Capturé le",
+    simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment de la capture"; },
+    cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
+    els: { count: autoBigTradeCountEl, dashboard: autoBigTradeDashboard, pnlChart: autoBigTradePnlChartContent,
+      tierWinrate: autoBigTradeTierWinrateContent, noteWinrate: autoBigTradeNoteWinrateContent, dist: autoBigTradeDistContent,
+      list: autoBigTradeContent,
+      manualVsAuto: autoBigTradeManualVsAutoContent, weeklyPnl: autoBigTradeWeeklyPnlContent, otherStats: autoBigTradeOtherStatsContent,
+      traderTable: autoBigTradeTraderTableContent },
+    ids: { distToggle: "autoBigTradeDistToggleBtn",
+      tierToggle: "autoBigTradeTierWinrateToggleBtn", noteToggle: "autoBigTradeNoteWinrateToggleBtn",
+      manualVsAutoToggle: "autoBigTradeManualVsAutoToggleBtn", weeklyPnlToggle: "autoBigTradeWeeklyPnlToggleBtn",
+      otherStatsToggle: "autoBigTradeOtherStatsToggleBtn", traderTableToggle: "autoBigTradeTraderTableToggleBtn" },
+    state: freshStoreState()
+  };
+  // Same "legitimate value trade" pool Auto Note>7 uses (valueTradesUnitsGlobal)
+  // — captured once per real-world market forever (unitStableKey), never
+  // dropped for score reasons afterward, same guarantee as Auto Note>7 (see
+  // its own long comment above — identical reasoning, not repeated here).
+  //
+  // Scoped to units where the qualifying big stake sits on the unit's OWN
+  // natural leader side (mergeUnitSides sorts by trader COUNT first, stake
+  // second — a lone $50k+ whale against a crowd of smaller traders on the
+  // other side does not automatically make their side "leader"). A capture
+  // oriented to a side other than parts.leaderName would need its header/
+  // badge rebuilt around that side instead of just reusing buildSnapshotFromUnit
+  // as-is — skipped for now rather than shipped showing a misleading side;
+  // that whale-against-the-crowd case is exactly the kind of trade worth
+  // flagging too, just not built here yet.
+  function captureAutoBigTradeSignals() {
+    if (!valueTradesUnitsGlobal.length) return;
+    var existing = AUTO_BIGTRADE_STORE.loadRaw();
+    var alreadyCaptured = {};
+    existing.forEach(function (s) { if (s.autoCaptureKey) alreadyCaptured[s.autoCaptureKey] = true; });
+    var added = [];
+    valueTradesUnitsGlobal.forEach(function (u) {
+      var key = unitStableKey(u);
+      if (alreadyCaptured[key]) return;
+      var mergedSides = mergeUnitSides(u);
+      var maxStake = unitMaxTraderStake(mergedSides);
+      if (maxStake < BIG_TRADE_STAKE_THRESHOLD) return;
+      var bigSide = null;
+      mergedSides.forEach(function (m) {
+        m.items.forEach(function (it) {
+          it.s.entries.forEach(function (e) { if (e.stake === maxStake) bigSide = m.name; });
+        });
+      });
+      var parts = computeUnitCardParts(u);
+      if (!bigSide || bigSide !== parts.leaderName) return;
+      alreadyCaptured[key] = true;
+      var snap = buildSnapshotFromUnit(u);
+      snap.autoCaptureKey = key;
+      snap.isAutoCaptured = true;
+      snap.bigTradeStake = maxStake; // the qualifying stake itself, for display context on the card
+      added.push(snap);
+    });
+    if (added.length) saveAutoBigTradeToStorage(added.concat(existing));
+  }
+  function renderAutoBigTrade() { renderStoreView(AUTO_BIGTRADE_STORE); }
+  function checkAutoBigTradeResolutions() { return checkAutoStoreResolutions(AUTO_BIGTRADE_STORE, "tab-auto-bigtrade", renderAutoBigTrade); }
   // ---------- Archives (bulk "close out the season" tag, reversible) ----------
   // A season close-out tags EVERY current snapshot and position (trashed
   // ones included — loadRaw, not load) with an archivedBatchId in place,
@@ -11008,23 +11136,8 @@
     });
   }
   // ---------- tabs ----------
-  // Not real security (it's a client-side prompt in a public static page —
-  // anyone with devtools can bypass it trivially), just a speed bump so
-  // Mes Positions doesn't show on a casual glance. Resets on every page
-  // load (in-memory only, nothing persisted) — one prompt per visit, not
-  // one per tab click within that visit.
-  var positionsUnlocked = false;
-  var POSITIONS_PASSWORD = "ooo";
   document.querySelectorAll(".tab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      if (btn.getAttribute("data-tab") === "positions" && !positionsUnlocked) {
-        var pwd = prompt("Mot de passe pour Mes Positions :");
-        if (pwd !== POSITIONS_PASSWORD) {
-          if (pwd !== null) alert("Mot de passe incorrect.");
-          return; // wrong or cancelled — stay on whatever tab was already active
-        }
-        positionsUnlocked = true;
-      }
       document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
       document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
       btn.classList.add("active");
@@ -11043,6 +11156,7 @@
       if (btn.getAttribute("data-tab") === "archives") renderArchives();
       if (btn.getAttribute("data-tab") === "test") renderTest();
       if (btn.getAttribute("data-tab") === "auto-note7") renderAutoNote7();
+      if (btn.getAttribute("data-tab") === "auto-bigtrade") renderAutoBigTrade();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
       if (btn.getAttribute("data-tab") === "by-match") renderByMatch();
@@ -11368,6 +11482,7 @@
         // "only re-render if active" snapshots/positions/autoNote7 checks
         // right below, which are purely a rendering-cost optimization).
         captureAutoNote7Signals();
+        captureAutoBigTradeSignals();
         // Snapshots aren't part of renderAll (rebuilding that list every
         // cycle would fight the user's scroll/expand state for no reason
         // most of the time) — but now that a snapshot can track a live
@@ -11380,6 +11495,8 @@
         if (posTab && posTab.classList.contains("active")) renderPositions();
         var autoNote7Tab = document.getElementById("tab-auto-note7");
         if (autoNote7Tab && autoNote7Tab.classList.contains("active")) renderAutoNote7();
+        var autoBigTradeTab = document.getElementById("tab-auto-bigtrade");
+        if (autoBigTradeTab && autoBigTradeTab.classList.contains("active")) renderAutoBigTrade();
         lastUpdateEl.textContent = new Date().toLocaleTimeString("fr-FR");
         // "Live" alone used to mean this exact thing even when a chunk of
         // traders silently failed this cycle and are showing whatever price
@@ -11614,6 +11731,7 @@
     if (name === "test") return TEST_STORE;
     if (name === "unconfident") return UNCONFIDENT_STORE;
     if (name === "autoNote7") return AUTO_NOTE7_STORE;
+    if (name === "autoBigTrade") return AUTO_BIGTRADE_STORE;
     return SNAPSHOTS_STORE;
   }
   // All Time is a merged VIEW (snapshots + positions, see loadTestRaw) with
@@ -12246,6 +12364,8 @@
   wireTrashToggle(TEST_STORE, "testTrashToggleBtn", renderTest);
   wireExport(AUTO_NOTE7_STORE, "autoNote7ExportBtn");
   wireTrashToggle(AUTO_NOTE7_STORE, "autoNote7TrashToggleBtn", renderAutoNote7);
+  wireExport(AUTO_BIGTRADE_STORE, "autoBigTradeExportBtn");
+  wireTrashToggle(AUTO_BIGTRADE_STORE, "autoBigTradeTrashToggleBtn", renderAutoBigTrade);
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
   // Archives are tagged items in the same synced lists now (see the
   // "archive" op), not a separate local structure — so there's nothing left
@@ -12677,11 +12797,13 @@
   setInterval(function () { syncNow(SNAPSHOTS_STORE); }, 120000);
   setInterval(function () { syncNow(POSITIONS_STORE); }, 120000);
   // Every 5 min — a real match takes hours to resolve, no need for this on
-  // the 10s refresh cadence (see checkAutoNote7Resolutions's own comment).
+  // the 10s refresh cadence (see checkAutoStoreResolutions's own comment).
   // Once on load too, so a result already settled since the last visit
   // shows up right away instead of waiting a full interval.
   checkAutoNote7Resolutions();
   setInterval(checkAutoNote7Resolutions, 300000);
+  checkAutoBigTradeResolutions();
+  setInterval(checkAutoBigTradeResolutions, 300000);
   // ---------- 🔔 notification center ----------
   // Read-only history of the emails tracking-whales-notify actually sent
   // (see AWS_NOTIFY_URL) — useful when an alert email is missed, deleted, or
