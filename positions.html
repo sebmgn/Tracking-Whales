@@ -394,6 +394,17 @@
   .value-trade-item.vt-new {
     box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0)), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
   }
+  .vt-big-trade-badge {
+    display: inline-block; background: var(--tier-s); color: #fff;
+    font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  }
+  /* Same box-shadow-ring pattern as .vt-new (not a background wash like
+     .vt-live-now below) specifically so the two can stack on a card that's
+     both — a huge stake on a live match doesn't have to pick one signal. */
+  .value-trade-item.vt-big-trade {
+    box-shadow: 0 1px 4px rgba(51,43,30,.08), var(--note-glow, 0 0 0 rgba(0,0,0,0)), 0 0 0 1.5px color-mix(in srgb, var(--tier-s) 55%, transparent), 0 0 12px color-mix(in srgb, var(--tier-s) 30%, transparent);
+  }
   /* Same unitTimingStatus "live" read the En cours filter uses — a strong
      red wash (well past the ~5-8% sport tint resting cards get) so a
      genuinely in-progress event is unmistakable at a glance, not just a
@@ -2486,6 +2497,7 @@
       <button type="button" id="autoNote7WeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="autoNote7">▸ Paris par semaine</button>
       <button type="button" id="autoNote7OtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="autoNote7">▸ Autres stats</button>
       <button type="button" id="autoNote7TraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="autoNote7">▸ Le tableau des traders</button>
+      <button type="button" id="autoNote7InvertSimToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="invertsim" data-store="autoNote7">▸ Simulation inversée — et si on fadait les whales ?</button>
     </div>
     <div id="autoNote7TierWinrateContent"></div>
     <div id="autoNote7NoteWinrateContent"></div>
@@ -2494,6 +2506,7 @@
     <div id="autoNote7WeeklyPnlContent"></div>
     <div id="autoNote7OtherStatsContent"></div>
     <div id="autoNote7TraderTableContent"></div>
+    <div id="autoNote7InvertSimContent"></div>
     <div id="autoNote7Content" class="value-trades-box">
       <div class="empty-note">Rien capturé pour l'instant.</div>
     </div>
@@ -2957,6 +2970,7 @@
   var autoNote7WeeklyPnlContent = document.getElementById("autoNote7WeeklyPnlContent");
   var autoNote7OtherStatsContent = document.getElementById("autoNote7OtherStatsContent");
   var autoNote7TraderTableContent = document.getElementById("autoNote7TraderTableContent");
+  var autoNote7InvertSimContent = document.getElementById("autoNote7InvertSimContent");
   var snapSyncStatusEl = document.getElementById("snapSyncStatus");
   var snapSyncSetup = document.getElementById("snapSyncSetup");
   var snapSyncTokenInput = document.getElementById("snapSyncTokenInput");
@@ -3184,7 +3198,10 @@
       chartSelectedId: null, chartPrevScrollY: null, expandedItems: {},
       traderTableSort: { key: "total", dir: "desc" }, traderCardFilter: null, traderTableCollapsed: true, traderTableWeightBrackets: [],
       trashMode: false, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
-      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false
+      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false,
+      // Auto Note>7 only (see renderAutoNote7InvertSim) — harmless unused
+      // field on every other store, same as the rest of this shared shape.
+      invertSimCollapsed: true
     };
   }
   var rtMinValue = 0;
@@ -5694,9 +5711,19 @@
       bottomBarHtml: bottomBarHtml, kickoffHtml: kickoffHtml,
       headerHtml: headerHtml, bodyHtml: bodyHtml,
       balanceHtml: balanceHtml, sideGridHtml: sideGridHtml,
-      followBtnHtml: followBtnHtml, trashBtnHtml: trashBtnHtml, isFollowed: isFollowed, isTrashed: isTrashed
+      followBtnHtml: followBtnHtml, trashBtnHtml: trashBtnHtml, isFollowed: isFollowed, isTrashed: isTrashed,
+      maxStakeInUnit: maxStakeInUnit
     };
   }
+  // "Big Trade" (on request): flags a unit where at least one tracked
+  // trader's OWN stake stands out as unusually large — a simple, direct
+  // read on individual conviction, distinct from the unit's total volume
+  // (which can be large just from many traders piling on modestly). $15,000
+  // sits just under the real p95 of individual trader stakes across All
+  // Time's own history (~$17,940 across 944 real positions, checked
+  // 2026-09-22) — big enough to stay genuinely rare rather than firing on
+  // every other card.
+  var BIG_TRADE_STAKE_THRESHOLD = 15000;
 
   // Collapsed by default (only header + gauges show) — clicking the card
   // reveals the trader-by-trader breakdown. Shared by Value Trades and the
@@ -5722,19 +5749,23 @@
     // passed (or there's no extractable date at all, treated as live by
     // unitTimingStatus).
     var isLive = unitTimingStatus(u) === "live";
+    // Big Trade: at least one tracked trader's own stake on this unit
+    // clears BIG_TRADE_STAKE_THRESHOLD — see its own comment above.
+    var isBigTrade = parts.maxStakeInUnit >= BIG_TRADE_STAKE_THRESHOLD;
     // The countdown and Nouveau share one corner strip — the 🔴 Live pill
     // that used to sit before the countdown was removed (2026-08-29,
     // on request): its variable presence/width shifted the countdown
     // (and the S/R watch badges riding on it) sideways card to card,
     // which is exactly what a fixed-width countdown is trying to prevent.
     // "depuis X" already carries the same "this is live" signal on its own.
-    var cornerBadgesHtml = (parts.kickoffHtml || isNew)
+    var cornerBadgesHtml = (parts.kickoffHtml || isNew || isBigTrade)
       ? '<div class="vt-corner-badges">' +
           parts.kickoffHtml +
           (isNew ? '<span class="vt-new-badge">🆕 Nouveau</span>' : '') +
+          (isBigTrade ? '<span class="vt-big-trade-badge" title="Un trader suivi a mis au moins ' + esc(fmtUSD(BIG_TRADE_STAKE_THRESHOLD)) + ' sur ce trade — forte conviction individuelle">🐋 Grosse mise</span>' : '') +
         '</div>'
       : '';
-    return '<details class="value-trade-item' + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + (isLive ? ' vt-live-now' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
+    return '<details class="value-trade-item' + (isNew ? ' vt-new' : '') + (isHighNew ? ' vt-new-high' : '') + (isLive ? ' vt-live-now' : '') + (isBigTrade ? ' vt-big-trade' : '') + '" data-key="' + esc(key) + '"' + (expandedValueTrades[key] ? " open" : "") +
       ' style="' + (noteGlow ? '--note-glow:' + noteGlow : '') + '">' +
       '<summary class="vt-summary">' + cornerBadgesHtml + volumeGaugeHtml + parts.headerHtml + parts.balanceHtml + parts.bottomBarHtml + '</summary>' +
       '<div class="vt-detail">' + parts.sideGridHtml + '</div>' +
@@ -6553,6 +6584,20 @@
     if (!avgPrice || avgPrice <= 0) return null;
     return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
   }
+  // Auto Note>7's "simulation inversée" (on request, 2026-09-22): the exact
+  // mirror of hypotheticalFlatPnl above, betting AGAINST the leader instead
+  // of with it. Priced at 1 - avgPrice — the same binary-normalized
+  // complement leaderRoi already assumes elsewhere on this page — since most
+  // captured units don't carry a real, tradable price for "the other side"
+  // as its own recorded number. Treat this as an order of magnitude, not a
+  // price anyone could actually have gotten filled at.
+  function invertedFlatPnl(snap, flatStake) {
+    if (!snap.winningSide || !snap.leaderName) return null;
+    var avgPrice = snapLeaderPrice(snap);
+    if (!avgPrice || avgPrice <= 0 || avgPrice >= 1) return null;
+    var contrarianPrice = 1 - avgPrice;
+    return snap.leaderName !== snap.winningSide ? flatStake * (1 / contrarianPrice - 1) : -flatStake;
+  }
   // Everything that differs between "Mes Snapshots" and "Mes Positions" —
   // both tabs share the entire dashboard/chart/stats/card rendering suite
   // below, parameterized by one of these two descriptors, rather than
@@ -6742,11 +6787,12 @@
       tierWinrate: autoNote7TierWinrateContent, noteWinrate: autoNote7NoteWinrateContent, dist: autoNote7DistContent,
       list: autoNote7Content,
       manualVsAuto: autoNote7ManualVsAutoContent, weeklyPnl: autoNote7WeeklyPnlContent, otherStats: autoNote7OtherStatsContent,
-      traderTable: autoNote7TraderTableContent },
+      traderTable: autoNote7TraderTableContent, invertSim: autoNote7InvertSimContent },
     ids: { distToggle: "autoNote7DistToggleBtn",
       tierToggle: "autoNote7TierWinrateToggleBtn", noteToggle: "autoNote7NoteWinrateToggleBtn",
       manualVsAutoToggle: "autoNote7ManualVsAutoToggleBtn", weeklyPnlToggle: "autoNote7WeeklyPnlToggleBtn",
-      otherStatsToggle: "autoNote7OtherStatsToggleBtn", traderTableToggle: "autoNote7TraderTableToggleBtn" },
+      otherStatsToggle: "autoNote7OtherStatsToggleBtn", traderTableToggle: "autoNote7TraderTableToggleBtn",
+      invertSimToggle: "autoNote7InvertSimToggleBtn" },
     state: freshStoreState()
   };
   // Same "legitimate value trade" definition Value Trades itself shows —
@@ -6832,6 +6878,55 @@
     }
   }
   function renderAutoNote7() { renderStoreView(AUTO_NOTE7_STORE); }
+  // Auto Note>7 only (on request, 2026-09-22) — "et si on avait fadé les
+  // whales à chaque fois ?" A collapsible section under the real chart
+  // instead of a second tab: it's a derived hypothetical over the exact
+  // same captured rows, sharing the real card list below (click-to-jump
+  // lands on the same real cards) rather than a new record of anything —
+  // reusing buildHistoryChartSvg (which only needs a `series` array) keeps
+  // this to the pricing swap alone, not a parallel copy of the whole
+  // dashboard/store machinery a real second tab would need.
+  function renderAutoNote7InvertSim(list, store) {
+    var el = store.els.invertSim;
+    if (!el) return;
+    syncSnapToggleLabel(store.ids.invertSimToggle, store.state.invertSimCollapsed, "la simulation inversée");
+    if (store.state.invertSimCollapsed) { el.innerHTML = ""; return; }
+    var decided = list.filter(function (s) { return !!s.winningSide; }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    var stake = HYPOTHETICAL_FLAT_STAKE;
+    var realCum = 0, invCum = 0, realWin = 0, invWin = 0, n = 0;
+    var series = [];
+    decided.forEach(function (snap) {
+      var realPnl = hypotheticalFlatPnl(snap, stake);
+      var invPnl = invertedFlatPnl(snap, stake);
+      if (realPnl == null || invPnl == null) return;
+      n++;
+      realCum += realPnl; invCum += invPnl;
+      if (realPnl > 0) realWin++;
+      if (invPnl > 0) invWin++;
+      var won = invPnl >= 0;
+      series.push({ date: new Date(snap.savedAt), value: invCum, delta: invPnl, id: snap.id, win: won, pointColor: won ? "#00e676" : "#ff1744" });
+    });
+    var titleHtml = '<div class="tier-wr-title">🔄 Simulation inversée — et si on fadait les whales ?</div>';
+    if (n < 2) {
+      el.innerHTML = '<div class="chart-box">' + titleHtml + '<div class="empty-note" style="padding:14px 0;">Pas assez de captures décidées pour ça.</div></div>';
+      return;
+    }
+    var realRoi = (realCum / (n * stake) * 100).toFixed(1);
+    var invRoi = (invCum / (n * stake) * 100).toFixed(1);
+    var statsHtml = '<div class="pnl-chart-stats">' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + n + '</span></div>' +
+      '<div class="pnl-chart-stat" title="Ce que Auto Note>7 montre déjà — en suivant le leader"><span class="pnl-chart-stat-label">Réel (suivi whales)</span><span class="pnl-chart-stat-value ' + (realCum >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(realCum)) + ' <span class="dim">(' + (realCum >= 0 ? "+" : "") + realRoi + '%, ' + Math.round(realWin / n * 100) + '% WR)</span></span></div>' +
+      '<div class="pnl-chart-stat" title="Même mise, même trades, mais contre le leader"><span class="pnl-chart-stat-label">Inversé (fade)</span><span class="pnl-chart-stat-value ' + (invCum >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(invCum)) + ' <span class="dim">(' + (invCum >= 0 ? "+" : "") + invRoi + '%, ' + Math.round(invWin / n * 100) + '% WR)</span></span></div>' +
+    '</div>';
+    var boxId = "autoNote7-invertSimBox";
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '"><div class="pnl-chart-header">' + titleHtml + statsHtml + '</div>' +
+      buildHistoryChartSvg(series) +
+      '<div class="chart-hint">Clique un point pour aller au trade correspondant (la vraie carte, pas une version inversée) — reclique pour revenir.</div>' +
+      '<div class="empty-note" style="padding:8px 0 0;">Prix "camp adverse" approximé par 1 − cote du leader (même convention que le ROI-si-gagne affiché ailleurs sur le site) — un ordre de grandeur, pas un prix réellement tradable sur ce camp.</div>' +
+    '</div>';
+    var box = document.getElementById(boxId);
+    if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box, store); }
+  }
   // ---------- Archives (bulk "close out the season" tag, reversible) ----------
   // A season close-out tags EVERY current snapshot and position (trashed
   // ones included — loadRaw, not load) with an archivedBatchId in place,
@@ -9273,6 +9368,7 @@
     renderManualVsAuto(list, store);
     renderWeeklyPnl(list, store);
     renderOtherStats(list, store);
+    if (store.name === "autoNote7") renderAutoNote7InvertSim(list, store);
     if (!cardsList.length) {
       store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
         ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
@@ -11831,6 +11927,13 @@
       var traderTableStore = resolveStoreFromEl(traderTableToggleBtn);
       traderTableStore.state.traderTableCollapsed = !traderTableStore.state.traderTableCollapsed;
       renderTraderTable(traderTableStore.load(), traderTableStore);
+      return;
+    }
+    var invertSimToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='invertsim']") : null;
+    if (invertSimToggleBtn) {
+      var invertSimStore = resolveStoreFromEl(invertSimToggleBtn);
+      invertSimStore.state.invertSimCollapsed = !invertSimStore.state.invertSimCollapsed;
+      renderAutoNote7InvertSim(invertSimStore.load(), invertSimStore);
       return;
     }
     // Checked ahead of th.sortable[data-store] below — .trader-table-th also
