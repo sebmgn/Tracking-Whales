@@ -2285,6 +2285,10 @@
           <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
           <button data-timing="upcoming" type="button">📅 À venir<span class="vt-filter-count"></span></button>
         </div>
+        <div class="vt-filters" id="vtBigTradeFilters">
+          <button data-bigtrade="all" class="active" type="button">Tous<span class="vt-filter-count"></span></button>
+          <button data-bigtrade="only" type="button" title="Au moins un trader suivi a mis 50 000 $+ sur ce trade">🐋 Grosses mises<span class="vt-filter-count"></span></button>
+        </div>
         <div class="vt-filters" id="vtSortFilters">
           <span class="vt-sort-label">Trier par</span>
           <button data-sort="note" class="active" type="button">Note</button>
@@ -3233,6 +3237,7 @@
   // rating (TRADERS' own weight, see that array's 2026-09-13 comment).
   var sportFilter = "football"; // "all" | "football" | "other" — Value Trades' sport filter
   var vtTimingFilter = "all"; // "all" | "live" | "upcoming" — Value Trades' match-timing filter
+  var vtBigTradeFilter = "all"; // "all" | "only" — Value Trades' Big Trade quick filter (see unitIsBigTrade)
   var vtLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForUnit/renderVtLeagueFilters
   var vtTraderFilter = null; // null = no filter; else a trader name from TRADERS — Value Trades restricted to units that trader has a tracked position on (see unitTraderNameSet + vtBaseUnitFilter). Set via the dropdown or by clicking a card in Statistiques profils.
   var tradesProfilesTimingFilter = "all"; // "all" | "live" | "upcoming" — same idea, for Trades par profils
@@ -5376,11 +5381,7 @@
     // each side-block are scaled against this one shared number, so "fully
     // filled" always means "the biggest bettor on this whole bet", not just
     // the biggest within their own side.
-    var maxStakeInUnit = mergedSides.reduce(function (max, m) {
-      return m.items.reduce(function (mx, it) {
-        return it.s.entries.reduce(function (mx2, e) { return e.stake > mx2 ? e.stake : mx2; }, mx);
-      }, max);
-    }, 0);
+    var maxStakeInUnit = unitMaxTraderStake(mergedSides);
 
     // The gauges use a plain leading=green / rest=red reading regardless of
     // outcome name — with 4 possible "other" colors the two segments could
@@ -5718,12 +5719,28 @@
   // "Big Trade" (on request): flags a unit where at least one tracked
   // trader's OWN stake stands out as unusually large — a simple, direct
   // read on individual conviction, distinct from the unit's total volume
-  // (which can be large just from many traders piling on modestly). $15,000
-  // sits just under the real p95 of individual trader stakes across All
-  // Time's own history (~$17,940 across 944 real positions, checked
-  // 2026-09-22) — big enough to stay genuinely rare rather than firing on
-  // every other card.
-  var BIG_TRADE_STAKE_THRESHOLD = 15000;
+  // (which can be large just from many traders piling on modestly). Fixed
+  // at $50,000 on request (2026-09-22) — well above the real p99 of
+  // individual trader stakes across All Time's own history (~$53,100 across
+  // 944 real positions, checked 2026-09-22), so this is a rarer, more
+  // deliberate bar than the $15,000 (~p95) it started at.
+  var BIG_TRADE_STAKE_THRESHOLD = 50000;
+  // The single largest individual stake across every side of a unit —
+  // shared by computeUnitCardParts's own gauge-scaling maxStakeInUnit and
+  // the Big Trade filter/badge below, so there's exactly one place this
+  // gets computed.
+  function unitMaxTraderStake(mergedSides) {
+    return mergedSides.reduce(function (max, m) {
+      return m.items.reduce(function (mx, it) {
+        return it.s.entries.reduce(function (mx2, e) { return e.stake > mx2 ? e.stake : mx2; }, mx);
+      }, max);
+    }, 0);
+  }
+  // Cheap standalone check for the filter/count paths below, which only
+  // have the raw unit `u` (not an already-built card's mergedSides).
+  function unitIsBigTrade(u) {
+    return unitMaxTraderStake(mergeUnitSides(u)) >= BIG_TRADE_STAKE_THRESHOLD;
+  }
 
   // Collapsed by default (only header + gauges show) — clicking the card
   // reveals the trader-by-trader breakdown. Shared by Value Trades and the
@@ -9429,6 +9446,7 @@
       if (sportFilter === "other" && football) return false;
     }
     if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return false;
+    if (vtBigTradeFilter === "only" && !unitIsBigTrade(u)) return false;
     if (vtLeagueFilter) {
       var league = leagueInfoForUnit(u);
       if (!league || league.key !== vtLeagueFilter) return false;
@@ -9462,6 +9480,18 @@
       var status = unitTimingStatus(u);
       if (status === "live" || status === "upcoming") timingCounts[status]++;
     });
+    var bigTradeCounts = { all: 0, only: 0 };
+    base.forEach(function (u) {
+      if (sportFilter !== "all") {
+        var fb = isFootballUnit(u);
+        if (sportFilter === "football" && !fb) return;
+        if (sportFilter === "other" && fb) return;
+      }
+      if (vtTimingFilter !== "all" && unitTimingStatus(u) !== vtTimingFilter) return;
+      if (!passesNoteEtc(u)) return;
+      bigTradeCounts.all++;
+      if (unitIsBigTrade(u)) bigTradeCounts.only++;
+    });
     sportFiltersEl.querySelectorAll("button").forEach(function (btn) {
       var mode = btn.getAttribute("data-sport");
       var span = btn.querySelector(".vt-filter-count");
@@ -9471,6 +9501,11 @@
       var mode = btn.getAttribute("data-timing");
       var span = btn.querySelector(".vt-filter-count");
       if (span) span.textContent = " · " + (timingCounts[mode] || 0);
+    });
+    vtBigTradeFiltersEl.querySelectorAll("button").forEach(function (btn) {
+      var mode = btn.getAttribute("data-bigtrade");
+      var span = btn.querySelector(".vt-filter-count");
+      if (span) span.textContent = " · " + (bigTradeCounts[mode] || 0);
     });
   }
   // League buttons — rebuilt from scratch every render (unlike sport/timing,
@@ -11148,6 +11183,15 @@
       timingFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       vtTimingFilter = btn.getAttribute("data-timing") || "all";
+      renderValueTrades();
+    });
+  });
+  var vtBigTradeFiltersEl = document.getElementById("vtBigTradeFilters");
+  vtBigTradeFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      vtBigTradeFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      vtBigTradeFilter = btn.getAttribute("data-bigtrade") || "all";
       renderValueTrades();
     });
   });
