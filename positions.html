@@ -1180,7 +1180,11 @@
     background: var(--panel); border: 1px solid var(--panel-border);
     border-left: 3px solid var(--trader-accent, var(--accent));
     border-radius: var(--radius-md);
+    cursor: pointer;
   }
+  .trader-head:hover { border-color: var(--trader-accent, var(--accent)); }
+  .trader-collapse-indicator { flex: none; color: var(--text-dim); font-size: 13px; }
+  .trader-head:hover .trader-collapse-indicator { color: var(--accent); }
   .trader-avatar {
     flex: none; width: 32px; height: 32px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -2472,6 +2476,12 @@
       <span class="vt-sort-label">Trier par</span>
       <button data-sort="weight" class="active" type="button">Note</button>
       <button data-sort="recent" type="button">Récemment ajoutés</button>
+    </div>
+    <div class="vt-filters" id="tradesProfilesJumpFilter">
+      <span class="vt-sort-label">Aller à</span>
+      <select id="tradesProfilesJumpSelect" class="vt-trader-select">
+        <option value="">Choisir un profil…</option>
+      </select>
     </div>
     <button type="button" id="tradersRecapToggleBtn" class="collapse-btn snap-stats-toggle-btn">▸ Le tableau récap par trader</button>
     <div id="tradersRecapContent"></div>
@@ -10051,6 +10061,7 @@
     var traderLabel = trader.weight != null ? trader.weight.toFixed(1).replace(/\.0$/, "") : "—";
     var head = document.createElement("div");
     head.className = "trader-head";
+    head.setAttribute("data-trader", trader.name);
     head.style.setProperty("--trader-accent", traderAccent);
     head.innerHTML =
       '<span class="trader-avatar" title="Note qualité : ' + esc(traderLabel) + '/10">' + esc(traderLabel) + '</span>' +
@@ -10059,7 +10070,7 @@
         trader.address.slice(0, 6) + '…' + trader.address.slice(-4) + ' ↗</a>' +
       '<span class="trader-stats">' + positions.length + ' position' + (positions.length > 1 ? "s" : "") +
         ' · valeur totale <b>' + fmtUSD(totalValue) + '</b> · pnl <b class="' + totalPnlClass + '">' + fmtUSD(totalPnl) + '</b></span>' +
-      '<button type="button" class="collapse-btn" data-trader="' + esc(trader.name) + '">' + (collapsed ? "▸ Afficher" : "▾ Réduire") + '</button>';
+      '<span class="trader-collapse-indicator">' + (collapsed ? "▸" : "▾") + '</span>';
     section.appendChild(head);
 
     if (!positions.length) {
@@ -10155,18 +10166,24 @@
         renderTraderSections();
       });
     });
-    tradersContent.querySelectorAll(".collapse-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var name = btn.getAttribute("data-trader");
+    // Whole row is the toggle now (2026-09-24, on request — used to be a
+    // dedicated "Afficher" button). Guard against the two real <a> links
+    // inside the row (name/wallet, both open the real profile in a new
+    // tab) so clicking them navigates instead of also toggling the row.
+    tradersContent.querySelectorAll(".trader-head[data-trader]").forEach(function (head) {
+      head.addEventListener("click", function (e) {
+        if (e.target.closest("a")) return;
+        var name = head.getAttribute("data-trader");
         // Toggles the EFFECTIVE state (unset counts as collapsed, see
         // renderTraderSection), not the raw stored value — a plain `!`
         // here would leave an untouched (still-undefined) profile stuck
         // collapsed on its first click instead of expanding it.
         traderCollapsed[name] = (traderCollapsed[name] === false);
-        var section = btn.closest(".trader-section");
+        var section = head.closest(".trader-section");
         var scrollWrap = section && section.querySelector(".table-scroll");
         if (scrollWrap) scrollWrap.classList.toggle("collapsed", traderCollapsed[name]);
-        btn.textContent = traderCollapsed[name] ? "▸ Afficher" : "▾ Réduire";
+        var indicator = head.querySelector(".trader-collapse-indicator");
+        if (indicator) indicator.textContent = traderCollapsed[name] ? "▸" : "▾";
       });
     });
   }
@@ -11044,6 +11061,27 @@
     renderTraderSections();
     var section = document.getElementById(traderSectionId(name));
     if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  // "Aller à" dropdown (2026-09-24, on request) — same jump-to behavior as
+  // the recap table row above, so you don't have to scroll through every
+  // profile to find one. Alphabetical (not weight/recency) since this is a
+  // manual lookup, not a ranking. Resets to the placeholder after jumping
+  // so it reads as an action, not a persistent filter.
+  var tradesProfilesJumpSelect = document.getElementById("tradesProfilesJumpSelect");
+  TRADERS.slice().sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }); }).forEach(function (t) {
+    var opt = document.createElement("option");
+    opt.value = t.name;
+    opt.textContent = t.name + " (" + t.weight.toFixed(1).replace(/\.0$/, "") + ")";
+    tradesProfilesJumpSelect.appendChild(opt);
+  });
+  tradesProfilesJumpSelect.addEventListener("change", function () {
+    var name = tradesProfilesJumpSelect.value;
+    if (!name) return;
+    traderCollapsed[name] = false;
+    renderTraderSections();
+    var section = document.getElementById(traderSectionId(name));
+    if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+    tradesProfilesJumpSelect.value = "";
   });
   var vtDenseToggleBtn = document.getElementById("vtDenseToggleBtn");
   function syncDenseToggleBtn() {
