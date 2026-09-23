@@ -10338,9 +10338,20 @@
       var wantManual = tradesProfilesManualFilter === "manual";
       order = order.filter(function (t) { return !!MANUAL_TRADER_NAMES[t.name] === wantManual; });
     }
+    // With a stake floor set, drop traders with nothing above it instead of
+    // rendering an empty "Aucune position ouverte" card for each one (on
+    // request — 2026-09-24: the point of the filter is to jump straight to
+    // the traders who actually have a big trade on, still ranked by note/
+    // recency, not to scroll past a wall of empty cards to find them).
+    if (tradesProfilesMinStakeFilter > 0) {
+      order = order.filter(function (t) { return getTradesProfilesPositions(t).length > 0; });
+    }
     tradesProfilesLastOrder = order;
     renderTradesProfilesLeagueFilters(order);
     renderTradersRecapTable(order);
+    if (!order.length && tradesProfilesMinStakeFilter > 0) {
+      tradersContent.innerHTML = '<div class="empty-state">Aucun trader n\'a de position au-dessus de ' + fmtUSD(tradesProfilesMinStakeFilter) + ' actuellement.</div>';
+    }
     order.forEach(function (t) {
       tradersContent.appendChild(renderTraderSection(t));
     });
