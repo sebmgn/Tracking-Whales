@@ -2472,6 +2472,14 @@
       <button data-manual="manual" type="button">✍️ Manuels</button>
       <button data-manual="auto" type="button">🤖 Auto</button>
     </div>
+    <div class="vt-filters" id="tradesProfilesStakeFilters">
+      <span class="vt-sort-label">Mise mini</span>
+      <button data-stake="0" class="active" type="button">Tous</button>
+      <button data-stake="10000" type="button">&gt; 10 000 $</button>
+      <button data-stake="25000" type="button">&gt; 25 000 $</button>
+      <button data-stake="50000" type="button">&gt; 50 000 $</button>
+      <button data-stake="100000" type="button">&gt; 100 000 $</button>
+    </div>
     <div class="vt-filters" id="tradesProfilesSortFilters">
       <span class="vt-sort-label">Trier par</span>
       <button data-sort="weight" class="active" type="button">Note</button>
@@ -3177,6 +3185,7 @@
   var tradesProfilesSortMode = "weight"; // "weight" | "recent" — which order TRADERS render in, for Trades par profils
   var tradesProfilesLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForPosition/renderTradesProfilesLeagueFilters
   var tradesProfilesManualFilter = "all"; // "all" | "manual" | "auto" — which TRADERS (not positions) render, by MANUAL_TRADER_NAMES
+  var tradesProfilesMinStakeFilter = 0; // 0 = no filter; else a $ floor — only positions with valueUsd >= this show, per trader (see getTradesProfilesPositions)
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
   // everything down to a 3 now instead of hard-hiding it. Single source of
   // truth for the hard exclusion filter, the slider's floor/default, and
@@ -10030,6 +10039,9 @@
         return !!info && info.key === tradesProfilesLeagueFilter;
       });
     }
+    if (tradesProfilesMinStakeFilter > 0) {
+      positions = positions.filter(function (p) { return (p.valueUsd || 0) >= tradesProfilesMinStakeFilter; });
+    }
     if (tradesProfilesTimingFilter !== "all") {
       positions = positions.filter(function (p) {
         var unit = unitByMarketKey[p.marketKey];
@@ -10352,6 +10364,7 @@
       (tradersData[t.name] || []).forEach(function (p) {
         if (isPriceDecided(p.curPrice)) return;
         if (!isFootball(p.question, p.slug)) return;
+        if (tradesProfilesMinStakeFilter > 0 && (p.valueUsd || 0) < tradesProfilesMinStakeFilter) return;
         if (tradesProfilesTimingFilter !== "all") {
           var unit = unitByMarketKey[p.marketKey];
           if (!unit || unitTimingStatus(unit) !== tradesProfilesTimingFilter) return;
@@ -11022,6 +11035,15 @@
       tradesProfilesManualFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       tradesProfilesManualFilter = btn.getAttribute("data-manual") || "all";
+      renderTraderSections();
+    });
+  });
+  var tradesProfilesStakeFiltersEl = document.getElementById("tradesProfilesStakeFilters");
+  tradesProfilesStakeFiltersEl.querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tradesProfilesStakeFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      tradesProfilesMinStakeFilter = +btn.getAttribute("data-stake") || 0;
       renderTraderSections();
     });
   });
