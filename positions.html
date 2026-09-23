@@ -1268,19 +1268,6 @@
   .pnl-sub { font-size: 11.5px; opacity: .85; font-weight: 400; }
   .rank-cell { color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
-  .copy-btn, .peer-btn {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    color: var(--accent);
-    padding: 5px 10px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .copy-btn:hover, .peer-btn:hover { border-color: var(--accent); }
-  .copy-btn.is-open, .peer-btn.is-open { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   /* --- Mes Snapshots --- */
   /* Whole-card win/lose wash — bold enough to read at a glance, not just
@@ -1569,12 +1556,6 @@
   .snap-sync-setup input[type="date"]:focus,
   .snap-sync-setup select:focus { outline: none; border-color: var(--accent); }
   #manualTitleInput, #manualSideInput { flex: 1 1 160px; min-width: 120px; }
-  .stats-profiles-search {
-    background: var(--bg); border: 1px solid var(--panel-border); color: var(--text);
-    padding: 7px 10px; border-radius: var(--radius-sm); font-size: 13px;
-    flex: 1 1 220px; min-width: 160px;
-  }
-  .stats-profiles-search:focus { outline: none; border-color: var(--accent); }
   #manualCoteInput { flex: 0 1 90px; }
   .snap-manual-badge {
     display: inline-flex;
@@ -1607,103 +1588,18 @@
   tr.match-group-row { cursor: pointer; background: var(--row-hover); font-weight: 600; }
   tr.match-group-row:hover { background: color-mix(in srgb, var(--accent) 10%, var(--row-hover)); }
   tr.match-group-row .market-title { font-weight: 600; }
+  /* A left click anywhere on the row opens the real Value Trade card for
+     that market right below it — see wireInteractions' .data-row[data-key]
+     handler. .peer-open is a plain lingering highlight (independent of
+     :hover, which only shows while the mouse is actually over the row) so
+     it stays obvious which row's card is currently open. */
+  tr.data-row[data-key] { cursor: pointer; }
+  tr.data-row.peer-open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
   .match-group-count {
     font-size: 11px; font-weight: 600; color: var(--text-dim);
     border: 1px solid var(--panel-border); border-radius: 999px; padding: 2px 8px;
   }
   .peer-panel { padding: 4px 0; }
-  .copy-panel {
-    background: var(--row-hover);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius-md);
-    padding: 14px 16px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 18px;
-  }
-  .copy-panel label { color: var(--text-dim); font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
-  .copy-panel input[type="number"] {
-    background: var(--bg);
-    border: 1px solid var(--panel-border);
-    color: var(--text);
-    padding: 7px 9px;
-    border-radius: var(--radius-sm);
-    width: 120px;
-    font-size: 13px;
-  }
-  .copy-panel input[type="number"]:focus { outline: none; border-color: var(--accent); }
-  .calc-results { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 12.5px; color: var(--text-dim); }
-  .calc-results b { color: var(--text); font-variant-numeric: tabular-nums; }
-  .calc-results .profit-pos b { color: var(--green); }
-  .calc-results .profit-neg b { color: var(--red); }
-  .open-market-btn {
-    margin-left: auto;
-    background: var(--accent);
-    color: #fff;
-    text-decoration: none;
-    padding: 8px 14px;
-    border-radius: var(--radius-sm);
-    font-size: 12.5px;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .open-market-btn:hover { opacity: .88; }
-  .copy-disclaimer { width: 100%; color: var(--text-dim); font-size: 11px; }
-  /* Statistiques profils — one card per tracked trader, real grid instead
-     of a stacked list. --profile-accent (set inline per card, see
-     renderStatsProfiles) is the same weightHue red→gold→green scale the
-     w-badge pill uses everywhere else — a 6-rated trader and a 9.5-rated
-     one now visibly differ before you've even read the number. */
-  .profile-card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 14px;
-  }
-  .profile-card {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-top: 3px solid var(--profile-accent, var(--accent));
-    border-radius: var(--radius-md);
-    padding: 14px 16px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    transition: box-shadow .15s ease, transform .15s ease;
-    cursor: pointer;
-  }
-  .profile-card:hover {
-    box-shadow: 0 5px 18px color-mix(in srgb, var(--profile-accent, var(--accent)) 28%, transparent);
-    transform: translateY(-2px);
-  }
-  .profile-card-top { display: flex; align-items: center; gap: 10px; }
-  .profile-avatar {
-    flex: none; width: 38px; height: 38px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-weight: 800; font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    box-shadow: 0 1px 3px rgba(0,0,0,.3);
-  }
-  .profile-card-id { min-width: 0; }
-  .profile-card-name { display: block; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); text-decoration: none; }
-  .profile-card-name:hover { text-decoration: underline; color: var(--accent); }
-  .profile-card-badges { margin-top: 3px; }
-  .profile-card-addr { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; color: var(--text-dim); }
-  .profile-card-stats { display: flex; gap: 8px; }
-  .profile-card-stat {
-    flex: 1; display: flex; flex-direction: column; gap: 2px; align-items: center;
-    background: var(--row-hover); border-radius: var(--radius-sm); padding: 6px 4px;
-  }
-  .profile-card-stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
-  .profile-card-stat-value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .profile-card-link {
-    margin-top: auto; text-align: center; text-decoration: none;
-    background: var(--accent); color: #fff;
-    padding: 8px 12px; border-radius: var(--radius-sm);
-    font-size: 12px; font-weight: 700;
-  }
-  .profile-card-link:hover { opacity: .88; }
-
   tfoot td { padding: 12px; font-weight: 700; border-top: 2px solid var(--panel-border); font-variant-numeric: tabular-nums; }
   tfoot td.num { text-align: right; }
 
@@ -2212,7 +2108,6 @@
   @media (max-width: 780px) {
     .col-avg { display: none; }
     body { padding: 14px; }
-    .open-market-btn { margin-left: 0; }
     .evolution-row { flex-direction: column; }
     .daily-pnl-box { max-width: none; }
     /* .vt-badge-group (note/snapshot/volume/traders) stays pinned
@@ -2562,18 +2457,8 @@
   </div>
 
   <div class="tab-panel" id="tab-trades-profiles">
-    <div class="pnl-chart-weekly-label">Statistiques profils</div>
-    <div class="empty-note" style="padding:2px 4px 12px;">Le PnL et le volume de trading exacts (identiques à ceux affichés sur les profils officiels) ne sont accessibles que via une API réservée à chaque plateforme — pas de calcul approximatif ici. Direction le profil officiel de chacun pour ces chiffres :</div>
-    <div class="vt-filters" id="statsProfilesToolbar">
-      <input type="search" id="statsProfilesSearch" class="stats-profiles-search" placeholder="🔍 Chercher un trader…" autocomplete="off">
-      <span class="vt-sort-label">Trier par</span>
-      <button data-sp-sort="weight" class="active" type="button">Note</button>
-      <button data-sp-sort="value" type="button">Valeur ouverte</button>
-      <button data-sp-sort="positions" type="button">Positions</button>
-      <button data-sp-sort="name" type="button">Nom</button>
-    </div>
     <div id="statsProfilesContent"></div>
-    <h2 class="section-title" style="margin-top:20px;padding-top:14px;border-top:1px dashed var(--panel-border);">Positions par profil</h2>
+    <h2 class="section-title">Positions par profil</h2>
     <div class="vt-filters" id="tradesProfilesSportFilters">
       <button data-sport="all" type="button">Tous les sports</button>
       <button data-sport="football" class="active" type="button">⚽ Football</button>
@@ -3288,8 +3173,6 @@
   var tradesProfilesSortMode = "weight"; // "weight" | "recent" — which order TRADERS render in, for Trades par profils
   var tradesProfilesLeagueFilter = null; // null = no filter; else a LEAGUE_INFO .key — see leagueInfoForPosition/renderTradesProfilesLeagueFilters
   var tradesProfilesManualFilter = "all"; // "all" | "manual" | "auto" — which TRADERS (not positions) render, by MANUAL_TRADER_NAMES
-  var statsProfilesSearch = ""; // lowercased substring on trader name, "Statistiques profils"
-  var statsProfilesSort = "weight"; // "weight" | "value" | "positions" | "name"
   // Lowered 3->5->3 on request (2026-08-23): was 5, user wants to see
   // everything down to a 3 now instead of hard-hiding it. Single source of
   // truth for the hard exclusion filter, the slider's floor/default, and
@@ -3417,16 +3300,6 @@
     return shares > 0 ? value / shares : 0;
   }
 
-  function calcTrade(stake, price, feeRateBps) {
-    stake = Math.max(0, stake || 0);
-    var feeRate = (feeRateBps || 0) / 10000;
-    var fee = stake * feeRate;
-    var netStake = Math.max(0, stake - fee);
-    var shares = price > 0 ? netStake / price : 0;
-    var payout = shares * 1;
-    var profit = payout - stake;
-    return { fee: fee, netStake: netStake, shares: shares, payout: payout, profit: profit };
-  }
 
   // ---------- global throttle: keep total request rate safely under the
   // API's 240 req/60s limit even when many paginated fetches run at once ----------
@@ -10234,7 +10107,7 @@
       var memberRowsHtml = mg.positions.map(function (p) {
       var key = trader.name + "|" + p.marketKey + "|" + p.outcomeKey;
       positionIndex[key] = { position: p, trader: trader };
-      if (!panelState[key]) panelState[key] = { open: false, stake: 100 };
+      if (!panelState[key]) panelState[key] = { peerOpen: false };
 
       var shares = p.shares;
       var value = p.valueUsd;
@@ -10247,66 +10120,37 @@
       var title = p.question;
       var sub = p.subtitle;
       var side = p.outcomeName;
-      var isOpen = panelState[key].open;
-      var sid = safeId(key);
-      // "Autres traders" — same cross-trader unit Value Trades computes
-      // (see unitByMarketKey, built once per refresh cycle in renderAll),
-      // so one trader's own position row can reveal who else among the
-      // tracked traders is on this exact market, with the same gauges.
+      // Same cross-trader unit Value Trades computes (see unitByMarketKey,
+      // built once per refresh cycle in renderAll) — a left-click anywhere
+      // on this row shows that exact Value Trade card directly below it
+      // (2026-09-23, on request — replaces the old separate "Autres
+      // traders" button, and the per-position stake simulator below is
+      // gone entirely).
       var unit = unitByMarketKey[p.marketKey];
       var peerOpen = !!panelState[key].peerOpen;
-      var peerCount = unit ? unit.traderCount : 1;
-      var peerBtnLabel = peerOpen ? "Fermer" : ("Autres traders" + (peerCount > 1 ? " (" + peerCount + ")" : ""));
 
       // Only multi-market groups get tagged — a solo group's rows render
       // byte-for-byte as they always did, no attributes added.
       var groupClass = isMultiMarket ? (' match-group-member' + (groupHidden ? ' collapsed' : '')) : '';
       var groupAttr = isMultiMarket ? (' data-group-key="' + esc(groupKey) + '"') : '';
       var mainRow =
-        '<tr class="data-row' + groupClass + '"' + groupAttr + '>' +
+        '<tr class="data-row' + groupClass + (peerOpen ? ' peer-open' : '') + '" data-key="' + esc(key) + '"' + groupAttr + '>' +
           '<td><div class="market-title">' + esc(title) + '</div>' + (sub ? '<div class="market-sub">' + esc(sub) + '</div>' : '') + '</td>' +
           '<td><span class="side" style="background:' + sideColorFor(side) + '22;color:' + sideColorFor(side) + '">' + esc(side) + '</span></td>' +
           '<td class="num">' + fmtShares(shares) + '</td>' +
           '<td class="num col-avg">' + fmtCents(avgPrice) + ' <span class="price-arrow">→</span> ' + fmtCents(curPrice) + '</td>' +
           '<td class="num">' + fmtUSD(value) + '</td>' +
           '<td class="num ' + pnlClass + '">' + fmtUSD(pnl) + '<div class="pnl-sub">' + fmtPct(pnlPct) + '</div></td>' +
-          '<td class="num">' +
-            '<button type="button" class="copy-btn' + (isOpen ? ' is-open' : '') + '" data-key="' + esc(key) + '">' + (isOpen ? 'Fermer' : 'Copier') + '</button> ' +
-            '<button type="button" class="peer-btn' + (peerOpen ? ' is-open' : '') + '" data-key="' + esc(key) + '">' + peerBtnLabel + '</button>' +
-          '</td>' +
-        '</tr>';
-
-      var calc = calcTrade(panelState[key].stake, curPrice, p.feeRateBps);
-      var profitClass = calc.profit >= 0 ? "profit-pos" : "profit-neg";
-      var marketUrl = p.marketUrl;
-      var platformLabel = PLATFORMS[p.platform].label;
-
-      var panelRow =
-        '<tr class="copy-row' + (isOpen ? '' : ' collapsed') + groupClass + '" data-panel-key="' + esc(key) + '"' + groupAttr + '>' +
-          '<td colspan="7">' +
-            '<div class="copy-panel">' +
-              '<label>Mise ($)<input type="number" class="stake-input" min="0" step="10" value="' + panelState[key].stake + '" data-key="' + esc(key) + '"></label>' +
-              '<div class="calc-results" id="calc_' + sid + '">' +
-                '<span>Prix actuel : <b>' + fmtCents(curPrice) + '</b></span>' +
-                '<span>Frais est. (' + ((p.feeRateBps || 0) / 100).toFixed(2) + '%) : <b>' + fmtUSD(calc.fee) + '</b></span>' +
-                '<span>Shares estimées : <b>' + fmtShares(calc.shares) + '</b></span>' +
-                '<span>Gain potentiel si gagné : <b>' + fmtUSD(calc.payout) + '</b></span>' +
-                '<span class="' + profitClass + '">Profit potentiel : <b>' + fmtUSD(calc.profit) + '</b></span>' +
-              '</div>' +
-              '<a class="open-market-btn" href="' + marketUrl + '" target="_blank" rel="noopener">Ouvrir sur ' + platformLabel + ' →</a>' +
-              '<div class="copy-disclaimer">Estimation approximative (hors slippage). Le prix, les frais réels et l\'exécution sont déterminés sur ' + platformLabel + ' au moment de votre ordre — vous restez seul(e) à valider et signer la transaction.</div>' +
-            '</div>' +
-          '</td>' +
         '</tr>';
 
       var peerPanelHtml = peerOpen ?
         (unit ? renderUnitCard(unit) : '<div class="empty-state">Marché introuvable parmi les positions suivies actuellement.</div>') : '';
       var peerRow =
         '<tr class="copy-row peer-row' + (peerOpen ? '' : ' collapsed') + groupClass + '" data-peer-key="' + esc(key) + '"' + groupAttr + '>' +
-          '<td colspan="7"><div class="peer-panel">' + peerPanelHtml + '</div></td>' +
+          '<td colspan="6"><div class="peer-panel">' + peerPanelHtml + '</div></td>' +
         '</tr>';
 
-      return mainRow + panelRow + peerRow;
+      return mainRow + peerRow;
       }).join("");
 
       if (!isMultiMarket) return memberRowsHtml;
@@ -10320,11 +10164,10 @@
       var groupPnlClass = groupPnl >= 0 ? "pnl-pos" : "pnl-neg";
       var summaryRow =
         '<tr class="data-row match-group-row" data-group-toggle="' + esc(groupKey) + '">' +
-          '<td><span class="snap-stats-caret">' + (groupHidden ? '▸' : '▾') + '</span> <span class="market-title">' + esc(mg.positions[0].question) + '</span></td>' +
+          '<td><span class="snap-stats-caret">' + (groupHidden ? '▸' : '▾') + '</span> <span class="market-title">' + esc(mg.positions[0].question) + '</span> <span class="match-group-count">' + mg.positions.length + ' marchés</span></td>' +
           '<td></td><td class="num"></td><td class="num col-avg"></td>' +
           '<td class="num">' + fmtUSD(groupValue) + '</td>' +
           '<td class="num ' + groupPnlClass + '">' + fmtUSD(groupPnl) + '</td>' +
-          '<td class="num"><span class="match-group-count">' + mg.positions.length + ' marchés</span></td>' +
         '</tr>';
       return summaryRow + memberRowsHtml;
     }).join("");
@@ -10334,14 +10177,13 @@
       '<thead><tr>' +
         '<th>Marché</th><th>Side</th><th class="num">Shares</th>' +
         '<th class="num col-avg">Prix entrée → actuel</th>' +
-        '<th class="num">Valeur</th><th class="num">PnL non réalisé</th><th class="num">Copier</th>' +
+        '<th class="num">Valeur</th><th class="num">PnL non réalisé</th>' +
       '</tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody>' +
       '<tfoot><tr>' +
         '<td colspan="4">Total (' + positions.length + ' position' + (positions.length > 1 ? "s" : "") + ')</td>' +
         '<td class="num">' + fmtUSD(totalValue) + '</td>' +
         '<td class="num ' + totalPnlClass + '">' + fmtUSD(totalPnl) + '</td>' +
-        '<td></td>' +
       '</tr></tfoot>';
 
     scrollWrap.appendChild(table);
@@ -10349,26 +10191,9 @@
     return section;
   }
 
-  function updateCalcDisplay(key) {
-    var entry = positionIndex[key];
-    if (!entry) return;
-    var p = entry.position;
-    var curPrice = p.curPrice;
-    var calc = calcTrade(panelState[key].stake, curPrice, p.feeRateBps);
-    var profitClass = calc.profit >= 0 ? "profit-pos" : "profit-neg";
-    var el = document.getElementById("calc_" + safeId(key));
-    if (!el) return;
-    el.innerHTML =
-      '<span>Prix actuel : <b>' + fmtCents(curPrice) + '</b></span>' +
-      '<span>Frais est. (' + ((p.feeRateBps || 0) / 100).toFixed(2) + '%) : <b>' + fmtUSD(calc.fee) + '</b></span>' +
-      '<span>Shares estimées : <b>' + fmtShares(calc.shares) + '</b></span>' +
-      '<span>Gain potentiel si gagné : <b>' + fmtUSD(calc.payout) + '</b></span>' +
-      '<span class="' + profitClass + '">Profit potentiel : <b>' + fmtUSD(calc.profit) + '</b></span>';
-  }
-
   function wireInteractions() {
-    // Toggling a match group is a pure class flip (same convention as
-    // copy-btn/peer-btn below) — cheap enough that it never needs the full
+    // Toggling a match group is a pure class flip (same convention as the
+    // row click below) — cheap enough that it never needs the full
     // renderTraderSections re-render, which would also lose scroll position.
     tradersContent.querySelectorAll(".match-group-row").forEach(function (row) {
       row.addEventListener("click", function () {
@@ -10383,36 +10208,20 @@
         });
       });
     });
-    tradersContent.querySelectorAll(".copy-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var key = btn.getAttribute("data-key");
-        if (!panelState[key]) panelState[key] = { open: false, stake: 100 };
-        panelState[key].open = !panelState[key].open;
-        var row = tradersContent.querySelector('.copy-row[data-panel-key="' + CSS.escape(key) + '"]');
-        if (row) row.classList.toggle("collapsed", !panelState[key].open);
-        btn.classList.toggle("is-open", panelState[key].open);
-        btn.textContent = panelState[key].open ? "Fermer" : "Copier";
-      });
-    });
-    // Unlike .copy-btn's panel (always rendered, just hidden via CSS), the
-    // peer-panel's card HTML is only baked in when open — rendering a full
-    // Value-Trades-style card for every single position row regardless of
-    // open state would bloat the DOM for no reason — so toggling needs a
-    // real re-render to compute and inject that HTML, not just a CSS flip.
-    tradersContent.querySelectorAll(".peer-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var key = btn.getAttribute("data-key");
-        if (!panelState[key]) panelState[key] = { open: false, stake: 100 };
+    // A left click anywhere on a position row opens the real Value Trade
+    // card for that market right below it (2026-09-23, on request — this
+    // used to be a dedicated "Autres traders" button; the [data-key]
+    // selector keeps this off .match-group-row, which has no data-key and
+    // handles its own click above). The card HTML is only baked in when
+    // open — rendering a full Value-Trades-style card for every single
+    // position row regardless of open state would bloat the DOM for no
+    // reason — so toggling needs a real re-render, not just a CSS flip.
+    tradersContent.querySelectorAll(".data-row[data-key]").forEach(function (row) {
+      row.addEventListener("click", function () {
+        var key = row.getAttribute("data-key");
+        if (!panelState[key]) panelState[key] = { peerOpen: false };
         panelState[key].peerOpen = !panelState[key].peerOpen;
         renderTraderSections();
-      });
-    });
-    tradersContent.querySelectorAll(".stake-input").forEach(function (inp) {
-      inp.addEventListener("input", function () {
-        var key = inp.getAttribute("data-key");
-        if (!panelState[key]) panelState[key] = { open: true, stake: 100 };
-        panelState[key].stake = parseFloat(inp.value) || 0;
-        updateCalcDisplay(key);
       });
     });
     tradersContent.querySelectorAll(".collapse-btn").forEach(function (btn) {
@@ -10431,62 +10240,14 @@
     });
   }
 
-  // ---------- profile stats: each platform computes real lifetime PnL/volume
-  // via an internal API restricted to its own frontend origin (verified for
-  // Predict.fun: requests from any other origin, including a local file, get
-  // a 403) so we can't reproduce those numbers here. Link out to the official
-  // profile instead of guessing. Open-position count/value below IS accurate
-  // (same public APIs used everywhere else on this page). ----------
+  // Historique des profils suivis (added/removed log) only — the searchable/
+  // sortable profile-card grid this used to also render was removed on
+  // request (2026-09-23, "ça sert à rien"): every card just linked out to
+  // the trader's real profile for numbers this page can't reproduce anyway,
+  // and Value Trades' own Trader dropdown already covers "filter by this
+  // trader" without needing a dedicated card grid for it.
   function renderStatsProfiles() {
-    // Real cards (grid, circular weight avatar, accent tied to the same
-    // red→gold→green weightHue scale the w-badge pill already uses
-    // elsewhere) instead of reusing .value-trade-item's plain full-width
-    // row — that class is built for a trade's own content (question, sides,
-    // gauges) and left every profile here reading as a thin, near-identical
-    // line with barely anything to look at. 2026-08-30, on request.
-    // Each card's own open value/positions computed once up front so search
-    // and sort both read the exact same numbers instead of two passes
-    // risking drift, and so sort can be swapped without touching filtering.
-    var rows = TRADERS_BY_WEIGHT.map(function (t) {
-      var open = tradersData[t.name] || [];
-      return { t: t, open: open, openValue: open.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0) };
-    });
-    if (statsProfilesSearch) {
-      rows = rows.filter(function (r) { return r.t.name.toLowerCase().indexOf(statsProfilesSearch) !== -1; });
-    }
-    var sortField = statsProfilesSort;
-    rows.sort(function (a, b) {
-      if (sortField === "name") return a.t.name.localeCompare(b.t.name);
-      if (sortField === "value") return b.openValue - a.openValue;
-      if (sortField === "positions") return b.open.length - a.open.length;
-      return (b.t.weight || 0) - (a.t.weight || 0);
-    });
-    if (!rows.length) {
-      statsProfilesContent.innerHTML = '<div class="empty-note">Aucun trader ne correspond à « ' + esc(statsProfilesSearch) + ' ».</div>';
-      return;
-    }
-    var html = rows.map(function (r) {
-      var t = r.t, open = r.open, openValue = r.openValue;
-      var info = PLATFORMS[t.platform];
-      var accent = "hsl(" + weightHue(t.weight).toFixed(0) + ",62%,42%)";
-      var label = t.weight.toFixed(1).replace(/\.0$/, "");
-      return '<div class="profile-card" style="--profile-accent:' + accent + '" data-trader-name="' + esc(t.name) + '" title="Voir les Value Trades de ' + esc(t.name) + '">' +
-        '<div class="profile-card-top">' +
-          '<span class="profile-avatar" style="background:' + accent + '" title="Note qualité : ' + label + '/10">' + esc(label) + '</span>' +
-          '<div class="profile-card-id">' +
-            '<a class="profile-card-name" href="' + info.profileUrl(t.address) + '" target="_blank" rel="noopener" title="Voir le profil sur ' + esc(info.label) + '">' + esc(t.name) + '</a>' +
-            '<div class="profile-card-badges">' + platformBadge(t.platform) + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="profile-card-addr">' + t.address.slice(0, 6) + '…' + t.address.slice(-4) + '</div>' +
-        '<div class="profile-card-stats">' +
-          '<div class="profile-card-stat"><span class="profile-card-stat-label">Positions</span><span class="profile-card-stat-value">' + open.length + '</span></div>' +
-          '<div class="profile-card-stat"><span class="profile-card-stat-label">Valeur ouverte</span><span class="profile-card-stat-value">' + fmtUSD(openValue) + '</span></div>' +
-        '</div>' +
-        '<a class="profile-card-link" href="' + info.profileUrl(t.address) + '" target="_blank" rel="noopener">Voir le profil sur ' + info.label + ' →</a>' +
-      '</div>';
-    }).join("");
-    statsProfilesContent.innerHTML = traderHistoryPreambleHtml() + '<div class="profile-card-grid">' + html + '</div>';
+    statsProfilesContent.innerHTML = traderHistoryPreambleHtml();
     wireTraderHistoryToggle();
   }
   var statsProfilesHistoryCollapsed = false; // visible by default, on request
@@ -11234,43 +10995,6 @@
   vtTraderFilterSelect.addEventListener("change", function () {
     vtTraderFilter = vtTraderFilterSelect.value || null;
     renderValueTrades();
-  });
-  // Shared by the dropdown above and by clicking a card in Statistiques
-  // profils (see renderStatsProfiles) — jumps to Value Trades pre-filtered
-  // to that one trader's markets.
-  function activateValueTradesTraderFilter(name) {
-    vtTraderFilter = name;
-    vtTraderFilterSelect.value = name;
-    // Reset sport/league to "everything" — a trader clicked from Statistiques
-    // profils should actually show up, even if their positions happen to be
-    // outside whatever sport/league filter Value Trades was left on.
-    sportFilter = "all";
-    vtLeagueFilter = null;
-    sportFiltersEl.querySelectorAll("button").forEach(function (b) { b.classList.toggle("active", b.getAttribute("data-sport") === "all"); });
-    var vtTabBtn = document.querySelector('.tab-btn[data-tab="value-trades"]');
-    if (vtTabBtn && !vtTabBtn.classList.contains("active")) vtTabBtn.click();
-    renderValueTrades();
-  }
-  statsProfilesContent.addEventListener("click", function (e) {
-    if (e.target.closest(".profile-card-link")) return; // let the external profile link through untouched
-    if (e.target.closest(".profile-card-name")) return; // ditto — the name itself now links out too
-    var card = e.target.closest(".profile-card[data-trader-name]");
-    if (!card) return;
-    activateValueTradesTraderFilter(card.getAttribute("data-trader-name"));
-  });
-  var statsProfilesSearchEl = document.getElementById("statsProfilesSearch");
-  statsProfilesSearchEl.addEventListener("input", function () {
-    statsProfilesSearch = statsProfilesSearchEl.value.trim().toLowerCase();
-    renderStatsProfiles();
-  });
-  var statsProfilesToolbarEl = document.getElementById("statsProfilesToolbar");
-  statsProfilesToolbarEl.querySelectorAll("button[data-sp-sort]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      statsProfilesToolbarEl.querySelectorAll("button[data-sp-sort]").forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      statsProfilesSort = btn.getAttribute("data-sp-sort");
-      renderStatsProfiles();
-    });
   });
   var byMatchSportFiltersEl = document.getElementById("byMatchSportFilters");
   byMatchSportFiltersEl.querySelectorAll("button").forEach(function (btn) {
