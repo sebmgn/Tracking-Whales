@@ -1584,10 +1584,6 @@
   .snap-sync-setup .empty-note { flex: 1 1 100%; }
 
   tr.copy-row.collapsed { display: none; }
-  tr.match-group-member.collapsed { display: none; }
-  tr.match-group-row { cursor: pointer; background: var(--row-hover); font-weight: 600; }
-  tr.match-group-row:hover { background: color-mix(in srgb, var(--accent) 10%, var(--row-hover)); }
-  tr.match-group-row .market-title { font-weight: 600; }
   /* A left click anywhere on the row opens the real Value Trade card for
      that market right below it — see wireInteractions' .data-row[data-key]
      handler. .peer-open is a plain lingering highlight (independent of
@@ -1595,10 +1591,6 @@
      it stays obvious which row's card is currently open. */
   tr.data-row[data-key] { cursor: pointer; }
   tr.data-row.peer-open { background: color-mix(in srgb, var(--gold) 12%, transparent); }
-  .match-group-count {
-    font-size: 11px; font-weight: 600; color: var(--text-dim);
-    border: 1px solid var(--panel-border); border-radius: 999px; padding: 2px 8px;
-  }
   .peer-panel { padding: 4px 0; }
   tfoot td { padding: 12px; font-weight: 700; border-top: 2px solid var(--panel-border); font-variant-numeric: tabular-nums; }
   tfoot td.num { text-align: right; }
@@ -2687,7 +2679,10 @@
     // Added on request — @username profile URLs given, addresses resolved
     // via the profile page's own api/profile/userData call (proxyWallet).
     { name: "seeyouanymore", platform: "polymarket", address: "0x3f5813ba1f7f4bf8e49b70ce36bc18b5196fd93a", weight: 7, stakeMultiplier: 30 },
-    { name: "VD721lsj4938Dk388", platform: "polymarket", address: "0x162ca4c5249987872fea1e15c846d7fe80316c47", weight: 6.5, stakeMultiplier: 10 }
+    { name: "VD721lsj4938Dk388", platform: "polymarket", address: "0x162ca4c5249987872fea1e15c846d7fe80316c47", weight: 6.5, stakeMultiplier: 10 },
+    // Added on request — @username profile URL given, address resolved via
+    // the profile page's own api/profile/userData call (proxyWallet).
+    { name: "cypya", platform: "polymarket", address: "0x970998da056e60c707d9b1fc55cfdf3d68c252ab", weight: 7.5 }
   ];
   // Reconstructed 2026-09-14 from git history (this file's own commit log),
   // not tracked live anywhere — TRADERS has never recorded when a profile
@@ -3092,7 +3087,6 @@
   var panelState = {};       // key -> { open, stake, peerOpen }
   var unitByMarketKey = {};  // marketKey -> render unit (recomputed each cycle) — lets "Trades par profils" show the same cross-trader card as Value Trades for one position's market
   var traderCollapsed = {};  // trader name -> bool
-  var matchGroupCollapsed = {}; // "trader|matchKey" -> bool — collapsed (true) by default, see renderTraderSection's per-match grouping
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var siblingPanelOpen = {}; // unit stableKey -> bool — "⇄" toggle, see findSiblingUnits
   var allUnitsGlobal = []; // every render unit, unfiltered — set once per refresh cycle in renderAll, reused by "Par match" so it doesn't need its own pass over tradersData
@@ -10079,32 +10073,12 @@
     var scrollWrap = document.createElement("div");
     scrollWrap.className = "table-scroll" + (collapsed ? " collapsed" : "");
 
-    // Group by real match (matchKeyFromSlug — same key the "Matchs" tab
-    // already groups by) so a match with many sub-markets (exact scores,
-    // spreads…) collapses to one row instead of flooding this table — a
-    // single whale can otherwise show 10 rows for what's really one game.
-    // A slug with no date suffix (outright/futures) has no matchKey and
-    // stays its own solo group, one row, exactly as before this existed.
-    var matchGroups = [], matchGroupByKey = {};
-    positions.forEach(function (p) {
-      var mk = matchKeyFromSlug(p.slug);
-      var gkey = mk || ("solo:" + p.marketKey + "|" + p.outcomeKey);
-      if (!matchGroupByKey[gkey]) {
-        var mg = { key: gkey, positions: [] };
-        matchGroupByKey[gkey] = mg;
-        matchGroups.push(mg);
-      }
-      matchGroupByKey[gkey].positions.push(p);
-    });
-
-    var rowsHtml = matchGroups.map(function (mg) {
-      var isMultiMarket = mg.positions.length > 1;
-      var groupKey = trader.name + "|" + mg.key;
-      // Collapsed by default (matchGroupCollapsed[groupKey] only ever set
-      // explicitly to false once expanded) — same "unset reads as
-      // collapsed" convention as traderCollapsed above.
-      var groupHidden = isMultiMarket && matchGroupCollapsed[groupKey] !== false;
-      var memberRowsHtml = mg.positions.map(function (p) {
+    // Flat, no grouping by match (removed 2026-09-24, on request — was
+    // collapsing a match's sub-markets, e.g. exact-score lines, under one
+    // summary row). positions is already sorted by valueUsd desc (see
+    // getTradesProfilesPositions), so this list reads as a straight
+    // biggest-stake-first ranking.
+    var rowsHtml = positions.map(function (p) {
       var key = trader.name + "|" + p.marketKey + "|" + p.outcomeKey;
       positionIndex[key] = { position: p, trader: trader };
       if (!panelState[key]) panelState[key] = { peerOpen: false };
@@ -10122,19 +10096,12 @@
       var side = p.outcomeName;
       // Same cross-trader unit Value Trades computes (see unitByMarketKey,
       // built once per refresh cycle in renderAll) — a left-click anywhere
-      // on this row shows that exact Value Trade card directly below it
-      // (2026-09-23, on request — replaces the old separate "Autres
-      // traders" button, and the per-position stake simulator below is
-      // gone entirely).
+      // on this row shows that exact Value Trade card directly below it.
       var unit = unitByMarketKey[p.marketKey];
       var peerOpen = !!panelState[key].peerOpen;
 
-      // Only multi-market groups get tagged — a solo group's rows render
-      // byte-for-byte as they always did, no attributes added.
-      var groupClass = isMultiMarket ? (' match-group-member' + (groupHidden ? ' collapsed' : '')) : '';
-      var groupAttr = isMultiMarket ? (' data-group-key="' + esc(groupKey) + '"') : '';
       var mainRow =
-        '<tr class="data-row' + groupClass + (peerOpen ? ' peer-open' : '') + '" data-key="' + esc(key) + '"' + groupAttr + '>' +
+        '<tr class="data-row' + (peerOpen ? ' peer-open' : '') + '" data-key="' + esc(key) + '">' +
           '<td><div class="market-title">' + esc(title) + '</div>' + (sub ? '<div class="market-sub">' + esc(sub) + '</div>' : '') + '</td>' +
           '<td><span class="side" style="background:' + sideColorFor(side) + '22;color:' + sideColorFor(side) + '">' + esc(side) + '</span></td>' +
           '<td class="num">' + fmtShares(shares) + '</td>' +
@@ -10146,30 +10113,11 @@
       var peerPanelHtml = peerOpen ?
         (unit ? renderUnitCard(unit) : '<div class="empty-state">Marché introuvable parmi les positions suivies actuellement.</div>') : '';
       var peerRow =
-        '<tr class="copy-row peer-row' + (peerOpen ? '' : ' collapsed') + groupClass + '" data-peer-key="' + esc(key) + '"' + groupAttr + '>' +
+        '<tr class="copy-row peer-row' + (peerOpen ? '' : ' collapsed') + '" data-peer-key="' + esc(key) + '">' +
           '<td colspan="6"><div class="peer-panel">' + peerPanelHtml + '</div></td>' +
         '</tr>';
 
       return mainRow + peerRow;
-      }).join("");
-
-      if (!isMultiMarket) return memberRowsHtml;
-
-      // Highest-value sub-market's own question stands in for the match's
-      // display name — same convention "Matchs" uses for its own group rows
-      // (positions is pre-sorted by valueUsd desc, so positions[0] here IS
-      // that highest-value member already).
-      var groupValue = mg.positions.reduce(function (s, p) { return s + (p.valueUsd || 0); }, 0);
-      var groupPnl = mg.positions.reduce(function (s, p) { return s + (p.pnlUsd || 0); }, 0);
-      var groupPnlClass = groupPnl >= 0 ? "pnl-pos" : "pnl-neg";
-      var summaryRow =
-        '<tr class="data-row match-group-row" data-group-toggle="' + esc(groupKey) + '">' +
-          '<td><span class="snap-stats-caret">' + (groupHidden ? '▸' : '▾') + '</span> <span class="market-title">' + esc(mg.positions[0].question) + '</span> <span class="match-group-count">' + mg.positions.length + ' marchés</span></td>' +
-          '<td></td><td class="num"></td><td class="num col-avg"></td>' +
-          '<td class="num">' + fmtUSD(groupValue) + '</td>' +
-          '<td class="num ' + groupPnlClass + '">' + fmtUSD(groupPnl) + '</td>' +
-        '</tr>';
-      return summaryRow + memberRowsHtml;
     }).join("");
 
     var table = document.createElement("table");
@@ -10192,30 +10140,13 @@
   }
 
   function wireInteractions() {
-    // Toggling a match group is a pure class flip (same convention as the
-    // row click below) — cheap enough that it never needs the full
-    // renderTraderSections re-render, which would also lose scroll position.
-    tradersContent.querySelectorAll(".match-group-row").forEach(function (row) {
-      row.addEventListener("click", function () {
-        var groupKey = row.getAttribute("data-group-toggle");
-        var wasCollapsed = matchGroupCollapsed[groupKey] !== false;
-        var nowCollapsed = !wasCollapsed;
-        matchGroupCollapsed[groupKey] = nowCollapsed;
-        var caret = row.querySelector(".snap-stats-caret");
-        if (caret) caret.textContent = nowCollapsed ? "▸" : "▾";
-        tradersContent.querySelectorAll('.match-group-member[data-group-key="' + CSS.escape(groupKey) + '"]').forEach(function (memberRow) {
-          memberRow.classList.toggle("collapsed", nowCollapsed);
-        });
-      });
-    });
     // A left click anywhere on a position row opens the real Value Trade
     // card for that market right below it (2026-09-23, on request — this
-    // used to be a dedicated "Autres traders" button; the [data-key]
-    // selector keeps this off .match-group-row, which has no data-key and
-    // handles its own click above). The card HTML is only baked in when
-    // open — rendering a full Value-Trades-style card for every single
-    // position row regardless of open state would bloat the DOM for no
-    // reason — so toggling needs a real re-render, not just a CSS flip.
+    // used to be a dedicated "Autres traders" button). The card HTML is
+    // only baked in when open — rendering a full Value-Trades-style card
+    // for every single position row regardless of open state would bloat
+    // the DOM for no reason — so toggling needs a real re-render, not just
+    // a CSS flip.
     tradersContent.querySelectorAll(".data-row[data-key]").forEach(function (row) {
       row.addEventListener("click", function () {
         var key = row.getAttribute("data-key");
