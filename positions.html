@@ -2762,16 +2762,16 @@
     // positions fetch.
     { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", weight: 9 },
     // Added on request — addresses resolved from the profile URLs given.
-    { name: "anon2", platform: "polymarket", address: "0x78becf0a4e4f2640380af0c19ad32e2557e6bde0", weight: 7 },
     { name: "0x2", platform: "polymarket", address: "0x228b8d11eba89bf1c554f8879a9293b7106daf4c", weight: 6.5 },
     // Added on request — @username profile URLs given, addresses resolved
     // via the profile page's own api/profile/userData call (proxyWallet).
-    { name: "lily", platform: "polymarket", address: "0x01c78f8873c0c86d6b6b92ff627e3802237ee995", weight: 6.5 },
+    // stakeMultiplier per request, same "what if they bet N× bigger"
+    // simulation as stable-winner/mishipolis below.
+    { name: "lily", platform: "polymarket", address: "0x01c78f8873c0c86d6b6b92ff627e3802237ee995", weight: 6.5, stakeMultiplier: 50 },
     { name: "maksim", platform: "polymarket", address: "0x45721362269008ac5988bec2e5c22ca463af5e86", weight: 8 },
-    { name: "flawfence", platform: "polymarket", address: "0x23d81ba9371e576015c1e562db09c689f56b0288", weight: 6 },
     // Added on request — trouvés via find-football-whales.mjs (courbe de PnL
     // Polymarket réelle, linéaire, sur le foot européen).
-    { name: "mishipolis", platform: "polymarket", address: "0x7a5d94f83ff0195387eaf9f4463433d03eda54db", weight: 8, stakeMultiplier: 20 },
+    { name: "mishipolis", platform: "polymarket", address: "0x7a5d94f83ff0195387eaf9f4463433d03eda54db", weight: 9, stakeMultiplier: 100 },
     { name: "ValiBB", platform: "polymarket", address: "0x9cb48ddd4185f3e947edf596589e40e574588285", weight: 6.5 },
     // stable-winner mise très peu (positions sous MIN_TRADER_STAKE) malgré une
     // courbe très linéaire — stakeMultiplier: 100 simule "et si il misait 100x
@@ -2875,8 +2875,8 @@
     { name: "kilian7kilian", platform: "polymarket", address: "0x14c7111afa871fb215339f365043d7b2837b9ccf", added: "2026-08-29", removed: null },
     { name: "flaznorp", platform: "polymarket", address: "0x821dab0565ebf5b327f51db06223fdcfe01acf16", added: "2026-09-01", removed: null },
     { name: "0x2", platform: "polymarket", address: "0x228b8d11eba89bf1c554f8879a9293b7106daf4c", added: "2026-09-08", removed: null },
-    { name: "anon2", platform: "polymarket", address: "0x78becf0a4e4f2640380af0c19ad32e2557e6bde0", added: "2026-09-08", removed: null },
-    { name: "flawfence", platform: "polymarket", address: "0x23d81ba9371e576015c1e562db09c689f56b0288", added: "2026-09-08", removed: null },
+    { name: "anon2", platform: "polymarket", address: "0x78becf0a4e4f2640380af0c19ad32e2557e6bde0", added: "2026-09-08", removed: "2026-09-23" },
+    { name: "flawfence", platform: "polymarket", address: "0x23d81ba9371e576015c1e562db09c689f56b0288", added: "2026-09-08", removed: "2026-09-23" },
     { name: "lily", platform: "polymarket", address: "0x01c78f8873c0c86d6b6b92ff627e3802237ee995", added: "2026-09-08", removed: null },
     { name: "maksim", platform: "polymarket", address: "0x45721362269008ac5988bec2e5c22ca463af5e86", added: "2026-09-08", removed: null },
     { name: "ValiBB", platform: "polymarket", address: "0x9cb48ddd4185f3e947edf596589e40e574588285", added: "2026-09-09", removed: null },
