@@ -1360,6 +1360,13 @@
      the row instead of clumping left, sized up now that dropping
      "Afficher" leaves them short. */
   .snap-stats-toggle-btn {
+    /* Falls back to --accent wherever a button's id has no specific --neon
+       set above (2026-09-24, fix — "Le tableau récap par trader" and
+       "Historique des N profils" never got one, so var(--neon) resolved to
+       nothing, color-mix() went invalid, and the whole border/glow silently
+       dropped to barely visible — same risk for any future toggle added
+       here without remembering the --neon line). */
+    --neon: var(--neon, var(--accent));
     flex: 1 1 150px;
     text-align: center;
     padding: 10px 14px;
