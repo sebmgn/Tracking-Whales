@@ -1360,39 +1360,42 @@
      the row instead of clumping left, sized up now that dropping
      "Afficher" leaves them short. */
   .snap-stats-toggle-btn {
-    /* Falls back to --accent wherever a button's id has no specific --neon
-       set above (2026-09-24, fix — "Le tableau récap par trader" and
-       "Historique des N profils" never got one, so var(--neon) resolved to
-       nothing, color-mix() went invalid, and the whole border/glow silently
-       dropped to barely visible — same risk for any future toggle added
-       here without remembering the --neon line). */
-    --neon: var(--neon, var(--accent));
+    /* var(--neon, var(--accent)) at every call site below, never a bare
+       var(--neon) — falls back to --accent wherever a button's id has no
+       specific --neon set above (2026-09-24, fix — "Le tableau récap par
+       trader" and "Historique des N profils" never got one, so bare
+       var(--neon) resolved to nothing and color-mix()/border/background all
+       went invalid, silently dropping to no visible button chrome at all).
+       Tried redeclaring --neon: var(--neon, var(--accent)) here first —
+       that's a self-reference, which browsers always treat as invalid
+       regardless of the fallback, so it made things worse, not better; the
+       fallback has to live at each usage instead. */
     flex: 1 1 150px;
     text-align: center;
     padding: 10px 14px;
     font-size: 13.5px;
-    background: color-mix(in srgb, var(--neon) 9%, var(--panel));
-    border: 1px solid color-mix(in srgb, var(--neon) 60%, transparent);
+    background: color-mix(in srgb, var(--neon, var(--accent)) 9%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--neon, var(--accent)) 60%, transparent);
     color: var(--text);
     font-weight: 600;
-    box-shadow: 0 0 7px color-mix(in srgb, var(--neon) 40%, transparent), inset 0 0 6px color-mix(in srgb, var(--neon) 10%, transparent);
+    box-shadow: 0 0 7px color-mix(in srgb, var(--neon, var(--accent)) 40%, transparent), inset 0 0 6px color-mix(in srgb, var(--neon, var(--accent)) 10%, transparent);
     transition: box-shadow .2s ease, border-color .2s ease, background .2s ease, color .2s ease;
   }
   .snap-stats-toggle-btn:hover {
-    border-color: var(--neon);
+    border-color: var(--neon, var(--accent));
     color: var(--text);
-    box-shadow: 0 0 18px color-mix(in srgb, var(--neon) 70%, transparent), 0 0 32px color-mix(in srgb, var(--neon) 30%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--neon, var(--accent)) 70%, transparent), 0 0 32px color-mix(in srgb, var(--neon, var(--accent)) 30%, transparent);
   }
   /* Open panel — filled solid with the button's own neon so it's
      unmistakable which one is active, not just a subtle outline. */
   .snap-stats-toggle-btn.active {
-    background: var(--neon);
-    border-color: var(--neon);
+    background: var(--neon, var(--accent));
+    border-color: var(--neon, var(--accent));
     color: #fff;
   }
   .snap-stats-toggle-btn.active:hover {
     color: #fff;
-    box-shadow: 0 0 22px color-mix(in srgb, var(--neon) 80%, transparent), 0 0 38px color-mix(in srgb, var(--neon) 40%, transparent);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--neon, var(--accent)) 80%, transparent), 0 0 38px color-mix(in srgb, var(--neon, var(--accent)) 40%, transparent);
   }
   #tierWinrateContent .chart-box,
   #noteWinrateContent .chart-box,
