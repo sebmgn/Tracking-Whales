@@ -3804,6 +3804,13 @@
   // Copa del Rey, UEFA Super Cup, Leagues Cup, and a batch of Tier-2
   // European leagues among them).
   var FOOTBALL_SLUG_PREFIXES = {
+    // AUDITED 2026-09-24: "unl" (UEFA Nations League, e.g.
+    // unl-nld-ger-2026-09-24) was missing — 40 currently-open Nations
+    // League positions across tracked traders were falling through to 🎲
+    // and getting hidden by the default "⚽ Football" filter on both Value
+    // Trades and Trades par profils (spotted via a real trade, flaznorp's
+    // "Will Netherlands win on 2026-09-24?").
+    unl: 1,
     fifwc: 1, ucl: 1, uel: 1, mls: 1, chi: 1, kor: 1, swe: 1, rou1: 1, epl: 1,
     laliga: 1, bundesliga: 1, seriea: 1, ligue1: 1, eredivisie: 1, brasileirao: 1,
     concacaf: 1, copa: 1,
