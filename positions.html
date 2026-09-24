@@ -784,7 +784,16 @@
   .consensus-gauge-wrap { flex: 1; display: flex; position: relative; align-items: center; }
   .consensus-gauge { flex: 1; display: flex; gap: 2px; }
   .consensus-seg { flex: 1; height: 10px; border-radius: 2px; background: var(--panel-border); }
-  .consensus-seg.filled { background: var(--green); }
+  /* Fine diagonal hatch (2026-09-24, on request) — Consensus and Mises used
+     to be two identical flat-green bars stacked on top of each other, only
+     distinguishable by their text label. Mises already hatches its
+     losing/minority segment (see gaugeBackground) to mean "trailing side" —
+     a different pitch/angle here so this reads as its own, unrelated
+     pattern ("discrete per-trader votes") rather than a reused "losing"
+     signal. */
+  .consensus-seg.filled {
+    background: repeating-linear-gradient(135deg, var(--green), var(--green) 3px, color-mix(in srgb, var(--green) 78%, black) 3px, color-mix(in srgb, var(--green) 78%, black) 6px);
+  }
   .consensus-count {
     position: absolute; right: 0; top: 50%; transform: translateY(-50%);
     font-size: 9.5px; font-weight: 700; color: var(--text);
@@ -7931,10 +7940,33 @@
       var dx = ((x(weeks[di - 1].lastIdx) + x(weeks[di].firstIdx)) / 2).toFixed(2);
       dividers += '<line x1="' + dx + '" y1="' + padT + '" x2="' + dx + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1" opacity="0.55"/>';
     }
+    // Centered 3-week moving average overlaid on the bars (2026-09-24, on
+    // request) — a single loud week (win or loss) used to read the same as
+    // a real multi-week drift; this smooths that out. Trailing/leading
+    // average at the two edges, where a full centered window doesn't exist
+    // yet. Same x/y mapping as the bars themselves (zeroY/scale), so it
+    // reads directly against them rather than as a separate chart.
+    var maOverlay = "";
+    if (weeks.length >= 2) {
+      var maPts = weeks.map(function (w, i) {
+        var lo = Math.max(0, i - 1), hi = Math.min(weeks.length - 1, i + 1);
+        var sum = 0, n = 0;
+        for (var k = lo; k <= hi; k++) { sum += weeks[k].pnl; n++; }
+        return { x: (x(w.firstIdx) + x(w.lastIdx)) / 2, y: zeroY - (sum / n) * scale };
+      });
+      var maDots = maPts.map(function (p) {
+        return '<circle cx="' + p.x.toFixed(2) + '" cy="' + p.y.toFixed(2) + '" r="2.6" fill="var(--gold)" stroke="' + "var(--panel)" + '" stroke-width="1"/>';
+      }).join("");
+      var maLast = maPts[maPts.length - 1];
+      maOverlay = '<path d="' + smoothPathD(maPts) + '" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>' +
+        maDots +
+        '<text x="' + (maLast.x + 6).toFixed(2) + '" y="' + (maLast.y - 7).toFixed(2) + '" font-size="8" font-weight="700" fill="var(--gold)">moy. 3 sem.</text>';
+    }
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-weekly-svg">' +
       dividers +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
       bars +
+      maOverlay +
       '</svg>';
   }
 
