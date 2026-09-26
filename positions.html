@@ -1305,7 +1305,7 @@
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn {
+  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     padding: 5px 12px;
@@ -1315,7 +1315,7 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover { border-color: var(--accent); }
+  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover { border-color: var(--accent); }
   .snap-edit-btn { color: var(--accent); }
   .snap-edit-btn:hover { background: var(--accent); color: #fff; }
   /* Drag-and-drop reorder (store.allowReorder — Mes Positions, Saison 26/27) */
@@ -1515,6 +1515,11 @@
   .manual-auto-row.tier-win:hover { background: color-mix(in srgb, var(--green) 48%, transparent); }
   .manual-auto-row.tier-lose:hover { background: color-mix(in srgb, var(--red) 48%, transparent); }
   .manual-auto-row.active { box-shadow: 0 0 0 1px var(--accent) inset; }
+  /* Same visual family as .manual-auto-row (badge + bars) but purely
+     informational — no data-manual-auto attribute, so it must NOT share
+     that class, or the delegated .manual-auto-row click handler would
+     misfire and clear an unrelated filter elsewhere on the page. */
+  .magnitude-group-row { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; }
   .manual-auto-tier-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px 162px; }
   .manual-auto-tier-chips:last-child { margin-bottom: 0; }
   .manual-auto-tier-chip {
@@ -5840,6 +5845,12 @@
   // (see refreshSnapshotDisplay's confidence migration below).
   var CONFIDENCE_TIERS = ["S", "A", "B"];
   var CONFIDENCE_COLORS = { "S": "var(--tier-s)", "A": "var(--tier-a)", "B": "var(--tier-b)" };
+  // Result-size tag — orthogonal to confidence (that's set BEFORE the bet,
+  // this is set AFTER, once winningSide is known) — so it only ever shows on
+  // an already-decided card, same !snap.winningSide gate as cardResultClass.
+  var MAGNITUDE_TIERS = ["++", "+", "-", "--"];
+  var MAGNITUDE_LABELS = { "++": "Grosse victoire", "+": "Petite victoire", "-": "Petite perte", "--": "Grosse perte" };
+  var MAGNITUDE_COLORS = { "++": "var(--green)", "+": "color-mix(in srgb, var(--green) 55%, var(--text-dim))", "-": "color-mix(in srgb, var(--red) 55%, var(--text-dim))", "--": "var(--red)" };
   // Some snapshots only ever have ONE named side — not a dust-trade gap
   // this time (that one's already handled upstream in computeMarketGroups),
   // but a genuine absence: not one of the ~20 tracked wallets ever held the
@@ -6079,6 +6090,14 @@
         if (s.id !== op.id) return s;
         var copy = Object.assign({}, s);
         copy.confidence = op.confidence;
+        return copy;
+      });
+    }
+    if (op.type === "setMagnitude") {
+      return list.map(function (s) {
+        if (s.id !== op.id) return s;
+        var copy = Object.assign({}, s);
+        copy.magnitude = op.magnitude;
         return copy;
       });
     }
@@ -7834,6 +7853,65 @@
       if (tip) tip.classList.remove("show");
     });
   }
+  // ---------- Ampleur du résultat (++/+/-/--) ----------
+  // Three angles on the same new tag: raw distribution (do big swings
+  // outweigh small ones), whether pre-bet confidence actually predicts
+  // bigger wins (not just more wins), and whether manuel vs suivi auto
+  // skews toward the extremes differently.
+  function magnitudeDistributionHtml(list) {
+    var decided = list.filter(function (s) { return !!s.winningSide && s.magnitude; });
+    if (decided.length < 3) return "";
+    var counts = {};
+    MAGNITUDE_TIERS.forEach(function (t) { counts[t] = 0; });
+    decided.forEach(function (s) { counts[s.magnitude] = (counts[s.magnitude] || 0) + 1; });
+    var totalDecided = list.filter(function (s) { return !!s.winningSide; }).length;
+    var pctTagged = totalDecided ? Math.round(decided.length / totalDecided * 100) : 0;
+    var bars = labeledBarsHtml(MAGNITUDE_TIERS.map(function (t) {
+      return { label: t, count: counts[t], color: MAGNITUDE_COLORS[t], title: MAGNITUDE_LABELS[t] + " : " + counts[t] };
+    }));
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Répartition des résultats par ampleur</div>' +
+      '<div class="empty-note" style="padding:0 0 8px;">' + decided.length + ' pari(s) décidé(s) taggé(s) (' + pctTagged + '% des paris décidés) — les grosses victoires/pertes pèsent-elles plus lourd que les petites ?</div>' +
+      bars + '</div>';
+  }
+  function magnitudeByConfidenceHtml(list) {
+    var decided = list.filter(function (s) { return !!s.winningSide && s.magnitude && s.confidence; });
+    if (decided.length < 5) return "";
+    var rowsHtml = CONFIDENCE_TIERS.map(function (tier) {
+      var items = decided.filter(function (s) { return s.confidence === tier; });
+      if (!items.length) return "";
+      var tierColor = CONFIDENCE_COLORS[tier];
+      var cellsHtml = MAGNITUDE_TIERS.map(function (m) {
+        var n = items.filter(function (s) { return s.magnitude === m; }).length;
+        var pct = Math.round(n / items.length * 100);
+        return '<td class="num" style="color:' + (n ? MAGNITUDE_COLORS[m] : "var(--text-dim)") + '">' + (n ? pct + "%" : "—") + '<div class="market-sub">' + n + '</div></td>';
+      }).join("");
+      return '<tr><td><b style="color:' + tierColor + '">' + esc(tier) + '</b></td>' + cellsHtml + '<td class="num">' + items.length + '</td></tr>';
+    }).join("");
+    if (!rowsHtml) return "";
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Confiance au pari × ampleur du résultat</div>' +
+      '<div class="empty-note" style="padding:0 0 8px;">La confiance annoncée avant le pari prédit-elle de plus grosses victoires (pas juste plus de victoires) ?</div>' +
+      '<table class="weekly-data-table"><thead><tr><th>Confiance</th><th class="num">' + MAGNITUDE_TIERS.map(esc).join('</th><th class="num">') + '</th><th class="num">Total</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+      '</div>';
+  }
+  function magnitudeByManualAutoHtml(list) {
+    var decided = list.filter(function (s) { return !!s.winningSide && s.magnitude; });
+    if (decided.length < 5) return "";
+    var rowsHtml = MANUAL_VS_AUTO_GROUPS.map(function (g) {
+      var items = decided.filter(g.match);
+      if (!items.length) return "";
+      var counts = {};
+      MAGNITUDE_TIERS.forEach(function (t) { counts[t] = 0; });
+      items.forEach(function (s) { counts[s.magnitude] = (counts[s.magnitude] || 0) + 1; });
+      var bars = labeledBarsHtml(MAGNITUDE_TIERS.map(function (t) {
+        return { label: t, count: counts[t], color: MAGNITUDE_COLORS[t], title: MAGNITUDE_LABELS[t] + " : " + counts[t] };
+      }));
+      return '<div class="magnitude-group-row"><span class="tier-wr-badge tier-wr-badge-wide" style="color:' + g.color + ';border-color:' + g.color + ';background:color-mix(in srgb, ' + g.color + ' 14%, transparent)">' + esc(g.label) + '</span>' + bars + '</div>';
+    }).join("");
+    if (!rowsHtml) return "";
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Ampleur des résultats — manuel vs suivi des whales</div>' +
+      '<div class="empty-note" style="padding:0 0 8px;">Les paris manuels vont-ils plus souvent aux extrêmes (++ / --) que le suivi automatique, ou l\'inverse ?</div>' +
+      rowsHtml + '</div>';
+  }
   // Catch-all for secondary stats — streaks plus everything below, all
   // collapsed by default behind one toggle rather than each claiming its
   // own permanent slot in the toggle bar.
@@ -7863,7 +7941,10 @@
       volumeRoiCorrelationHtml(list),
       traderNoteRoiHtml(list, store),
       coSignalMatrixHtml(list),
-      dayOfWeekHtml(list, store)
+      dayOfWeekHtml(list, store),
+      magnitudeDistributionHtml(list),
+      magnitudeByConfidenceHtml(list),
+      magnitudeByManualAutoHtml(list)
     ].filter(function (b) { return !!b; }).join("");
     var dashboardHtml = buildSnapDashboardHtml(dashboardList || list, store, dashboardFilterLabels);
     el.innerHTML = dashboardHtml +
@@ -9174,6 +9255,12 @@
         var style = isActive ? "background:" + tierColor + ";border-color:" + tierColor + ";color:#fff" : "color:" + tierColor + ";border-color:" + tierColor;
         return '<button type="button" class="snap-confidence-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-tier="' + esc(tier) + '" style="' + style + '">' + esc(tier) + '</button>';
       }).join("");
+      var magnitudeSectionHtml = !snap.winningSide ? '' : '<span class="snap-side-label">Ampleur :</span>' + MAGNITUDE_TIERS.map(function (tier) {
+        var isActive = snap.magnitude === tier;
+        var tierColor = MAGNITUDE_COLORS[tier];
+        var style = isActive ? "background:" + tierColor + ";border-color:" + tierColor + ";color:#fff" : "color:" + tierColor + ";border-color:" + tierColor;
+        return '<button type="button" class="snap-magnitude-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-magnitude="' + esc(tier) + '" title="' + esc(MAGNITUDE_LABELS[tier]) + '" style="' + style + '">' + esc(tier) + '</button>';
+      }).join("");
       var takePositionHtml = store.allowTakePosition
         ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce pari manuel dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
         : '';
@@ -9187,6 +9274,7 @@
         sideButtonsHtml +
         '<span class="snap-side-label">Confiance :</span>' +
         confidenceButtonsHtml +
+        magnitudeSectionHtml +
         takePositionHtml +
         editPositionHtml +
         '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
@@ -9299,6 +9387,12 @@
         var style = isActive ? "background:" + color + ";border-color:" + color + ";color:#fff" : "color:" + color + ";border-color:" + color;
         return '<button type="button" class="snap-confidence-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-tier="' + esc(tier) + '" style="' + style + '">' + esc(tier) + '</button>';
       }).join("");
+      var magnitudeSectionHtml = !snap.winningSide ? '' : '<span class="snap-side-label">Ampleur :</span>' + MAGNITUDE_TIERS.map(function (tier) {
+        var isActive = snap.magnitude === tier;
+        var color = MAGNITUDE_COLORS[tier];
+        var style = isActive ? "background:" + color + ";border-color:" + color + ";color:#fff" : "color:" + color + ";border-color:" + color;
+        return '<button type="button" class="snap-magnitude-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-magnitude="' + esc(tier) + '" title="' + esc(MAGNITUDE_LABELS[tier]) + '" style="' + style + '">' + esc(tier) + '</button>';
+      }).join("");
       // "Prendre position" only makes sense copying FROM a snapshot — taking
       // a position on a position is meaningless, hence store.allowTakePosition
       // (false for POSITIONS_STORE) gating this out entirely there.
@@ -9315,6 +9409,7 @@
         sideButtonsHtml +
         '<span class="snap-side-label">Confiance :</span>' +
         confidenceButtonsHtml +
+        magnitudeSectionHtml +
         takePositionHtml +
         editPositionHtml +
         '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
@@ -11770,6 +11865,21 @@
       var confOp = { type: "setConf", id: cid, confidence: newConfidence };
       enqueueOp(cStore, confOp);
       if (fromTestConf) renderTest();
+      return;
+    }
+    var magBtn = e.target.closest ? e.target.closest(".snap-magnitude-btn") : null;
+    if (magBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var fromTestMag = magBtn.getAttribute("data-store") === "test";
+      var mStore = resolveWritableStoreFromEl(magBtn);
+      var mid = magBtn.getAttribute("data-snap-id");
+      var magnitude = magBtn.getAttribute("data-magnitude");
+      var curMagSnap = mStore.loadRaw().filter(function (s) { return s.id === mid; })[0];
+      var newMagnitude = (curMagSnap && curMagSnap.magnitude === magnitude) ? null : magnitude;
+      var magOp = { type: "setMagnitude", id: mid, magnitude: newMagnitude };
+      enqueueOp(mStore, magOp);
+      if (fromTestMag) renderTest();
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
