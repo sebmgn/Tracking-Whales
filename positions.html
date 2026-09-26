@@ -758,6 +758,13 @@
      length a slightly dishonest stake comparison between traders. */
   .vt-trader-row-right { flex: 0 0 148px; text-align: right; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .vt-trader-row-right b { color: var(--text); }
+  /* Subtle marker (2026-09-26, on request) on a trader whose TRADERS entry
+     carries stakeMultiplier — their $ figure here is a simulated "what if
+     they bet N× more" (see normalizePolyPosition/normalizePredictPosition),
+     not their real stake. Small and muted on purpose: informational for
+     anyone who looks closely, never loud enough to compete with the real
+     number right next to it. */
+  .vt-stake-mult { font-size: 9px; color: var(--text-dim); vertical-align: super; margin-left: 1px; cursor: help; }
   /* Fixed-width like .vt-trader-row-right just above, for the same reason —
      see convictionStarsHtml. 1-3★ = this trader's stake here vs. their own
      usual size ("il se mouille"); empty when it's at or below their average. */
@@ -2716,7 +2723,7 @@
     // Added on request — @username profile URLs given, addresses resolved
     // via the profile page's own api/profile/userData call (proxyWallet).
     { name: "seeyouanymore", platform: "polymarket", address: "0x3f5813ba1f7f4bf8e49b70ce36bc18b5196fd93a", weight: 7, stakeMultiplier: 30 },
-    { name: "VD721lsj4938Dk388", platform: "polymarket", address: "0x162ca4c5249987872fea1e15c846d7fe80316c47", weight: 6.5, stakeMultiplier: 10 },
+    { name: "VD721lsj4938Dk388", platform: "polymarket", address: "0x162ca4c5249987872fea1e15c846d7fe80316c47", weight: 6.5, stakeMultiplier: 3 },
     // Added on request — @username profile URL given, address resolved via
     // the profile page's own api/profile/userData call (proxyWallet).
     { name: "cypya", platform: "polymarket", address: "0x970998da056e60c707d9b1fc55cfdf3d68c252ab", weight: 7.5 },
@@ -2812,7 +2819,8 @@
   var PLATFORM_BY_NAME = {};
   var ADDRESS_BY_NAME = {};
   var MANUAL_TRADER_NAMES = {}; // name -> true for traders flagged `manual: true` above — rendered in blue in Value Trades (see renderMergedTraderRows)
-  TRADERS.forEach(function (t) { WEIGHT_BY_NAME[t.name] = t.weight; PLATFORM_BY_NAME[t.name] = t.platform; ADDRESS_BY_NAME[t.name] = t.address; if (t.manual) MANUAL_TRADER_NAMES[t.name] = true; });
+  var STAKE_MULTIPLIER_BY_NAME = {}; // name -> stakeMultiplier for traders that have one above — a small "×N" mark on their stake in Value Trades (see renderMergedTraderRows) so an inflated/simulated amount never reads as their real bet
+  TRADERS.forEach(function (t) { WEIGHT_BY_NAME[t.name] = t.weight; PLATFORM_BY_NAME[t.name] = t.platform; ADDRESS_BY_NAME[t.name] = t.address; if (t.manual) MANUAL_TRADER_NAMES[t.name] = true; if (t.stakeMultiplier > 1) STAKE_MULTIPLIER_BY_NAME[t.name] = t.stakeMultiplier; });
   // Best-rated profiles first wherever profiles are listed top-to-bottom.
   var TRADERS_BY_WEIGHT = TRADERS.slice().sort(function (a, b) { return (b.weight || 0) - (a.weight || 0); });
   // TRADERS is appended to over time (see comments above), so reversing it
@@ -4489,6 +4497,8 @@
       var nameTag = profileUrl
         ? '<a class="' + nameClass + '" href="' + esc(profileUrl) + '" target="_blank" rel="noopener" title="' + nameTitle + ' — ouvrir le profil">' + esc(e.trader) + '</a>'
         : '<span class="' + nameClass + '" title="' + nameTitle + '">' + esc(e.trader) + '</span>';
+      var mult = STAKE_MULTIPLIER_BY_NAME[e.trader];
+      var multHtml = mult ? ' <span class="vt-stake-mult" title="Mise simulée ×' + mult + ' pour ' + esc(e.trader) + ' — pas son montant réel misé, voir sa fiche trader">×' + mult + '</span>' : '';
       return '<div class="vt-trader-row' + (isHighlighted ? ' vt-trader-row-highlighted' : '') + '">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
         '<span class="vt-trader-row-name' + (isMarginal ? ' vt-trader-row-name-marginal' : '') + '">' + nameTag + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
@@ -4496,7 +4506,7 @@
           '<div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div>' +
         '</div>' +
         convictionStarsHtml(e.stake, traderAvgStake(e.trader)) +
-        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b> @ ' + fmtCents(e.avgPrice) + '</span>' +
+        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b>' + multHtml + ' @ ' + fmtCents(e.avgPrice) + '</span>' +
       '</div>';
     }).join("") + '</div>';
   }
@@ -12442,12 +12452,14 @@
       var eNameTag = eProfileUrl
         ? '<a class="vt-trader-row-name-text" href="' + esc(eProfileUrl) + '" target="_blank" rel="noopener" title="' + esc(e.trader) + ' — ouvrir le profil">' + esc(e.trader) + '</a>'
         : '<span class="vt-trader-row-name-text">' + esc(e.trader) + '</span>';
+      var eMult = STAKE_MULTIPLIER_BY_NAME[e.trader];
+      var eMultHtml = eMult ? ' <span class="vt-stake-mult" title="Mise simulée ×' + eMult + ' pour ' + esc(e.trader) + ' — pas son montant réel misé, voir sa fiche trader">×' + eMult + '</span>' : '';
       return '<div class="vt-trader-row">' +
         '<span class="vt-row-marker" style="background:' + e.color + '">' + esc(e.initial) + '</span>' +
         '<span class="vt-trader-row-name">' + eNameTag + weightBadge(WEIGHT_BY_NAME[e.trader]) + '</span>' +
         '<div class="vt-trader-row-track"><div class="vt-trader-row-fill" style="width:' + barPct.toFixed(1) + '%;background:' + e.color + '"></div></div>' +
         '<span class="vt-conviction"></span>' +
-        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b>' + (typeof e.avgPrice === "number" ? ' @ ' + fmtCents(e.avgPrice) : '') + '</span>' +
+        '<span class="vt-trader-row-right"><b>' + fmtUSD(e.stake) + '</b>' + eMultHtml + (typeof e.avgPrice === "number" ? ' @ ' + fmtCents(e.avgPrice) : '') + '</span>' +
       '</div>';
     }).join("") + '</div>';
     var detailHtml = '<div class="vt-unit-detail">' + legendHtml + traderRowsHtml + '</div>';
