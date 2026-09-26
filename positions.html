@@ -1492,6 +1492,14 @@
   .trader-history-collapse-wrap #traderHistoryToggleBtn { display: block; width: 100%; margin-bottom: 8px; flex: none; }
   .trader-history-removed-row { opacity: .6; }
   .trader-history-removed-row td:first-child a { text-decoration: line-through; }
+  .trader-history-clickable-row { cursor: pointer; }
+  .trader-history-clickable-row:hover { background: var(--row-hover); }
+  .trader-history-expand-row td { padding: 0; border-top: none; }
+  .trader-history-trades { padding: 4px 12px 10px 28px; display: flex; flex-direction: column; gap: 6px; }
+  .trader-history-trade-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .trader-history-trade-row .dim { color: var(--text-dim); }
+  .trader-history-trade-q { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trader-history-trade-date { flex: none; white-space: nowrap; }
   .trader-note-roi-name-label { font-size: 7px; fill: var(--text-dim); font-family: "IBM Plex Mono", monospace; }
   /* Manuel vs suivi auto — wider label badge than the 3-char conviction/
      note codes .tier-wr-badge was built for. */
@@ -1642,10 +1650,6 @@
     gap: 10px;
     margin-bottom: 20px;
   }
-  /* Snapshots tab only: the PnL chart right above these tiles has no
-     margin-bottom of its own, so without this the gap above the tiles
-     reads noticeably tighter than the 20px gap below them. */
-  #snapDashboard, #posDashboard { margin-top: 16px; }
   .stat-tile {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -1752,6 +1756,14 @@
   .chart-tooltip-result-note {
     font-weight: 700; font-size: 10px; color: var(--gold);
     background: color-mix(in srgb, var(--gold) 16%, transparent);
+    border-radius: 4px; padding: 1px 5px;
+  }
+  /* Same pill shape as .chart-tooltip-result-note, color set inline per use
+     (manuel/auto pink/blue, confidence S/A/B) instead of gold — on request,
+     to show at a glance without opening the trade whether a hovered PnL
+     point was a manual bet or auto-followed, and its confidence tag. */
+  .chart-tooltip-result-tag {
+    font-weight: 700; font-size: 10px;
     border-radius: 4px; padding: 1px 5px;
   }
   .chart-tooltip-result-date { color: var(--text-dim); }
@@ -2268,7 +2280,6 @@
       <div class="empty-note" style="padding:6px 0 0;">Pas de note calculée pour un pari manuel — c'est juste un mémo hors traders suivis, marqué "✍️ Pari manuel" sur la carte pour ne pas le confondre avec un vrai signal.</div>
     </div>
     <div id="snapPnlChartContent"></div>
-    <div id="snapDashboard"></div>
     <div class="snap-toggle-bar">
       <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="snapshots">▸ Le winrate par conviction</button>
       <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="snapshots">▸ L'analyse winrate × note</button>
@@ -2299,7 +2310,6 @@
       <button id="unconfTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots non confiants mis à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
     </div>
     <div id="unconfPnlChartContent"></div>
-    <div id="unconfDashboard"></div>
     <div class="snap-toggle-bar">
       <button type="button" id="unconfTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="unconfident">▸ Le winrate par conviction</button>
       <button type="button" id="unconfNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="unconfident">▸ L'analyse winrate × note</button>
@@ -2339,7 +2349,6 @@
       <div class="empty-note" style="padding:6px 0 0;">Même clé que Saison 26/27 — connecte-la une fois par appareil/navigateur pour ajouter/modifier des positions partout.</div>
     </div>
     <div id="posPnlChartContent"></div>
-    <div id="posDashboard"></div>
     <div class="snap-toggle-bar">
       <button type="button" id="posTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="positions">▸ Le winrate par conviction</button>
       <button type="button" id="posNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="positions">▸ L'analyse winrate × note</button>
@@ -2380,7 +2389,6 @@
       <button id="testTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots/positions mis à la corbeille depuis All Time — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
     </div>
     <div id="testPnlChartContent"></div>
-    <div id="testDashboard"></div>
     <div class="snap-toggle-bar">
       <button type="button" id="testTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="test">▸ Le winrate par conviction</button>
       <button type="button" id="testNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="test">▸ L'analyse winrate × note</button>
@@ -2410,7 +2418,6 @@
       <button id="autoNote7TrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
     </div>
     <div id="autoNote7PnlChartContent"></div>
-    <div id="autoNote7Dashboard"></div>
     <div class="snap-toggle-bar">
       <button type="button" id="autoNote7TierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="autoNote7">▸ Le winrate par conviction</button>
       <button type="button" id="autoNote7NoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="autoNote7">▸ L'analyse winrate × note</button>
@@ -2442,7 +2449,6 @@
       <button id="autoBigTradeTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
     </div>
     <div id="autoBigTradePnlChartContent"></div>
-    <div id="autoBigTradeDashboard"></div>
     <div class="snap-toggle-bar">
       <button type="button" id="autoBigTradeTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="autoBigTrade">▸ Le winrate par conviction</button>
       <button type="button" id="autoBigTradeNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="autoBigTrade">▸ L'analyse winrate × note</button>
@@ -2900,7 +2906,6 @@
   var valueTradesContent = document.getElementById("valueTradesContent");
   var snapshotsContent = document.getElementById("snapshotsContent");
   var snapCountEl = document.getElementById("snapCount");
-  var snapDashboard = document.getElementById("snapDashboard");
   var tierWinrateContent = document.getElementById("tierWinrateContent");
   var noteWinrateContent = document.getElementById("noteWinrateContent");
   var snapPnlChartContent = document.getElementById("snapPnlChartContent");
@@ -2911,7 +2916,6 @@
   var snapTraderTableContent = document.getElementById("snapTraderTableContent");
   var unconfContent = document.getElementById("unconfContent");
   var unconfCountEl = document.getElementById("unconfCount");
-  var unconfDashboard = document.getElementById("unconfDashboard");
   var unconfTierWinrateContent = document.getElementById("unconfTierWinrateContent");
   var unconfNoteWinrateContent = document.getElementById("unconfNoteWinrateContent");
   var unconfPnlChartContent = document.getElementById("unconfPnlChartContent");
@@ -2922,7 +2926,6 @@
   var unconfTraderTableContent = document.getElementById("unconfTraderTableContent");
   var testContent = document.getElementById("testContent");
   var testCountEl = document.getElementById("testCount");
-  var testDashboard = document.getElementById("testDashboard");
   var testTierWinrateContent = document.getElementById("testTierWinrateContent");
   var testNoteWinrateContent = document.getElementById("testNoteWinrateContent");
   var testPnlChartContent = document.getElementById("testPnlChartContent");
@@ -2933,7 +2936,6 @@
   var testTraderTableContent = document.getElementById("testTraderTableContent");
   var autoNote7Content = document.getElementById("autoNote7Content");
   var autoNote7CountEl = document.getElementById("autoNote7Count");
-  var autoNote7Dashboard = document.getElementById("autoNote7Dashboard");
   var autoNote7TierWinrateContent = document.getElementById("autoNote7TierWinrateContent");
   var autoNote7NoteWinrateContent = document.getElementById("autoNote7NoteWinrateContent");
   var autoNote7PnlChartContent = document.getElementById("autoNote7PnlChartContent");
@@ -2945,7 +2947,6 @@
   var autoNote7InvertSimContent = document.getElementById("autoNote7InvertSimContent");
   var autoBigTradeContent = document.getElementById("autoBigTradeContent");
   var autoBigTradeCountEl = document.getElementById("autoBigTradeCount");
-  var autoBigTradeDashboard = document.getElementById("autoBigTradeDashboard");
   var autoBigTradeTierWinrateContent = document.getElementById("autoBigTradeTierWinrateContent");
   var autoBigTradeNoteWinrateContent = document.getElementById("autoBigTradeNoteWinrateContent");
   var autoBigTradePnlChartContent = document.getElementById("autoBigTradePnlChartContent");
@@ -2974,7 +2975,6 @@
   var archivesContent = document.getElementById("archivesContent");
   var positionsContent = document.getElementById("positionsContent");
   var posCountEl = document.getElementById("posCount");
-  var posDashboard = document.getElementById("posDashboard");
   var posTierWinrateContent = document.getElementById("posTierWinrateContent");
   var posNoteWinrateContent = document.getElementById("posNoteWinrateContent");
   var posPnlChartContent = document.getElementById("posPnlChartContent");
@@ -6471,12 +6471,12 @@
   // every filter clicked elsewhere on the page. `filterLabels` (the same
   // list the card-count line above already builds) is shown as a small
   // note so "global" never quietly means something narrower than it says.
-  function renderSnapDashboard(list, store, filterLabels) {
-    var el = store.els.dashboard;
-    if (!el) return;
+  // Returns the tiles' HTML (used to live in its own always-visible block —
+  // moved inside Autres stats on request, 2026-09-26, so the classic view
+  // stays just the chart) instead of writing to a dedicated element.
+  function buildSnapDashboardHtml(list, store, filterLabels) {
     if (!list.length) {
-      el.innerHTML = filterLabels && filterLabels.length ? '<div class="empty-note">Aucun ' + store.itemNoun + ' dans cette sélection.</div>' : "";
-      return;
+      return filterLabels && filterLabels.length ? '<div class="empty-note">Aucun ' + store.itemNoun + ' dans cette sélection.</div>' : "";
     }
     var decided = list.filter(function (s) { return !!s.winningSide; }).length;
     var pending = list.length - decided;
@@ -6528,7 +6528,7 @@
       }).join("") + '</div>';
     }
     var filterNote = filterLabels && filterLabels.length ? '<div class="stat-filter-note">🔍 Filtré : ' + esc(filterLabels.join(", ")) + '</div>' : "";
-    el.innerHTML = filterNote + tilesHtml(globalTiles);
+    return filterNote + tilesHtml(globalTiles);
   }
   // Bet-level winrate broken down by the confidence tag set on the snapshot
   // at bet time (CONFIDENCE_TIERS) — the whole point of tagging S/A/B is
@@ -6618,7 +6618,7 @@
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment du snapshot"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
     remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY, everSyncedKey: "vtSnapshotsEverSynced",
-    els: { count: snapCountEl, dashboard: snapDashboard, pnlChart: snapPnlChartContent,
+    els: { count: snapCountEl, pnlChart: snapPnlChartContent,
       tierWinrate: tierWinrateContent, noteWinrate: noteWinrateContent, dist: snapDistContent,
       list: snapshotsContent, syncStatus: snapSyncStatusEl,
       manualVsAuto: snapManualVsAutoContent, weeklyPnl: snapWeeklyPnlContent, otherStats: snapOtherStatsContent,
@@ -6673,7 +6673,7 @@
     // going through wireSyncControls like every other store does).
     remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY, everSyncedKey: "vtSnapshotsEverSynced",
     syncStore: SNAPSHOTS_STORE,
-    els: { count: unconfCountEl, dashboard: unconfDashboard, pnlChart: unconfPnlChartContent,
+    els: { count: unconfCountEl, pnlChart: unconfPnlChartContent,
       tierWinrate: unconfTierWinrateContent, noteWinrate: unconfNoteWinrateContent, dist: unconfDistContent,
       list: unconfContent,
       manualVsAuto: unconfManualVsAutoContent, weeklyPnl: unconfWeeklyPnlContent, otherStats: unconfOtherStatsContent,
@@ -6698,7 +6698,7 @@
     simSubtitle: function () { return "PnL basé sur la mise réellement choisie pour cette position, au prix du marché au moment du snapshot d'origine"; },
     cardHypLabel: function (stake) { return "Ta position (" + fmtUSD(stake) + ") : "; },
     remotePath: "positions", queueKey: POSITIONS_QUEUE_KEY, everSyncedKey: "vtPositionsEverSynced",
-    els: { count: posCountEl, dashboard: posDashboard, pnlChart: posPnlChartContent,
+    els: { count: posCountEl, pnlChart: posPnlChartContent,
       tierWinrate: posTierWinrateContent, noteWinrate: posNoteWinrateContent, dist: posDistContent,
       list: positionsContent, syncStatus: posSyncStatusEl,
       manualVsAuto: posManualVsAutoContent, weeklyPnl: posWeeklyPnlContent, otherStats: posOtherStatsContent,
@@ -6733,7 +6733,7 @@
     dateLabelPrefix: "Sauvegardé le",
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment du snapshot"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
-    els: { count: testCountEl, dashboard: testDashboard, pnlChart: testPnlChartContent,
+    els: { count: testCountEl, pnlChart: testPnlChartContent,
       tierWinrate: testTierWinrateContent, noteWinrate: testNoteWinrateContent, dist: testDistContent,
       list: testContent,
       manualVsAuto: testManualVsAutoContent, weeklyPnl: testWeeklyPnlContent, otherStats: testOtherStatsContent,
@@ -6776,7 +6776,7 @@
     dateLabelPrefix: "Capturé le",
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment de la capture"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
-    els: { count: autoNote7CountEl, dashboard: autoNote7Dashboard, pnlChart: autoNote7PnlChartContent,
+    els: { count: autoNote7CountEl, pnlChart: autoNote7PnlChartContent,
       tierWinrate: autoNote7TierWinrateContent, noteWinrate: autoNote7NoteWinrateContent, dist: autoNote7DistContent,
       list: autoNote7Content,
       manualVsAuto: autoNote7ManualVsAutoContent, weeklyPnl: autoNote7WeeklyPnlContent, otherStats: autoNote7OtherStatsContent,
@@ -6953,7 +6953,7 @@
     dateLabelPrefix: "Capturé le",
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment de la capture"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
-    els: { count: autoBigTradeCountEl, dashboard: autoBigTradeDashboard, pnlChart: autoBigTradePnlChartContent,
+    els: { count: autoBigTradeCountEl, pnlChart: autoBigTradePnlChartContent,
       tierWinrate: autoBigTradeTierWinrateContent, noteWinrate: autoBigTradeNoteWinrateContent, dist: autoBigTradeDistContent,
       list: autoBigTradeContent,
       manualVsAuto: autoBigTradeManualVsAutoContent, weeklyPnl: autoBigTradeWeeklyPnlContent, otherStats: autoBigTradeOtherStatsContent,
@@ -7833,7 +7833,13 @@
   // Catch-all for secondary stats — streaks plus everything below, all
   // collapsed by default behind one toggle rather than each claiming its
   // own permanent slot in the toggle bar.
-  function renderOtherStats(list, store) {
+  // dashboardList/dashboardFilterLabels: on request (2026-09-26), the 3
+  // headline tiles (taux de réussite / cote moyenne / ROI moyen) moved here
+  // from their own always-visible block under the chart — kept on their own
+  // cardsList/activeFilterLabels (not the broader `list` the blocks below
+  // use) so they keep reflecting the same active card filters they always
+  // have, same reasoning as before the move.
+  function renderOtherStats(list, store, dashboardList, dashboardFilterLabels) {
     var el = store.els.otherStats;
     if (!el) return;
     syncSnapToggleLabel(store.ids.otherStatsToggle, store.state.otherStatsCollapsed, "autres stats");
@@ -7855,7 +7861,9 @@
       coSignalMatrixHtml(list),
       dayOfWeekHtml(list, store)
     ].filter(function (b) { return !!b; }).join("");
-    el.innerHTML = '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
+    var dashboardHtml = buildSnapDashboardHtml(dashboardList || list, store, dashboardFilterLabels);
+    el.innerHTML = dashboardHtml +
+      '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
       (blocks || '<div class="empty-note">Pas assez de paris décidés pour ces stats.</div>') +
       '</div>';
     // Delegated on `el` itself (stable across re-renders, only innerHTML
@@ -7956,33 +7964,10 @@
       var dx = ((x(weeks[di - 1].lastIdx) + x(weeks[di].firstIdx)) / 2).toFixed(2);
       dividers += '<line x1="' + dx + '" y1="' + padT + '" x2="' + dx + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1" opacity="0.55"/>';
     }
-    // Centered 3-week moving average overlaid on the bars (2026-09-24, on
-    // request) — a single loud week (win or loss) used to read the same as
-    // a real multi-week drift; this smooths that out. Trailing/leading
-    // average at the two edges, where a full centered window doesn't exist
-    // yet. Same x/y mapping as the bars themselves (zeroY/scale), so it
-    // reads directly against them rather than as a separate chart.
-    var maOverlay = "";
-    if (weeks.length >= 2) {
-      var maPts = weeks.map(function (w, i) {
-        var lo = Math.max(0, i - 1), hi = Math.min(weeks.length - 1, i + 1);
-        var sum = 0, n = 0;
-        for (var k = lo; k <= hi; k++) { sum += weeks[k].pnl; n++; }
-        return { x: (x(w.firstIdx) + x(w.lastIdx)) / 2, y: zeroY - (sum / n) * scale };
-      });
-      var maDots = maPts.map(function (p) {
-        return '<circle cx="' + p.x.toFixed(2) + '" cy="' + p.y.toFixed(2) + '" r="2.6" fill="var(--gold)" stroke="' + "var(--panel)" + '" stroke-width="1"/>';
-      }).join("");
-      var maLast = maPts[maPts.length - 1];
-      maOverlay = '<path d="' + smoothPathD(maPts) + '" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>' +
-        maDots +
-        '<text x="' + (maLast.x + 6).toFixed(2) + '" y="' + (maLast.y - 7).toFixed(2) + '" font-size="8" font-weight="700" fill="var(--gold)">moy. 3 sem.</text>';
-    }
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-weekly-svg">' +
       dividers +
       '<line x1="' + padL + '" y1="' + zeroY.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(2) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
       bars +
-      maOverlay +
       '</svg>';
   }
 
@@ -8394,7 +8379,7 @@
       // (hypotheticalFlatPnl is only ever positive on a leader win, always
       // -stake on a loss).
       var won = pnl >= 0;
-      series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744" });
+      series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744", isManual: !!snap.isManual, confidence: snap.confidence });
       weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
       if (snap.confidence && seriesByTier[snap.confidence]) {
         cumByTier[snap.confidence] += pnl;
@@ -9464,7 +9449,6 @@
     store.els.count.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + list.length + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
-    renderSnapDashboard(cardsList, store, activeFilterLabels);
     renderTierWinrate(list, store);
     renderNoteWinrate(list, store);
     renderSnapPnlChart(cardsList, store);
@@ -9472,7 +9456,7 @@
     renderTraderTable(list, store);
     renderManualVsAuto(list, store);
     renderWeeklyPnl(list, store);
-    renderOtherStats(list, store);
+    renderOtherStats(list, store, cardsList, activeFilterLabels);
     if (store.name === "autoNote7") renderAutoNote7InvertSim(list, store);
     if (!cardsList.length) {
       store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
@@ -10282,6 +10266,7 @@
   }
   var statsProfilesHistoryCollapsed = false; // visible by default, on request
   var statsProfilesHistoryStatusFilter = ""; // "" | "active" | "removed", on request
+  var statsProfilesHistoryExpandedNames = {}; // name -> true — clicking a row in the history table shows the decided trades behind its "Trades" count (see traderHistoryTradesFor)
   // All Time (TEST_STORE) is the only store with the full historical
   // record — recomputed fresh here rather than cached, same as every
   // other per-render aggregate on this page (loadRaw() itself is already
@@ -10303,6 +10288,34 @@
       });
     });
     return counts;
+  }
+  // Same source/filters as computeTraderHistoryTradeCounts above, but the
+  // actual decided snapshots for ONE trader instead of just a tally — what
+  // clicking a row's "Trades" count actually expands into (2026-09-26, on
+  // request). Most recent first.
+  function traderHistoryTradesFor(name) {
+    var list = TEST_STORE.loadRaw().filter(function (s) { return !s.allTimeDeletedAt; });
+    var out = [];
+    list.forEach(function (snap) {
+      if (!snap.winningSide) return;
+      if ((snap.traderNames || []).indexOf(name) === -1) return;
+      var cls = classifyTraderInSnapshot(snap, name);
+      if (cls === "pending") return;
+      out.push({ snap: snap, cls: cls });
+    });
+    out.sort(function (a, b) { return new Date(b.snap.savedAt) - new Date(a.snap.savedAt); });
+    return out;
+  }
+  function traderHistoryTradeRowHtml(item, traderName) {
+    var snap = item.snap;
+    var maj = traderMajoritySide(snap, traderName);
+    var sideText = maj ? maj.name : (snap.leaderName || "—");
+    return '<div class="trader-history-trade-row">' +
+      traderResultBadge(item.cls) +
+      '<span class="trader-history-trade-q">' + esc(snap.question) + '<span class="dim"> — ' + esc(sideText) + '</span></span>' +
+      (snap.noteAtSnapshot != null ? '<span class="chart-tooltip-result-note">Note ' + snap.noteAtSnapshot.toFixed(1) + '</span>' : '') +
+      '<span class="dim trader-history-trade-date">' + esc(fmtDateShort(new Date(snap.savedAt))) + '</span>' +
+    '</div>';
   }
   // Reconstructed from git (TRADER_HISTORY above), on request — every
   // profile ever tracked, when it was added, and if it's since been
@@ -10329,13 +10342,23 @@
         : '<span class="pnl-pos">Actif</span>';
       var weight = WEIGHT_BY_NAME[h.name];
       var noteHtml = weight != null ? weight.toFixed(1) : '<span class="dim">—</span>';
-      return '<tr' + (h.removed ? ' class="trader-history-removed-row"' : '') + '>' +
+      var tradeCount = tradeCounts[h.name] || 0;
+      var expanded = !!statsProfilesHistoryExpandedNames[h.name];
+      var rowClasses = (h.removed ? ["trader-history-removed-row"] : []).concat(tradeCount > 0 ? ["trader-history-clickable-row"] : []);
+      var mainRow = '<tr' + (rowClasses.length ? ' class="' + rowClasses.join(" ") + '"' : '') +
+        (tradeCount > 0 ? ' data-history-name="' + esc(h.name) + '"' : '') + '>' +
         '<td><a href="' + info.profileUrl(h.address) + '" target="_blank" rel="noopener" title="Voir le profil sur ' + esc(info.label) + '">' + esc(h.name) + '</a>' + platformBadge(h.platform) + '</td>' +
         '<td class="num">' + esc(h.added) + '</td>' +
         '<td class="num">' + noteHtml + '</td>' +
-        '<td class="num">' + (tradeCounts[h.name] || 0) + '</td>' +
+        '<td class="num">' + (tradeCount > 0 ? (expanded ? "▾ " : "▸ ") : "") + tradeCount + '</td>' +
         '<td class="num">' + statusHtml + '</td>' +
       '</tr>';
+      if (!expanded || tradeCount === 0) return mainRow;
+      var trades = traderHistoryTradesFor(h.name);
+      var tradesHtml = trades.length
+        ? trades.map(function (item) { return traderHistoryTradeRowHtml(item, h.name); }).join("")
+        : '<div class="empty-note">Aucun trade décidé.</div>';
+      return mainRow + '<tr class="trader-history-expand-row"><td colspan="5"><div class="trader-history-trades">' + tradesHtml + '</div></td></tr>';
     }).join("");
     var statusFilterHtml = '<div class="vt-filters">' +
       '<span class="vt-sort-label">Statut</span>' +
@@ -10364,6 +10387,16 @@
     document.querySelectorAll(".trader-history-status-btn").forEach(function (b) {
       b.addEventListener("click", function () {
         statsProfilesHistoryStatusFilter = b.getAttribute("data-status");
+        renderStatsProfiles();
+      });
+    });
+    // Click a trader's row to expand/collapse the decided trades behind its
+    // "Trades" count, right below it (2026-09-26, on request).
+    document.querySelectorAll(".trader-history-clickable-row").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        if (e.target.closest("a")) return;
+        var name = row.getAttribute("data-history-name");
+        statsProfilesHistoryExpandedNames[name] = !statsProfilesHistoryExpandedNames[name];
         renderStatsProfiles();
       });
     });
@@ -10671,7 +10704,7 @@
       // stays crisp once the dot grows on hover.
       var strokeAttr = p.pointColor ? ' stroke="var(--panel)" stroke-width="1.5"' : '';
       return '<circle class="chart-pt' + (p.id != null ? ' chart-pt-clickable' : '') + '" cx="' + x(i).toFixed(2) + '" cy="' + y(p.value).toFixed(2) + '" r="2.6" fill="' + (p.pointColor || lineColor) + '"' + strokeAttr + ' ' +
-        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + '></circle>';
+        'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + (p.isManual != null ? ' data-manual="' + (p.isManual ? "1" : "0") + '"' : '') + (p.confidence ? ' data-confidence="' + esc(p.confidence) + '"' : '') + '></circle>';
     }).join("");
 
     historyChartGradSeq++;
@@ -10822,6 +10855,14 @@
         var color = win ? "var(--green)" : "var(--red)";
         var delta = pt.getAttribute("data-delta") || pt.getAttribute("data-value");
         var note = pt.getAttribute("data-note");
+        var manualAttr = pt.getAttribute("data-manual");
+        var confidence = pt.getAttribute("data-confidence");
+        var manualHtml = manualAttr != null
+          ? '<span class="chart-tooltip-result-tag" style="color:' + (manualAttr === "1" ? "#f472b6" : "#38bdf8") + ';background:color-mix(in srgb, ' + (manualAttr === "1" ? "#f472b6" : "#38bdf8") + ' 18%, transparent)">' + (manualAttr === "1" ? "✍️ Manuel" : "🎯 Auto") + '</span>'
+          : '';
+        var confHtml = confidence
+          ? '<span class="chart-tooltip-result-tag" style="color:' + CONFIDENCE_COLORS[confidence] + ';background:color-mix(in srgb, ' + CONFIDENCE_COLORS[confidence] + ' 18%, transparent)">' + esc(confidence) + '</span>'
+          : '';
         tip.style.borderColor = color;
         tip.innerHTML =
           '<span class="chart-tooltip-result-total">Total à ce moment : <b>' + esc(pt.getAttribute("data-value")) + '</b></span>' +
@@ -10829,6 +10870,7 @@
             '<span class="chart-tooltip-result-icon" style="background:' + color + '">' + (win ? "✓" : "✗") + '</span>' +
             '<span class="chart-tooltip-result-value">' + esc(delta) + '</span>' +
             (note ? '<span class="chart-tooltip-result-note">Note ' + esc(note) + '</span>' : '') +
+            manualHtml + confHtml +
             '<span class="chart-tooltip-result-date">' + esc(pt.getAttribute("data-date")) + '</span>' +
           '</span>';
         tip.classList.add("show");
