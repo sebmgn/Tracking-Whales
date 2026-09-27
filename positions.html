@@ -6980,7 +6980,7 @@
     allowEditPosition: false, // no cote/manual correction — this list is meant to stay an untouched record of what the rule actually captured
     allowSimStakeSlider: true,
     itemNoun: "snapshot",
-    emptyHint: "Rien capturé pour l'instant — dès qu'un trader suivi met 50 000 $+ sur un value trade (dans le sens du camp déjà leader), il atterrit ici tout seul, plus besoin de cliquer 📌.",
+    emptyHint: "Rien capturé pour l'instant — dès qu'un trader suivi met 50 000 $+ sur un value trade (dans le sens du camp déjà leader), il atterrit ici tout seul, plus besoin de cliquer 📌. Un trader à facteur multiplicateur (×N, mise simulée) ne compte jamais pour ce seuil.",
     dateLabelPrefix: "Capturé le",
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment de la capture"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
@@ -7022,13 +7022,20 @@
       var maxStake = unitMaxTraderStake(mergedSides);
       if (maxStake < BIG_TRADE_STAKE_THRESHOLD) return;
       var bigSide = null;
+      var bigTrader = null;
       mergedSides.forEach(function (m) {
         m.items.forEach(function (it) {
-          it.s.entries.forEach(function (e) { if (e.stake === maxStake) bigSide = m.name; });
+          it.s.entries.forEach(function (e) { if (e.stake === maxStake) { bigSide = m.name; bigTrader = e.trader; } });
         });
       });
       var parts = computeUnitCardParts(u);
       if (!bigSide || bigSide !== parts.leaderName) return;
+      // A stakeMultiplier trader's stake here is simulated (see
+      // normalizePredictPosition/normalizePolyPosition) — e.g. a real $500
+      // bet at ×100 reads as $50,000 and would clear BIG_TRADE_STAKE_THRESHOLD
+      // on a bet that was never actually big. Skip the capture whenever the
+      // qualifying stake itself belongs to one of those traders.
+      if (bigTrader && STAKE_MULTIPLIER_BY_NAME[bigTrader]) return;
       alreadyCaptured[key] = true;
       var snap = buildSnapshotFromUnit(u);
       snap.autoCaptureKey = key;
