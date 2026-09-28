@@ -7273,7 +7273,14 @@
         var tierWin = tierItems.filter(function (s) { return s.leaderName === s.winningSide; }).length;
         var tierWr = Math.round(tierWin / tierItems.length * 100);
         var tierColor = CONFIDENCE_COLORS[tier];
-        var tierActive = store.state.tierCardFilter.indexOf(tier) !== -1;
+        // Scoped to THIS group too, not just the tier — tierCardFilter is one
+        // shared array for both rows, so "B" alone would light up both
+        // groups' B chip even though the card list below (renderSnapshots)
+        // only ever applies it AND-ed with manualVsAutoFilter, i.e. actually
+        // shows just one group's B trades. Without this, clicking "B" under
+        // Paris manuels made Suivi des whales' own B chip look active too —
+        // correct data, misleading highlight (2026-09-28, user-flagged).
+        var tierActive = store.state.tierCardFilter.indexOf(tier) !== -1 && store.state.manualVsAutoFilter === g.key;
         var chipStyle = tierActive
           ? "background:" + tierColor + ";border-color:" + tierColor
           : "color:" + tierColor + ";border-color:" + tierColor;
