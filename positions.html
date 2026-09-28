@@ -1782,9 +1782,9 @@
   .chart-tooltip-big .chart-tooltip-result-value { font-size: 15px; }
   .chart-tooltip-big .chart-tooltip-result-date { font-size: 12px; }
   /* transform-box/-origin (not just on -clickable) so BOTH the circle
-     (suivi auto) and the rounded-square (pari manuel — see
+     (suivi auto) and the goutte/pin (pari manuel — see
      buildHistoryChartSvg) grow from their own center via transform,
-     scale() being the one growth mechanism that works for both shapes —
+     scale() being the one growth mechanism that works for any shape —
      a plain CSS `r` bump only ever applied to circles. */
   .chart-pt { cursor: pointer; transform-box: fill-box; transform-origin: center; }
   /* A bit bigger than a plain chart-pt at rest, and much bigger on hover —
@@ -1792,7 +1792,7 @@
      the hit target should be generous, not just the same small dot every
      other chart uses. Scale ratios below match the old r:5.5->14 / r:6.5
      growth exactly (14/5.5 and 6.5/5.5), just expressed as transform so a
-     square grows identically to a circle. */
+     non-circle shape grows the same way a circle does. */
   .chart-pt-clickable { transition: transform .15s ease, stroke-width .15s ease; }
   .chart-pt-clickable:hover { transform: scale(2.545); stroke-width: 3; }
   .chart-hint { font-size: 10.5px; color: var(--text-dim); text-align: right; margin: 2px 2px 0; }
@@ -10783,24 +10783,31 @@
     // Manuel/auto + confidence, subtly (2026-09-26, on request): the
     // confidence letter sits inside the dot itself, readable without a
     // hover. Manuel vs auto used to be contour-color-only (pink/blue) but
-    // that read too close together at a glance (2026-09-27, on request) —
-    // shape now carries it too: rond = suivi auto, carré aux coins
-    // adoucis = pari manuel. Same bounding box either way (11x11, matching
-    // the old resting r=5.5 circle) so neither shape reads as "bigger".
+    // that read too close together at a glance (2026-09-27) — shape now
+    // carries it too. Went through a rounded-square attempt first, still
+    // judged too close to a circle at rest; settled (2026-09-28, picked
+    // from 10 mocked-up options) on rond = suivi auto, goutte/pin = pari
+    // manuel — the most distinct silhouette of the set at this size. The
+    // letter sits 3px higher on a pin (v3ConfY-equivalent) so it lands in
+    // the round bulb, not the tapering tail.
     var DOT_R = 5.5;
     var points = series.map(function (p, i) {
       var hasTier = !!p.confidence;
       var cx = x(i), cy = y(p.value);
       var strokeColor = p.isManual != null ? (p.isManual ? "#f472b6" : "#38bdf8") : (p.pointColor ? "var(--panel)" : null);
       var strokeAttr = strokeColor ? ' stroke="' + strokeColor + '" stroke-width="1.5"' : '';
+      var letterY = p.isManual ? cy - 3 : cy;
       var letterHtml = hasTier
-        ? '<text x="' + cx.toFixed(2) + '" y="' + cy.toFixed(2) + '" font-size="6" font-weight="800" fill="#fff" text-anchor="middle" dominant-baseline="central" pointer-events="none">' + esc(p.confidence) + '</text>'
+        ? '<text x="' + cx.toFixed(2) + '" y="' + letterY.toFixed(2) + '" font-size="6" font-weight="800" fill="#fff" text-anchor="middle" dominant-baseline="central" pointer-events="none">' + esc(p.confidence) + '</text>'
         : '';
       var cls = 'chart-pt' + (p.id != null ? ' chart-pt-clickable' : '');
       var fill = p.pointColor || lineColor;
       var dataAttrs = 'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + (p.isManual != null ? ' data-manual="' + (p.isManual ? "1" : "0") + '"' : '') + (p.confidence ? ' data-confidence="' + esc(p.confidence) + '"' : '');
+      var pinD = 'M' + cx.toFixed(2) + ',' + (cy + 11).toFixed(2) +
+        ' C' + (cx - 7).toFixed(2) + ',' + (cy + 2).toFixed(2) + ' ' + (cx - 6).toFixed(2) + ',' + (cy - 6).toFixed(2) + ' ' + cx.toFixed(2) + ',' + (cy - 6).toFixed(2) +
+        ' C' + (cx + 6).toFixed(2) + ',' + (cy - 6).toFixed(2) + ' ' + (cx + 7).toFixed(2) + ',' + (cy + 2).toFixed(2) + ' ' + cx.toFixed(2) + ',' + (cy + 11).toFixed(2) + ' Z';
       var shapeHtml = p.isManual
-        ? '<rect x="' + (cx - DOT_R).toFixed(2) + '" y="' + (cy - DOT_R).toFixed(2) + '" width="' + (DOT_R * 2) + '" height="' + (DOT_R * 2) + '" rx="2.5" ry="2.5" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></rect>'
+        ? '<path d="' + pinD + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></path>'
         : '<circle cx="' + cx.toFixed(2) + '" cy="' + cy.toFixed(2) + '" r="' + DOT_R + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></circle>';
       return shapeHtml + letterHtml;
     }).join("");
