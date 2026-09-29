@@ -1305,7 +1305,7 @@
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn {
+  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn, .snap-take-position-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     padding: 5px 12px;
@@ -1315,9 +1315,16 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover { border-color: var(--accent); }
+  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover, .snap-take-position-btn:hover { border-color: var(--accent); }
   .snap-edit-btn { color: var(--accent); }
   .snap-edit-btn:hover { background: var(--accent); color: #fff; }
+  /* Distinct from the default state (2026-09-29, on request) — a snapshot
+     that already has a position taken on it (snapshotHasTakenPosition)
+     should read as "done" at a glance, not identical to one still pending.
+     Stays clickable on purpose — taking a second position deliberately
+     (doubling down) is valid, this only changes how it LOOKS once one exists. */
+  .snap-take-position-btn.taken { background: color-mix(in srgb, var(--green) 16%, var(--panel)); border-color: var(--green); color: var(--green); }
+  .snap-take-position-btn.taken:hover { background: var(--green); color: #fff; }
   /* Drag-and-drop reorder (store.allowReorder — Mes Positions, Saison 26/27) */
   .snap-drag-handle {
     cursor: grab; color: var(--text-dim); font-size: 15px; line-height: 1;
@@ -5940,6 +5947,14 @@
   function loadPositions() {
     return loadPositionsRaw().filter(function (s) { return !s.deletedAt && !s.archivedBatchId; });
   }
+  // Saison 26/27's "🎯 Prendre position" button (see snapCardHtml/
+  // manualCardHtml) reads this to show it's already been acted on — trashed
+  // or archived positions don't count (a trashed one is, for this purpose,
+  // as if it never happened; an archived one can't coexist with a still-
+  // visible source snapshot anyway, see loadPositions' own filter).
+  function snapshotHasTakenPosition(snapId) {
+    return loadPositions().some(function (p) { return p.sourceSnapshotId === snapId; });
+  }
   function savePositionsToStorage(list) {
     try { localStorage.setItem(POSITIONS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
   }
@@ -9282,8 +9297,9 @@
         var style = isActive ? "background:" + tierColor + ";border-color:" + tierColor + ";color:#fff" : "color:" + tierColor + ";border-color:" + tierColor;
         return '<button type="button" class="snap-magnitude-btn' + (isActive ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-magnitude="' + esc(tier) + '" title="' + esc(MAGNITUDE_LABELS[tier]) + '" style="' + style + '">' + esc(tier) + '</button>';
       }).join("");
+      var hasTakenPosition = store.allowTakePosition && snapshotHasTakenPosition(snap.id);
       var takePositionHtml = store.allowTakePosition
-        ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce pari manuel dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
+        ? '<button type="button" class="snap-take-position-btn' + (hasTakenPosition ? ' taken' : '') + '" data-snap-id="' + esc(snap.id) + '" title="' + (hasTakenPosition ? "Une position a déjà été prise sur ce pari manuel — reclique pour en prendre une autre" : "Enregistre une copie de ce pari manuel dans Mes Positions avec ta propre mise") + '">' + (hasTakenPosition ? "✅ Position prise" : "🎯 Prendre position") + '</button>'
         : '';
       var editPositionHtml = store.allowEditPosition
         ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
@@ -9417,8 +9433,9 @@
       // "Prendre position" only makes sense copying FROM a snapshot — taking
       // a position on a position is meaningless, hence store.allowTakePosition
       // (false for POSITIONS_STORE) gating this out entirely there.
+      var hasTakenPosition = store.allowTakePosition && snapshotHasTakenPosition(snap.id);
       var takePositionHtml = store.allowTakePosition
-        ? '<button type="button" class="snap-take-position-btn" data-snap-id="' + esc(snap.id) + '" title="Enregistre une copie de ce snapshot dans Mes Positions avec ta propre mise">🎯 Prendre position</button>'
+        ? '<button type="button" class="snap-take-position-btn' + (hasTakenPosition ? ' taken' : '') + '" data-snap-id="' + esc(snap.id) + '" title="' + (hasTakenPosition ? "Une position a déjà été prise sur ce snapshot — reclique pour en prendre une autre" : "Enregistre une copie de ce snapshot dans Mes Positions avec ta propre mise") + '">' + (hasTakenPosition ? "✅ Position prise" : "🎯 Prendre position") + '</button>'
         : '';
       var editPositionHtml = store.allowEditPosition
         ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
