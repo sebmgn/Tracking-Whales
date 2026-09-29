@@ -1325,16 +1325,18 @@
      (doubling down) is valid, this only changes how it LOOKS once one exists. */
   .snap-take-position-btn.taken { background: color-mix(in srgb, var(--green) 16%, var(--panel)); border-color: var(--green); color: var(--green); }
   .snap-take-position-btn.taken:hover { background: var(--green); color: #fff; }
-  /* Drag-and-drop reorder (store.allowReorder — Mes Positions, Saison 26/27) */
-  .snap-drag-handle {
-    cursor: grab; color: var(--text-dim); font-size: 15px; line-height: 1;
-    padding: 2px 4px; user-select: none; flex: none;
+  /* Reorder via ▲/▼ (store.allowReorder — Mes Positions, Saison 26/27) —
+     replaces an earlier drag-and-drop ⠿ handle (2026-09-29, on request):
+     same underlying setSavedAt swap, just two discrete clicks instead of a
+     drag gesture. */
+  .snap-reorder-btns { display: flex; flex-direction: column; gap: 1px; flex: none; }
+  .snap-reorder-btn {
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 4px;
+    width: 16px; height: 12px; padding: 0; line-height: 1; font-size: 8px;
+    color: var(--text-dim); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
   }
-  .snap-drag-handle:hover { color: var(--text); }
-  .snap-drag-handle:active { cursor: grabbing; }
-  details.value-trade-item.snap-dragging { opacity: 0.4; }
-  details.value-trade-item.snap-drop-before { box-shadow: inset 0 3px 0 0 var(--accent); }
-  details.value-trade-item.snap-drop-after { box-shadow: inset 0 -3px 0 0 var(--accent); }
+  .snap-reorder-btn:hover { border-color: var(--accent); color: var(--accent); }
   /* Opposed-position grouping box (Mes Positions only) — see
      renderPositionCardsWithOpposedGroups/computePositionOpposedColors. */
   .pos-opposed-box {
@@ -6134,10 +6136,10 @@
         return Object.assign({}, s, op.patch);
       });
     }
-    // Mes Positions only — drag-and-drop reorder. The list has no separate
+    // Mes Positions / Saison 26/27 ▲▼ reorder. The list has no separate
     // "order" field; display order IS savedAt order (see renderStoreView), so
-    // reordering means assigning this item a new savedAt that sits between
-    // its new neighbors' — see attachReorderHandlers.
+    // reordering means swapping this item's savedAt with the neighbor it's
+    // trading places with — see the .snap-reorder-btn click handler.
     if (op.type === "setSavedAt") {
       return list.map(function (s) {
         if (s.id !== op.id) return s;
@@ -6659,11 +6661,11 @@
     allowTakePosition: true,
     allowEditPosition: true, // "✎ Modifier" — cote only here (no per-item stake to correct, see the store.name branch in the click handler), unlike Positions' stake+cote
     allowSimStakeSlider: true, // flat-stake sim, not real money — the "et si" slider on the evolution chart only makes sense here and on All Time, not Positions (real stakeUsd)
-    // Drag ⠿ to fix a wrong chronological order (on request — Value Trades'
+    // ▲▼ to fix a wrong chronological order (on request — Value Trades'
     // own kickoff/save timing can occasionally land two snapshots the wrong
-    // way round). Same setSavedAt trick Mes Positions already uses — see
-    // attachReorderHandlers — reused as-is, not Positions-specific despite
-    // the comment there predating this.
+    // way round). Same setSavedAt swap Mes Positions already uses — see the
+    // .snap-reorder-btn click handler — reused as-is, not Positions-specific
+    // despite the op-type comment predating this.
     allowReorder: true,
     itemNoun: "snapshot",
     emptyHint: "Aucun snapshot pour l\'instant — clique sur 📌 Snapshot sur une carte Value Trades pour l\'enregistrer ici.",
@@ -9305,7 +9307,7 @@
         ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
         : '';
       toolbarHtml = '<div class="snap-toolbar">' +
-        (store.allowReorder ? '<span class="snap-drag-handle" draggable="true" data-snap-id="' + esc(snap.id) + '" title="Glisser pour réordonner">⠿</span>' : '') +
+        (store.allowReorder ? '<span class="snap-reorder-btns"><button type="button" class="snap-reorder-btn snap-reorder-up" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Monter">▲</button><button type="button" class="snap-reorder-btn snap-reorder-down" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Descendre">▼</button></span>' : '') +
         '<span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + '</span>' +
         '<span class="snap-side-label">Camp gagnant :</span>' +
         sideButtonsHtml +
@@ -9441,7 +9443,7 @@
         ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
         : '';
       toolbarHtml = '<div class="snap-toolbar">' +
-        (store.allowReorder ? '<span class="snap-drag-handle" draggable="true" data-snap-id="' + esc(snap.id) + '" title="Glisser pour réordonner">⠿</span>' : '') +
+        (store.allowReorder ? '<span class="snap-reorder-btns"><button type="button" class="snap-reorder-btn snap-reorder-up" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Monter">▲</button><button type="button" class="snap-reorder-btn snap-reorder-down" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Descendre">▼</button></span>' : '') +
         '<span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + '</span>' +
         '<span class="snap-side-label">Camp gagnant :</span>' +
         sideButtonsHtml +
@@ -11498,77 +11500,6 @@
     }
   }
   positionsContent.addEventListener("toggle", trackPositionToggle, true);
-  // Drag-and-drop reorder — gated per-store via store.allowReorder (Mes
-  // Positions and Saison 26/27 so far). There's no separate "order" field: display order IS
-  // savedAt order (see renderStoreView's sort), so "reorder" means giving the
-  // dragged item a new savedAt that sits between its new neighbors' — same
-  // trick a lot of drag-to-reorder UIs use instead of maintaining a whole
-  // separate index. Dragging only ever starts from the ⠿ handle (not the
-  // whole card), so it can never fight a click on a button or the summary.
-  var dragPositionId = null;
-  function clearDropMarkers(listEl) {
-    listEl.querySelectorAll(".snap-drop-before, .snap-drop-after").forEach(function (el) {
-      el.classList.remove("snap-drop-before", "snap-drop-after");
-    });
-  }
-  function attachReorderHandlers(listEl, store) {
-    listEl.addEventListener("dragstart", function (e) {
-      var handle = e.target.closest ? e.target.closest(".snap-drag-handle") : null;
-      if (!handle) { e.preventDefault(); return; }
-      var card = handle.closest(".value-trade-item");
-      if (!card) return;
-      dragPositionId = card.getAttribute("data-key");
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", dragPositionId); // required by Firefox for drag to actually start
-      card.classList.add("snap-dragging");
-    });
-    listEl.addEventListener("dragend", function (e) {
-      var card = e.target.closest ? e.target.closest(".value-trade-item") : null;
-      if (card) card.classList.remove("snap-dragging");
-      clearDropMarkers(listEl);
-      dragPositionId = null;
-    });
-    listEl.addEventListener("dragover", function (e) {
-      if (!dragPositionId) return;
-      var card = e.target.closest ? e.target.closest(".value-trade-item") : null;
-      if (!card || card.getAttribute("data-key") === dragPositionId) return;
-      e.preventDefault(); // required for "drop" to fire at all
-      var rect = card.getBoundingClientRect();
-      var before = (e.clientY - rect.top) < rect.height / 2;
-      clearDropMarkers(listEl);
-      card.classList.add(before ? "snap-drop-before" : "snap-drop-after");
-    });
-    listEl.addEventListener("drop", function (e) {
-      if (!dragPositionId) return;
-      var card = e.target.closest ? e.target.closest(".value-trade-item") : null;
-      clearDropMarkers(listEl);
-      if (!card || card.getAttribute("data-key") === dragPositionId) { dragPositionId = null; return; }
-      e.preventDefault();
-      var rect = card.getBoundingClientRect();
-      var before = (e.clientY - rect.top) < rect.height / 2;
-      var allCards = Array.from(listEl.querySelectorAll(".value-trade-item"));
-      var targetIdx = allCards.indexOf(card);
-      // List is newest-first (see renderStoreView) — "above" in the DOM
-      // means a later/larger savedAt, "below" means earlier/smaller.
-      var neighborAboveEl = before ? allCards[targetIdx - 1] : card;
-      var neighborBelowEl = before ? card : allCards[targetIdx + 1];
-      var byId = {};
-      store.loadRaw().forEach(function (s) { byId[s.id] = s; });
-      var aboveItem = neighborAboveEl ? byId[neighborAboveEl.getAttribute("data-key")] : null;
-      var belowItem = neighborBelowEl ? byId[neighborBelowEl.getAttribute("data-key")] : null;
-      var aboveTime = aboveItem ? new Date(aboveItem.savedAt).getTime() : null;
-      var belowTime = belowItem ? new Date(belowItem.savedAt).getTime() : null;
-      var newTime;
-      if (aboveTime != null && belowTime != null) newTime = (aboveTime + belowTime) / 2;
-      else if (belowTime != null) newTime = belowTime + 1000; // dropped above everything -> becomes the newest
-      else if (aboveTime != null) newTime = aboveTime - 1000; // dropped below everything -> becomes the oldest
-      else newTime = Date.now();
-      enqueueOp(store, { type: "setSavedAt", id: dragPositionId, savedAt: new Date(newTime).toISOString() });
-      dragPositionId = null;
-    });
-  }
-  if (POSITIONS_STORE.allowReorder) attachReorderHandlers(positionsContent, POSITIONS_STORE);
-  if (SNAPSHOTS_STORE.allowReorder) attachReorderHandlers(snapshotsContent, SNAPSHOTS_STORE);
   function trackMatchToggle(e) {
     if (e.target && e.target.classList.contains("match-item")) {
       expandedMatches[e.target.getAttribute("data-key")] = e.target.open;
@@ -11745,8 +11676,44 @@
         if (rebuilt != null) pos.cardHtml = rebuilt;
       }
       enqueueOp(POSITIONS_STORE, { type: "add", id: pos.id, snapshot: pos });
+      // Immediate patch, not a full renderStoreView — enqueueOp above only
+      // re-renders POSITIONS_STORE (Mes Positions), not whichever store's
+      // card this button actually sits on (Saison 26/27 most of the time),
+      // so without this the "taken" look wouldn't show until the next
+      // unrelated re-render. Kept clickable (no disabled) to match
+      // snapCardHtml/manualCardHtml's own taken-but-clickable button —
+      // taking a second position deliberately is valid.
+      takePosBtn.classList.add("taken");
       takePosBtn.textContent = "✅ Position prise";
-      takePosBtn.disabled = true;
+      takePosBtn.title = "Une position a déjà été prise sur ce " + (srcSnap.isManual ? "pari manuel" : "snapshot") + " — reclique pour en prendre une autre";
+      return;
+    }
+    var reorderBtn = e.target.closest ? e.target.closest(".snap-reorder-btn") : null;
+    if (reorderBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var reorderStore = resolveStoreFromEl(reorderBtn);
+      var reorderId = reorderBtn.getAttribute("data-snap-id");
+      var reorderCard = reorderBtn.closest(".value-trade-item");
+      if (!reorderCard || !reorderStore.els.list) return;
+      var reorderCards = Array.from(reorderStore.els.list.querySelectorAll(".value-trade-item"));
+      var reorderIdx = reorderCards.indexOf(reorderCard);
+      if (reorderIdx === -1) return;
+      // List is newest-first (see renderStoreView's sort) — "up" means
+      // swapping with the neighbor just above in the DOM, "down" the one
+      // just below. Same setSavedAt trick the old drag-and-drop reorder
+      // used, just a straight swap between two items instead of computing
+      // a midpoint — a single click only ever needs to move one slot.
+      var neighborIdx = reorderIdx + (reorderBtn.classList.contains("snap-reorder-up") ? -1 : 1);
+      if (neighborIdx < 0 || neighborIdx >= reorderCards.length) return; // already at that end
+      var neighborId = reorderCards[neighborIdx].getAttribute("data-key");
+      var reorderById = {};
+      reorderStore.loadRaw().forEach(function (s) { reorderById[s.id] = s; });
+      var reorderItem = reorderById[reorderId], reorderNeighbor = reorderById[neighborId];
+      if (!reorderItem || !reorderNeighbor) return;
+      var itemSavedAt = reorderItem.savedAt, neighborSavedAt = reorderNeighbor.savedAt;
+      enqueueOp(reorderStore, { type: "setSavedAt", id: reorderId, savedAt: neighborSavedAt });
+      enqueueOp(reorderStore, { type: "setSavedAt", id: neighborId, savedAt: itemSavedAt });
       return;
     }
     // "✎ Modifier" — correct the stake/cote after the fact. Positions gets
