@@ -1305,7 +1305,7 @@
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn, .snap-take-position-btn {
+  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn, .snap-take-position-btn, .snap-comment-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     padding: 5px 12px;
@@ -1315,7 +1315,10 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover, .snap-take-position-btn:hover { border-color: var(--accent); }
+  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover, .snap-take-position-btn:hover, .snap-comment-btn:hover { border-color: var(--accent); }
+  .snap-comment-btn { color: var(--text-dim); }
+  .snap-comment-btn.active { color: var(--accent); border-color: var(--accent); }
+  .snap-comment { margin: 0 0 10px; font-size: 12.5px; color: var(--text); background: var(--row-hover); border-radius: var(--radius-sm); padding: 6px 10px; white-space: pre-wrap; word-break: break-word; }
   .snap-edit-btn { color: var(--accent); }
   .snap-edit-btn:hover { background: var(--accent); color: #fff; }
   /* Distinct from the default state (2026-09-29, on request) — a snapshot
@@ -6173,7 +6176,16 @@
   // and positions flush independently against different Lambda routes, so
   // one store's pending ops must never leak into the other's.
   function loadSyncQueue(store) {
-    try { return JSON.parse(localStorage.getItem(store.queueKey) || "[]"); } catch (e) { return []; }
+    var q;
+    try { q = JSON.parse(localStorage.getItem(store.queueKey) || "[]"); } catch (e) { return []; }
+    // 2026-10-03: the ++/+/-/-- magnitude tag first shipped as its own
+    // "setMagnitude" op type, which the Lambda 400s (same trap as the
+    // 2026-09-07 archive incident above) — wedging every op queued behind
+    // it. Rewritten on read into the editPosition patch the Lambda already
+    // accepts, so a device stuck since then unblocks on its next sync.
+    return q.map(function (op) {
+      return op && op.type === "setMagnitude" ? { type: "editPosition", id: op.id, patch: { magnitude: op.magnitude } } : op;
+    });
   }
   function saveSyncQueue(store, q) {
     try { localStorage.setItem(store.queueKey, JSON.stringify(q)); } catch (e) { /* queue just won't persist this time */ }
@@ -6243,14 +6255,6 @@
         if (s.id !== op.id) return s;
         var copy = Object.assign({}, s);
         copy.confidence = op.confidence;
-        return copy;
-      });
-    }
-    if (op.type === "setMagnitude") {
-      return list.map(function (s) {
-        if (s.id !== op.id) return s;
-        var copy = Object.assign({}, s);
-        copy.magnitude = op.magnitude;
         return copy;
       });
     }
@@ -6527,7 +6531,8 @@
         .replace(/<button[^>]*class="vt-reject-btn"[\s\S]*?<\/button>/, "")
         .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, ""),
       winningSide: null, // side name (e.g. "No") once marked, or null = result not known yet
-      confidence: null // "S" | "A" | "B" conviction tag, set once the bet is placed — lets backtests correlate tier with winrate
+      confidence: null, // "S" | "A" | "B" conviction tag, set once the bet is placed — lets backtests correlate tier with winrate
+      comment: vtComments[unitStableKey(u)] || null // the live card's 💬 note, if any, follows the trade into Saison 26/27
     };
   }
   function saveSnapshot(u) {
@@ -9990,6 +9995,16 @@
   // every time instead of freezing an HTML string — nothing about a manual
   // entry ever changes except side/confidence, which the shared toolbar
   // buttons below already handle identically to a real snapshot.
+  // Free-text note on a saved snapshot/position (2026-10-03, on request) —
+  // kept on the record itself (comment field) through the editPosition
+  // patch the Lambda already accepts, so it syncs across devices.
+  function snapCommentBtnHtml(snap, store) {
+    var has = !!snap.comment;
+    return '<button type="button" class="snap-comment-btn' + (has ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (has ? 'Modifier le commentaire' : 'Ajouter un commentaire') + '">💬' + (has ? '' : ' Commenter') + '</button>';
+  }
+  function snapCommentDisplayHtml(snap) {
+    return snap.comment ? '<div class="snap-comment">💬 ' + esc(snap.comment) + '</div>' : '';
+  }
   function manualCardHtml(snap, isTrash, store) {
     var d = new Date(snap.savedAt);
     var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -10075,6 +10090,7 @@
         magnitudeSectionHtml +
         takePositionHtml +
         editPositionHtml +
+        snapCommentBtnHtml(snap, store) +
         '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
       '</div>';
     }
@@ -10082,6 +10098,7 @@
       ' style="border-left-color:' + borderColor + '">' +
       '<summary class="vt-summary">' +
         toolbarHtml +
+        snapCommentDisplayHtml(snap) +
         hypCardHtml +
         headerHtml +
         eventDateHtml +
@@ -10211,6 +10228,7 @@
         magnitudeSectionHtml +
         takePositionHtml +
         editPositionHtml +
+        snapCommentBtnHtml(snap, store) +
         '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
       '</div>';
     }
@@ -10218,6 +10236,7 @@
       ' style="border-left-color:' + borderColor + '">' +
       '<summary class="vt-summary">' +
         toolbarHtml +
+        snapCommentDisplayHtml(snap) +
         hypCardHtml +
         resultsHtml +
         cardHeadHtml +
@@ -12509,6 +12528,22 @@
       enqueueOp(reorderStore, { type: "setSavedAt", id: neighborId, savedAt: itemSavedAt });
       return;
     }
+    var commentBtn = e.target.closest ? e.target.closest(".snap-comment-btn") : null;
+    if (commentBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var cmtStore = resolveWritableStoreFromEl(commentBtn);
+      var cmtId = commentBtn.getAttribute("data-snap-id");
+      var cmtItem = cmtStore.loadRaw().filter(function (s) { return s.id === cmtId; })[0];
+      if (!cmtItem) return;
+      var cmtInput = prompt("Commentaire (laisse vide pour le supprimer) :", cmtItem.comment || "");
+      if (cmtInput === null) return;
+      var cmtText = cmtInput.trim();
+      if (cmtText === (cmtItem.comment || "")) return;
+      enqueueOp(cmtStore, { type: "editPosition", id: cmtId, patch: { comment: cmtText || null } });
+      if (commentBtn.getAttribute("data-store") === "test") renderTest();
+      return;
+    }
     // "✎ Modifier" — correct the stake/cote after the fact. Positions gets
     // the full stake+cote flow (same two prompts "Prendre position" itself
     // uses); other stores (Snapshots) have no real per-item stake, so they
@@ -12688,7 +12723,7 @@
       var magnitude = magBtn.getAttribute("data-magnitude");
       var curMagSnap = mStore.loadRaw().filter(function (s) { return s.id === mid; })[0];
       var newMagnitude = (curMagSnap && curMagSnap.magnitude === magnitude) ? null : magnitude;
-      var magOp = { type: "setMagnitude", id: mid, magnitude: newMagnitude };
+      var magOp = { type: "editPosition", id: mid, patch: { magnitude: newMagnitude } };
       enqueueOp(mStore, magOp);
       if (fromTestMag) renderTest();
       return;
