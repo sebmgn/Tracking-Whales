@@ -2900,7 +2900,11 @@
     { name: "kneelbefore", platform: "polymarket", address: "0xeb34b86ca3ca64eb3cee6c9a0cce668385df7268", weight: 8.5 },
     // Added on request — @username profile URL given, address resolved via
     // the profile page's own api/profile/userData call (proxyWallet).
-    { name: "abdihakeem", platform: "polymarket", address: "0x48c938b569bfd33b23f2679bbf01c66a407ce829", weight: 7 }
+    { name: "abdihakeem", platform: "polymarket", address: "0x48c938b569bfd33b23f2679bbf01c66a407ce829", weight: 7 },
+    // Added on request — @username profile URL given, address resolved via
+    // gamma-api public-search (proxyWallet). Small real stakes, hence the
+    // same "what if they bet N× bigger" stakeMultiplier as the others.
+    { name: "leectram", platform: "polymarket", address: "0xc185f496c90d72e28131f58a980416e22d317020", weight: 7, stakeMultiplier: 30 }
   ];
   // Reconstructed 2026-09-14 from git history (this file's own commit log),
   // not tracked live anywhere — TRADERS has never recorded when a profile
