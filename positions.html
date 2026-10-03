@@ -3330,7 +3330,7 @@
   function freshStoreState() {
     return {
       tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null, manualVsAutoFilter: null,
-      pnlChartOddsFilter: null, pnlChartTierFilter: null, pnlChartDays: null, pnlChartNoteFilter: null,
+      pnlChartOddsFilter: null, pnlChartTierFilter: [], pnlChartDays: null, pnlChartNoteFilter: null,
       pnlChartSimStake: null, pnlChartTraderFilter: [], pnlChartTraderFilterOpen: false,
       // Console avancée (on request): 2 lignes fixes (manuel/auto), chacune
       // avec ses propres filtres multi-select — indépendant de
@@ -6076,18 +6076,89 @@
     // Same self-healing pass as loadSnapshotsRaw — a position cloned from an
     // un-migrated snapshot inherited the same stale numbers/markup.
     list.forEach(refreshSnapshotDisplay);
+    inheritFromSourceSnapshots(list);
     return list;
   }
   function loadPositions() {
     return loadPositionsRaw().filter(function (s) { return !s.deletedAt && !s.archivedBatchId; });
   }
+  // Plain parse of a synced list, without loadSnapshotsRaw/loadPositionsRaw's
+  // per-item card rebuild — for lookups that only need ids/links/a field or
+  // two, and may run once per card.
+  function readStoredList(key) {
+    try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { return []; }
+  }
+  // Re-parsed only when the stored string itself changes — reading the same
+  // unchanged list back is near-free, unlike a JSON.parse per call.
+  var storedListCache = {};
+  function cachedStoredList(key) {
+    var raw;
+    try { raw = localStorage.getItem(key) || "[]"; } catch (e) { return []; }
+    var hit = storedListCache[key];
+    if (hit && hit.raw === raw) return hit.list;
+    var list;
+    try { list = JSON.parse(raw); } catch (e) { list = []; }
+    storedListCache[key] = { raw: raw, list: list };
+    return list;
+  }
   // Saison 26/27's "🎯 Prendre position" button (see snapCardHtml/
   // manualCardHtml) reads this to show it's already been acted on — trashed
   // or archived positions don't count (a trashed one is, for this purpose,
   // as if it never happened; an archived one can't coexist with a still-
-  // visible source snapshot anyway, see loadPositions' own filter).
+  // visible source snapshot anyway, see loadPositions' own filter). Called
+  // once per Saison card, so it reads the cached plain list — going through
+  // loadPositions() here rebuilt every position's card markup once per
+  // snapshot card, ~2 s per Saison render with ~100 cards × ~100 positions.
   function snapshotHasTakenPosition(snapId) {
-    return loadPositions().some(function (p) { return p.sourceSnapshotId === snapId; });
+    return cachedStoredList(POSITIONS_KEY).some(function (p) { return p.sourceSnapshotId === snapId && !p.deletedAt && !p.archivedBatchId; });
+  }
+  // A position is a copy of its Saison snapshot (🎯 Prendre position, see
+  // sourceSnapshotId) — and a 💬 comment or ++/+/-/-- tag used to be written
+  // only to whichever of the two it was clicked on, so a comment written in
+  // Saison 26/27 never reached Mes Positions, nor All Time (which shows the
+  // position in place of its snapshot, see loadTestRaw). Both are mirrored
+  // across the link now (see tradeFamilyTargets); this covers the ones
+  // written before that (2026-10-03: 1 comment, 27 tags): a position with no
+  // value of its own shows its snapshot's. Read-time only, nothing is sent
+  // to the server.
+  var INHERITED_FROM_SNAPSHOT = ["comment", "magnitude"];
+  function inheritFromSourceSnapshots(positions) {
+    var snapById = null;
+    positions.forEach(function (p) {
+      if (!p.sourceSnapshotId) return;
+      INHERITED_FROM_SNAPSHOT.forEach(function (f) {
+        if (p[f] != null) return;
+        if (!snapById) {
+          snapById = {};
+          cachedStoredList(SNAPSHOTS_KEY).forEach(function (s) { snapById[s.id] = s; });
+        }
+        var src = snapById[p.sourceSnapshotId];
+        if (src && src[f] != null) p[f] = src[f];
+      });
+    });
+  }
+  // Every record of the same real trade across the two synced stores — a
+  // Saison snapshot and each position taken from it — as {store, id}
+  // targets for an edit that must read the same everywhere (comment,
+  // ++/+/-/--), same link the result itself is mirrored across (see the
+  // .snap-side-btn handler). Anything else (a position with no source
+  // snapshot, the local-only Auto stores) is a family of one.
+  function tradeFamilyTargets(store, id) {
+    var self = [{ store: store, id: id }];
+    if (store !== SNAPSHOTS_STORE && store !== UNCONFIDENT_STORE && store !== POSITIONS_STORE) return self;
+    var poss = readStoredList(POSITIONS_KEY);
+    var rootId = id;
+    if (store === POSITIONS_STORE) {
+      var pos = poss.filter(function (p) { return p.id === id; })[0];
+      rootId = pos && pos.sourceSnapshotId;
+      if (!rootId) return self;
+    }
+    var targets = [];
+    var root = readStoredList(SNAPSHOTS_KEY).filter(function (s) { return s.id === rootId; })[0];
+    if (root) targets.push({ store: root.lowConfidence ? UNCONFIDENT_STORE : SNAPSHOTS_STORE, id: root.id });
+    poss.forEach(function (p) { if (p.sourceSnapshotId === rootId) targets.push({ store: POSITIONS_STORE, id: p.id }); });
+    if (!targets.some(function (t) { return t.id === id; })) targets.push(self[0]);
+    return targets;
   }
   function savePositionsToStorage(list) {
     try { localStorage.setItem(POSITIONS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
@@ -9135,7 +9206,7 @@
     var activeNoteBin = st.pnlChartNoteFilter != null ? NOTE_WR_BINS.filter(function (b) { return b[0] === st.pnlChartNoteFilter; })[0] : null;
     var activeNoteBinIsLast = st.pnlChartNoteFilter != null && NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === st.pnlChartNoteFilter;
     var decidedFiltered = decidedAll.filter(function (s) {
-      if (st.pnlChartTierFilter && s.confidence !== st.pnlChartTierFilter) return false;
+      if (st.pnlChartTierFilter.length && st.pnlChartTierFilter.indexOf(s.confidence) === -1) return false;
       if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
       if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
       if (st.pnlChartDays != null) {
@@ -9291,12 +9362,14 @@
     // just filters this same single-line chart to that tier's own decided
     // bets (pnlChartTierFilter, applied to decidedAll well above), same
     // mechanism a select would have used, just a friendlier click target.
+    // Several at once since 2026-10-03 (on request — "S + A" without B):
+    // each chip toggles, "Tout" clears them all.
     var tierChipsDisabled = st.pnlChartConsoleOpen;
-    var tierChipsHtml = '<div class="pnl-chart-tier-chips" title="Filtre la courbe sur un seul palier de confiance">' +
+    var tierChipsHtml = '<div class="pnl-chart-tier-chips" title="Filtre la courbe sur un ou plusieurs paliers de confiance — clique pour cocher/décocher">' +
       '<span class="pnl-chart-tier-chips-label">Confiance</span>' +
-      '<button type="button" class="pnl-chart-tier-chip' + (!st.pnlChartTierFilter ? ' active' : '') + '" data-tier=""' + (tierChipsDisabled ? ' disabled' : '') + '>Tout</button>' +
+      '<button type="button" class="pnl-chart-tier-chip' + (!st.pnlChartTierFilter.length ? ' active' : '') + '" data-tier=""' + (tierChipsDisabled ? ' disabled' : '') + '>Tout</button>' +
       CONFIDENCE_TIERS.map(function (t) {
-        var active = st.pnlChartTierFilter === t;
+        var active = st.pnlChartTierFilter.indexOf(t) !== -1;
         var color = CONFIDENCE_COLORS[t];
         return '<button type="button" class="pnl-chart-tier-chip' + (active ? ' active' : '') + '" data-tier="' + esc(t) + '"' + (tierChipsDisabled ? ' disabled' : '') +
           ' style="' + (active ? 'background:' + color + ';border-color:' + color + ';color:#fff;' : 'color:' + color + ';border-color:' + color + ';') + '">' + esc(t) + '</button>';
@@ -9445,7 +9518,12 @@
     var tierChipsBox = document.getElementById(idp + "snapPnlChartBox");
     if (tierChipsBox) tierChipsBox.querySelectorAll(".pnl-chart-tier-chip").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        store.state.pnlChartTierFilter = btn.getAttribute("data-tier") || null;
+        var tier = btn.getAttribute("data-tier");
+        var cur = store.state.pnlChartTierFilter;
+        var next = !tier ? [] : (cur.indexOf(tier) !== -1 ? cur.filter(function (t) { return t !== tier; }) : cur.concat([tier]));
+        // Kept in S/A/B order whatever the click order, so the chips and
+        // any label built from this read the same way every time.
+        store.state.pnlChartTierFilter = CONFIDENCE_TIERS.filter(function (t) { return next.indexOf(t) !== -1; });
         renderSnapPnlChart(cardsList, store);
       });
     });
@@ -12540,7 +12618,11 @@
       if (cmtInput === null) return;
       var cmtText = cmtInput.trim();
       if (cmtText === (cmtItem.comment || "")) return;
-      enqueueOp(cmtStore, { type: "editPosition", id: cmtId, patch: { comment: cmtText || null } });
+      // Written to the Saison snapshot AND every position taken from it, so
+      // it reads the same in Saison 26/27, Mes Positions and All Time.
+      tradeFamilyTargets(cmtStore, cmtId).forEach(function (t) {
+        enqueueOp(t.store, { type: "editPosition", id: t.id, patch: { comment: cmtText || null } });
+      });
       if (commentBtn.getAttribute("data-store") === "test") renderTest();
       return;
     }
@@ -12723,8 +12805,11 @@
       var magnitude = magBtn.getAttribute("data-magnitude");
       var curMagSnap = mStore.loadRaw().filter(function (s) { return s.id === mid; })[0];
       var newMagnitude = (curMagSnap && curMagSnap.magnitude === magnitude) ? null : magnitude;
-      var magOp = { type: "editPosition", id: mid, patch: { magnitude: newMagnitude } };
-      enqueueOp(mStore, magOp);
+      // Snapshot and the positions taken from it get the same tag, whichever
+      // one it's clicked on — see tradeFamilyTargets.
+      tradeFamilyTargets(mStore, mid).forEach(function (t) {
+        enqueueOp(t.store, { type: "editPosition", id: t.id, patch: { magnitude: newMagnitude } });
+      });
       if (fromTestMag) renderTest();
       return;
     }
