@@ -14808,11 +14808,37 @@
     var fin = anFinOf(b, e.oi);
     return fin == null ? null : fin / e.price - 1;
   }
-  function anTraderR(b) { return b.total > 0 && b.pnl != null ? b.pnl / b.total : null; }
+  // "Faire comme lui", rebuilt from what the bet list shows (on request):
+  // you enter at the same price as the hold strategy (when his stake
+  // reached the level), then mirror what he did afterwards — his average
+  // exit on that side (held to the result, or sold) and, when he also bet
+  // the other outcome (≥ 10 % of that side — the "en face" shown), the same
+  // proportion on it at his average price there. Your stake covers both.
+  // His later, dearer top-ups don't change your entry.
+  function anCopySplit(b, lvl) {
+    var e = anEntry(b, lvl);
+    if (!e) return null;
+    var side = null, opp = [];
+    b.legs.forEach(function (l) { if (l.oi === e.oi) side = l; else opp.push(l); });
+    if (!side || !(side.bought > 0) || !(side.cost > 0)) return null;
+    var oppCost = 0, oppPnl = 0, oppShares = 0;
+    opp.forEach(function (l) { oppCost += l.cost; oppPnl += l.pnl; oppShares += l.bought * b.mult; });
+    var hedge = oppCost >= AN_HEDGE_MIN_RATIO * side.cost ? oppCost / side.cost : 0;
+    return {
+      e: e, side: side,
+      exit: side.avg + side.pnl / (side.bought * b.mult), // his average value per share on that side, sales and settlement included
+      hedge: hedge, oppCost: oppCost, oppRoi: oppCost > 0 ? oppPnl / oppCost : 0, oppAvg: oppShares > 0 ? oppCost / oppShares : null
+    };
+  }
+  function anTraderR(b, lvl) {
+    var c = anCopySplit(b, lvl);
+    if (!c) return null;
+    return ((c.exit / c.e.price - 1) + c.hedge * c.oppRoi) / (1 + c.hedge);
+  }
   // "Garder jusqu'à la fin" only counts bets the trader kept to the result
   // himself (on request) — which is only known once the match is over.
   function anR(b, mode, lvl) {
-    if (mode === "trader") return anTraderR(b);
+    if (mode === "trader") return anTraderR(b, lvl);
     return anKind(b) === "held" ? anHoldR(b, lvl) : null;
   }
   function anPeriodStart() {
@@ -14863,7 +14889,7 @@
       if ((k === "soldWin" || k === "soldLoss") && b.timing && b.timing.firstSell && b.kickoff && b.timing.firstSell * 1000 < b.kickoff) s.soldPre++;
       if (k === "arb") return;
       if (b.two) { s.two++; s.twoRatio += b.other.cost / b.main.cost; }
-      var h = anR(b, "hold", lvl), t = anTraderR(b);
+      var h = anR(b, "hold", lvl), t = anTraderR(b, lvl);
       if (h != null) { s.hN++; s.hSum += h; if (h > 0) s.hWins++; }
       if (t != null) { s.tN++; s.tSum += t; if (t > 0) s.tWins++; }
     });
@@ -14959,7 +14985,7 @@
     }).join("") + '</div></div>';
   }
   function anStakeLabel(v) { return anNum(v) + " $" + (v === AN_MIN_BET ? " (tous)" : " et +"); }
-  function anModeLabel() { return anState.mode === "trader" ? "en faisant comme lui (ventes et couvertures comprises)" : "en gardant jusqu'à la fin (paris qu'il a lui-même gardés)"; }
+  function anModeLabel() { return anState.mode === "trader" ? "en faisant comme lui (même entrée, puis ses sorties et ses mises en face)" : "en gardant jusqu'à la fin (paris qu'il a lui-même gardés)"; }
   function anScope() {
     return (anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours") +
       " · paris de " + anStakeLabel(anState.minStake) + (anState.pre ? " · avant le match" : "") + (anState.sport !== "all" ? " · " + anSportLabel(anState.sport) : "");
@@ -15172,6 +15198,18 @@
     }
     return "Issue " + (oi + 1);
   }
+  // The "Toi" figure spelled out, from the numbers shown on the row.
+  function anCalcText(b, cs, fin) {
+    var S = anState.stake;
+    if (!cs) return "";
+    if (anState.mode !== "trader") {
+      return anNum(S) + " $ sur " + anOutcomeName(b, cs.e.oi) + " à " + anCents(cs.e.price) + ", gardé : " + (fin === 1 ? "gagné, " + anUsdSigned(S * (1 / cs.e.price - 1)) : "perdu, −" + anNum(S) + " $");
+    }
+    var main = S / (1 + cs.hedge), opp = S - main;
+    var txt = anNum(main) + " $ sur " + anOutcomeName(b, cs.e.oi) + " à " + anCents(cs.e.price) + ", valeur finale moyenne " + anCents(cs.exit) + " comme lui : " + anUsdSigned(main * (cs.exit / cs.e.price - 1));
+    if (cs.hedge) txt += " · " + anNum(opp) + " $ en face comme lui (" + (cs.oppRoi >= 0 ? "+" : "") + Math.round(cs.oppRoi * 100) + " %) : " + anUsdSigned(opp * cs.oppRoi);
+    return txt;
+  }
   var AN_KIND_LABELS = { held: "Gardé", soldWin: "Sorti en gain", soldLoss: "Sorti en perte", arb: "Arbitrage" };
   function anJournalHtml(per) {
     var list = [];
@@ -15179,7 +15217,7 @@
     list.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
     if (!list.length) return '<div class="an-dim an-empty">Aucun pari avec ces réglages.</div>';
     var rows = list.slice(0, anState.jLimit).map(function (b) {
-      var e = anEntry(b, anState.minStake), fin = anFinOf(b, e.oi);
+      var e = anEntry(b, anState.minStake), fin = anFinOf(b, e.oi), cs = anCopySplit(b, anState.minStake);
       var r = anR(b, anState.mode, anState.minStake), pnl = r * anState.stake;
       var rel = b.kickoff ? anRelLabel((e.ts * 1000 - b.kickoff) / 60000) : "";
       var url = b.ev ? "https://polymarket.com/event/" + encodeURIComponent(b.ev) : "";
@@ -15189,10 +15227,10 @@
         '<td class="an-tl an-jmatch">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + '</td>' +
         '<td class="an-tl">' + esc(anOutcomeName(b, e.oi)) + '</td>' +
         '<td>' + anCents(e.price) + (rel ? '<small>' + esc(rel) + '</small>' : '') + '</td>' +
-        '<td>' + anNum(b.main.cost) + ' $' + (b.two ? '<small>+ ' + anNum(b.other.cost) + ' $ en face</small>' : '') + '</td>' +
-        '<td class="an-tl">' + esc(AN_KIND_LABELS[anKind(b)]) + '</td>' +
+        '<td>' + anNum(cs ? cs.side.cost : b.main.cost) + ' $' + (cs && cs.hedge ? '<small>+ ' + anNum(cs.oppCost) + ' $ en face' + (cs.oppAvg ? ' à ' + anCents(cs.oppAvg) : '') + '</small>' : '') + '</td>' +
+        '<td class="an-tl">' + esc(AN_KIND_LABELS[anKind(b)]) + (cs && anKind(b) !== "held" && anKind(b) !== "arb" ? '<small>sorti à ' + anCents(cs.exit) + ' en moyenne</small>' : '') + '</td>' +
         '<td class="an-tl ' + (fin === 1 ? 'an-pos' : 'an-neg') + '">' + (fin === 1 ? 'Gagné' : 'Perdu') + '</td>' +
-        '<td class="' + (pnl >= 0 ? 'an-pos' : 'an-neg') + '"><b>' + anUsdSigned(pnl) + '</b></td>' +
+        '<td class="' + (pnl >= 0 ? 'an-pos' : 'an-neg') + '" title="' + esc(anCalcText(b, cs, fin)) + '"><b>' + anUsdSigned(pnl) + '</b></td>' +
       '</tr>';
     }).join("");
     return '<div class="an-scroll"><table class="an-tbl an-journal"><thead><tr>' +
@@ -15206,7 +15244,7 @@
     return '<details class="an-section an-method"><summary class="an-stitle">Comment c\'est calculé</summary><ul class="an-list">' +
       '<li><b>Sans tricher avec le résultat</b> : un pari est copié au moment où la mise du trader sur un camp atteint le seuil choisi (1 k$, 3 k$…), sur ce camp-là, au prix de son achat qui l\'y a fait arriver. On ne regarde jamais où il a le plus misé à la fin du match : un trader qui rajoute sur l\'équipe qui mène finit presque toujours « principalement » sur le gagnant, ce qui gonflait l\'ancien calcul.</li>' +
       '<li><b>Garder jusqu\'à la fin</b> : ta mise sur ce camp, gardée jusqu\'au résultat. Tu copies en pratique quelques minutes plus tard, souvent à un prix un peu moins bon.</li>' +
-      '<li><b>Faire comme le trader</b> : son propre résultat sur tout le marché (ventes, rachats, mises en face), rapporté à tout ce qu\'il y a mis, appliqué à ta mise.</li>' +
+      '<li><b>Faire comme le trader</b> : tu entres au même prix que « Garder » (celui affiché dans « Entrée »), puis tu fais comme lui ensuite : tu sors au même prix moyen que lui (ou tu gardes s\'il a gardé), et s\'il a misé en face, tu mets la même proportion de ta mise sur l\'autre camp, à son prix moyen. Ses rachats plus chers après coup ne changent pas ton prix. Survole le montant « Toi » pour voir le calcul.</li>' +
       '<li><b>Avant le match seulement</b> : il avait atteint le seuil avant le coup d\'envoi (heure donnée par Polymarket).</li>' +
       '<li><b>Gardé jusqu\'à la fin</b> (comportement) : son prix moyen de sortie est à 3¢ ou moins du résultat final, il a attendu le résultat. Sinon il est sorti avant, en gain ou en perte selon son prix moyen de vente comparé à son prix moyen d\'achat.</li>' +
       '<li><b>Arbitrage</b> : il a gardé les deux côtés en quantités qui lui garantissaient un gain quel que soit le résultat. Ce n\'est pas un pari, donc il est exclu des simulations.</li>' +
