@@ -57,6 +57,9 @@
     --an-both: var(--tier-s);
     --an-pre: #0f766e;
     --an-live: #be185d;
+    --an-t1: #2563eb;
+    --an-t2: #c2410c;
+    --an-t3: #7c3aed;
     /* Structural corner-rounding scale — small chips/badges/buttons use
        --radius-sm, cards/panels/boxes use --radius-md. Pills (999px) and
        perfect circles (50%) stay literal since those are already a
@@ -93,6 +96,9 @@
       --tier-b: #f0a35f;
       --an-pre: #2dd4bf;
       --an-live: #f472b6;
+      --an-t1: #60a5fa;
+      --an-t2: #fb923c;
+      --an-t3: #c4b5fd;
     }
   }
   :root[data-theme="dark"] {
@@ -116,6 +122,9 @@
     --tier-b: #f0a35f;
     --an-pre: #2dd4bf;
     --an-live: #f472b6;
+    --an-t1: #60a5fa;
+    --an-t2: #fb923c;
+    --an-t3: #c4b5fd;
   }
   * { box-sizing: border-box; }
   body {
@@ -2319,6 +2328,43 @@
     .an-cal-txt { min-width: 0; font-size: 11.5px; }
     .an-cal-txt small { display: none; }
   }
+  /* Analyse v3 — three traders: entry, exit, adverse side, stake levels, sports */
+  .an-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; margin-right: 6px; }
+  .an-card3 { border-top: 3px solid var(--an-c); }
+  .an-card3 .an-card-head .an-dim { margin-left: auto; }
+  .an-warn { color: var(--text-dim); font-style: italic; }
+  .an-kv { display: grid; grid-template-columns: 1fr auto; gap: 1px 10px; font-size: 12.5px; align-items: baseline; }
+  .an-kv > span { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); }
+  .an-kv > b { font-variant-numeric: tabular-nums; }
+  .an-kv > small { grid-column: 1 / -1; color: var(--text-dim); font-size: 11.5px; line-height: 1.4; }
+  .an-chart-legend { margin: 0 0 6px; }
+  .an-chart { position: relative; }
+  .an-ch-svg { display: block; width: 100%; height: auto; }
+  .an-ch-grid { stroke: color-mix(in srgb, var(--panel-border) 70%, transparent); stroke-width: 1; }
+  .an-ch-grid.zero { stroke: var(--text-dim); stroke-width: 1.2; }
+  .an-ch-tick { font-size: 11px; fill: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .an-ch-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .an-ch-cross { stroke: var(--text-dim); stroke-width: 1; stroke-dasharray: 3 3; }
+  .an-ch-hit { fill: transparent; }
+  .an-ch-tip { position: absolute; top: 8px; pointer-events: none; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px; padding: 7px 10px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap; display: flex; flex-direction: column; gap: 3px; font-variant-numeric: tabular-nums; }
+  .an-ch-tip[hidden] { display: none; }
+  .an-ch-tip-date { font-weight: 800; }
+  .an-ch-tip i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+  .an-ch-tip span { color: var(--text-dim); }
+  .an-empty { padding: 18px 0; }
+  .an-tbl { border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 100%; }
+  .an-tbl th, .an-tbl td { padding: 6px 9px; text-align: right; white-space: nowrap; }
+  .an-tbl thead th { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); border-bottom: 1px solid var(--panel-border); }
+  .an-tbl thead tr:first-child th.an-tg { color: var(--text); font-size: 12px; text-transform: none; letter-spacing: 0; text-align: left; }
+  .an-tbl .an-tl { text-align: left; font-weight: 700; color: var(--text); }
+  .an-tbl thead .an-tl { color: var(--text-dim); vertical-align: bottom; }
+  .an-tbl .an-tg { border-left: 1px solid var(--panel-border); }
+  .an-tbl tbody tr { border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent); }
+  .an-tbl tbody tr.current { background: var(--row-hover); }
+  .an-tbl .few { opacity: .45; }
+  .an-tbl .an-dimc { color: var(--text-dim); }
+  .an-verdicts { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+  .an-method summary { cursor: pointer; }
   /* Analyse v2 — copy & hold: verdict, ranking, types, confidence ranges */
   .an-global { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: flex-start; }
   .an-global-main { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -13962,11 +14008,14 @@
   fetchNotifLog();
   setInterval(fetchNotifLog, 120000);
 
-  // ---------- Analyse des traders (2026-10-04, on request) ----------
-  // The question this tab answers: is it worth copying the tracked traders'
-  // big bets (≥ 1 000 $ on one market) and holding them to the result — for
-  // which traders, and on which kinds of bets? Every Polymarket trader in
-  // TRADERS is covered; each big bet is rebuilt from Polymarket's public API:
+  // ---------- Analyse des traders (2026-10-04, simplified on request) ----------
+  // Three traders only (RN1, VeryLucky888, flaznorp), and only what the user
+  // asked for: does he enter before or during the match, does he get out
+  // during it (in profit or at a loss) or hold to the result, how often is he
+  // on both sides, and does a bigger stake mean a better return — by sport,
+  // over 30 / 90 days or everything, with what 1 000 $ per copied bet would
+  // have made. Each bet (≥ 1 000 $ on one market) is rebuilt from Polymarket's
+  // public API:
   //   closed-positions    every position they closed (sold out, or settled and
   //                       redeemed), newest first — offset paging only
   //   positions           ?redeemable=true: settled but never redeemed (RN1
@@ -13975,45 +14024,38 @@
   //                       still open
   //   gamma markets       kickoff (gameStartTime) and final result
   //   activity            every fill of theirs on the market — when they
-  //                       bought, how much, when they sold
-  //   clob prices-history the market price 5/15/60 min after the bet became
-  //                       big enough to show up — what a copier would really
-  //                       have paid, not the trader's own average
-  // ~12 000 positions get closed a day across these traders, so everything is
-  // cached in IndexedDB on this device and only what's new is fetched. A sync
-  // runs in the background whenever the site is open (on a computer — on a
-  // phone only from this tab), and once caught up each sync reaches one more
-  // day back, up to AN_AUTO_BACKFILL_DAYS: the history builds itself up.
-  // Polymarket keeps everything, so a gap between visits is just caught up.
+  //                       bought, when they sold
+  // Everything lands in this device's own database (IndexedDB
+  // "vtTraderAnalysis") and is kept for good. Polymarket keeps every closed
+  // position with its timestamps, so the tracking never misses anything: a
+  // sync catches up whatever happened since the last one, and while the site
+  // is open each sync also reaches AN_BACKFILL_STEP_DAYS further back, until
+  // their whole history is in.
   var AN_DATA_API = "https://data-api.polymarket.com";
   var AN_GAMMA_API = "https://gamma-api.polymarket.com";
-  var AN_CLOB_API = "https://clob.polymarket.com";
-  var AN_MIN_BET = 1000;            // a market counts from this total stake (both sides together, ×stakeMultiplier)
+  var AN_TRADER_NAMES = ["RN1", "VeryLucky888", "flaznorp"];
+  var AN_MIN_BET = 1000;            // a market counts from this stake on the trader's main side
   var AN_MIN_LEG_COST = 100;        // smaller legs aren't stored — can't move a ≥ 1 000 $ bet
-  var AN_INITIAL_DAYS = 3;          // a trader's first scan
-  var AN_MORE_DAYS = 3;             // "+ N jours d'historique"
-  var AN_AUTO_BACKFILL_DAYS = 30;   // idle syncs keep reaching back, one day each, until this much history is in
-  var AN_KEEP_DAYS = 60;            // older legs are pruned so the cache stays quick to load
+  var AN_INITIAL_DAYS = 30;         // a trader's first scan
+  var AN_BACKFILL_STEP_DAYS = 3;    // each idle sync reaches this much further back…
+  var AN_AUTO_BACKFILL_DAYS = 400;  // …until this much history (or the start of their account)
   var AN_RESYNC_MS = 15 * 60 * 1000;
+  var AN_BACKFILL_RESYNC_MS = 60 * 1000; // while history is still being filled in
   var AN_FIRST_SYNC_DELAY_MS = 40 * 1000; // after page load — the live refresh gets the network first
-  var AN_ENRICH_PER_SYNC = 2500;    // bets per sync whose fills + copy prices get fetched (~5 min); the rest waits
+  var AN_ENRICH_PER_SYNC = 1500;    // bets per sync whose fills get fetched; the rest waits for the next one
   var AN_HELD_TOLERANCE = 0.03;     // average exit within 3¢ of the final price = held to the result
-  var AN_HEDGE_MIN_RATIO = 0.10;    // other side ≥ 10 % of the main stake = "deux camps"
-  var AN_MIN_N = 10;                // below this a figure is still shown, never colored as a verdict
-  var AN_SOLID_N = 30;              // from this many bets a confidence interval clear of 0 counts as proven
+  var AN_HEDGE_MIN_RATIO = 0.10;    // other side ≥ 10 % of the main stake = "camp adverse"
+  var AN_MIN_N = 10;                // below this a figure is still shown, never colored
   var AN_PAGE = 50;                 // closed-positions' max page size
   var AN_TIMING_V = 2;              // timing records without this version get recomputed
-  var AN_DELAYS = [0, 5, 15, 60];   // minutes after the bet showed up; 0 = the trader's own average price
+  var AN_COPY_STAKE = 1000;         // the simulation: this much on every copied bet
+  var AN_STAKE_LEVELS = [1000, 3000, 10000, 50000, 100000];
 
   var anTraderByName = null;
   function analysisTraders() {
-    var seen = {}, out = [];
-    TRADERS.forEach(function (t) {
-      if (t.platform !== "polymarket" || !t.address || seen[t.name]) return;
-      seen[t.name] = true;
-      out.push(t);
-    });
-    return out;
+    return AN_TRADER_NAMES.map(function (n) {
+      return TRADERS.filter(function (t) { return t.name === n && t.platform === "polymarket" && t.address; })[0];
+    }).filter(Boolean);
   }
   function anTrader(name) {
     if (!anTraderByName) { anTraderByName = {}; analysisTraders().forEach(function (t) { anTraderByName[t.name] = t; }); }
@@ -14021,25 +14063,24 @@
   }
   function anMult(name) { var t = anTrader(name); return (t && t.stakeMultiplier) || 1; }
 
-  var AN_PREFS_KEY = "vtAnalysePrefs";
+  var AN_PREFS_KEY = "vtAnalysePrefs2";
   var anState = {
-    period: "30", minStake: AN_MIN_BET, entry: "all", delay: 15, detail: null, rankSort: "solid",
-    jBehavior: "done", jResult: "all", jSort: "date", jLimit: 40, showIdle: false,
-    expanded: {}, fills: {},
+    period: "30", minStake: AN_MIN_BET, sport: "all", chartHover: null,
     loaded: false, loading: null, dbOk: true, syncing: false, lastSyncAt: 0, progress: {}, errors: {}, pagesRead: 0,
     legs: {}, open: {}, markets: {}, timing: {}, meta: {},
-    model: null, dirty: true, renderTimer: null, lastRenderAt: 0, lastCount: 0, openAt: 0
+    model: null, dirty: true, renderTimer: null, lastRenderAt: 0, lastCount: 0
   };
   (function () {
     try {
       var p = JSON.parse(localStorage.getItem(AN_PREFS_KEY) || "{}");
-      ["period", "minStake", "entry", "delay", "detail", "rankSort"].forEach(function (k) { if (p[k] != null) anState[k] = p[k]; });
-      if (AN_DELAYS.indexOf(anState.delay) === -1) anState.delay = 15;
+      if (["30", "90", "all"].indexOf(p.period) !== -1) anState.period = p.period;
+      if (AN_STAKE_LEVELS.indexOf(p.minStake) !== -1) anState.minStake = p.minStake;
+      if (typeof p.sport === "string") anState.sport = p.sport;
     } catch (e) { /* defaults */ }
   })();
   function anSavePrefs() {
     try {
-      localStorage.setItem(AN_PREFS_KEY, JSON.stringify({ period: anState.period, minStake: anState.minStake, entry: anState.entry, delay: anState.delay, detail: anState.detail, rankSort: anState.rankSort }));
+      localStorage.setItem(AN_PREFS_KEY, JSON.stringify({ period: anState.period, minStake: anState.minStake, sport: anState.sport }));
     } catch (e) { /* convenience only */ }
   }
 
@@ -14104,15 +14145,13 @@
     closed: anLimiter(2, 260),
     positions: anLimiter(1, 450),
     activity: anLimiter(2, 260),
-    gamma: anLimiter(2, 200),
-    clob: anLimiter(3, 160)
+    gamma: anLimiter(2, 200)
   };
   function anLimiterFor(url) {
     if (url.indexOf("/closed-positions") !== -1) return AN_LIMITERS.closed;
     if (url.indexOf(AN_DATA_API + "/positions") === 0) return AN_LIMITERS.positions;
     if (url.indexOf(AN_DATA_API + "/activity") === 0) return AN_LIMITERS.activity;
-    if (url.indexOf(AN_GAMMA_API) === 0) return AN_LIMITERS.gamma;
-    return AN_LIMITERS.clob;
+    return AN_LIMITERS.gamma;
   }
   function anFetchJson(url) {
     var lim = anLimiterFor(url);
@@ -14242,7 +14281,8 @@
         });
       });
       await onBatch(legs, minTs === Infinity ? stopTs - 1 : minTs, maxTs);
-      if (done || minTs < stopTs) return;
+      if (done) return true;
+      if (minTs < stopTs) return false;
       offset += PAR * AN_PAGE;
     }
   }
@@ -14272,7 +14312,7 @@
     var top = meta.newestTs
       ? { kind: "top", top: null, reached: Infinity, stop: meta.newestTs - 3600 }
       : { kind: "initial", top: null, reached: Infinity, stop: now - AN_INITIAL_DAYS * 86400 };
-    await anScanClosed(t, 0, top.stop, handler(top));
+    if (await anScanClosed(t, 0, top.stop, handler(top)) && top.kind === "initial") meta.complete = true;
     anFinishScan(meta, top);
     await anDbWrite("meta", [meta]);
     if (olderDays && meta.oldestTs) {
@@ -14281,7 +14321,7 @@
       // right after still extends this trader on the next sync.
       meta.scan = older;
       await anDbWrite("meta", [meta]);
-      await anScanClosed(t, await anFindOffset(t.address, meta.oldestTs), older.stop, handler(older));
+      if (await anScanClosed(t, await anFindOffset(t.address, meta.oldestTs), older.stop, handler(older))) meta.complete = true;
       anFinishScan(meta, older);
       await anDbWrite("meta", [meta]);
     }
@@ -14372,8 +14412,7 @@
   }
 
   // ----- Enrichment: their fills on the market (when they bought, how much
-  // before kickoff, when they sold) + the market price a copier would have
-  // paid 5/15/60 min after the bet became visible. -----
+  // before kickoff, when they sold). -----
   async function anFetchFills(t, cids) {
     var url = AN_DATA_API + "/activity?user=" + t.address + "&market=" + cids.join(",") + "&limit=500";
     var list = await anFetchJson(url);
@@ -14429,26 +14468,8 @@
       asset: mainBuys.length ? String(mainBuys[0].asset || "") : "",
       pre: kickoff && total > 0 ? preUsd / total : null,
       firstSell: sellTs.length ? Math.min.apply(null, sellTs) : null, sellUsd: sellUsd,
-      merge: merge, redeemTs: redeemTs, kickoff: kickoff || null,
-      p0: null, p5: null, p15: null, p60: null, at: Date.now()
+      merge: merge, redeemTs: redeemTs, kickoff: kickoff || null, at: Date.now()
     };
-  }
-  // Last traded price at or before each delay after `visible`, from one
-  // minute-by-minute window — the price you'd have got copying that late.
-  async function anCopyPrices(rec) {
-    if (!rec.asset || !rec.visible) return;
-    var res = await anFetchJson(AN_CLOB_API + "/prices-history?market=" + rec.asset + "&startTs=" + (rec.visible - 300) + "&endTs=" + (rec.visible + 3700) + "&fidelity=1").catch(function () { return null; });
-    var h = res && Array.isArray(res.history) ? res.history : [];
-    if (!h.length) return;
-    function at(ts) {
-      var best = null;
-      for (var i = 0; i < h.length; i++) {
-        if (h[i].t <= ts) best = Number(h[i].p);
-        else { if (best == null) best = Number(h[i].p); break; }
-      }
-      return best;
-    }
-    AN_DELAYS.forEach(function (d) { rec["p" + d] = at(rec.visible + d * 60); });
   }
   function anPendingEnrich() {
     var model = anModel(), n = 0;
@@ -14481,11 +14502,10 @@
         var mk = anState.markets[b.cid];
         return anTimingSummary(b, byCid[b.cid] || [], mk && mk.kickoff);
       });
-      await Promise.all(recs.map(anCopyPrices));
       recs.forEach(function (r) { anState.timing[r.key] = r; });
       anState.dirty = true;
       done += batch.bets.length;
-      anSetProgress("_enrich", "moment d'entrée et prix de copie " + anNum(done) + "/" + anNum(pending.length));
+      anSetProgress("_enrich", "moments d'entrée et de sortie " + anNum(done) + "/" + anNum(pending.length));
       await anDbWrite("timing", recs);
       anScheduleRender();
     });
@@ -14498,6 +14518,8 @@
     anRenderStatus();
   }
   function anCoverageDays(meta) { return meta && meta.oldestTs ? (Date.now() / 1000 - meta.oldestTs) / 86400 : 0; }
+  function anNeedsBackfill(meta) { return !!(meta && meta.oldestTs && !meta.complete && anCoverageDays(meta) < AN_AUTO_BACKFILL_DAYS); }
+  function anBackfilling() { return analysisTraders().some(function (t) { return anNeedsBackfill(anState.meta[t.name]); }); }
   async function anSyncTrader(t, olderDays) {
     var meta = anState.meta[t.name] || (anState.meta[t.name] = { trader: t.name, newestTs: 0, oldestTs: 0, scan: null });
     await anSyncClosed(t, meta, olderDays);
@@ -14511,14 +14533,14 @@
     anState.pagesRead = 0;
     anRenderStatus();
     var traders = analysisTraders();
-    // Once the backlog is done, each sync also reaches one more day back for
-    // every trader with less than AN_AUTO_BACKFILL_DAYS of history.
+    // Once the backlog is done, each sync also reaches AN_BACKFILL_STEP_DAYS
+    // further back for every trader whose history isn't all in yet.
     var auto = !olderDays && anPendingEnrich() === 0;
     try {
       var done = 0;
       await anPool(traders, 3, function (t) {
         var meta = anState.meta[t.name];
-        var extra = olderDays || (auto && meta && meta.oldestTs && anCoverageDays(meta) < AN_AUTO_BACKFILL_DAYS ? 1 : 0);
+        var extra = olderDays || (auto && anNeedsBackfill(meta) ? AN_BACKFILL_STEP_DAYS : 0);
         return anSyncTrader(t, extra).catch(function (err) { console.warn("Analyse — " + t.name, err); anState.errors[t.name] = (err && err.message) || "erreur"; }).then(function () {
           done++;
           anSetProgress("_pos", "positions des traders " + done + "/" + traders.length + " · " + anNum(anState.pagesRead) + " pages lues");
@@ -14541,22 +14563,26 @@
     }
   }
   // Legs that never made a ≥ 1 000 $ bet are dropped once their market can't
-  // grow any more, and everything past AN_KEEP_DAYS; timing/market records
-  // nothing points at any more go with them.
+  // grow any more (history itself is kept for good), and so is anything left
+  // from traders this tab no longer follows; timing/market records nothing
+  // points at any more go with them.
   function anPrune() {
-    var now = Date.now() / 1000, model = anModel(), inBet = {}, betKeys = {}, cids = {}, del = [];
+    var now = Date.now() / 1000, model = anModel(), inBet = {}, del = [];
     Object.keys(model).forEach(function (n) {
-      model[n].forEach(function (b) { betKeys[b.key] = true; cids[b.cid] = true; b.legs.forEach(function (l) { inBet[l.key] = true; }); });
+      model[n].forEach(function (b) { b.legs.forEach(function (l) { inBet[l.key] = true; }); });
     });
     Object.keys(anState.legs).forEach(function (n) {
-      var m = anState.legs[n];
+      var m = anState.legs[n], gone = !anTrader(n);
       Object.keys(m).forEach(function (k) {
         var l = m[k];
         var ref = l.ts || ((anEndMs(l.end) || Date.now()) / 1000);
-        var age = now - ref;
-        if (age > AN_KEEP_DAYS * 86400 || (!inBet[k] && age > 3 * 86400)) { delete m[k]; del.push(k); }
+        if (gone || (!inBet[k] && now - ref > 3 * 86400)) { delete m[k]; del.push(k); }
       });
+      if (gone) delete anState.legs[n];
     });
+    var delMeta = Object.keys(anState.meta).filter(function (n) { return !anTrader(n); });
+    delMeta.forEach(function (n) { delete anState.meta[n]; });
+    anDbWrite("meta", delMeta, true);
     if (!del.length) return;
     anState.dirty = true;
     anDbWrite("legs", del, true);
@@ -14574,7 +14600,7 @@
     anState.dbOk = !!db;
     var res = await Promise.all([anDbAll("legs"), anDbAll("meta"), anDbAll("markets"), anDbAll("timing")]);
     res[0].forEach(function (l) { (anState.legs[l.trader] = anState.legs[l.trader] || {})[l.key] = l; });
-    res[1].forEach(function (m) { anState.meta[m.trader] = m; anState.lastSyncAt = Math.max(anState.lastSyncAt, m.lastSyncAt || 0); });
+    res[1].forEach(function (m) { anState.meta[m.trader] = m; if (anTrader(m.trader)) anState.lastSyncAt = Math.max(anState.lastSyncAt, m.lastSyncAt || 0); });
     res[2].forEach(function (m) { anState.markets[m.cid] = m; });
     res[3].forEach(function (x) { anState.timing[x.key] = x; });
     anState.dirty = true;
@@ -14598,17 +14624,8 @@
     if (!force && !AN_BACKGROUND_OK && !anTabActive()) return;
     anEnsureLoaded().then(function () {
       if (anState.syncing) return;
-      if (Date.now() - anState.lastSyncAt >= AN_RESYNC_MS) { anSyncAll(); return; }
-      // Between full syncs, the open positions of the trader shown in detail
-      // (not cached — they move by the minute) are refreshed on their own.
-      if (anTabActive() && Date.now() - anState.openAt >= 2 * 60 * 1000) anRefreshOpen();
+      if (Date.now() - anState.lastSyncAt >= (anBackfilling() ? AN_BACKFILL_RESYNC_MS : AN_RESYNC_MS)) anSyncAll();
     });
-  }
-  function anRefreshOpen() {
-    anState.openAt = Date.now();
-    var t = anTrader(anState.detail);
-    if (!t) return;
-    anSyncOpen(t).catch(function () { /* keeps the last list */ }).then(function () { anScheduleRender(); });
   }
   function anScheduleRender() {
     if (!anTabActive() || anState.renderTimer) return;
@@ -14724,231 +14741,110 @@
     if (anState.dirty || !anState.model) { anState.model = anBuildModel(); anState.dirty = false; }
     return anState.model;
   }
-  function anFiltered(bets) {
-    var since = anState.period === "all" ? null : Date.now() - Number(anState.period) * 86400000;
+  // ----- Stats: only finished bets whose result is known -----
+  var AN_SPORT_LABELS = { "⚽": "Football", "🎾": "Tennis", "🏀": "Basket", "⚾": "Baseball", "🏈": "Foot US", "🏒": "Hockey",
+    "🥊": "MMA / boxe", "🎮": "Esport", "🏏": "Cricket", "🏉": "Rugby", "🏎️": "F1", "🏁": "NASCAR", "⛳": "Golf", "♟️": "Échecs", "🎲": "Autres" };
+  var AN_TRADER_COLORS = ["var(--an-t1)", "var(--an-t2)", "var(--an-t3)"];
+  function anSportLabel(e) { return AN_SPORT_LABELS[e] ? e + " " + AN_SPORT_LABELS[e] : (e || "Autres"); }
+  function anTraderColor(name) { var i = AN_TRADER_NAMES.indexOf(name); return AN_TRADER_COLORS[i < 0 ? 0 : i]; }
+  // arb: both sides held and locked in (a profit whatever happens) — not a
+  // bet on the result. Otherwise held to the result, or sold before it, in
+  // profit or at a loss (average sell price vs average buy price).
+  function anKind(b) {
+    if (b.arb) return "arb";
+    if (b.main.held) return "held";
+    return b.main.exitAvg != null && b.main.exitAvg >= b.main.avg ? "soldWin" : "soldLoss";
+  }
+  // Return of 1 € on his main side at his average price, held to the result.
+  function anCopyR(b) { return b.main.avg > 0 ? b.main.fin / b.main.avg - 1 : null; }
+  function anPeriodStart() {
+    return anState.period === "all" ? 0 : Date.now() - Number(anState.period) * 86400000;
+  }
+  // Bets that started before a trader's scanned history are only partly
+  // known — mostly lost legs he never redeemed, while his winners from back
+  // then (already redeemed) aren't in — so they'd drag every figure down.
+  function anCoveredFrom(name) {
+    var m = anState.meta[name];
+    return m && m.oldestTs ? m.oldestTs * 1000 : Infinity;
+  }
+  // opts.minStake / opts.sport override the page's own filters.
+  function anFiltered(bets, opts) {
+    opts = opts || {};
+    var from = anPeriodStart();
+    var minStake = opts.minStake != null ? opts.minStake : anState.minStake;
+    var sport = opts.sport != null ? opts.sport : anState.sport;
     return bets.filter(function (b) {
-      if (b.total < anState.minStake) return false;
-      if (since != null && !(b.date && b.date >= since)) return false;
-      if (anState.entry !== "all" && b.timeClass !== anState.entry) return false;
+      if (b.status !== "decided" || b.main.fin == null) return false;
+      if (b.main.cost < minStake) return false;
+      if ((b.date || 0) < Math.max(from, anCoveredFrom(b.trader))) return false;
+      if (sport !== "all" && b.sport !== sport) return false;
       return true;
     });
   }
-
-  // ----- Copy returns + aggregates -----
-  // The price a copier pays: the trader's own average (delay 0), or the
-  // market price `delay` min after the bet showed up. A price ≥ 99¢ or ≤ 1¢
-  // means the match was already decided by then — not a copyable bet.
-  function anCopyPrice(b, delay) {
-    if (!delay) return b.main.avg > 0 ? b.main.avg : null;
-    var t = b.timing;
-    if (!t || t.v !== AN_TIMING_V) return null;
-    var p = t["p" + delay];
-    return (p != null && p > 0.01 && p < 0.99) ? p : null;
-  }
-  function anCopyReturn(b, delay) {
-    if (b.status !== "decided" || b.main.fin == null) return null;
-    var p = anCopyPrice(b, delay);
-    return p == null ? null : (b.main.fin - p) / p;
-  }
-  function anAgg(bets) {
-    var s = { n: 0, open: 0, dec: 0, decTotal: 0, pnl: 0, total: 0,
-      cN: 0, cSum: 0, cSq: 0, cWins: 0, cPriceSum: 0, sameN: 0, sameSum: 0, pairSum: 0, resolved: 0,
-      held: 0, sold: 0, soldGain: 0, two: 0, otherRatioSum: 0, arb: 0,
-      timed: 0, pre: 0, live: 0, exitN: 0, exitValue: 0, exitPriceN: 0, exitPriceSum: 0, soldEntrySum: 0 };
-    var delay = anState.delay;
+  function anStats(bets) {
+    var s = { n: bets.length, held: 0, soldWin: 0, soldLoss: 0, arb: 0, pre: 0, live: 0, soldPre: 0,
+      two: 0, twoRatio: 0, cN: 0, cSum: 0, cWins: 0, stake: 0, pnl: 0 };
     bets.forEach(function (b) {
-      s.n++;
-      s.total += b.total;
-      if (b.two) { s.two++; s.otherRatioSum += b.other.cost / b.main.cost; }
-      if (b.status === "open") { s.open++; return; }
-      s.dec++;
-      s.decTotal += b.total;
+      var k = anKind(b);
+      s[k]++;
+      if (b.timeClass) s[b.timeClass]++;
+      if ((k === "soldWin" || k === "soldLoss") && b.timing && b.timing.firstSell && b.kickoff && b.timing.firstSell * 1000 < b.kickoff) s.soldPre++;
+      if (k === "arb") return;
+      if (b.two) { s.two++; s.twoRatio += b.other.cost / b.main.cost; }
+      s.stake += b.total;
       s.pnl += b.pnl;
-      if (b.behavior === "held") s.held++;
-      else { s.sold++; if (b.main.pnl > 0) s.soldGain++; }
-      if (b.arb) s.arb++;
-      if (b.main.fin != null) s.resolved++;
-      var r = anCopyReturn(b, delay);
-      if (r != null) {
-        s.cN++; s.cSum += r; s.cSq += r * r; s.cPriceSum += anCopyPrice(b, delay);
-        if (b.won) s.cWins++;
-      }
-      var r0 = delay ? anCopyReturn(b, 0) : r;
-      if (r0 != null) { s.sameN++; s.sameSum += r0; }
-      if (r != null && r0 != null) s.pairSum += r0;
-      if (b.timeClass) { s.timed++; if (b.timeClass === "pre") s.pre++; else s.live++; }
-      if (b.exitValue != null) { s.exitN++; s.exitValue += b.exitValue; }
-      if (b.behavior === "sold" && b.main.exitAvg != null) { s.exitPriceN++; s.exitPriceSum += b.main.exitAvg; s.soldEntrySum += b.main.avg; }
+      var r = anCopyR(b);
+      if (r != null) { s.cN++; s.cSum += r; if (b.main.fin === 1) s.cWins++; }
     });
-    s.roi = s.decTotal > 0 ? s.pnl / s.decTotal * 100 : null;
-    // Flat stake: the average of each bet's own return — copying means the
-    // same stake every time, not the whale's 50 000 $ on one bet and 1 000 $
-    // on the next (that's his real ROI just above, weighted by what he put in).
-    s.cMean = s.cN ? s.cSum / s.cN * 100 : null;
-    if (s.cN >= 2) {
-      var m = s.cSum / s.cN;
-      var sd = Math.sqrt(Math.max(0, (s.cSq - s.cN * m * m) / (s.cN - 1)));
-      var half = 1.96 * sd / Math.sqrt(s.cN) * 100;
-      s.cLo = s.cMean - half; s.cHi = s.cMean + half;
-    } else { s.cLo = null; s.cHi = null; }
-    s.wr = s.cN ? s.cWins / s.cN * 100 : null;
-    s.implied = s.cN ? s.cPriceSum / s.cN * 100 : null;
-    s.sameMean = s.sameN ? s.sameSum / s.sameN * 100 : null;
-    // Same-price return over exactly the bets the delayed figure covers — the
-    // fair comparison for "what does copying late cost".
-    s.pairSame = s.cN ? s.pairSum / s.cN * 100 : null;
-    s.verdict = anVerdictOf(s);
+    s.bets = s.n - s.arb;
+    s.copyRoi = s.cN ? s.cSum / s.cN * 100 : null;
+    s.copyPnl = s.cSum * AN_COPY_STAKE;
+    s.roi = s.stake ? s.pnl / s.stake * 100 : null;
+    s.winRate = s.cN ? s.cWins / s.cN * 100 : null;
+    s.twoAvg = s.two ? s.twoRatio / s.two * 100 : null;
     return s;
   }
-  // "Rentable"/"Perdant" only once the 95 % confidence interval is clear of
-  // zero on enough bets — everything else says how far it is from proven.
-  function anVerdictOf(s) {
-    if (!s || s.cN < AN_MIN_N) return { key: "few", label: "Trop peu de paris", short: "Trop peu", rank: 0 };
-    if (s.cN >= AN_SOLID_N && s.cLo > 0) return { key: "good", label: "Rentable", rank: 5 };
-    if (s.cN >= AN_SOLID_N && s.cHi < 0) return { key: "bad", label: "Perdant", rank: 1 };
-    if (s.cMean >= 3) return { key: "promising", label: "Prometteur", rank: 4 };
-    if (s.cMean <= -3) return { key: "weak", label: "Plutôt perdant", rank: 2 };
-    return { key: "neutral", label: "Neutre", rank: 3 };
-  }
-  var AN_ODDS_BUCKETS = [
-    { lo: 0, hi: 0.2, label: "moins de 20¢" }, { lo: 0.2, hi: 0.35, label: "20 – 35¢" }, { lo: 0.35, hi: 0.5, label: "35 – 50¢" },
-    { lo: 0.5, hi: 0.65, label: "50 – 65¢" }, { lo: 0.65, hi: 0.8, label: "65 – 80¢" }, { lo: 0.8, hi: 0.9, label: "80 – 90¢" },
-    { lo: 0.9, hi: 0.97, label: "90 – 97¢" }, { lo: 0.97, hi: 1.01, label: "97¢ et plus" }
-  ];
-  var AN_STAKE_BUCKETS = [
-    { lo: 1000, hi: 2500, label: "1 000 – 2 500 $" }, { lo: 2500, hi: 5000, label: "2 500 – 5 000 $" },
-    { lo: 5000, hi: 10000, label: "5 000 – 10 000 $" }, { lo: 10000, hi: 25000, label: "10 000 – 25 000 $" },
-    { lo: 25000, hi: 50000, label: "25 000 – 50 000 $" }, { lo: 50000, hi: Infinity, label: "50 000 $ et plus" }
-  ];
-  var AN_TIME_BUCKETS = [
-    { lo: -Infinity, hi: -1440, label: "Plus de 24 h avant" }, { lo: -1440, hi: -120, label: "2 à 24 h avant" },
-    { lo: -120, hi: 0, label: "Moins de 2 h avant" }, { lo: 0, hi: 45, label: "0 à 45 min de jeu" },
-    { lo: 45, hi: Infinity, label: "Après 45 min de jeu" }
-  ];
-  var AN_SPORT_LABELS = { "⚽": "Football", "🎾": "Tennis", "🏀": "Basket", "⚾": "Baseball", "🏈": "Foot US", "🏒": "Hockey",
-    "🥊": "MMA / boxe", "🎮": "Esport", "🏏": "Cricket", "🏉": "Rugby", "🏎️": "F1", "🏁": "NASCAR", "⛳": "Golf", "♟️": "Échecs", "🎲": "Autres" };
-  // The bet's entry price for odds buckets follows the selected copy price,
-  // so "65–80¢" means what YOU would have paid, not what he paid.
-  function anEntryPrice(b) { var p = anCopyPrice(b, anState.delay); return p != null ? p : b.main.avg; }
-  function anBucketRows(bets, buckets, valueFn) {
-    return buckets.map(function (bk) {
-      return { label: esc(bk.label), st: anAgg(bets.filter(function (b) { var v = valueFn(b); return v != null && v >= bk.lo && v < bk.hi; })) };
-    }).filter(function (r) { return r.st.n > 0; });
-  }
-  function anKeyRows(bets, keyFn, labelFn, limit) {
-    var groups = {};
-    bets.forEach(function (b) { var k = keyFn(b); (groups[k] = groups[k] || []).push(b); });
-    return Object.keys(groups).map(function (k) { return { key: k, label: labelFn(k, groups[k][0]), st: anAgg(groups[k]) }; })
-      .sort(function (a, b) { return b.st.n - a.st.n; }).slice(0, limit || 99);
-  }
-  function anTypeLabel(k) { var mt = MARKET_TYPE_BY_KEY[k]; return mt ? mt.label : k; }
 
   // ----- Formatting -----
-  function anNum(v) { return String(Math.round(Math.abs(v))).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
-  function anUsd(v) { return (v < 0 ? "−" : "") + anNum(v) + " $"; }
-  function anUsdSigned(v) { return (v > 0.5 ? "+" : (v < -0.5 ? "−" : "")) + anNum(v) + " $"; }
+  function anNum(v) { return String(Math.round(Math.abs(v))).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0"); }
+  function anUsdSigned(v) { return (v > 0.5 ? "+" : (v < -0.5 ? "−" : "")) + anNum(v) + "\u00a0$"; }
+  function anUsdShort(v) {
+    var a = Math.abs(v), sign = v < 0 ? "−" : (v > 0 ? "+" : "");
+    return sign + (a >= 1000 ? (Math.round(a / 100) / 10).toString().replace(".", ",") + " k$" : anNum(a) + " $");
+  }
   function anPct(v, signed, digits) {
     if (v == null || isNaN(v)) return "—";
     var txt = Math.abs(v).toFixed(digits == null ? 1 : digits).replace(".", ",");
     var sign = v < 0 && Math.abs(v) >= 0.05 ? "−" : (signed && v > 0 && Math.abs(v) >= 0.05 ? "+" : "");
-    return sign + txt + " %";
+    return sign + txt + " %";
   }
-  function anCents(p) {
-    if (p == null || isNaN(p)) return "—";
-    return (Math.round(p * 1000) / 10).toFixed(1).replace(/\.0$/, "").replace(".", ",") + "¢";
-  }
-  function anWhen(ms) {
-    if (!ms) return "—";
-    var d = new Date(ms);
-    return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }) + " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  }
-  function anRelLabel(min) {
-    var a = Math.abs(min);
-    var txt = a >= 2880 ? Math.round(a / 1440) + " j" : (a >= 90 ? Math.round(a / 60) + " h" : Math.max(1, Math.round(a)) + " min");
-    return min < 0 ? txt + " avant" : txt + " de jeu";
-  }
+  function anShare(a, n) { return n ? anPct(a / n * 100, false, 0) : "—"; }
   function anPl(n, one, many) { return anNum(n) + " " + (n >= 2 ? many : one); }
-  function anSideLabel(o) { return o === "Yes" ? "Oui" : (o === "No" ? "Non" : o); }
-  function anDelayLabel(d) { return d ? "+" + (d >= 60 ? d / 60 + " h" : d + " min") : "même prix"; }
-  // Within ±1 % reads as "about zero", not a win or a loss.
-  function anRoiColor(v, n) {
-    if (v == null || n < AN_MIN_N) return "var(--text-dim)";
-    return Math.abs(v) < 1 ? "var(--text)" : (v > 0 ? "var(--green)" : "var(--red)");
-  }
+  function anDay(ms) { return new Date(ms).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }); }
   function anRoiCls(v, n) { return (v == null || n < AN_MIN_N || Math.abs(v) < 1) ? "" : (v > 0 ? "an-pos" : "an-neg"); }
   function anStack(parts) {
     var tot = 0;
     parts.forEach(function (p) { tot += p.v; });
-    if (!tot) return '<div class="an-stack"></div>';
+    if (!tot) return '<div class="an-stack"></div><div class="an-legend"><span>pas encore de donnée</span></div>';
     return '<div class="an-stack">' + parts.filter(function (p) { return p.v > 0; }).map(function (p) {
       return '<span style="width:' + (p.v / tot * 100).toFixed(2) + '%;background:' + p.color + '" title="' + esc(p.label + " : " + p.v + " (" + anPct(p.v / tot * 100, false, 0) + ")") + '"></span>';
     }).join("") + '</div>' +
-    '<div class="an-legend">' + parts.filter(function (p) { return p.v > 0; }).map(function (p) {
+    '<div class="an-legend">' + parts.map(function (p) {
       return '<span><i style="background:' + p.color + '"></i>' + esc(p.label) + ' <b>' + anPct(p.v / tot * 100, false, 0) + '</b></span>';
     }).join("") + '</div>';
   }
-  function anTraderLabel(t) {
-    return '<span class="an-tname" title="' + esc(t.name) + '">' + esc(t.name) + '</span>' + weightBadge(t.weight) +
-      (t.stakeMultiplier > 1 ? '<span class="an-mult" title="Petit compte : ses mises sont simulées ×' + t.stakeMultiplier + ' (cotes réelles) partout sur le site">×' + t.stakeMultiplier + '</span>' : '');
-  }
-  // Mean return per bet with its 95 % confidence interval on a −60…+60 % track.
-  function anCiHtml(s) {
-    if (!s.cN) return '<span class="an-dim">—</span>';
-    var span = 60;
-    function x(v) { return Math.max(0, Math.min(100, (v + span) / (2 * span) * 100)); }
-    var col = s.verdict.key === "good" || (s.cN >= AN_MIN_N && s.cMean >= 3) ? "var(--green)" : (s.verdict.key === "bad" || (s.cN >= AN_MIN_N && s.cMean <= -3) ? "var(--red)" : "var(--text-dim)");
-    var range = s.cLo != null ? '<div class="an-ci-range" style="left:' + x(s.cLo).toFixed(1) + '%;width:' + Math.max(0.8, x(s.cHi) - x(s.cLo)).toFixed(1) + '%;background:' + col + '"></div>' : '';
-    var tip = anPl(s.cN, "pari terminé", "paris terminés") + " · gain moyen par pari " + anPct(s.cMean, true) +
-      (s.cLo != null ? " · fourchette probable (95 %) : " + anPct(s.cLo, true) + " à " + anPct(s.cHi, true) : "");
-    return '<div class="an-ci" title="' + esc(tip) + '"><div class="an-ci-track"><div class="an-ci-zero"></div>' + range +
-      '<div class="an-ci-dot" style="left:' + x(s.cMean).toFixed(1) + '%;background:' + col + '"></div></div>' +
-      '<span class="an-ci-val" style="color:' + anRoiColor(s.cMean, s.cN) + '">' + anPct(s.cMean, true) + '</span></div>';
-  }
-  function anVerdictBadge(v) { return '<span class="an-vbadge ' + v.key + '" title="' + esc(v.label) + '">' + esc(v.short || v.label) + '</span>'; }
-  function anCalHtml(st) {
-    if (!st.cN) return '<span class="an-dim">—</span>';
-    var wr = st.wr, imp = st.implied, good = wr >= imp, col = good ? "var(--green)" : "var(--red)";
-    return '<div class="an-cal" title="Gagne ' + esc(anPct(wr, false, 0)) + ' de ces paris · le prix de copie en promettait ' + esc(anPct(imp, false, 0)) + '">' +
-      '<div class="an-cal-track"><div class="an-cal-gap" style="left:' + Math.min(wr, imp).toFixed(1) + '%;width:' + Math.abs(wr - imp).toFixed(1) + '%;background:' + col + '"></div>' +
-      '<div class="an-cal-tick" style="left:' + imp.toFixed(1) + '%"></div><div class="an-cal-dot" style="left:' + wr.toFixed(1) + '%;background:' + col + '"></div></div>' +
-      '<span class="an-cal-txt">' + Math.round(wr) + ' % <small>/ ' + Math.round(imp) + ' %</small></span></div>';
-  }
-  // Grid used by every breakdown: label | bets | copy return with its range |
-  // win rate vs the price paid | verdict.
-  function anGridHtml(rows, firstCol) {
-    if (!rows.length) return '<div class="an-dim">Rien sur la période.</div>';
-    var max = 1;
-    rows.forEach(function (r) { max = Math.max(max, r.st.cN); });
-    var html = '<div class="an-scroll"><div class="an-grid">' +
-      '<div class="h">' + esc(firstCol) + '</div><div class="h">Paris</div>' +
-      '<div class="h" title="Gain moyen par pari si tu avais copié (même mise à chaque fois) et tenu jusqu\'au résultat — le trait coloré est la fourchette probable (95 %)">Si copié (' + esc(anDelayLabel(anState.delay)) + ')</div>' +
-      '<div class="h an-hide-sm" title="Point = part de paris gagnés · trait = ce que promettait le prix de copie">Réussite / cote</div>' +
-      '<div class="h">Verdict</div>';
-    rows.forEach(function (r) {
-      var st = r.st, few = st.cN < AN_MIN_N ? ' few' : '';
-      html += '<div class="c an-lbl' + few + '">' + r.label + '</div>' +
-        '<div class="c' + few + '"><div class="an-count"><span title="' + esc(anPl(st.cN, "pari terminé", "paris terminés") + " avec résultat et prix de copie connus") + '">' + anNum(st.cN) + '</span><div class="an-count-bar"><div style="width:' + (st.cN / max * 100).toFixed(1) + '%"></div></div></div></div>' +
-        '<div class="c' + few + '">' + anCiHtml(st) + '</div>' +
-        '<div class="c an-hide-sm' + few + '">' + anCalHtml(st) + '</div>' +
-        '<div class="c">' + anVerdictBadge(st.verdict) + '</div>';
-    });
-    return html + '</div></div>';
-  }
 
-  // ----- Rendering -----
+  // ----- Status, filters -----
   function anStatusHtml() {
-    var count = anState.lastCount || 0, cov = [];
-    analysisTraders().forEach(function (t) { var m = anState.meta[t.name]; if (m && m.oldestTs) cov.push(anCoverageDays(m)); });
-    cov.sort(function (a, b) { return a - b; });
     var parts = [];
-    if (cov.length) {
-      var med = cov[Math.floor(cov.length / 2)];
-      parts.push(anNum(cov.length) + " traders suivis, historique de " + Math.max(1, Math.round(med)) + " jours (s'allonge d'un jour à chaque mise à jour, jusqu'à " + AN_AUTO_BACKFILL_DAYS + ")");
-    }
-    parts.push(anPl(count, "pari", "paris") + " de 1 000 $ et plus en mémoire");
-    if (anState.lastSyncAt) parts.push("mis à jour à " + new Date(anState.lastSyncAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
-    if (!anState.dbOk) parts.push("⚠️ stockage indisponible sur ce navigateur — l'historique est re-téléchargé à chaque visite");
-    var html = '<span>' + parts.map(esc).join(" · ") + '</span>';
+    analysisTraders().forEach(function (t) {
+      var m = anState.meta[t.name];
+      if (m && m.oldestTs) parts.push(t.name + " depuis le " + anDay(m.oldestTs * 1000) + (m.complete ? " (tout son historique)" : ""));
+    });
+    var html = '<span>' + (parts.length ? "Historique enregistré : " + esc(parts.join(" · ")) : "Premier chargement de l'historique…") +
+      (anState.lastSyncAt ? ' · mis à jour à ' + new Date(anState.lastSyncAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : '') + '</span>';
+    if (anBackfilling()) html += '<span>L\'historique plus ancien se complète tout seul tant que le site est ouvert (' + AN_BACKFILL_STEP_DAYS + ' jours de plus par minute environ).</span>';
+    if (!anState.dbOk) html += '<span class="an-err">⚠️ Stockage indisponible sur ce navigateur : l\'historique est re-téléchargé à chaque visite.</span>';
     var prog = Object.keys(anState.progress);
     if (anState.syncing || prog.length) {
       html += '<span class="an-sync"><span class="an-spinner" aria-hidden="true"></span>' + (prog.length ? prog.map(function (k) {
@@ -14956,7 +14852,7 @@
       }).join("") : '<span>Mise à jour…</span>') + '</span>';
     }
     var errs = Object.keys(anState.errors);
-    if (errs.length) html += '<span class="an-err">⚠️ ' + anPl(errs.length, "source n'a pas répondu", "sources n'ont pas répondu") + ' (' + esc(errs.slice(0, 4).map(function (k) { return k.charAt(0) === "_" ? "matchs" : k; }).join(", ")) + (errs.length > 4 ? "…" : "") + ') — ce qui a été chargé reste affiché, la prochaine mise à jour réessaie.</span>';
+    if (errs.length) html += '<span class="an-err">⚠️ Polymarket n\'a pas répondu pour ' + esc(errs.map(function (k) { return k.charAt(0) === "_" ? "les matchs" : k; }).join(", ")) + '. Ce qui est déjà chargé reste affiché ; la prochaine mise à jour réessaie.</span>';
     return html;
   }
   function anRenderStatus() {
@@ -14964,386 +14860,193 @@
     if (el) el.innerHTML = anStatusHtml();
     document.querySelectorAll("#analyseContent [data-an-action]").forEach(function (b) { b.disabled = anState.syncing; });
   }
-  function anSegHtml(label, attr, options, current, title) {
-    return '<div class="an-seg" role="group" aria-label="' + esc(label) + '"' + (title ? ' title="' + esc(title) + '"' : '') + '><span class="an-seg-label">' + esc(label) + '</span>' + options.map(function (o) {
+  function anSegHtml(label, attr, options, current) {
+    return '<div class="an-seg" role="group" aria-label="' + esc(label) + '"><span class="an-seg-label">' + esc(label) + '</span>' + options.map(function (o) {
       return '<button type="button" ' + attr + '="' + esc(String(o[0])) + '"' + (String(o[0]) === String(current) ? ' class="active" aria-pressed="true"' : ' aria-pressed="false"') + '>' + esc(o[1]) + '</button>';
     }).join("") + '</div>';
   }
-  function anPeriodLabel() {
-    return anState.period === "all" ? "tout l'historique" : (anState.period === "1" ? "dernières 24 h" : anState.period + " derniers jours");
-  }
-  function anFilterLabel() {
-    return anPeriodLabel() + ", mise ≥ " + anUsd(anState.minStake) + (anState.entry === "pre" ? ", entrées avant le match" : (anState.entry === "live" ? ", entrées en direct" : "")) +
-      ", copie " + (anState.delay ? anDelayLabel(anState.delay) + " après le pari" : "au même prix que lui");
-  }
-  function anGlobalHtml(all, allSt, per) {
-    var v = allSt.verdict;
-    var pre = anAgg(all.filter(function (b) { return b.timeClass === "pre"; }));
-    var live = anAgg(all.filter(function (b) { return b.timeClass === "live"; }));
-    var reliable = per.filter(function (x) { return x.st.verdict.key === "good"; }).sort(function (a, b) { return b.st.cLo - a.st.cLo; });
-    var promising = per.filter(function (x) { return x.st.verdict.key === "promising"; }).sort(function (a, b) { return b.st.cMean - a.st.cMean; });
-    var types = anKeyRows(all, function (b) { return b.mtype; }, function (k) { return esc(anTypeLabel(k)); })
-      .filter(function (r) { return r.st.cN >= AN_MIN_N; }).sort(function (a, b) { return b.st.cMean - a.st.cMean; });
-    var coverage = anState.delay ? '<div class="an-foot">Prix de copie à ' + esc(anDelayLabel(anState.delay)) + ' connu pour ' + anNum(allSt.cN) + ' des ' + anNum(allSt.resolved) + ' paris terminés' +
-      (allSt.resolved - allSt.cN > 0 ? ' — les autres attendent leur analyse (moment d\'entrée et historique de prix, récupérés pari par pari) ou étaient déjà joués à ce moment-là' : '') + '.</div>' : '';
-    function chip(x, cls) { return '<button type="button" class="an-chip an-chip-btn" style="--an-c:' + cls + '" data-an-detail="' + esc(x.t.name) + '">' + esc(x.t.name) + ' · ' + anPct(x.st.cMean, true) + '</button>'; }
-    return '<section class="an-section an-global">' +
-      '<div class="an-global-main"><div class="an-bar-label">Copier tous leurs gros paris et tenir jusqu\'au résultat</div>' +
-        '<div class="an-big ' + anRoiCls(allSt.cMean, allSt.cN) + '">' + anPct(allSt.cMean, true) + '</div>' +
-        '<div class="an-big-label">de gain moyen par pari (même mise à chaque fois), sur ' + anPl(allSt.cN, "pari terminé", "paris terminés") +
-        (allSt.cLo != null ? ' · fourchette probable ' + anPct(allSt.cLo, true) + ' à ' + anPct(allSt.cHi, true) : '') + '</div>' +
-        '<div>' + anVerdictBadge(v) + '</div>' + coverage + '</div>' +
-      '<div class="an-global-side">' +
-        '<div class="an-gline"><span class="an-badge pre">Entrée avant le match</span> ' + anCiHtml(pre) + ' <span class="an-dim">' + anPl(pre.cN, "pari", "paris") + '</span></div>' +
-        '<div class="an-gline"><span class="an-badge live">Entrée en direct</span> ' + anCiHtml(live) + ' <span class="an-dim">' + anPl(live.cN, "pari", "paris") + '</span></div>' +
-        '<div class="an-gline"><b>Rentables, preuves à l\'appui :</b> ' + (reliable.length ? reliable.slice(0, 6).map(function (x) { return chip(x, "var(--green)"); }).join(" ") : '<span class="an-dim">aucun pour l\'instant</span>') + '</div>' +
-        (promising.length ? '<div class="an-gline"><b>Prometteurs, à confirmer :</b> ' + promising.slice(0, 6).map(function (x) { return chip(x, "var(--gold)"); }).join(" ") + '</div>' : '') +
-        (types.length ? '<div class="an-gline"><b>Meilleurs types de paris :</b> ' + types.slice(0, 3).map(function (r) { return '<span class="an-chip">' + r.label + ' · ' + anPct(r.st.cMean, true) + '</span>'; }).join(" ") + '</div>' : '') +
-      '</div></section>';
-  }
-  function anRankHtml(per) {
-    var rows = per.filter(function (x) { return x.st.n > 0; });
-    var idle = per.filter(function (x) { return !x.st.n; });
-    var sort = anState.rankSort;
-    rows.sort(function (a, b) {
-      if (sort === "roi") return (b.st.cN >= AN_MIN_N) - (a.st.cN >= AN_MIN_N) || (b.st.cMean || -999) - (a.st.cMean || -999);
-      if (sort === "n") return b.st.cN - a.st.cN;
-      // "solid": proven-good first, by how far their worst plausible case is
-      // above zero; then promising, neutral, weak, proven-bad; thin data last.
-      return b.st.verdict.rank - a.st.verdict.rank || (b.st.cLo == null ? -999 : b.st.cLo) - (a.st.cLo == null ? -999 : a.st.cLo);
-    });
-    var head = '<div class="an-rank-head"><div class="h">Trader</div><div class="h">Paris</div><div class="h an-hide-sm" title="Part de ses paris dont la moitié de la mise était placée avant le coup d\'envoi">Avant match</div>' +
-      '<div class="h" title="Gain moyen par pari en le copiant (même mise) et en tenant jusqu\'au résultat — trait coloré : fourchette probable à 95 %">Si copié (' + esc(anDelayLabel(anState.delay)) + ')</div>' +
-      '<div class="h an-hide-sm" title="Point = part de paris gagnés · trait = ce que promettait le prix de copie">Réussite / cote</div><div class="h">Verdict</div></div>';
-    var body = rows.map(function (x) {
-      var st = x.st, few = st.cN < AN_MIN_N ? ' few' : '';
-      var active = x.t.name === anState.detail ? ' active' : '';
-      return '<div class="an-rank-row' + active + '" data-an-detail="' + esc(x.t.name) + '" role="button" tabindex="0" title="Voir le détail de ' + esc(x.t.name) + '">' +
-        '<div class="c an-rank-name">' + anTraderLabel(x.t) + '</div>' +
-        '<div class="c' + few + '" title="' + esc(anPl(st.n, "pari", "paris") + " de " + anUsd(anState.minStake) + " ou plus, dont " + anPl(st.cN, "terminé", "terminés") + " avec un prix de copie connu") + '">' + anNum(st.cN) + (st.open ? ' <small class="an-dim">+' + st.open + '</small>' : '') + '</div>' +
-        '<div class="c an-hide-sm' + few + '">' + (st.timed ? anPct(st.pre / st.timed * 100, false, 0) : '—') + '</div>' +
-        '<div class="c' + few + '">' + anCiHtml(st) + '</div>' +
-        '<div class="c an-hide-sm' + few + '">' + anCalHtml(st) + '</div>' +
-        '<div class="c">' + anVerdictBadge(st.verdict) + '</div></div>';
-    }).join("");
-    var idleHtml = idle.length ? '<div class="an-foot">' + anPl(idle.length, "trader n'a", "traders n'ont") + ' aucun pari de cette taille sur la période' +
-      (anState.showIdle ? ' : ' + esc(idle.map(function (x) { return x.t.name; }).join(", ")) + '.' : '. <button type="button" class="an-linkbtn" data-an-idle="1">Voir lesquels</button>') + '</div>' : '';
-    return '<section class="an-section" id="anRank"><h3 class="an-stitle">Pour qui c\'est rentable ?</h3>' +
-      '<div class="an-ssub">Chaque ligne = un trader. « Si copié » : ton gain moyen par pari en copiant son côté principal (' + esc(anDelayLabel(anState.delay)) + ' après son entrée, même mise à chaque fois) et en tenant jusqu\'au résultat. Le trait coloré est la fourchette probable : « Rentable » seulement quand elle reste au-dessus de 0 sur au moins ' + AN_SOLID_N + ' paris. Clique un trader pour le détail.</div>' +
-      '<div class="an-filters">' + anSegHtml("Trier par", "data-an-rsort", [["solid", "Fiabilité"], ["roi", "Gain moyen"], ["n", "Nombre de paris"]], sort) + '</div>' +
-      '<div class="an-scroll"><div class="an-rank">' + head + body + '</div></div>' + idleHtml + '</section>';
-  }
-  function anTypesHtml(all, per) {
-    var types = anKeyRows(all, function (b) { return b.mtype; }, function (k) { return esc(anTypeLabel(k)); });
-    var sports = anKeyRows(all, function (b) { return b.sport; }, function (k) { return esc(k + " " + (AN_SPORT_LABELS[k] || "Autres")); }, 8);
-    var odds = anBucketRows(all, AN_ODDS_BUCKETS, anEntryPrice);
-    // Trader × bet type: the traders with the most bets, each type's verdict.
-    var typeKeys = types.filter(function (r) { return r.st.cN >= AN_MIN_N; }).map(function (r) { return r.key; });
-    var top = per.filter(function (x) { return x.st.cN >= AN_MIN_N; }).sort(function (a, b) { return b.st.cN - a.st.cN; }).slice(0, 15);
-    var matrix = '';
-    if (typeKeys.length && top.length) {
-      matrix = '<div class="an-scroll"><table class="an-matrix"><thead><tr><th>Trader</th>' + typeKeys.map(function (k) { return '<th>' + esc(anTypeLabel(k)) + '</th>'; }).join("") + '</tr></thead><tbody>' +
-        top.map(function (x) {
-          return '<tr><th><button type="button" class="an-linkbtn" data-an-detail="' + esc(x.t.name) + '">' + esc(x.t.name) + '</button></th>' + typeKeys.map(function (k) {
-            var st = anAgg(x.bets.filter(function (b) { return b.mtype === k; }));
-            if (st.cN < 5) return '<td class="an-mx-empty">' + (st.cN ? '<small>' + st.cN + '</small>' : '') + '</td>';
-            return '<td class="an-mx ' + st.verdict.key + '" title="' + esc(x.t.name + " · " + anTypeLabel(k) + " : " + anPl(st.cN, "pari", "paris") + ", " + anPct(st.cMean, true) + (st.cLo != null ? " (fourchette " + anPct(st.cLo, true) + " à " + anPct(st.cHi, true) + ")" : "") + " — " + st.verdict.label) + '">' +
-              anPct(st.cMean, true, 0) + '<small>' + st.cN + '</small></td>';
-          }).join("") + '</tr>';
-        }).join("") + '</tbody></table></div>' +
-        '<div class="an-legend an-mx-legend"><span><i class="an-mx good"></i>Rentable (prouvé)</span><span><i class="an-mx promising"></i>Prometteur</span><span><i class="an-mx neutral"></i>Neutre</span><span><i class="an-mx weak"></i>Plutôt perdant</span><span><i class="an-mx bad"></i>Perdant (prouvé)</span><span>petit chiffre = nombre de paris · vide = moins de 5</span></div>';
-    }
-    return '<section class="an-section"><h3 class="an-stitle">Sur quels types de paris ?</h3>' +
-      '<div class="an-ssub">Tous traders confondus (' + esc(anFilterLabel()) + '). La cote est celle que tu aurais payée.</div>' +
-      '<div class="an-cols an-cols-inner">' +
-        '<div>' + anGridHtml(types, "Type de pari") + '</div>' +
-        '<div>' + anGridHtml(odds, "Cote payée") + '</div>' +
-      '</div>' +
-      '<div class="an-gap"></div>' + anGridHtml(sports, "Sport") +
-      (matrix ? '<div class="an-gap"></div><h4 class="an-stitle an-sub-title">Trader × type de pari</h4><div class="an-ssub">Le gain moyen en copiant chaque trader sur chaque type de pari — les cases vertes sont celles où ça a vraiment marché.</div>' + matrix : '') +
-    '</section>';
-  }
-  function anInsights(t, bets, st) {
-    var out = [];
-    var dec = st.held + st.sold;
-    if (st.n < 5) return ['Pas encore assez de paris de ' + anUsd(anState.minStake) + ' ou plus sur cette période pour en tirer quoi que ce soit.'];
-    if (st.cN >= AN_MIN_N) {
-      var lead = st.verdict.key === "good" ? '<b class="an-pos">Le copier a été rentable, preuves à l\'appui</b>'
-        : (st.verdict.key === "bad" ? '<b class="an-neg">Le copier a fait perdre de l\'argent, preuves à l\'appui</b>'
-        : (st.verdict.key === "promising" ? '<b>Prometteur mais pas encore prouvé</b>' : (st.verdict.key === "weak" ? '<b>Plutôt perdant, pas encore tranché</b>' : '<b>Neutre</b>')));
-      out.push(lead + ' : ' + anPct(st.cMean, true) + ' en moyenne par pari copié ' + esc(anDelayLabel(anState.delay)) + ' après lui et tenu jusqu\'au résultat, sur ' + anPl(st.cN, "pari", "paris") +
-        (st.cLo != null ? ' (fourchette probable ' + anPct(st.cLo, true) + ' à ' + anPct(st.cHi, true) + ')' : '') + '.' +
-        (anState.delay ? ' Sur ces mêmes paris, au prix qu\'il a payé lui, ce serait ' + anPct(st.pairSame, true) + ' : ' +
-          (st.pairSame - st.cMean >= 2 ? 'copier en retard coûte ' + Math.round(st.pairSame - st.cMean) + ' points.' : (st.cMean - st.pairSame >= 2 ? 'les prix bougent plutôt en ta faveur après son entrée.' : 'arriver un peu après lui ne coûte presque rien.')) : ''));
-    }
-    if (dec >= AN_MIN_N) {
-      var heldPct = st.held / dec * 100;
-      if (heldPct >= 85) out.push('Il <b>tient jusqu\'au résultat</b> ' + anPct(heldPct, false, 0) + ' de ses paris : ses achats sont des paris assumés, les copier et les tenir colle à ce qu\'il fait.');
-      else if (heldPct <= 40) out.push('Il <b>revend avant la fin</b> ' + anPct(100 - heldPct, false, 0) + ' de ses paris : en le copiant et en tenant, tu ne fais pas la même chose que lui.' +
-        (st.exitN >= AN_MIN_N ? (st.exitValue >= 0 ? ' Ses reventes lui ont rapporté ' + anUsdSigned(st.exitValue) + ' de plus que tenir.' : ' Et ses reventes lui ont coûté ' + anUsd(-st.exitValue) + ' par rapport à tenir.') : ''));
-      else out.push('Tient ' + anPct(heldPct, false, 0) + ' de ses paris jusqu\'au résultat, revend les autres avant la fin.');
-    }
-    if (st.timed >= AN_MIN_N) {
-      var prePct = st.pre / st.timed * 100;
-      out.push(prePct >= 65 ? 'Entre surtout <b>avant le match</b> (' + anPct(prePct, false, 0) + ') : ses paris se copient à temps.'
-        : (prePct <= 35 ? 'Entre surtout <b>pendant le match</b> (' + anPct(100 - prePct, false, 0) + ') : il faut le suivre en direct pour le copier.' : 'Entre avant le match dans ' + anPct(prePct, false, 0) + ' des cas, en direct pour le reste.'));
-    }
-    if (st.n >= AN_MIN_N && st.two / st.n >= 0.2) out.push('Achète aussi l\'autre camp sur ' + anPct(st.two / st.n * 100, false, 0) + ' des matchs' + (st.arb ? ' (dont ' + anPl(st.arb, "arbitrage", "arbitrages") + ' à gain garanti)' : '') + ' : seul son côté principal est copié ici.');
-    var typeRows = anKeyRows(bets, function (b) { return b.mtype; }, function (k) { return esc(anTypeLabel(k)); }).filter(function (r) { return r.st.cN >= AN_MIN_N; })
-      .sort(function (a, b) { return b.st.cMean - a.st.cMean; });
-    if (typeRows.length >= 2) {
-      var bt = typeRows[0], wt = typeRows[typeRows.length - 1];
-      if (bt.st.cMean >= 3) out.push('Son meilleur type de pari à copier : <b>' + bt.label + '</b> (' + anPct(bt.st.cMean, true) + ' sur ' + anPl(bt.st.cN, "pari", "paris") + ', ' + esc(bt.st.verdict.label.toLowerCase()) + ')' +
-        (wt.st.cMean <= -3 ? ' · à éviter : <b>' + wt.label + '</b> (' + anPct(wt.st.cMean, true) + ' sur ' + anPl(wt.st.cN, "pari", "paris") + ').' : '.'));
-    }
-    var oddsRows = AN_ODDS_BUCKETS.map(function (bk) { return { bk: bk, st: anAgg(bets.filter(function (b) { var p = anEntryPrice(b); return p >= bk.lo && p < bk.hi; })) }; })
-      .filter(function (r) { return r.st.cN >= AN_MIN_N; }).sort(function (a, b) { return b.st.cMean - a.st.cMean; });
-    if (oddsRows.length >= 2 && oddsRows[0].st.cMean >= 3) {
-      out.push('Meilleure zone de cote : <b>' + esc(oddsRows[0].bk.label) + '</b> (' + anPct(oddsRows[0].st.cMean, true) + ' sur ' + anPl(oddsRows[0].st.cN, "pari", "paris") + ')' +
-        (oddsRows[oddsRows.length - 1].st.cMean <= -3 ? ' · à éviter : <b>' + esc(oddsRows[oddsRows.length - 1].bk.label) + '</b> (' + anPct(oddsRows[oddsRows.length - 1].st.cMean, true) + ').' : '.'));
-    }
-    var big = anAgg(bets.filter(function (b) { return b.total >= 10000; })), small = anAgg(bets.filter(function (b) { return b.total < 10000; }));
-    if (big.cN >= AN_MIN_N && small.cN >= AN_MIN_N) {
-      out.push('Ses mises de 10 000 $ et plus : ' + anPct(big.cMean, true) + ' si copiées (' + anPl(big.cN, "pari", "paris") + '), contre ' + anPct(small.cMean, true) + ' pour les plus petites (' + anNum(small.cN) + ').' +
-        (big.cMean - small.cMean >= 5 ? ' <b>Plus il mise, plus c\'est fiable.</b>' : (small.cMean - big.cMean >= 5 ? ' Ses grosses mises ne sont pas plus fiables.' : '')));
-    }
-    return out;
-  }
-  function anCardHtml(t, st) {
-    var dec = st.held + st.sold;
-    var behavior = dec ? '<div class="an-bar-block"><div class="an-bar-label">Après l\'achat</div>' + anStack([
-      { v: st.held, color: "var(--an-held)", label: "Tient jusqu'au résultat" },
-      { v: st.soldGain, color: "var(--an-sold)", label: "Revend en gain" },
-      { v: st.sold - st.soldGain, color: "var(--an-sold-loss)", label: "Revend à perte" }
-    ]) + '</div>' : '';
-    var timing = st.timed ? '<div class="an-bar-block"><div class="an-bar-label">Moment d\'entrée <span class="an-dim">(' + anPl(st.timed, "pari analysé", "paris analysés") + ')</span></div>' + anStack([
-      { v: st.pre, color: "var(--an-pre)", label: "Avant le match" },
-      { v: st.live, color: "var(--an-live)", label: "Pendant le match" }
-    ]) + '</div>' : '';
-    return '<div class="an-card active">' +
-      '<div class="an-card-head">' + anTraderLabel(t) + '<a class="an-link" href="https://polymarket.com/profile/' + esc(t.address) + '" target="_blank" rel="noopener">Profil ↗</a></div>' +
-      '<div class="an-headline"><span class="an-big ' + anRoiCls(st.cMean, st.cN) + '">' + anPct(st.cMean, true) + '</span>' +
-        '<span class="an-big-label">par pari copié ' + esc(anDelayLabel(anState.delay)) + ' après lui et tenu jusqu\'au résultat · ' + anPl(st.cN, "pari terminé", "paris terminés") +
-        (st.cLo != null ? ' · fourchette ' + anPct(st.cLo, true) + ' à ' + anPct(st.cHi, true) : '') + '</span>' + anVerdictBadge(st.verdict) + '</div>' +
-      '<div class="an-mini">' +
-        '<div><b>' + anNum(st.n) + '</b><span>paris ≥ ' + anUsd(anState.minStake) + (st.open ? ' (' + st.open + ' en cours)' : '') + '</span></div>' +
-        '<div><b>' + (st.n ? anUsd(st.total / st.n) : '—') + '</b><span>mise moyenne par match' + (t.stakeMultiplier > 1 ? ' (×' + t.stakeMultiplier + ')' : '') + '</span></div>' +
-        '<div><b>' + (st.cN ? anPct(st.wr, false, 0) : '—') + '</b><span>réussite' + (st.cN ? ' (prix de copie : ' + anPct(st.implied, false, 0) + ')' : '') + '</span></div>' +
-        '<div><b class="' + anRoiCls(st.roi, st.dec) + '">' + anPct(st.roi, true) + '</b><span>son ROI réel (2 camps, reventes)</span></div>' +
-      '</div>' + behavior + timing + '</div>';
-  }
-  function anExitHtml(st) {
-    var dec = st.held + st.sold;
-    if (!dec) return '<div class="an-dim">Aucun pari terminé sur la période.</div>';
-    var lines = [];
-    lines.push('<li><b>' + anNum(st.held) + '</b> ' + (st.held >= 2 ? 'tenus' : 'tenu') + ' jusqu\'au résultat, <b>' + anNum(st.sold) + '</b> ' + (st.sold >= 2 ? 'revendus' : 'revendu') + ' avant' + (st.sold ? ' (' + st.soldGain + ' en gain, ' + (st.sold - st.soldGain) + ' à perte)' : '') + '.</li>');
-    if (st.exitPriceN) lines.push('<li>Prix moyen de revente : <b>' + anCents(st.exitPriceSum / st.exitPriceN) + '</b> pour une entrée moyenne à ' + anCents(st.soldEntrySum / st.exitPriceN) + '.</li>');
-    if (st.exitN) lines.push('<li>Revendre plutôt que tenir lui a ' + (st.exitValue >= 0 ? 'rapporté <b class="an-pos">' + anUsdSigned(st.exitValue) + '</b>' : 'coûté <b class="an-neg">' + anUsd(-st.exitValue) + '</b>') + ' sur ' + anPl(st.exitN, "pari", "paris") + ' dont le résultat est connu.</li>');
-    if (st.two) lines.push('<li>Deux camps sur <b>' + anPct(st.two / st.n * 100, false, 0) + '</b> des matchs ; l\'autre camp pèse en moyenne ' + anPct(st.otherRatioSum / st.two * 100, false, 0) + ' de sa mise principale.' + (st.arb ? ' ' + anPl(st.arb, "arbitrage", "arbitrages") + ' à gain garanti.' : '') + '</li>');
-    lines.push('<li>Son ROI réel (les deux camps, reventes comprises) : <b class="' + anRoiCls(st.roi, st.dec) + '">' + anPct(st.roi, true) + '</b>.</li>');
-    return anStack([
-      { v: st.held, color: "var(--an-held)", label: "Tient jusqu'au résultat" },
-      { v: st.soldGain, color: "var(--an-sold)", label: "Revend en gain" },
-      { v: st.sold - st.soldGain, color: "var(--an-sold-loss)", label: "Revend à perte" }
-    ]) + '<ul class="an-list">' + lines.join("") + '</ul>';
-  }
-  function anTimingHtml(bets, st) {
-    var pending = bets.filter(function (b) { return b.status === "decided" && !(b.timing && b.timing.v === AN_TIMING_V); }).length;
-    var note = pending ? '<div class="an-foot">' + (anState.syncing ? 'Analyse en cours' : 'Pas encore analysé') + ' pour ' + anPl(pending, "pari", "paris") + ' — chaque pari demande son propre historique, la suite arrive aux prochaines mises à jour.</div>' : '';
-    if (!st.timed) return '<div class="an-dim">Pas encore de paris analysés sur la période.</div>' + note;
-    return anStack([
-      { v: st.pre, color: "var(--an-pre)", label: "Avant le match" },
-      { v: st.live, color: "var(--an-live)", label: "Pendant le match" }
-    ]) + anGridHtml(anBucketRows(bets, AN_TIME_BUCKETS, function (b) { return b.relMin; }), "Moitié de sa mise placée") + note;
-  }
-  function anOpenHtml(bets) {
-    var open = bets.filter(function (b) { return b.status === "open"; }).sort(function (a, b) { return b.total - a.total; }).slice(0, 12);
-    if (!open.length) return '<div class="an-dim">Aucune position ouverte de cette taille en ce moment.</div>';
-    var now = Date.now();
-    return open.map(function (b) {
-      var m = b.main, cur = m.cur;
-      var when = b.kickoff ? (b.kickoff > now ? 'dans ' + anRelLabel((b.kickoff - now) / 60000).replace(/ (avant|de jeu)$/, "") : 'en cours depuis ' + anRelLabel((now - b.kickoff) / 60000).replace(/ (avant|de jeu)$/, "")) : '';
-      var partial = b.legs.some(function (l) { return l.src === "open" && l.soldFrac >= 0.1; });
-      return '<div class="an-open-row">' +
-        '<span class="an-row-q">' + b.sport + ' ' + esc(b.title) + (when ? ' <span class="an-dim">· ' + esc(when) + '</span>' : '') + '</span>' +
-        '<span class="an-row-nums"><span class="an-side">' + esc(anSideLabel(m.outcome)) + '</span>' +
-        '<span title="Prix moyen payé → prix actuel">' + anCents(m.avg) + (cur != null ? ' → ' + anCents(cur) : '') + '</span>' +
-        '<b>' + anUsd(b.total) + '</b>' +
-        '<span class="' + (b.livePnl >= 0 ? 'pos-txt' : 'neg-txt') + '" title="Gain/perte latent du trader, reventes déjà faites comprises">' + anUsdSigned(b.livePnl) + '</span>' +
-        (b.two ? '<span class="an-badge both">⇄ deux camps</span>' : '') +
-        (partial ? '<span class="an-badge sold">revendu en partie</span>' : '') + '</span></div>';
-    }).join("");
-  }
-  function anBehaviorBadge(b) {
-    if (b.behavior === "open") return '<span class="an-badge">En cours</span>';
-    if (b.behavior === "held") return '<span class="an-badge held" title="A gardé son côté principal jusqu\'au résultat">Tenu</span>';
-    return '<span class="an-badge sold" title="A revendu son côté principal avant le résultat' + (b.main.exitAvg != null ? ', en moyenne à ' + anCents(b.main.exitAvg) : '') + '">Revendu' + (b.main.exitAvg != null ? ' ~' + anCents(b.main.exitAvg) : '') + '</span>';
-  }
-  function anTimingBadge(b) {
-    if (b.relMin == null) return '';
-    return '<span class="an-badge ' + b.timeClass + '" title="Moment où la moitié de sa mise principale était placée, par rapport au coup d\'envoi">' + (b.timeClass === "pre" ? "Avant match · " : "En direct · ") + esc(anRelLabel(b.relMin)) + '</span>';
-  }
-  function anResultHtml(b) {
-    if (b.won === true) return '<span class="an-res win">Gagné</span>';
-    if (b.won === false) return '<span class="an-res lose">Perdu</span>';
-    return b.status === "open" ? '' : '<span class="an-res" title="Il est sorti avant la fin et le match n\'est pas encore réglé">Résultat à venir</span>';
-  }
-  function anJournalRows(bets) {
-    var f = anState;
-    // Open bets (often kickoffs days ahead, so they'd sort first) only under
-    // "En cours" — they're already in "En ce moment" above.
-    var list = bets.filter(function (b) {
-      if (f.jBehavior === "open" ? b.status !== "open" : b.status === "open") return false;
-      if (f.jBehavior === "held" && b.behavior !== "held") return false;
-      if (f.jBehavior === "sold" && b.behavior !== "sold") return false;
-      if (f.jBehavior === "two" && !b.two) return false;
-      if (f.jResult === "win" && b.won !== true) return false;
-      if (f.jResult === "lose" && b.won !== false) return false;
-      return true;
-    });
-    if (f.jSort === "stake") list = list.slice().sort(function (a, b) { return b.total - a.total; });
-    return list;
-  }
-  function anRowHtml(b) {
-    var open = !!anState.expanded[b.key];
-    var r = anCopyReturn(b, anState.delay);
-    var p = anCopyPrice(b, anState.delay);
-    return '<div class="an-row' + (open ? ' open' : '') + '">' +
-      '<button type="button" class="an-row-main" data-an-row="' + esc(b.key) + '" aria-expanded="' + open + '">' +
-        '<span class="an-row-date">' + esc(anWhen(b.date)) + '</span>' +
-        '<span class="an-row-q">' + b.sport + ' ' + esc(b.title) + '</span>' +
-        '<span class="an-row-nums">' +
-          '<span class="an-side" title="' + esc(b.main.outcome) + '">' + esc(anSideLabel(b.main.outcome)) + '</span>' +
-          '<span title="Prix moyen payé par le trader' + (anState.delay && p != null ? ' → prix de copie à ' + esc(anDelayLabel(anState.delay)) : '') + '">' + anCents(b.main.avg) + (anState.delay && p != null ? ' → ' + anCents(p) : '') + '</span>' +
-          '<b title="Total misé sur ce marché (les deux camps)' + (b.mult > 1 ? ', ×' + b.mult : '') + '">' + anUsd(b.total) + '</b>' +
-          anBehaviorBadge(b) + (b.two ? '<span class="an-badge both" title="A aussi acheté l\'autre camp pour ' + esc(anUsd(b.other.cost)) + '">⇄ ' + (b.arb ? 'arbitrage' : 'deux camps') + '</span>' : '') + anTimingBadge(b) +
-          anResultHtml(b) +
-          '<span class="an-row-pnl" title="' + (b.pnl != null ? 'Ce que le trader a réellement gagné ou perdu sur ce marché' : 'Gain ou perte latent du trader, au prix actuel') + '"><small>lui</small> ' + (b.pnl != null ? '<span class="' + (b.pnl >= 0 ? 'pos-txt' : 'neg-txt') + '">' + anUsdSigned(b.pnl) + '</span>' : '<span class="an-dim">' + anUsdSigned(b.livePnl) + ' latent</span>') + '</span>' +
-          '<span class="an-row-pnl" title="Ton gain en % de la mise si tu l\'avais copié ' + esc(anDelayLabel(anState.delay)) + ' après lui et tenu jusqu\'au résultat"><small>copie</small> ' + (r != null ? '<span class="' + (r >= 0 ? 'pos-txt' : 'neg-txt') + '">' + anPct(r * 100, true, 0) + '</span>' : '—') + '</span>' +
-        '</span>' +
-      '</button>' +
-      (open ? '<div class="an-row-detail">' + anRowDetailHtml(b) + '</div>' : '') +
+  function anStakeLabel(v) { return anNum(v) + " $" + (v === AN_MIN_BET ? " (tous)" : " et +"); }
+
+  // ----- Per-trader card -----
+  function anCardHtml(t, s) {
+    var color = anTraderColor(t.name);
+    var sold = s.soldWin + s.soldLoss;
+    return '<div class="an-card an-card3" style="--an-c:' + color + '">' +
+      '<div class="an-card-head"><span class="an-dot" style="background:' + color + '"></span><span class="an-name">' + esc(t.name) + '</span>' +
+        '<span class="an-dim">' + anPl(s.n, "pari", "paris") + '</span></div>' +
+      '<div class="an-headline"><div class="an-big ' + anRoiCls(s.copyRoi, s.cN) + '">' + anPct(s.copyRoi, true) + '</div>' +
+        '<div class="an-big-label">par pari, si tu avais copié ses paris (hors arbitrages) et gardé jusqu\'au bout. Avec ' + anNum(AN_COPY_STAKE) + ' $ à chaque fois : <b>' + anUsdSigned(s.copyPnl) + '</b> sur ' + anPl(s.cN, "pari", "paris") + ', ' + anShare(s.cWins, s.cN) + ' gagnés.' +
+        (s.cN && s.cN < AN_MIN_N ? ' <span class="an-warn">Trop peu de paris pour conclure.</span>' : '') + '</div></div>' +
+      '<div class="an-bar-block"><div class="an-bar-label">Entrée <span class="an-dim">· ' + anPl(s.pre + s.live, "pari", "paris") + ' dont l\'heure est connue</span></div>' +
+        anStack([{ v: s.pre, label: "Avant le match", color: "var(--an-pre)" }, { v: s.live, label: "Pendant le match", color: "var(--an-live)" }]) + '</div>' +
+      '<div class="an-bar-block"><div class="an-bar-label">Sortie</div>' +
+        anStack([
+          { v: s.held, label: "Gardé jusqu'à la fin", color: "var(--an-held)" },
+          { v: s.soldWin, label: "Sorti avant, en gain", color: "var(--an-sold)" },
+          { v: s.soldLoss, label: "Sorti avant, en perte", color: "var(--an-sold-loss)" },
+          { v: s.arb, label: "Arbitrage", color: "var(--an-both)" }
+        ]) +
+        (sold ? '<div class="an-foot">Sur ses ' + anPl(sold, "sortie", "sorties") + ' avant la fin, ' + anNum(s.soldPre) + ' avant le coup d\'envoi, les autres pendant le match.</div>' : '') + '</div>' +
+      '<div class="an-kv"><span>Camp adverse</span><b>' + (s.bets ? anShare(s.two, s.bets) + ' des paris' : '—') + '</b>' +
+        '<small>' + (s.two ? 'Quand il mise aussi en face, c\'est en moyenne ' + anPct(s.twoAvg, false, 0) + ' de sa mise principale.' : 'Jamais des deux côtés sur cette sélection.') + '</small></div>' +
+      '<div class="an-kv"><span>ROI réel du trader</span><b class="' + anRoiCls(s.roi, s.bets) + '">' + anPct(s.roi, true) + '</b>' +
+        '<small>Ce qu\'il a gagné lui-même sur ces paris, sorties et couvertures comprises.</small></div>' +
     '</div>';
   }
-  function anRowDetailHtml(b) {
-    var legsHtml = '<div class="an-scroll"><table class="an-legs"><thead><tr><th>Issue</th><th>Misé</th><th>Prix moyen</th><th>Sortie</th><th>Résultat</th><th>Gain / perte</th></tr></thead><tbody>' +
-      b.legs.map(function (l) {
-        var exit = l.src === "open" ? (l.soldFrac >= 0.01 ? 'revendu à ' + anPct(l.soldFrac * 100, false, 0) + (l.exitAvg != null ? ' ~' + anCents(l.exitAvg) : '') : 'en cours')
-          : (l.held ? 'tenu' : 'revendu' + (l.exitAvg != null ? ' ~' + anCents(l.exitAvg) : ''));
-        var res = l.fin === 1 ? '<span class="pos-txt">gagnant</span>' : (l.fin === 0 ? '<span class="neg-txt">perdant</span>' : '—');
-        return '<tr><td>' + esc(anSideLabel(l.outcome)) + (l === b.main ? ' <span class="an-dim">(principal)</span>' : '') + '</td><td>' + anUsd(l.cost) + '</td><td>' + anCents(l.avg) + '</td><td>' + esc(exit) + '</td><td>' + res + '</td>' +
-          '<td class="' + (l.pnl >= 0 ? 'pos-txt' : 'neg-txt') + '">' + anUsdSigned(l.pnl) + (l.src === "open" ? ' <span class="an-dim">(latent)</span>' : '') + '</td></tr>';
-      }).join("") + '</tbody></table></div>';
-    var copyLine = '';
-    if (b.timing && b.timing.v === AN_TIMING_V && b.timing.visible) {
-      copyLine = '<div class="an-copyline"><b>Prix pour le copier</b> (après que sa mise a atteint 1 000 $, ' + esc(new Date(b.timing.visible * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })) + ') : ' +
-        AN_DELAYS.filter(function (d) { return d; }).map(function (d) {
-          var p = b.timing["p" + d], rr = (b.main.fin != null && p != null && p > 0.01 && p < 0.99) ? (b.main.fin - p) / p : null;
-          return esc(anDelayLabel(d)) + ' <b>' + anCents(p) + '</b>' + (rr != null ? ' <span class="' + (rr >= 0 ? 'pos-txt' : 'neg-txt') + '">(' + anPct(rr * 100, true, 0) + ')</span>' : '');
-        }).join(' · ') + '</div>';
-    }
-    var f = anState.fills[b.key];
-    var tl = !f || f.loading ? '<div class="an-dim">Chargement de ses achats et ventes…</div>'
-      : (f.error ? '<div class="an-dim">Impossible de charger le détail (' + esc(f.error) + ').</div>' : anTimelineSvg(b, f.list));
-    var link = b.ev ? '<a class="an-link" href="https://polymarket.com/event/' + esc(b.ev) + '" target="_blank" rel="noopener">Voir le marché sur Polymarket ↗</a>' : '';
-    return legsHtml + copyLine + '<div class="an-tl-title">Ses achats et ventes sur ce marché</div>' + tl + link;
-  }
-  // Every fill on one market, priced in MAIN-side terms (a buy of the other
-  // side at 29¢ is drawn at 71¢) so both camps read on one axis.
-  function anTimelineSvg(b, fills) {
-    var trades = (fills || []).filter(function (f) { return f.type === "TRADE"; });
-    if (!trades.length) return '<div class="an-dim">Aucun achat ni vente retrouvé pour ce marché.</div>';
-    var times = trades.map(function (f) { return f.timestamp * 1000; });
-    if (b.kickoff) times.push(b.kickoff);
-    var t0 = Math.min.apply(null, times), t1 = Math.max.apply(null, times);
-    if (t1 - t0 < 120000) { t0 -= 60000; t1 += 60000; }
-    var W = 660, H = 220, L = 42, R = 14, T = 16, B = 36;
-    function x(ms) { return L + (ms - t0) / (t1 - t0) * (W - L - R); }
-    function y(p) { return T + (1 - p) * (H - T - B); }
-    var maxUsd = 1;
-    trades.forEach(function (f) { maxUsd = Math.max(maxUsd, Number(f.usdcSize) || 0); });
-    var svg = "";
-    [0, 0.25, 0.5, 0.75, 1].forEach(function (p) {
-      svg += '<line x1="' + L + '" y1="' + y(p).toFixed(1) + '" x2="' + (W - R) + '" y2="' + y(p).toFixed(1) + '" class="an-tl-grid"/>' +
-        '<text x="' + (L - 6) + '" y="' + (y(p) + 4).toFixed(1) + '" class="an-tl-tick" text-anchor="end">' + Math.round(p * 100) + '¢</text>';
+
+  // ----- Chart: cumulative result of 1 000 $ per copied bet -----
+  function anChartData(per) {
+    var series = per.map(function (x) {
+      var pts = [], cum = 0;
+      x.bets.filter(function (b) { return !b.arb && anCopyR(b) != null && b.date; })
+        .sort(function (a, b) { return a.date - b.date; })
+        .forEach(function (b, i) { cum += anCopyR(b) * AN_COPY_STAKE; pts.push([b.date, cum, i + 1]); });
+      return { name: x.t.name, color: anTraderColor(x.t.name), pts: pts };
     });
-    if (b.kickoff) {
-      var kx = x(b.kickoff).toFixed(1);
-      var kRight = +kx > W - 130;
-      svg += '<line x1="' + kx + '" y1="' + T + '" x2="' + kx + '" y2="' + (H - B) + '" class="an-tl-kick"/>' +
-        '<text x="' + (kRight ? +kx - 5 : +kx + 5).toFixed(1) + '" y="' + (H - B - 6) + '" class="an-tl-tick" text-anchor="' + (kRight ? 'end' : 'start') + '">coup d\'envoi ' +
-        new Date(b.kickoff).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + '</text>';
+    var x0 = Infinity, x1 = -Infinity, y0 = 0, y1 = 0;
+    series.forEach(function (sr) {
+      sr.pts.forEach(function (p) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+    });
+    x1 = Math.max(x1, x0 + 86400000);
+    return { series: series, x0: x0, x1: x1, y0: y0, y1: y1 };
+  }
+  function anNiceStep(range) {
+    var raw = range / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var f = raw / mag;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * mag;
+  }
+  var AN_CH = { w: 760, h: 270, l: 58, r: 14, t: 12, b: 26 };
+  function anChartHtml(per) {
+    var d = anChartData(per);
+    anState.chart = d;
+    var has = d.series.some(function (sr) { return sr.pts.length; });
+    var legend = '<div class="an-legend an-chart-legend">' + d.series.map(function (sr) {
+      var last = sr.pts.length ? sr.pts[sr.pts.length - 1] : null;
+      return '<span><i style="background:' + sr.color + '"></i>' + esc(sr.name) + ' <b>' + (last ? anUsdSigned(last[1]) : '—') + '</b>' + (last ? ' · ' + anPl(last[2], "pari", "paris") : '') + '</span>';
+    }).join("") + '</div>';
+    if (!has) return legend + '<div class="an-dim an-empty">Aucun pari terminé sur cette sélection.</div>';
+    var step = anNiceStep(Math.max(d.y1 - d.y0, 1000));
+    var y0 = Math.floor(d.y0 / step) * step, y1 = Math.ceil(d.y1 / step) * step;
+    if (y1 === y0) y1 = y0 + step;
+    d.yMin = y0; d.yMax = y1;
+    var W = AN_CH.w - AN_CH.l - AN_CH.r, H = AN_CH.h - AN_CH.t - AN_CH.b;
+    function X(ms) { return AN_CH.l + (ms - d.x0) / (d.x1 - d.x0) * W; }
+    function Y(v) { return AN_CH.t + (y1 - v) / (y1 - y0) * H; }
+    var g = '';
+    for (var v = y0; v <= y1 + step / 2; v += step) {
+      g += '<line class="an-ch-grid' + (Math.abs(v) < step / 2 ? ' zero' : '') + '" x1="' + AN_CH.l + '" x2="' + (AN_CH.w - AN_CH.r) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/>' +
+        '<text class="an-ch-tick" x="' + (AN_CH.l - 8) + '" y="' + (Y(v) + 3.5).toFixed(1) + '" text-anchor="end">' + esc(Math.abs(v) < step / 2 ? "0 $" : anUsdShort(v)) + '</text>';
     }
-    var sameDay = new Date(t0).toDateString() === new Date(t1).toDateString();
-    function tl(ms) { var d = new Date(ms); return (sameDay ? "" : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) + " ") + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
-    svg += '<text x="' + L + '" y="' + (H - 12) + '" class="an-tl-tick" text-anchor="start">' + esc(tl(t0)) + '</text>' +
-      '<text x="' + (W - R) + '" y="' + (H - 12) + '" class="an-tl-tick" text-anchor="end">' + esc(tl(t1)) + '</text>';
-    // Big marks first so small ones stay visible on top; sells last of all —
-    // the exits are what this chart is mostly read for.
-    trades.slice().sort(function (a, c) {
-      var sa = a.side === "SELL" ? 1 : 0, sc = c.side === "SELL" ? 1 : 0;
-      return sa !== sc ? sa - sc : (Number(c.usdcSize) || 0) - (Number(a.usdcSize) || 0);
-    }).forEach(function (f) {
-      var isMain = Number(f.outcomeIndex) === b.main.oi;
-      var p = Number(f.price) || 0, pm = isMain ? p : 1 - p;
-      var usd = (Number(f.usdcSize) || 0) * (b.mult || 1);
-      var r = 3 + 7 * Math.sqrt((Number(f.usdcSize) || 0) / maxUsd);
-      var cx = x(f.timestamp * 1000).toFixed(1), cy = y(pm).toFixed(1);
-      var tip = new Date(f.timestamp * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + " · " + (f.side === "SELL" ? "vente " : "achat ") + anSideLabel(f.outcome || "") + " à " + anCents(p) + " · " + anUsd(usd);
-      if (f.side === "SELL") {
-        svg += '<path d="M' + cx + ' ' + (cy - r).toFixed(1) + ' L' + (+cx + r).toFixed(1) + ' ' + cy + ' L' + cx + ' ' + (+cy + r).toFixed(1) + ' L' + (cx - r).toFixed(1) + ' ' + cy + ' Z" class="an-tl-sell"><title>' + esc(tip) + '</title></path>';
-      } else {
-        svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r.toFixed(1) + '" class="' + (isMain ? 'an-tl-buy' : 'an-tl-buy-other') + '"><title>' + esc(tip) + '</title></circle>';
+    var nT = 5, prevLbl = "";
+    for (var i = 0; i <= nT; i++) {
+      var ms = d.x0 + (d.x1 - d.x0) * i / nT;
+      if (anDay(ms) === prevLbl) continue;
+      prevLbl = anDay(ms);
+      g += '<text class="an-ch-tick" x="' + X(ms).toFixed(1) + '" y="' + (AN_CH.h - 6) + '" text-anchor="' + (i === 0 ? "start" : i === nT ? "end" : "middle") + '">' + esc(anDay(ms)) + '</text>';
+    }
+    var lines = d.series.map(function (sr) {
+      if (!sr.pts.length) return '';
+      var path = 'M' + X(sr.pts[0][0]).toFixed(1) + ',' + Y(0).toFixed(1);
+      sr.pts.forEach(function (p) { path += 'L' + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1); });
+      return '<path class="an-ch-line" d="' + path + '" style="stroke:' + sr.color + '"/>';
+    }).join("");
+    return legend +
+      '<div class="an-chart" id="anChart">' +
+        '<svg class="an-ch-svg" viewBox="0 0 ' + AN_CH.w + ' ' + AN_CH.h + '" role="img" aria-label="Gain cumulé en copiant chaque pari avec ' + anNum(AN_COPY_STAKE) + ' $">' + g + lines +
+          '<line class="an-ch-cross" id="anChCross" x1="0" x2="0" y1="' + AN_CH.t + '" y2="' + (AN_CH.h - AN_CH.b) + '" visibility="hidden"/>' +
+          '<rect class="an-ch-hit" x="' + AN_CH.l + '" y="' + AN_CH.t + '" width="' + W + '" height="' + H + '"/></svg>' +
+        '<div class="an-ch-tip" id="anChTip" hidden></div>' +
+      '</div>';
+  }
+  function anChartHover(e) {
+    var wrap = document.getElementById("anChart"), d = anState.chart;
+    if (!wrap || !d) return;
+    var svg = wrap.querySelector("svg"), cross = document.getElementById("anChCross"), tip = document.getElementById("anChTip");
+    var r = svg.getBoundingClientRect();
+    var sx = (e.clientX - r.left) / r.width * AN_CH.w;
+    if (sx < AN_CH.l || sx > AN_CH.w - AN_CH.r) { cross.setAttribute("visibility", "hidden"); tip.hidden = true; return; }
+    var ms = d.x0 + (sx - AN_CH.l) / (AN_CH.w - AN_CH.l - AN_CH.r) * (d.x1 - d.x0);
+    cross.setAttribute("x1", sx.toFixed(1)); cross.setAttribute("x2", sx.toFixed(1)); cross.setAttribute("visibility", "visible");
+    tip.innerHTML = '<div class="an-ch-tip-date">' + esc(anDay(ms)) + '</div>' + d.series.map(function (sr) {
+      var last = null;
+      for (var i = 0; i < sr.pts.length && sr.pts[i][0] <= ms; i++) last = sr.pts[i];
+      return '<div><i style="background:' + sr.color + '"></i>' + esc(sr.name) + ' <b>' + (last ? anUsdSigned(last[1]) : "0 $") + '</b> <span>' + (last ? anPl(last[2], "pari", "paris") : "") + '</span></div>';
+    }).join("");
+    tip.hidden = false;
+    var px = (sx / AN_CH.w) * r.width, wr = wrap.getBoundingClientRect().width;
+    var left = px + 14;
+    if (left + tip.offsetWidth > wr) left = Math.max(0, px - 14 - tip.offsetWidth);
+    tip.style.left = left + "px";
+  }
+
+  // ----- Stake levels and sports -----
+  function anStakeTableHtml(per) {
+    var head1 = '<tr><th rowspan="2" class="an-tl">Mise du trader</th>' + per.map(function (x) {
+      return '<th colspan="3" class="an-tg"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + esc(x.t.name) + '</th>';
+    }).join("") + '</tr>';
+    var head2 = '<tr>' + per.map(function () { return '<th class="an-tg">Paris</th><th>Copie</th><th>ROI réel</th>'; }).join("") + '</tr>';
+    var trend = {};
+    var rows = AN_STAKE_LEVELS.map(function (lvl) {
+      return '<tr' + (lvl === anState.minStake ? ' class="current"' : '') + '><th class="an-tl">' + esc(anStakeLabel(lvl)) + '</th>' + per.map(function (x) {
+        var s = anStats(anFiltered(x.all, { minStake: lvl }));
+        if (s.cN >= AN_MIN_N && s.copyRoi != null) (trend[x.t.name] = trend[x.t.name] || []).push(s.copyRoi);
+        var few = s.cN < AN_MIN_N;
+        return '<td class="an-tg' + (few ? ' few' : '') + '">' + anNum(s.bets) + '</td>' +
+          '<td class="' + (few ? 'few ' : '') + anRoiCls(s.copyRoi, s.cN) + '"><b>' + anPct(s.copyRoi, true) + '</b></td>' +
+          '<td class="an-dimc' + (few ? ' few' : '') + '">' + anPct(s.roi, true) + '</td>';
+      }).join("") + '</tr>';
+    }).join("");
+    var verdicts = per.map(function (x) {
+      var tr = trend[x.t.name] || [], txt;
+      if (tr.length < 2) txt = "pas encore assez de gros paris pour le dire";
+      else {
+        var diff = tr[tr.length - 1] - tr[0];
+        txt = diff > 3 ? "oui, ses plus grosses mises rapportent plus (" + anPct(diff, true, 0).replace(" %", " pts") + ")"
+          : diff < -3 ? "non, ses plus grosses mises rapportent moins (" + anPct(diff, true, 0).replace(" %", " pts") + ")"
+          : "pas de différence nette selon la mise";
       }
-    });
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="an-tl-svg" role="img" aria-label="Achats et ventes du trader sur ce marché, au prix du côté principal">' + svg + '</svg>' +
-      '<div class="an-legend"><span><i style="background:var(--an-held)"></i>achat de son côté principal</span><span><i class="ring"></i>achat de l\'autre camp (prix converti)</span><span><i class="diamond"></i>vente</span><span>taille = montant · axe = prix de son côté principal</span></div>';
+      return '<li><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span><b>' + esc(x.t.name) + '</b> : ' + esc(txt) + '</li>';
+    }).join("");
+    return '<div class="an-scroll"><table class="an-tbl">' + '<thead>' + head1 + head2 + '</thead><tbody>' + rows + '</tbody></table></div>' +
+      '<ul class="an-verdicts">' + verdicts + '</ul>';
   }
-  function anDetailHtml(t, bets, st) {
-    var insights = '<ul class="an-insights">' + anInsights(t, bets, st).map(function (l) { return '<li>' + l + '</li>'; }).join("") + '</ul>';
-    var decided = bets.filter(function (b) { return b.status === "decided"; });
-    var types = anGridHtml(anKeyRows(bets, function (b) { return b.mtype; }, function (k) { return esc(anTypeLabel(k)); }), "Type de pari");
-    var odds = anGridHtml(anBucketRows(bets, AN_ODDS_BUCKETS, anEntryPrice), "Cote payée");
-    var sports = anGridHtml(anKeyRows(bets, function (b) { return b.sport; }, function (k) { return esc(k + " " + (AN_SPORT_LABELS[k] || "Autres")); }), "Sport");
-    var leagueRows = anKeyRows(bets, function (b) { return b.league.key; }, function (k, b) { return esc(b.league.name); }, 8);
-    var stakes = anGridHtml(anBucketRows(bets, AN_STAKE_BUCKETS, function (b) { return b.total; }), "Mise sur le match");
-    var jl = anJournalRows(bets);
-    var journal = '<div class="an-filters">' +
-      anSegHtml("Comportement", "data-an-jb", [["done", "Tous les terminés"], ["held", "Tenus"], ["sold", "Revendus"], ["two", "Deux camps"], ["open", "En cours"]], anState.jBehavior) +
-      anSegHtml("Résultat", "data-an-jr", [["all", "Tous"], ["win", "Gagnés"], ["lose", "Perdus"]], anState.jResult) +
-      anSegHtml("Tri", "data-an-js", [["date", "Date"], ["stake", "Mise"]], anState.jSort) +
-    '</div>' +
-      (jl.length ? '<div class="an-rows">' + jl.slice(0, anState.jLimit).map(anRowHtml).join("") + '</div>' +
-        (jl.length > anState.jLimit ? '<button type="button" class="an-btn an-more" data-an-more="1">Voir ' + Math.min(40, jl.length - anState.jLimit) + ' paris de plus (' + anNum(jl.length - anState.jLimit) + ' restants)</button>' : '')
-        : '<div class="an-dim">Aucun pari ne correspond à ces filtres.</div>');
-    function section(title, sub, inner) {
-      return '<section class="an-section"><h3 class="an-stitle">' + title + '</h3>' + (sub ? '<div class="an-ssub">' + sub + '</div>' : '') + inner + '</section>';
-    }
-    var options = analysisTraders().map(function (x) { return '<option value="' + esc(x.name) + '"' + (x.name === t.name ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join("");
-    return '<div class="an-detail" id="anDetail">' +
-      '<div class="an-detail-head"><h3 class="an-stitle">Détail d\'un trader</h3><label class="an-seg-label">Trader <select id="anDetailSelect">' + options + '</select></label></div>' +
-      '<div class="an-detail-top">' + anCardHtml(t, st) + section("Ce qu'il faut retenir", 'Sur ' + anPl(st.n, "pari", "paris") + ' (' + esc(anFilterLabel()) + ').', insights) + '</div>' +
-      '<div class="an-cols">' +
-        section("Par type de pari", '', types) +
-        section("Par cote payée", 'La cote que tu aurais payée en le copiant.', odds) +
-        section("Par sport", '', sports + (leagueRows.length > 1 ? '<div class="an-gap"></div>' + anGridHtml(leagueRows, "Compétition") : '')) +
-        section("Mise et conviction", 'Ses plus grosses mises sont-elles plus fiables que les petites ?', stakes) +
-        section("Quand il entre", 'Repère : le moment où la moitié de sa mise principale était placée, par rapport au coup d\'envoi.', anTimingHtml(bets, st)) +
-        section("Ce qu'il fait après l'achat", 'Côté principal = l\'issue où il a mis le plus d\'argent. « Revendu » : il en est sorti avant le résultat.', anExitHtml(st)) +
-      '</div>' +
-      section("En ce moment", 'Ses plus grosses positions encore ouvertes (prix moyen payé → prix actuel).', anOpenHtml(bets)) +
-      section("Journal des paris", anNum(decided.length) + ' terminés, ' + anNum(bets.length - decided.length) + ' en cours. Clique un pari pour voir ses achats et ventes minute par minute, et le prix qu\'aurait payé un copieur.', journal) +
-    '</div>';
+  function anSportRows(per) {
+    var n = {};
+    per.forEach(function (x) { anFiltered(x.all, { sport: "all" }).forEach(function (b) { n[b.sport] = (n[b.sport] || 0) + 1; }); });
+    return Object.keys(n).sort(function (a, b) { return n[b] - n[a]; }).map(function (k) { return { sport: k, n: n[k] }; });
+  }
+  function anSportTableHtml(per, sports) {
+    if (!sports.length) return '<div class="an-dim an-empty">Aucun pari terminé sur cette période.</div>';
+    var head1 = '<tr><th rowspan="2" class="an-tl">Sport</th>' + per.map(function (x) {
+      return '<th colspan="4" class="an-tg"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + esc(x.t.name) + '</th>';
+    }).join("") + '</tr>';
+    var head2 = '<tr>' + per.map(function () { return '<th class="an-tg">Paris</th><th title="Entrés avant le coup d\'envoi">Avant match</th><th title="Gardés jusqu\'au résultat (hors arbitrages)">Gardés</th><th title="Copie gardée jusqu\'au bout, par pari">Copie</th>'; }).join("") + '</tr>';
+    var rows = sports.map(function (sp) {
+      return '<tr' + (sp.sport === anState.sport ? ' class="current"' : '') + '><th class="an-tl">' + esc(anSportLabel(sp.sport)) + '</th>' + per.map(function (x) {
+        var s = anStats(anFiltered(x.all, { sport: sp.sport }));
+        var few = s.cN < AN_MIN_N;
+        return '<td class="an-tg' + (few ? ' few' : '') + '">' + anNum(s.n) + '</td>' +
+          '<td class="' + (few ? 'few' : '') + '">' + anShare(s.pre, s.pre + s.live) + '</td>' +
+          '<td class="' + (few ? 'few' : '') + '">' + anShare(s.held, s.n - s.arb) + '</td>' +
+          '<td class="' + (few ? 'few ' : '') + anRoiCls(s.copyRoi, s.cN) + '"><b>' + anPct(s.copyRoi, true) + '</b></td>';
+      }).join("") + '</tr>';
+    }).join("");
+    return '<div class="an-scroll"><table class="an-tbl">' + '<thead>' + head1 + head2 + '</thead><tbody>' + rows + '</tbody></table></div>';
   }
   function anMethodHtml() {
-    return '<details class="an-method"><summary>Comment c\'est calculé</summary><ul class="an-list">' +
-      '<li><b>Un pari</b> = tout ce que le trader a acheté sur un marché (les deux issues confondues), à partir de ' + esc(anUsd(AN_MIN_BET)) + ' au total. Pour les petits comptes, la mise est multipliée comme partout sur le site (×N à côté du nom). Le <b>côté principal</b> est l\'issue où il a mis le plus d\'argent : c\'est lui qu\'on copie.</li>' +
-      '<li><b>Si copié</b> : tu achètes son côté principal et tu le gardes jusqu\'au résultat, avec la même mise à chaque pari. Le prix est le sien (« même prix ») ou le prix réel du marché 5 min, 15 min ou 1 h après le moment où sa mise a atteint 1 000 $ — ce qu\'un copieur aurait vraiment payé. Si le match était déjà joué à ce moment-là (prix à 99¢ ou 1¢), le pari ne compte pas.</li>' +
-      '<li><b>Fourchette probable</b> : l\'intervalle où se situe à 95 % le vrai gain moyen, vu le nombre de paris et leur dispersion. <b>Rentable</b> / <b>Perdant</b> seulement quand toute la fourchette est du même côté de 0 sur au moins ' + AN_SOLID_N + ' paris ; sinon <b>Prometteur</b> (au moins +3 %), <b>Plutôt perdant</b> (−3 % ou pire) ou <b>Neutre</b>.</li>' +
-      '<li><b>Tenu</b> / <b>Revendu</b> : ce que le trader a fait, lui, de son côté principal. <b>Deux camps</b> : il a aussi acheté l\'autre issue (au moins 10 % de sa mise principale). <b>Avant match / en direct</b> : selon que la moitié de sa mise était placée avant ou après le coup d\'envoi.</li>' +
-      '<li><b>Données</b> : l\'API publique de Polymarket (positions clôturées, paris perdus jamais encaissés — sinon les taux de réussite seraient gonflés —, horaires et résultats des matchs, achats et ventes, historique des prix). Gardées sur cet appareil et complétées à chaque mise à jour, en arrière-plan dès que le site est ouvert sur un ordinateur ; l\'historique s\'allonge d\'un jour par mise à jour jusqu\'à ' + AN_AUTO_BACKFILL_DAYS + ' jours et est conservé ' + AN_KEEP_DAYS + ' jours. Les traders Predict.fun ne sont pas couverts.</li>' +
+    return '<details class="an-section an-method"><summary class="an-stitle">Comment c\'est calculé</summary><ul class="an-list">' +
+      '<li><b>Un pari</b> : tout ce qu\'un trader a mis sur un même marché, dès ' + anNum(AN_MIN_BET) + ' $ sur son côté principal. La « mise » des filtres est ce côté principal. Seuls les paris terminés, dont le résultat est connu, sont comptés.</li>' +
+      '<li><b>Entrée</b> : avant ou pendant le match selon le moment où la moitié de sa mise était placée, comparé à l\'heure du coup d\'envoi donnée par Polymarket.</li>' +
+      '<li><b>Gardé jusqu\'à la fin</b> : son prix moyen de sortie est à 3¢ ou moins du résultat final (0 ou 1), il a donc attendu le résultat. Sinon il est <b>sorti avant</b>, en gain si son prix moyen de vente dépasse son prix moyen d\'achat, en perte sinon.</li>' +
+      '<li><b>Arbitrage</b> : il a gardé les deux côtés jusqu\'au bout, en quantités qui lui garantissaient un gain quel que soit le résultat. Ce n\'est pas un pari sur le résultat, donc il est exclu de tous les autres chiffres.</li>' +
+      '<li><b>Camp adverse</b> : il a aussi misé sur l\'autre issue, pour au moins ' + anPct(AN_HEDGE_MIN_RATIO * 100, false, 0) + ' de sa mise principale.</li>' +
+      '<li><b>Copie</b> : ' + anNum(AN_COPY_STAKE) + ' $ sur son côté principal, à son prix moyen, gardés jusqu\'au résultat, quoi qu\'il ait fait ensuite. Tu copies en pratique un peu plus tard, souvent à un prix un peu moins bon, donc c\'est un plafond.</li>' +
+      '<li><b>ROI réel</b> : ce que le trader a gagné lui-même, rapporté à tout ce qu\'il a misé sur ces paris (sorties et couvertures comprises).</li>' +
+      '<li><b>Données</b> : API publique de Polymarket. Les paris perdus jamais encaissés sont comptés, sinon les taux de réussite seraient gonflés. Tout est enregistré dans la base de cet appareil et gardé indéfiniment. Chaque mise à jour, toutes les 15 min quand le site est ouvert, reprend là où la précédente s\'était arrêtée. Rien n\'est perdu entre deux visites : Polymarket garde tout l\'historique.</li>' +
+      '<li>En dessous de ' + AN_MIN_N + ' paris, un chiffre est grisé : trop peu pour en tirer quoi que ce soit.</li>' +
     '</ul></details>';
   }
+
   function renderAnalyse() {
     var el = document.getElementById("analyseContent");
     if (!el) return;
@@ -15353,98 +15056,59 @@
       return;
     }
     anState.lastRenderAt = Date.now();
-    var traders = analysisTraders();
     var model = anModel();
-    var per = [], all = [];
-    anState.lastCount = 0;
-    traders.forEach(function (t) {
-      var raw = model[t.name] || [];
-      anState.lastCount += raw.length;
-      var bets = anFiltered(raw);
-      all = all.concat(bets);
-      per.push({ t: t, bets: bets, st: anAgg(bets) });
+    var per = analysisTraders().map(function (t) {
+      var all = model[t.name] || [];
+      var bets = anFiltered(all);
+      return { t: t, all: all, bets: bets, st: anStats(bets) };
     });
-    var allSt = anAgg(all);
-    if (!traders.some(function (t) { return t.name === anState.detail; })) {
-      var best = per.slice().sort(function (a, b) { return b.st.cN - a.st.cN; })[0];
-      anState.detail = best ? best.t.name : null;
-    }
-    var head = '<div class="an-head"><div class="an-head-text"><h2 class="section-title an-title">🔬 Copier et tenir jusqu\'au bout : est-ce rentable ?</h2>' +
-      '<div class="an-sub">Pour chaque trader suivi sur Polymarket : ce que tu aurais gagné en copiant ses paris de 1 000 $ et plus et en les gardant jusqu\'au résultat, au prix que tu aurais réellement payé. Avec, pour chaque chiffre, la marge d\'erreur — un résultat n\'est « prouvé » que quand elle le permet.</div></div>' +
-      '<div class="an-head-actions"><button type="button" class="an-btn" data-an-action="refresh"' + (anState.syncing ? ' disabled' : '') + '>↻ Mettre à jour</button>' +
-      '<button type="button" class="an-btn" data-an-action="older"' + (anState.syncing ? ' disabled' : '') + ' title="Va chercher ' + AN_MORE_DAYS + ' jours de plus dans leur historique, tout de suite (sinon ça se fait tout seul, un jour par mise à jour)">+ ' + AN_MORE_DAYS + ' jours d\'historique</button></div></div>' +
+    var sports = anSportRows(per);
+    if (anState.sport !== "all" && !sports.some(function (s) { return s.sport === anState.sport; })) anState.sport = "all";
+    var sportOpts = [["all", "Tous"]].concat(sports.map(function (s) { return [s.sport, anSportLabel(s.sport) + " · " + s.n]; }));
+    var scope = (anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours") +
+      ", mises de " + anStakeLabel(anState.minStake) + (anState.sport !== "all" ? ", " + anSportLabel(anState.sport) : "");
+    el.innerHTML =
+      '<div class="an-head"><div class="an-head-text"><h2 class="section-title an-title">🔬 RN1 · VeryLucky888 · flaznorp</h2>' +
+        '<div class="an-sub">Leurs paris de ' + anNum(AN_MIN_BET) + ' $ et plus, rejoués depuis Polymarket : quand ils entrent, comment ils sortent, s\'ils misent aussi en face, et ce qu\'aurait rapporté de les copier avec ' + anNum(AN_COPY_STAKE) + ' $ en gardant jusqu\'au résultat.</div></div>' +
+        '<div class="an-head-actions"><button type="button" class="an-btn" data-an-action="refresh"' + (anState.syncing ? ' disabled' : '') + '>↻ Mettre à jour</button></div></div>' +
       '<div class="an-status" id="anStatus">' + anStatusHtml() + '</div>' +
       '<div class="an-controls">' +
-        anSegHtml("Période", "data-an-period", [["7", "7 jours"], ["30", "30 jours"], ["all", "Tout"]], anState.period) +
-        anSegHtml("Mise mini par match", "data-an-stake", [[1000, "1 000 $"], [5000, "5 000 $"], [10000, "10 000 $"], [25000, "25 000 $"]], anState.minStake) +
-        anSegHtml("Entrée du trader", "data-an-entry", [["all", "Toutes"], ["pre", "Avant match"], ["live", "En direct"]], anState.entry) +
-        anSegHtml("Tu copies", "data-an-delay", AN_DELAYS.map(function (d) { return [d, d ? anDelayLabel(d) + " après" : "au même prix"]; }), anState.delay, "Au même prix que lui, ou au prix du marché 5 min, 15 min ou 1 h après que sa mise a atteint 1 000 $") +
-      '</div>';
-    var dt = per.filter(function (x) { return x.t.name === anState.detail; })[0];
-    el.innerHTML = head + anGlobalHtml(all, allSt, per) + anRankHtml(per) + anTypesHtml(all, per) +
-      (dt ? anDetailHtml(dt.t, dt.bets, dt.st) : '') + anMethodHtml();
-  }
-  async function anLoadFills(b) {
-    var t = anTrader(b.trader);
-    if (!t) return;
-    anState.fills[b.key] = { loading: true };
-    try {
-      anState.fills[b.key] = { list: await anFetchFills(t, [b.cid]) };
-    } catch (err) {
-      anState.fills[b.key] = { error: (err && err.message) || "erreur réseau" };
-    }
-    if (anTabActive()) renderAnalyse();
-  }
-  function anOpenDetail(name, scroll) {
-    anState.detail = name;
-    anState.jLimit = 40;
-    anSavePrefs();
-    renderAnalyse();
-    if (scroll) { var d = document.getElementById("anDetail"); if (d) d.scrollIntoView({ behavior: "smooth", block: "start" }); }
+        anSegHtml("Période", "data-an-period", [["30", "30 jours"], ["90", "90 jours"], ["all", "All time"]], anState.period) +
+        anSegHtml("Mise du trader", "data-an-stake", AN_STAKE_LEVELS.map(function (v) { return [v, v === AN_MIN_BET ? "Toutes" : anUsdShort(v).replace("+", "") + " et +"]; }), anState.minStake) +
+      '</div>' +
+      '<div class="an-controls">' + anSegHtml("Sport", "data-an-sport", sportOpts, anState.sport) + '</div>' +
+      '<div class="an-cards">' + per.map(function (x) { return anCardHtml(x.t, x.st); }).join("") + '</div>' +
+      '<section class="an-section"><h3 class="an-stitle">Si tu avais copié chaque pari avec ' + anNum(AN_COPY_STAKE) + ' $ et gardé jusqu\'au bout</h3>' +
+        '<div class="an-ssub">Gain ou perte cumulé, pari après pari (hors arbitrages) · ' + esc(scope) + '</div>' + anChartHtml(per) + '</section>' +
+      '<section class="an-section"><h3 class="an-stitle">Plus il mise, mieux c\'est ?</h3>' +
+        '<div class="an-ssub">Copie : rendement moyen par pari copié et gardé jusqu\'au bout. ROI réel : ce que le trader a gagné lui-même. Seuils sur la mise de son côté principal · ' + esc((anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours") + (anState.sport !== "all" ? ", " + anSportLabel(anState.sport) : "")) + '</div>' +
+        anStakeTableHtml(per) + '</section>' +
+      '<section class="an-section"><h3 class="an-stitle">Par sport</h3>' +
+        '<div class="an-ssub">Avant match : part des paris entrés avant le coup d\'envoi. Gardés : part gardée jusqu\'au résultat (hors arbitrages). Copie : rendement moyen par pari copié · ' + esc((anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours") + ", mises de " + anStakeLabel(anState.minStake)) + '</div>' +
+        anSportTableHtml(per, sports) + '</section>' +
+      anMethodHtml();
   }
   document.addEventListener("click", function (e) {
     var root = document.getElementById("analyseContent");
     if (!root || !root.contains(e.target) || !e.target.closest) return;
-    var el = e.target.closest("[data-an-action], [data-an-period], [data-an-stake], [data-an-entry], [data-an-delay], [data-an-rsort], [data-an-detail], [data-an-jb], [data-an-jr], [data-an-js], [data-an-row], [data-an-more], [data-an-idle]");
+    var el = e.target.closest("[data-an-action], [data-an-period], [data-an-stake], [data-an-sport]");
     if (!el || !root.contains(el)) return;
-    if (el.hasAttribute("data-an-action")) {
-      var act = el.getAttribute("data-an-action");
-      if (act === "refresh") anSyncAll();
-      else if (act === "older") anSyncAll(AN_MORE_DAYS);
-      renderAnalyse();
-      return;
-    }
-    function set(key, val) { anState[key] = val; anState.jLimit = 40; anSavePrefs(); renderAnalyse(); }
-    if (el.hasAttribute("data-an-period")) return set("period", el.getAttribute("data-an-period"));
-    if (el.hasAttribute("data-an-stake")) return set("minStake", Number(el.getAttribute("data-an-stake")) || AN_MIN_BET);
-    if (el.hasAttribute("data-an-entry")) return set("entry", el.getAttribute("data-an-entry"));
-    if (el.hasAttribute("data-an-delay")) return set("delay", Number(el.getAttribute("data-an-delay")) || 0);
-    if (el.hasAttribute("data-an-rsort")) return set("rankSort", el.getAttribute("data-an-rsort"));
-    if (el.hasAttribute("data-an-idle")) { anState.showIdle = true; renderAnalyse(); return; }
-    if (el.hasAttribute("data-an-detail")) { anOpenDetail(el.getAttribute("data-an-detail"), true); return; }
-    if (el.hasAttribute("data-an-jb")) { anState.jBehavior = el.getAttribute("data-an-jb"); anState.jLimit = 40; renderAnalyse(); return; }
-    if (el.hasAttribute("data-an-jr")) { anState.jResult = el.getAttribute("data-an-jr"); anState.jLimit = 40; renderAnalyse(); return; }
-    if (el.hasAttribute("data-an-js")) { anState.jSort = el.getAttribute("data-an-js"); renderAnalyse(); return; }
-    if (el.hasAttribute("data-an-more")) { anState.jLimit += 40; renderAnalyse(); return; }
-    if (el.hasAttribute("data-an-row")) {
-      var key = el.getAttribute("data-an-row");
-      anState.expanded[key] = !anState.expanded[key];
-      if (anState.expanded[key] && !anState.fills[key]) {
-        var bet = (anModel()[key.split("|")[0]] || []).filter(function (b) { return b.key === key; })[0];
-        if (bet) anLoadFills(bet);
-      }
-      renderAnalyse();
-    }
+    if (el.hasAttribute("data-an-action")) { anSyncAll(); renderAnalyse(); return; }
+    if (el.hasAttribute("data-an-period")) anState.period = el.getAttribute("data-an-period");
+    if (el.hasAttribute("data-an-stake")) anState.minStake = Number(el.getAttribute("data-an-stake")) || AN_MIN_BET;
+    if (el.hasAttribute("data-an-sport")) anState.sport = el.getAttribute("data-an-sport");
+    anSavePrefs();
+    renderAnalyse();
   });
-  document.addEventListener("keydown", function (e) {
-    if (e.key !== "Enter" && e.key !== " ") return;
-    var row = e.target && e.target.closest ? e.target.closest(".an-rank-row[data-an-detail]") : null;
-    if (!row) return;
-    e.preventDefault();
-    anOpenDetail(row.getAttribute("data-an-detail"), true);
+  document.addEventListener("mousemove", function (e) {
+    if (e.target && e.target.closest && e.target.closest("#anChart")) anChartHover(e);
   });
-  document.addEventListener("change", function (e) {
-    if (e.target && e.target.id === "anDetailSelect") anOpenDetail(e.target.value, false);
+  document.addEventListener("mouseout", function (e) {
+    var wrap = document.getElementById("anChart");
+    if (!wrap || !wrap.contains(e.target) || (e.relatedTarget && wrap.contains(e.relatedTarget))) return;
+    var cross = document.getElementById("anChCross"), tip = document.getElementById("anChTip");
+    if (cross) cross.setAttribute("visibility", "hidden");
+    if (tip) tip.hidden = true;
   });
 
   // Reopen whichever tab was last used; a first visit lands on Accueil.
