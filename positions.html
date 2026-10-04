@@ -60,6 +60,9 @@
     --an-t1: #2563eb;
     --an-t2: #c2410c;
     --an-t3: #7c3aed;
+    --an-t4: #0d9488;
+    --an-t5: #be123c;
+    --an-t6: #65a30d;
     /* Structural corner-rounding scale — small chips/badges/buttons use
        --radius-sm, cards/panels/boxes use --radius-md. Pills (999px) and
        perfect circles (50%) stay literal since those are already a
@@ -99,6 +102,9 @@
       --an-t1: #60a5fa;
       --an-t2: #fb923c;
       --an-t3: #c4b5fd;
+      --an-t4: #2dd4bf;
+      --an-t5: #fb7185;
+      --an-t6: #a3e635;
     }
   }
   :root[data-theme="dark"] {
@@ -125,6 +131,9 @@
     --an-t1: #60a5fa;
     --an-t2: #fb923c;
     --an-t3: #c4b5fd;
+    --an-t4: #2dd4bf;
+    --an-t5: #fb7185;
+    --an-t6: #a3e635;
   }
   * { box-sizing: border-box; }
   body {
@@ -2378,6 +2387,19 @@
   .an-rline b.an-neg { color: var(--red); }
   .an-gap-title { margin: 6px 0 10px; }
   @media (max-width: 640px) { .an-crow { grid-template-columns: 1fr; } }
+  .an-seg-traders button { display: inline-flex; align-items: center; }
+  .an-seg-traders button small { font-weight: 400; opacity: .75; margin-left: 4px; }
+  .an-seg-traders button:not(.active) .an-dot { opacity: .35; }
+  .an-tbl-cells td { vertical-align: top; }
+  .an-tbl-cells td b { display: block; }
+  .an-tbl-cells td small, .an-journal td small { display: block; font-size: 10.5px; color: var(--text-dim); font-weight: 400; }
+  .an-tbl thead th.current { color: var(--text); }
+  .an-verdict-cell { font-size: 12px; color: var(--text-dim); white-space: normal; min-width: 150px; }
+  .an-journal td { vertical-align: top; }
+  .an-journal .an-jmatch { white-space: normal; min-width: 220px; max-width: 360px; line-height: 1.35; }
+  .an-journal a { color: var(--text); text-decoration: none; }
+  .an-journal a:hover { text-decoration: underline; color: var(--accent); }
+  .an-nowrap { white-space: nowrap; }
   /* Analyse v2 — copy & hold: verdict, ranking, types, confidence ranges */
   .an-global { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: flex-start; }
   .an-global-main { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -14046,7 +14068,8 @@
   // their whole history is in.
   var AN_DATA_API = "https://data-api.polymarket.com";
   var AN_GAMMA_API = "https://gamma-api.polymarket.com";
-  var AN_TRADER_NAMES = ["RN1", "VeryLucky888", "flaznorp"];
+  var AN_ALWAYS = { RN1: true, VeryLucky888: true, flaznorp: true }; // the first three asked for
+  var AN_MIN_WEIGHT = 8;            // …plus every Polymarket trader rated above this
   var AN_MIN_BET = 1000;            // a market counts from this stake on the trader's main side
   var AN_MIN_LEG_COST = 100;        // smaller legs aren't stored — can't move a ≥ 1 000 $ bet
   var AN_INITIAL_DAYS = 30;         // a trader's first scan
@@ -14055,7 +14078,7 @@
   var AN_RESYNC_MS = 15 * 60 * 1000;
   var AN_BACKFILL_RESYNC_MS = 60 * 1000; // while history is still being filled in
   var AN_FIRST_SYNC_DELAY_MS = 40 * 1000; // after page load — the live refresh gets the network first
-  var AN_ENRICH_PER_SYNC = 1500;    // bets per sync whose fills get fetched; the rest waits for the next one
+  var AN_ENRICH_PER_SYNC = 3000;    // bets per sync whose fills get fetched; the rest waits for the next one
   var AN_HELD_TOLERANCE = 0.03;     // average exit within 3¢ of the final price = held to the result
   var AN_HEDGE_MIN_RATIO = 0.10;    // other side ≥ 10 % of the main stake = "camp adverse"
   var AN_MIN_N = 10;                // below this a figure is still shown, never colored
@@ -14065,10 +14088,17 @@
   var AN_MY_STAKES = [100, 500, 1000, 3000, 10000];
 
   var anTraderByName = null;
+  var anTraderList = null;
   function analysisTraders() {
-    return AN_TRADER_NAMES.map(function (n) {
-      return TRADERS.filter(function (t) { return t.name === n && t.platform === "polymarket" && t.address; })[0];
-    }).filter(Boolean);
+    if (anTraderList) return anTraderList;
+    var seen = {};
+    anTraderList = TRADERS.filter(function (t) {
+      if (t.platform !== "polymarket" || !t.address || seen[t.name]) return false;
+      if (!AN_ALWAYS[t.name] && !((t.weight || 0) > AN_MIN_WEIGHT)) return false;
+      seen[t.name] = true;
+      return true;
+    });
+    return anTraderList;
   }
   function anTrader(name) {
     if (!anTraderByName) { anTraderByName = {}; analysisTraders().forEach(function (t) { anTraderByName[t.name] = t; }); }
@@ -14078,7 +14108,7 @@
 
   var AN_PREFS_KEY = "vtAnalysePrefs2";
   var anState = {
-    period: "30", minStake: AN_MIN_BET, sport: "all", mode: "hold", pre: false, stake: 1000,
+    period: "30", minStake: AN_MIN_BET, sport: "all", mode: "hold", pre: false, stake: 1000, hidden: {}, jLimit: 50,
     loaded: false, loading: null, dbOk: true, syncing: false, lastSyncAt: 0, progress: {}, errors: {}, pagesRead: 0,
     legs: {}, open: {}, markets: {}, timing: {}, meta: {},
     model: null, dirty: true, renderTimer: null, lastRenderAt: 0, lastCount: 0
@@ -14091,12 +14121,13 @@
       if (typeof p.sport === "string") anState.sport = p.sport;
       if (p.mode === "hold" || p.mode === "trader") anState.mode = p.mode;
       anState.pre = !!p.pre;
+      if (p.hidden && typeof p.hidden === "object") anState.hidden = p.hidden;
       if (AN_MY_STAKES.indexOf(p.stake) !== -1) anState.stake = p.stake;
     } catch (e) { /* defaults */ }
   })();
   function anSavePrefs() {
     try {
-      localStorage.setItem(AN_PREFS_KEY, JSON.stringify({ period: anState.period, minStake: anState.minStake, sport: anState.sport, mode: anState.mode, pre: anState.pre, stake: anState.stake }));
+      localStorage.setItem(AN_PREFS_KEY, JSON.stringify({ period: anState.period, minStake: anState.minStake, sport: anState.sport, mode: anState.mode, pre: anState.pre, stake: anState.stake, hidden: anState.hidden }));
     } catch (e) { /* convenience only */ }
   }
 
@@ -14563,9 +14594,9 @@
     anState.pagesRead = 0;
     anRenderStatus();
     var traders = analysisTraders();
-    // Once the backlog is done, each sync also reaches AN_BACKFILL_STEP_DAYS
-    // further back for every trader whose history isn't all in yet.
-    var auto = !olderDays && anPendingEnrich() === 0;
+    // Each sync also reaches AN_BACKFILL_STEP_DAYS further back for every
+    // trader whose history isn't all in yet (fills follow, newest first).
+    var auto = !olderDays;
     try {
       var done = 0;
       await anPool(traders, 3, function (t) {
@@ -14774,9 +14805,13 @@
   // ----- Simulation: only finished bets whose result is known -----
   var AN_SPORT_LABELS = { "⚽": "Football", "🎾": "Tennis", "🏀": "Basket", "⚾": "Baseball", "🏈": "Foot US", "🏒": "Hockey",
     "🥊": "MMA / boxe", "🎮": "Esport", "🏏": "Cricket", "🏉": "Rugby", "🏎️": "F1", "🏁": "NASCAR", "⛳": "Golf", "♟️": "Échecs", "🎲": "Autres" };
-  var AN_TRADER_COLORS = ["var(--an-t1)", "var(--an-t2)", "var(--an-t3)"];
+  var AN_TRADER_COLORS = ["var(--an-t1)", "var(--an-t2)", "var(--an-t3)", "var(--an-t4)", "var(--an-t5)", "var(--an-t6)"];
   function anSportLabel(e) { return AN_SPORT_LABELS[e] ? e + " " + AN_SPORT_LABELS[e] : (e || "Autres"); }
-  function anTraderColor(name) { var i = AN_TRADER_NAMES.indexOf(name); return AN_TRADER_COLORS[i < 0 ? 0 : i]; }
+  // Fixed per trader (his place in the list), whatever is shown or hidden.
+  function anTraderColor(name) {
+    var i = analysisTraders().map(function (t) { return t.name; }).indexOf(name);
+    return i >= 0 && i < AN_TRADER_COLORS.length ? AN_TRADER_COLORS[i] : "var(--text-dim)";
+  }
   // arb: both sides held and locked in (a profit whatever happens) — not a
   // bet on the result. Otherwise held to the result, or sold before it, in
   // profit or at a loss (average sell price vs average buy price).
@@ -14952,7 +14987,14 @@
   }
   function anConsoleHtml(sports) {
     var sportOpts = [["all", "Tous"]].concat(sports.map(function (s) { return [s.sport, anSportLabel(s.sport) + " · " + s.n]; }));
+    var chips = analysisTraders().map(function (t) {
+      var on = !anState.hidden[t.name];
+      return '<button type="button" data-an-trader="' + esc(t.name) + '"' + (on ? ' class="active" aria-pressed="true"' : ' aria-pressed="false"') + '>' +
+        '<span class="an-dot" style="background:' + anTraderColor(t.name) + '"></span>' + esc(t.name) +
+        ' <small>' + esc(String(t.weight).replace(".", ",")) + (t.stakeMultiplier > 1 ? ' · ×' + t.stakeMultiplier : '') + '</small></button>';
+    }).join("");
     return '<section class="an-section an-console"><h3 class="an-stitle">Simulateur</h3>' +
+      '<div class="an-crow"><span class="an-clabel">Traders<small>RN1 + les traders notés plus de ' + AN_MIN_WEIGHT + '</small></span><div class="an-seg an-seg-traders" role="group" aria-label="Traders">' + chips + '</div></div>' +
       anSegHtml("Stratégie", "data-an-mode", [["hold", "Garder jusqu'à la fin"], ["trader", "Faire comme le trader"]], anState.mode) +
       anSegHtml("Ta mise par pari", "data-an-mystake", AN_MY_STAKES.map(function (v) { return [v, anK(v)]; }), anState.stake) +
       anSegHtml("Paris du trader", "data-an-stake", AN_STAKE_LEVELS.map(function (v) { return [v, v === AN_MIN_BET ? "Tous (1 k$ et +)" : anK(v) + " et +"]; }), anState.minStake, "on copie quand sa mise atteint ce montant") +
@@ -15065,38 +15107,33 @@
     '</div>';
   }
 
-  // ----- Stake levels and sports -----
+  // ----- Stake levels and sports: one row per trader -----
+  function anCellHtml(roi, n, extra) {
+    var few = n < AN_MIN_N;
+    return '<td class="' + (few ? 'few ' : '') + anRoiCls(roi, n) + '"><b>' + anPct(roi, true) + '</b><small>' + anPl(n, "pari", "paris") + (extra ? ' · ' + extra : '') + '</small></td>';
+  }
+  function anModeRoi(s) { return anState.mode === "trader" ? s.traderRoi : s.holdRoi; }
   function anStakeTableHtml(per) {
-    var head1 = '<tr><th rowspan="2" class="an-tl">Paris du trader</th>' + per.map(function (x) {
-      return '<th colspan="3" class="an-tg"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + esc(x.t.name) + '</th>';
-    }).join("") + '</tr>';
-    var head2 = '<tr>' + per.map(function () { return '<th class="an-tg">Paris</th><th title="Le côté où il venait d\'atteindre le seuil, à ce prix-là, gardé jusqu\'au résultat">Garder</th><th title="Son propre résultat sur le pari, ventes et couvertures comprises">Comme lui</th>'; }).join("") + '</tr>';
-    var trend = {};
-    var rows = AN_STAKE_LEVELS.map(function (lvl) {
-      return '<tr' + (lvl === anState.minStake ? ' class="current"' : '') + '><th class="an-tl">' + esc(anStakeLabel(lvl)) + '</th>' + per.map(function (x) {
-        var s = anStats(anFiltered(x.all, { lvl: lvl }), lvl);
-        var few = s.hN < AN_MIN_N;
-        var main = anState.mode === "trader" ? s.traderRoi : s.holdRoi;
-        if (!few && main != null) (trend[x.t.name] = trend[x.t.name] || []).push(main);
-        return '<td class="an-tg' + (few ? ' few' : '') + '">' + anNum(s.bets) + '</td>' +
-          '<td class="' + (few ? 'few ' : '') + anRoiCls(s.holdRoi, s.hN) + '">' + (anState.mode === "hold" ? '<b>' + anPct(s.holdRoi, true) + '</b>' : anPct(s.holdRoi, true)) + '</td>' +
-          '<td class="' + (few ? 'few ' : '') + anRoiCls(s.traderRoi, s.tN) + '">' + (anState.mode === "trader" ? '<b>' + anPct(s.traderRoi, true) + '</b>' : anPct(s.traderRoi, true)) + '</td>';
-      }).join("") + '</tr>';
-    }).join("");
-    var verdicts = per.map(function (x) {
-      var tr = trend[x.t.name] || [], txt;
-      if (tr.length < 2) txt = "pas encore assez de gros paris pour le dire";
+    var head = '<tr><th class="an-tl">Trader</th>' + AN_STAKE_LEVELS.map(function (lvl) {
+      return '<th' + (lvl === anState.minStake ? ' class="current"' : '') + '>' + esc(lvl === AN_MIN_BET ? "Tous" : anK(lvl) + " et +") + '</th>';
+    }).join("") + '<th class="an-tl">Plus il mise, mieux c\'est ?</th></tr>';
+    var rows = per.map(function (x) {
+      var trend = [];
+      var cells = AN_STAKE_LEVELS.map(function (lvl) {
+        var s = anStats(anFiltered(x.all, { lvl: lvl }), lvl), roi = anModeRoi(s);
+        if (s.hN >= AN_MIN_N && roi != null) trend.push(roi);
+        return anCellHtml(roi, s.hN);
+      }).join("");
+      var txt;
+      if (trend.length < 2) txt = "pas encore assez de gros paris";
       else {
-        var diff = tr[tr.length - 1] - tr[0];
+        var diff = trend[trend.length - 1] - trend[0];
         var pts = (diff > 0 ? "+" : "−") + Math.abs(Math.round(diff)) + " pts";
-        txt = diff > 3 ? "oui, ses plus grosses mises rapportent plus (" + pts + ")"
-          : diff < -3 ? "non, ses plus grosses mises rapportent moins (" + pts + ")"
-          : "pas de différence nette selon la mise";
+        txt = diff > 3 ? "oui (" + pts + ")" : diff < -3 ? "non, moins bien (" + pts + ")" : "pas de différence nette";
       }
-      return '<li><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span><b>' + esc(x.t.name) + '</b> : ' + esc(txt) + '</li>';
+      return '<tr><th class="an-tl"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + esc(x.t.name) + '</th>' + cells + '<td class="an-tl an-verdict-cell">' + esc(txt) + '</td></tr>';
     }).join("");
-    return '<div class="an-scroll"><table class="an-tbl"><thead>' + head1 + head2 + '</thead><tbody>' + rows + '</tbody></table></div>' +
-      '<ul class="an-verdicts">' + verdicts + '</ul>';
+    return '<div class="an-scroll"><table class="an-tbl an-tbl-cells"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>';
   }
   function anSportRows(per) {
     var n = {};
@@ -15105,21 +15142,66 @@
   }
   function anSportTableHtml(per, sports) {
     if (!sports.length) return '<div class="an-dim an-empty">Aucun pari terminé avec ces réglages.</div>';
-    var head1 = '<tr><th rowspan="2" class="an-tl">Sport</th>' + per.map(function (x) {
-      return '<th colspan="4" class="an-tg"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + esc(x.t.name) + '</th>';
+    var head = '<tr><th class="an-tl">Trader</th>' + sports.map(function (sp) {
+      return '<th' + (sp.sport === anState.sport ? ' class="current"' : '') + '>' + esc(anSportLabel(sp.sport)) + '</th>';
     }).join("") + '</tr>';
-    var head2 = '<tr>' + per.map(function () { return '<th class="an-tg">Paris</th><th>Avant match</th><th title="Gardés jusqu\'au résultat par le trader (hors arbitrages)">Gardés</th><th>ROI</th>'; }).join("") + '</tr>';
-    var rows = sports.map(function (sp) {
-      return '<tr' + (sp.sport === anState.sport ? ' class="current"' : '') + '><th class="an-tl">' + esc(anSportLabel(sp.sport)) + '</th>' + per.map(function (x) {
+    var rows = per.map(function (x) {
+      return '<tr><th class="an-tl"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + esc(x.t.name) + '</th>' + sports.map(function (sp) {
         var s = anStats(anFiltered(x.all, { sport: sp.sport }), anState.minStake);
-        var few = s.hN < AN_MIN_N, roi = anState.mode === "trader" ? s.traderRoi : s.holdRoi;
-        return '<td class="an-tg' + (few ? ' few' : '') + '">' + anNum(s.n) + '</td>' +
-          '<td class="' + (few ? 'few' : '') + '">' + anShare(s.pre, s.pre + s.live) + '</td>' +
-          '<td class="' + (few ? 'few' : '') + '">' + anShare(s.held, s.n - s.arb) + '</td>' +
-          '<td class="' + (few ? 'few ' : '') + anRoiCls(roi, s.hN) + '"><b>' + anPct(roi, true) + '</b></td>';
+        if (!s.n) return '<td class="few">—</td>';
+        return anCellHtml(anModeRoi(s), s.hN, anShare(s.pre, s.pre + s.live) + ' avant · ' + anShare(s.held, s.n - s.arb) + ' gardés');
       }).join("") + '</tr>';
     }).join("");
-    return '<div class="an-scroll"><table class="an-tbl"><thead>' + head1 + head2 + '</thead><tbody>' + rows + '</tbody></table></div>';
+    return '<div class="an-scroll"><table class="an-tbl an-tbl-cells"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  // ----- The bets themselves, exactly those behind the figures above -----
+  function anCents(p) { return p == null || isNaN(p) ? "—" : (Math.round(p * 1000) / 10).toFixed(1).replace(/\.0$/, "").replace(".", ",") + "¢"; }
+  function anWhenShort(ms) {
+    var d = new Date(ms);
+    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  }
+  function anRelLabel(min) {
+    var a = Math.abs(min);
+    var txt = a >= 2880 ? Math.round(a / 1440) + " j" : (a >= 90 ? Math.round(a / 60) + " h" : Math.max(1, Math.round(a)) + " min");
+    return min < 0 ? txt + " avant" : txt + " de jeu";
+  }
+  function anOutcomeName(b, oi) {
+    for (var i = 0; i < b.legs.length; i++) if (b.legs[i].oi === oi && b.legs[i].outcome) {
+      var o = b.legs[i].outcome;
+      return o === "Yes" ? "Oui" : (o === "No" ? "Non" : o);
+    }
+    return "Issue " + (oi + 1);
+  }
+  var AN_KIND_LABELS = { held: "Gardé", soldWin: "Sorti en gain", soldLoss: "Sorti en perte", arb: "Arbitrage" };
+  function anJournalHtml(per) {
+    var list = [];
+    per.forEach(function (x) { x.bets.forEach(function (b) { if (!b.arb && anR(b, anState.mode, anState.minStake) != null) list.push(b); }); });
+    list.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
+    if (!list.length) return '<div class="an-dim an-empty">Aucun pari avec ces réglages.</div>';
+    var rows = list.slice(0, anState.jLimit).map(function (b) {
+      var e = anEntry(b, anState.minStake), fin = anFinOf(b, e.oi);
+      var r = anR(b, anState.mode, anState.minStake), pnl = r * anState.stake;
+      var rel = b.kickoff ? anRelLabel((e.ts * 1000 - b.kickoff) / 60000) : "";
+      var url = b.ev ? "https://polymarket.com/event/" + encodeURIComponent(b.ev) : "";
+      return '<tr>' +
+        '<td class="an-tl an-nowrap">' + esc(anWhenShort(b.kickoff || e.ts * 1000)) + '</td>' +
+        '<td class="an-tl an-nowrap"><span class="an-dot" style="background:' + anTraderColor(b.trader) + '"></span>' + esc(b.trader) + '</td>' +
+        '<td class="an-tl an-jmatch">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + '</td>' +
+        '<td class="an-tl">' + esc(anOutcomeName(b, e.oi)) + '</td>' +
+        '<td>' + anCents(e.price) + (rel ? '<small>' + esc(rel) + '</small>' : '') + '</td>' +
+        '<td>' + anNum(b.main.cost) + ' $' + (b.two ? '<small>+ ' + anNum(b.other.cost) + ' $ en face</small>' : '') + '</td>' +
+        '<td class="an-tl">' + esc(AN_KIND_LABELS[anKind(b)]) + '</td>' +
+        '<td class="an-tl ' + (fin === 1 ? 'an-pos' : 'an-neg') + '">' + (fin === 1 ? 'Gagné' : 'Perdu') + '</td>' +
+        '<td class="' + (pnl >= 0 ? 'an-pos' : 'an-neg') + '"><b>' + anUsdSigned(pnl) + '</b></td>' +
+      '</tr>';
+    }).join("");
+    return '<div class="an-scroll"><table class="an-tbl an-journal"><thead><tr>' +
+        '<th class="an-tl">Match</th><th class="an-tl">Trader</th><th class="an-tl">Marché</th><th class="an-tl">Camp copié</th>' +
+        '<th title="Son prix quand sa mise a atteint le seuil, et le moment par rapport au coup d\'envoi">Entrée</th><th title="Sa mise sur son côté principal, à la fin">Sa mise</th>' +
+        '<th class="an-tl">Lui</th><th class="an-tl" title="Résultat du camp copié">Résultat</th><th>Toi</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (list.length > anState.jLimit ? '<div class="an-more"><button type="button" class="an-btn" data-an-more="1">Voir 50 paris de plus (' + anNum(list.length - anState.jLimit) + ' restants)</button></div>' : '');
   }
   function anMethodHtml() {
     return '<details class="an-section an-method"><summary class="an-stitle">Comment c\'est calculé</summary><ul class="an-list">' +
@@ -15146,7 +15228,7 @@
     anState.lastRenderAt = Date.now();
     var model = anModel();
     anState.pendingN = 0;
-    var per = analysisTraders().map(function (t) {
+    var per = analysisTraders().filter(function (t) { return !anState.hidden[t.name]; }).map(function (t) {
       var all = model[t.name] || [];
       var bets = anFiltered(all);
       anState.pendingN += anPendingCount(all);
@@ -15158,38 +15240,49 @@
       renderAnalyse();
       return;
     }
+    var period = anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours";
     el.innerHTML =
-      '<div class="an-head"><div class="an-head-text"><h2 class="section-title an-title">🔬 RN1 · VeryLucky888 · flaznorp</h2>' +
-        '<div class="an-sub">Leurs paris rejoués depuis Polymarket : choisis comment tu les aurais copiés, et vois ce que ça aurait donné.</div></div>' +
+      '<div class="an-head"><div class="an-head-text"><h2 class="section-title an-title">🔬 Copier les meilleurs traders</h2>' +
+        '<div class="an-sub">Leurs paris rejoués depuis Polymarket : choisis comment tu les aurais copiés, et vois ce que ça aurait donné, pari par pari.</div></div>' +
         '<div class="an-head-actions"><button type="button" class="an-btn" data-an-action="refresh"' + (anState.syncing ? ' disabled' : '') + '>↻ Mettre à jour</button></div></div>' +
       '<div class="an-status" id="anStatus">' + anStatusHtml() + '</div>' +
       anConsoleHtml(sports) +
+      (per.length ? '' : '<div class="an-dim an-empty">Choisis au moins un trader.</div>') +
       '<section class="an-section"><h3 class="an-stitle">Résultat avec ' + anK(anState.stake) + ' par pari, ' + esc(anModeLabel()) + '</h3>' +
         '<div class="an-ssub">' + esc(anScope()) + ' · hors arbitrages' +
           (anState.pendingN ? ' · <b>' + anPl(anState.pendingN, "pari encore en cours d'analyse", "paris encore en cours d'analyse") + '</b>, ajoutés au fur et à mesure' : '') + '</div>' +
         anResultsHtml(per) + anChartHtml(per) + '</section>' +
+      '<section class="an-section"><h3 class="an-stitle">Les paris</h3>' +
+        '<div class="an-ssub">Exactement ceux qui font les chiffres ci-dessus, du plus récent au plus ancien · « Toi » : ce que la stratégie choisie t\'aurait rapporté avec ' + anK(anState.stake) + '.</div>' +
+        anJournalHtml(per) + '</section>' +
       '<section class="an-section"><h3 class="an-stitle">Plus il mise, mieux c\'est ?</h3>' +
-        '<div class="an-ssub">ROI moyen par pari copié, selon le montant atteint par le trader · ' + esc((anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours") + (anState.pre ? " · avant le match" : "") + (anState.sport !== "all" ? " · " + anSportLabel(anState.sport) : "")) + '</div>' +
+        '<div class="an-ssub">ROI moyen par pari selon le montant atteint par le trader, stratégie choisie · ' + esc(period + (anState.pre ? " · avant le match" : "") + (anState.sport !== "all" ? " · " + anSportLabel(anState.sport) : "")) + '</div>' +
         anStakeTableHtml(per) + '</section>' +
+      '<section class="an-section"><h3 class="an-stitle">Par sport</h3>' +
+        '<div class="an-ssub">ROI moyen par pari (stratégie choisie), nombre de paris, part entrée avant le match, part gardée par le trader jusqu\'au résultat · ' + esc(period + " · paris de " + anStakeLabel(anState.minStake) + (anState.pre ? " · avant le match" : "")) + '</div>' +
+        anSportTableHtml(per, sports) + '</section>' +
       '<h3 class="an-stitle an-gap-title">Leur comportement · ' + esc(anScope()) + '</h3>' +
       '<div class="an-cards">' + per.map(function (x) { return anCardHtml(x.t, x.st); }).join("") + '</div>' +
-      '<section class="an-section"><h3 class="an-stitle">Par sport</h3>' +
-        '<div class="an-ssub">Avant match : part des paris où il avait atteint le seuil avant le coup d\'envoi. Gardés : part qu\'il a gardée jusqu\'au résultat. ROI : stratégie choisie · ' + esc((anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours") + " · paris de " + anStakeLabel(anState.minStake) + (anState.pre ? " · avant le match" : "")) + '</div>' +
-        anSportTableHtml(per, sports) + '</section>' +
       anMethodHtml();
   }
   document.addEventListener("click", function (e) {
     var root = document.getElementById("analyseContent");
     if (!root || !root.contains(e.target) || !e.target.closest) return;
-    var el = e.target.closest("[data-an-action], [data-an-period], [data-an-stake], [data-an-sport], [data-an-mode], [data-an-mystake], [data-an-pre]");
+    var el = e.target.closest("[data-an-action], [data-an-period], [data-an-stake], [data-an-sport], [data-an-mode], [data-an-mystake], [data-an-pre], [data-an-trader], [data-an-more]");
     if (!el || !root.contains(el)) return;
     if (el.hasAttribute("data-an-action")) { anSyncAll(); renderAnalyse(); return; }
+    if (el.hasAttribute("data-an-more")) { anState.jLimit += 50; renderAnalyse(); return; }
     if (el.hasAttribute("data-an-period")) anState.period = el.getAttribute("data-an-period");
     if (el.hasAttribute("data-an-stake")) anState.minStake = Number(el.getAttribute("data-an-stake")) || AN_MIN_BET;
     if (el.hasAttribute("data-an-sport")) anState.sport = el.getAttribute("data-an-sport");
     if (el.hasAttribute("data-an-mode")) anState.mode = el.getAttribute("data-an-mode");
     if (el.hasAttribute("data-an-mystake")) anState.stake = Number(el.getAttribute("data-an-mystake")) || 1000;
     if (el.hasAttribute("data-an-pre")) anState.pre = el.getAttribute("data-an-pre") === "1";
+    if (el.hasAttribute("data-an-trader")) {
+      var n = el.getAttribute("data-an-trader");
+      if (anState.hidden[n]) delete anState.hidden[n]; else anState.hidden[n] = true;
+    }
+    anState.jLimit = 50;
     anSavePrefs();
     renderAnalyse();
   });
