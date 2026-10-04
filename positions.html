@@ -2419,6 +2419,12 @@
   .an-gap-title { margin: 6px 0 10px; }
   @media (max-width: 640px) { .an-crow { grid-template-columns: 1fr; } }
   .an-seg-traders button.an-seg-mini { border-style: dashed; font-weight: 600; }
+  .an-plink { color: inherit; text-decoration: none; }
+  .an-plink:hover { color: var(--accent); text-decoration: underline; }
+  .an-plink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  .an-result .an-card-head { min-width: 0; flex-wrap: wrap; }
+  .an-result .an-name { min-width: 0; overflow-wrap: anywhere; }
+  .an-result-empty .an-dim { font-size: 12px; }
   .an-seg-traders button { display: inline-flex; align-items: center; }
   .an-seg-traders button small { font-weight: 400; opacity: .75; margin-left: 4px; }
   .an-seg-traders button:not(.active) .an-dot { opacity: .35; }
@@ -14969,11 +14975,30 @@
   }
 
   // ----- Output: result per trader + chart -----
+  // The trader's name, linking to his Polymarket profile (new tab).
+  function anNameLink(name) {
+    var t = anTrader(name);
+    if (!t || !t.address) return esc(name);
+    return '<a class="an-plink" href="https://polymarket.com/profile/' + esc(t.address) + '" target="_blank" rel="noopener" title="Voir le profil Polymarket de ' + esc(name) + '">' + esc(name) + '</a>';
+  }
+  // Why a trader shows no bet yet: not fetched, still being analysed, or
+  // really nothing matching the settings.
+  function anEmptyReason(x) {
+    var m = anState.meta[x.t.name];
+    if (!m || !m.oldestTs) return anState.syncing ? "chargement de son historique…" : "historique pas encore chargé — il arrive à la prochaine mise à jour";
+    if (x.pending) return anPl(x.pending, "pari en cours d'analyse", "paris en cours d'analyse") + " — ajoutés au fur et à mesure";
+    return "aucun pari avec ces réglages depuis le " + anDay(m.oldestTs * 1000);
+  }
   function anResultsHtml(per) {
     return '<div class="an-results">' + per.map(function (x) {
       var r = x.sim;
+      if (!r.n) {
+        return '<div class="an-result an-result-empty" style="--an-c:' + anTraderColor(x.t.name) + '">' +
+          '<div class="an-card-head"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span><span class="an-name">' + anNameLink(x.t.name) + '</span></div>' +
+          '<div class="an-dim">' + esc(anEmptyReason(x)) + '</div></div>';
+      }
       return '<div class="an-result" style="--an-c:' + anTraderColor(x.t.name) + '">' +
-        '<div class="an-card-head"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span><span class="an-name">' + esc(x.t.name) + '</span></div>' +
+        '<div class="an-card-head"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span><span class="an-name">' + anNameLink(x.t.name) + '</span>' + (x.pending ? '<span class="an-dim">+ ' + anNum(x.pending) + ' en analyse</span>' : '') + '</div>' +
         '<div class="an-big ' + anRoiCls(r.roi, r.n) + '">' + (r.n ? anUsdSigned(r.pnl) : '—') + '</div>' +
         '<div class="an-rline"><span>' + anPl(r.n, "pari", "paris") + '</span><span>ROI <b class="' + anRoiCls(r.roi, r.n) + '">' + anPct(r.roi, true) + '</b></span>' +
           '<span>' + anPct(r.win, false, 0) + ' gagnants</span><span>pire creux <b>' + (r.n ? "−" + anNum(r.dd) + " $" : "—") + '</b></span></div>' +
@@ -15054,7 +15079,7 @@
     var color = anTraderColor(t.name);
     var sold = s.soldWin + s.soldLoss;
     return '<div class="an-card an-card3" style="--an-c:' + color + '">' +
-      '<div class="an-card-head"><span class="an-dot" style="background:' + color + '"></span><span class="an-name">' + esc(t.name) + '</span>' +
+      '<div class="an-card-head"><span class="an-dot" style="background:' + color + '"></span><span class="an-name">' + anNameLink(t.name) + '</span>' +
         '<span class="an-dim">' + anPl(s.n, "pari", "paris") + '</span></div>' +
       '<div class="an-bar-block"><div class="an-bar-label">Entrée</div>' +
         anStack([{ v: s.pre, label: "Avant le match", color: "var(--an-pre)" }, { v: s.live, label: "Pendant le match", color: "var(--an-live)" }]) + '</div>' +
@@ -15095,7 +15120,7 @@
         var pts = (diff > 0 ? "+" : "−") + Math.abs(Math.round(diff)) + " pts";
         txt = diff > 3 ? "oui (" + pts + ")" : diff < -3 ? "non, moins bien (" + pts + ")" : "pas de différence nette";
       }
-      return '<tr><th class="an-tl"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + esc(x.t.name) + '</th>' + cells + '<td class="an-tl an-verdict-cell">' + esc(txt) + '</td></tr>';
+      return '<tr><th class="an-tl"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + anNameLink(x.t.name) + '</th>' + cells + '<td class="an-tl an-verdict-cell">' + esc(txt) + '</td></tr>';
     }).join("");
     return '<div class="an-scroll"><table class="an-tbl an-tbl-cells"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>';
   }
@@ -15110,7 +15135,7 @@
       return '<th' + (sp.sport === anState.sport ? ' class="current"' : '') + '>' + esc(anSportLabel(sp.sport)) + '</th>';
     }).join("") + '</tr>';
     var rows = per.map(function (x) {
-      return '<tr><th class="an-tl"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + esc(x.t.name) + '</th>' + sports.map(function (sp) {
+      return '<tr><th class="an-tl"><span class="an-dot" style="background:' + anTraderColor(x.t.name) + '"></span>' + anNameLink(x.t.name) + '</th>' + sports.map(function (sp) {
         var s = anStats(anFiltered(x.all, { sport: sp.sport }), anState.minStake);
         if (!s.n) return '<td class="few">—</td>';
         return anCellHtml(anModeRoi(s), s.hN, anShare(s.pre, s.pre + s.live) + ' avant · ' + anShare(s.held, s.n - s.arb) + ' gardés');
@@ -15150,7 +15175,7 @@
       var url = b.ev ? "https://polymarket.com/event/" + encodeURIComponent(b.ev) : "";
       return '<tr>' +
         '<td class="an-tl an-nowrap">' + esc(anWhenShort(b.kickoff || e.ts * 1000)) + '</td>' +
-        '<td class="an-tl an-nowrap"><span class="an-dot" style="background:' + anTraderColor(b.trader) + '"></span>' + esc(b.trader) + '</td>' +
+        '<td class="an-tl an-nowrap"><span class="an-dot" style="background:' + anTraderColor(b.trader) + '"></span>' + anNameLink(b.trader) + '</td>' +
         '<td class="an-tl an-jmatch">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + '</td>' +
         '<td class="an-tl">' + esc(anOutcomeName(b, e.oi)) + '</td>' +
         '<td>' + anCents(e.price) + (rel ? '<small>' + esc(rel) + '</small>' : '') + '</td>' +
@@ -15195,8 +15220,9 @@
     var per = analysisTraders().filter(function (t) { return !anState.hidden[t.name]; }).map(function (t) {
       var all = model[t.name] || [];
       var bets = anFiltered(all);
-      anState.pendingN += anPendingCount(all);
-      return { t: t, all: all, bets: bets, st: anStats(bets, anState.minStake), sim: anSimulate(bets) };
+      var pending = anPendingCount(all);
+      anState.pendingN += pending;
+      return { t: t, all: all, pending: pending, bets: bets, st: anStats(bets, anState.minStake), sim: anSimulate(bets) };
     });
     var sports = anSportRows(per);
     if (anState.sport !== "all" && !sports.some(function (s) { return s.sport === anState.sport; })) {
