@@ -332,7 +332,7 @@
      as one deliberate family, not just "bold". Mes Positions is bold too
      but plain-colored — no gold assigned to it specifically, on request.
      tab-btn-group-start's margin-left:auto is what actually pushes
-     Trades par profils/Trades récents/Archives/All Time/Auto Note>7/Auto
+     Trades par profils/Trades récents/Archives/All Time/Auto
      Big Trades to the right as one cluster, trailing naturally in order
      within it. */
   .tab-gold-1 { color: var(--tab-gold-1); }
@@ -2337,6 +2337,7 @@
     .an-cal-txt { min-width: 0; font-size: 11.5px; }
     .an-cal-txt small { display: none; }
   }
+  .auto-pre-banner { font-size: 12.5px; padding: 7px 10px; margin-bottom: 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--panel-border)); }
   /* Analyse v3 — three traders: entry, exit, adverse side, stake levels, sports */
   .an-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; margin-right: 6px; }
   .an-card3 { border-top: 3px solid var(--an-c); }
@@ -2669,8 +2670,7 @@
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="auto-note7" type="button"><span class="tab-btn-icon">🤖</span>Auto Note&gt;7</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="auto-bigtrade" type="button"><span class="tab-btn-icon">🐋</span>Auto Big Trades</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="auto-bigtrade" type="button"><span class="tab-btn-icon">🐋</span>Auto &gt;10k avant-match</button>
   </div>
 
   <div class="tab-panel active" id="tab-home">
@@ -2900,40 +2900,9 @@
     </div>
   </div>
 
-  <div class="tab-panel" id="tab-auto-note7">
-    <h2 class="section-title">🤖 Auto Note&gt;7 <span class="count-pill" id="autoNote7Count">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte complète, tout value trade dont la note dépasse 7 — pas besoin de cliquer 📌. Ne repart pas de l'historique : commence vide et n'enregistre qu'à partir de maintenant, une seule fois par marché. Une fois capturé, un trade reste ici pour toujours, même si sa note retombe sous 7 ensuite (ou qu'il disparaît carrément de Value Trades) — rien n'est jamais retiré automatiquement. Simulé à mise plate (voir "Et si je misais"), même prix value-trade que partout ailleurs sur ce site. Local à ce navigateur — pas synchronisé sur tes autres appareils.</div>
-    <div class="snap-sync-bar">
-      <button type="button" id="autoNote7ExportBtn" class="snap-sync-link" title="Télécharger les captures automatiques (y compris la corbeille) en JSON">⬇️ Exporter</button>
-      <button id="autoNote7TrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
-    </div>
-    <div id="autoNote7PnlChartContent"></div>
-    <div class="snap-toggle-bar">
-      <button type="button" id="autoNote7TierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="autoNote7">▸ Le winrate par conviction</button>
-      <button type="button" id="autoNote7NoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="autoNote7">▸ L'analyse winrate × note</button>
-      <button type="button" id="autoNote7DistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="autoNote7">▸ L'analyse cote × confiance</button>
-      <button type="button" id="autoNote7ManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="autoNote7">▸ Manuel vs suivi auto</button>
-      <button type="button" id="autoNote7WeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="autoNote7">▸ Paris par semaine</button>
-      <button type="button" id="autoNote7OtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="autoNote7">▸ Autres stats</button>
-      <button type="button" id="autoNote7TraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="autoNote7">▸ Le tableau des traders</button>
-      <button type="button" id="autoNote7InvertSimToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="invertsim" data-store="autoNote7">▸ Simulation inversée — et si on fadait les whales ?</button>
-    </div>
-    <div id="autoNote7TierWinrateContent"></div>
-    <div id="autoNote7NoteWinrateContent"></div>
-    <div id="autoNote7DistContent"></div>
-    <div id="autoNote7ManualVsAutoContent"></div>
-    <div id="autoNote7WeeklyPnlContent"></div>
-    <div id="autoNote7OtherStatsContent"></div>
-    <div id="autoNote7TraderTableContent"></div>
-    <div id="autoNote7InvertSimContent"></div>
-    <div id="autoNote7Content" class="value-trades-box">
-      <div class="empty-note">Rien capturé pour l'instant.</div>
-    </div>
-  </div>
-
   <div class="tab-panel" id="tab-auto-bigtrade">
-    <h2 class="section-title">🐋 Auto Big Trades <span class="count-pill" id="autoBigTradeCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte complète, tout value trade où un trader suivi a mis 50 000 $+ — pas besoin de cliquer 📌. Suivi LOCAL uniquement : ceci n'exécute jamais de vrai ordre sur Polymarket/Predict.fun, aucune clé/wallet n'est branché ici — c'est un enregistrement pour voir ce que ça aurait donné si tu avais pris la position dans le sens de cette grosse mise. Capturé seulement quand la grosse mise est sur le camp déjà leader du trade (voir l'astuce sur la carte) — ne repart pas de l'historique, une seule fois par marché, pour toujours une fois capturé. Simulé à mise plate (voir "Et si je misais"). Local à ce navigateur — pas synchronisé sur tes autres appareils.</div>
+    <h2 class="section-title">🐋 Auto &gt;10k avant-match <span class="count-pill" id="autoBigTradeCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte Value Trades complète, tout match où <b>flaznorp</b> ou <b>RN1</b> a mis 10 000 $ ou plus <b>avant le coup d'envoi</b>, sur leur camp et au prix du marché à ce moment-là — pas besoin de cliquer 📌. Suivi LOCAL uniquement : aucun vrai ordre n'est jamais passé. Ne capture que tant que le site est ouvert (avant le début du match), une seule fois par match.</div>
     <div class="snap-sync-bar">
       <button type="button" id="autoBigTradeExportBtn" class="snap-sync-link" title="Télécharger les captures automatiques (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button id="autoBigTradeTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
@@ -3444,17 +3413,6 @@
   var testWeeklyPnlContent = document.getElementById("testWeeklyPnlContent");
   var testOtherStatsContent = document.getElementById("testOtherStatsContent");
   var testTraderTableContent = document.getElementById("testTraderTableContent");
-  var autoNote7Content = document.getElementById("autoNote7Content");
-  var autoNote7CountEl = document.getElementById("autoNote7Count");
-  var autoNote7TierWinrateContent = document.getElementById("autoNote7TierWinrateContent");
-  var autoNote7NoteWinrateContent = document.getElementById("autoNote7NoteWinrateContent");
-  var autoNote7PnlChartContent = document.getElementById("autoNote7PnlChartContent");
-  var autoNote7DistContent = document.getElementById("autoNote7DistContent");
-  var autoNote7ManualVsAutoContent = document.getElementById("autoNote7ManualVsAutoContent");
-  var autoNote7WeeklyPnlContent = document.getElementById("autoNote7WeeklyPnlContent");
-  var autoNote7OtherStatsContent = document.getElementById("autoNote7OtherStatsContent");
-  var autoNote7TraderTableContent = document.getElementById("autoNote7TraderTableContent");
-  var autoNote7InvertSimContent = document.getElementById("autoNote7InvertSimContent");
   var autoBigTradeContent = document.getElementById("autoBigTradeContent");
   var autoBigTradeCountEl = document.getElementById("autoBigTradeCount");
   var autoBigTradeTierWinrateContent = document.getElementById("autoBigTradeTierWinrateContent");
@@ -3656,7 +3614,7 @@
   var expandedValueTrades = {}; // unit key -> bool, survives the 10s auto-refresh rebuilding the list (Value Trades and the peer-panel cards share this — same card, same key)
   var siblingPanelOpen = {}; // unit stableKey -> bool — "⇄" toggle, see findSiblingUnits
   var allUnitsGlobal = []; // every render unit, unfiltered — set once per refresh cycle in renderAll, reused by "Par match" so it doesn't need its own pass over tradersData
-  var valueTradesUnitsGlobal = []; // Value Trades' own filtered/scored allUnits (5-99¢, not over, not trashed, note>=floor) — stashed in renderValueTrades, reused by captureAutoNote7Signals so it never invents its own definition of "value trade"
+  var valueTradesUnitsGlobal = []; // Value Trades' own filtered/scored allUnits (5-99¢, not over, not trashed, note>=floor) — stashed in renderValueTrades, reused wherever a feature needs Value Trades' own definition of "value trade"
   var expandedMatches = {}; // match key -> bool, same "survives a rebuild" purpose as expandedValueTrades
   var byMatchTraderFilter = false; // "Par match" — only show trades where swisstony or RN1 has a position
   var byMatchHighlighted = {}; // "Par match" — trader name -> bool, toggled by clicking their name in a trade row
@@ -3690,10 +3648,7 @@
       chartSelectedId: null, chartPrevScrollY: null, expandedItems: {},
       traderTableSort: { key: "total", dir: "desc" }, traderCardFilter: null, traderTableCollapsed: true, traderTableWeightBrackets: [],
       trashMode: false, distCollapsed: true, tierWinrateCollapsed: true, noteWinrateCollapsed: true,
-      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false,
-      // Auto Note>7 only (see renderAutoNote7InvertSim) — harmless unused
-      // field on every other store, same as the rest of this shared shape.
-      invertSimCollapsed: true
+      manualVsAutoCollapsed: true, weeklyPnlCollapsed: true, otherStatsCollapsed: true, weeklyTableExpanded: false
     };
   }
   var rtMinValue = 0;
@@ -6883,7 +6838,7 @@
   // enqueueSnapshotOp / positions-only local-write applyPositionOp.
   function enqueueOp(store, op) {
     store.save(applyOpToList(store.loadRaw(), op));
-    // A store with no remotePath (AUTO_NOTE7_STORE — local-only, nothing to
+    // A store with no remotePath (AUTO_BIGTRADE_STORE — local-only, nothing to
     // reconcile against) has nothing to queue or sync either: skip both
     // rather than push into a queue that would only ever grow, unconsumed,
     // and attempt a fetch against an undefined endpoint.
@@ -7183,20 +7138,6 @@
     if (!avgPrice || avgPrice <= 0) return null;
     return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
   }
-  // Auto Note>7's "simulation inversée" (on request, 2026-09-22): the exact
-  // mirror of hypotheticalFlatPnl above, betting AGAINST the leader instead
-  // of with it. Priced at 1 - avgPrice — the same binary-normalized
-  // complement leaderRoi already assumes elsewhere on this page — since most
-  // captured units don't carry a real, tradable price for "the other side"
-  // as its own recorded number. Treat this as an order of magnitude, not a
-  // price anyone could actually have gotten filled at.
-  function invertedFlatPnl(snap, flatStake) {
-    if (!snap.winningSide || !snap.leaderName) return null;
-    var avgPrice = snapLeaderPrice(snap);
-    if (!avgPrice || avgPrice <= 0 || avgPrice >= 1) return null;
-    var contrarianPrice = 1 - avgPrice;
-    return snap.leaderName !== snap.winningSide ? flatStake * (1 / contrarianPrice - 1) : -flatStake;
-  }
   // Everything that differs between "Mes Snapshots" and "Mes Positions" —
   // both tabs share the entire dashboard/chart/stats/card rendering suite
   // below, parameterized by one of these two descriptors, rather than
@@ -7350,85 +7291,6 @@
       otherStatsToggle: "testOtherStatsToggleBtn", traderTableToggle: "testTraderTableToggleBtn" },
     state: freshStoreState()
   };
-  // ---------- Auto Note>7 (on request: a blank, forward-only auto-follow —
-  // captures every value trade that ever crosses the note threshold from
-  // the moment this shipped, never backfilled from history) ----------
-  // Its own localStorage key, genuinely independent data (not a view over
-  // snapshots/positions like TEST_STORE) — but purely local: no remotePath/
-  // queueKey means enqueueOp (see its own comment) skips the sync queue and
-  // network fetch entirely for this store, so trashing/marking a result
-  // here never touches AWS. That also means this list does NOT sync across
-  // devices/browsers — only the one that was open and auto-capturing.
-  var AUTO_NOTE7_KEY = "vtAutoNote7Snapshots";
-  var AUTO_NOTE7_THRESHOLD = 7;
-  function loadAutoNote7Raw() {
-    try { return JSON.parse(localStorage.getItem(AUTO_NOTE7_KEY) || "[]"); } catch (e) { return []; }
-  }
-  function loadAutoNote7() {
-    return loadAutoNote7Raw().filter(function (s) { return !s.deletedAt; });
-  }
-  function saveAutoNote7ToStorage(list) {
-    try { localStorage.setItem(AUTO_NOTE7_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
-  }
-  var AUTO_NOTE7_STORE = {
-    name: "autoNote7",
-    loadRaw: loadAutoNote7Raw, load: loadAutoNote7, save: saveAutoNote7ToStorage,
-    stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
-    allowTakePosition: false,
-    allowEditPosition: false, // no cote/manual correction — this list is meant to stay an untouched record of what the rule actually captured
-    allowSimStakeSlider: true,
-    itemNoun: "snapshot",
-    emptyHint: "Rien capturé pour l'instant — dès qu'un value trade passe au-dessus de la note seuil, il atterrit ici tout seul, plus besoin de cliquer 📌.",
-    dateLabelPrefix: "Capturé le",
-    simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment de la capture"; },
-    cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
-    els: { count: autoNote7CountEl, pnlChart: autoNote7PnlChartContent,
-      tierWinrate: autoNote7TierWinrateContent, noteWinrate: autoNote7NoteWinrateContent, dist: autoNote7DistContent,
-      list: autoNote7Content,
-      manualVsAuto: autoNote7ManualVsAutoContent, weeklyPnl: autoNote7WeeklyPnlContent, otherStats: autoNote7OtherStatsContent,
-      traderTable: autoNote7TraderTableContent, invertSim: autoNote7InvertSimContent },
-    ids: { distToggle: "autoNote7DistToggleBtn",
-      tierToggle: "autoNote7TierWinrateToggleBtn", noteToggle: "autoNote7NoteWinrateToggleBtn",
-      manualVsAutoToggle: "autoNote7ManualVsAutoToggleBtn", weeklyPnlToggle: "autoNote7WeeklyPnlToggleBtn",
-      otherStatsToggle: "autoNote7OtherStatsToggleBtn", traderTableToggle: "autoNote7TraderTableToggleBtn",
-      invertSimToggle: "autoNote7InvertSimToggleBtn" },
-    state: freshStoreState()
-  };
-  // Same "legitimate value trade" definition Value Trades itself shows —
-  // not the wider, unfiltered allUnitsGlobal (Par match's own pool, which
-  // includes decided/over/trashed markets — see its own comment) — reuses
-  // renderValueTrades' own already-filtered list (stashed there as
-  // valueTradesUnitsGlobal, zero extra computation) rather than recomputing
-  // a second filter pass that could quietly drift from what that tab shows.
-  // Captured once per real-world market, forever (unitStableKey, the same
-  // "seen before" key markUnitSeen already uses) — never re-captured just
-  // because a market's note is still above the bar three cycles later. The
-  // reverse holds too, explicitly on request: this function only ever
-  // CONCATS onto the existing list (added.concat(existing) below), never
-  // filters it — so a captured entry survives its market's note later
-  // dropping back under the threshold, or the market disappearing from
-  // valueTradesUnitsGlobal entirely (decided, price moved outside 5-99¢,
-  // trashed). Nothing anywhere in this store's write path (this function,
-  // or the shared trash/restore ops) ever drops an entry for score reasons —
-  // only a user's own 🗑 does.
-  function captureAutoNote7Signals() {
-    if (!valueTradesUnitsGlobal.length) return;
-    var existing = AUTO_NOTE7_STORE.loadRaw();
-    var alreadyCaptured = {};
-    existing.forEach(function (s) { if (s.autoCaptureKey) alreadyCaptured[s.autoCaptureKey] = true; });
-    var added = [];
-    valueTradesUnitsGlobal.forEach(function (u) {
-      if (u.score == null || u.score <= AUTO_NOTE7_THRESHOLD) return;
-      var key = unitStableKey(u);
-      if (alreadyCaptured[key]) return;
-      alreadyCaptured[key] = true;
-      var snap = buildSnapshotFromUnit(u);
-      snap.autoCaptureKey = key;
-      snap.isAutoCaptured = true;
-      added.push(snap);
-    });
-    if (added.length) saveAutoNote7ToStorage(added.concat(existing));
-  }
   // Auto-fills "camp gagnant" once a captured trade's real-world market has
   // actually resolved (on request) — Polymarket-linked entries only for now
   // (see the slug regex below); a Predict.fun-only capture still needs its
@@ -7440,9 +7302,8 @@
   // Runs on a slow interval (see the setInterval calls near the bottom of
   // this file), not every refresh cycle — a real match takes hours to
   // resolve, and this is a real network call per still-pending entry through
-  // the same throttled queue every other fetch here shares. Shared by Auto
-  // Note>7 and Auto Big Trades (2026-09-22) — identical mechanism, just
-  // parameterized by which store/tab it's resolving for.
+  // the same throttled queue every other fetch here shares. Parameterized by
+  // which store/tab it's resolving for.
   async function checkAutoStoreResolutions(store, tabId, renderFn) {
     var full = store.loadRaw();
     var pending = full.filter(function (s) { return !s.winningSide && !s.deletedAt; });
@@ -7478,66 +7339,19 @@
       if (tab && tab.classList.contains("active")) renderFn();
     }
   }
-  function checkAutoNote7Resolutions() { return checkAutoStoreResolutions(AUTO_NOTE7_STORE, "tab-auto-note7", renderAutoNote7); }
-  function renderAutoNote7() { renderStoreView(AUTO_NOTE7_STORE); }
-  // Auto Note>7 only (on request, 2026-09-22) — "et si on avait fadé les
-  // whales à chaque fois ?" A collapsible section under the real chart
-  // instead of a second tab: it's a derived hypothetical over the exact
-  // same captured rows, sharing the real card list below (click-to-jump
-  // lands on the same real cards) rather than a new record of anything —
-  // reusing buildHistoryChartSvg (which only needs a `series` array) keeps
-  // this to the pricing swap alone, not a parallel copy of the whole
-  // dashboard/store machinery a real second tab would need.
-  function renderAutoNote7InvertSim(list, store) {
-    var el = store.els.invertSim;
-    if (!el) return;
-    syncSnapToggleLabel(store.ids.invertSimToggle, store.state.invertSimCollapsed, "la simulation inversée");
-    if (store.state.invertSimCollapsed) { el.innerHTML = ""; return; }
-    var decided = list.filter(function (s) { return !!s.winningSide; }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
-    var stake = HYPOTHETICAL_FLAT_STAKE;
-    var realCum = 0, invCum = 0, realWin = 0, invWin = 0, n = 0;
-    var series = [];
-    decided.forEach(function (snap) {
-      var realPnl = hypotheticalFlatPnl(snap, stake);
-      var invPnl = invertedFlatPnl(snap, stake);
-      if (realPnl == null || invPnl == null) return;
-      n++;
-      realCum += realPnl; invCum += invPnl;
-      if (realPnl > 0) realWin++;
-      if (invPnl > 0) invWin++;
-      var won = invPnl >= 0;
-      series.push({ date: new Date(snap.savedAt), value: invCum, delta: invPnl, id: snap.id, win: won, pointColor: won ? "#00e676" : "#ff1744" });
-    });
-    var titleHtml = '<div class="tier-wr-title">🔄 Simulation inversée — et si on fadait les whales ?</div>';
-    if (n < 2) {
-      el.innerHTML = '<div class="chart-box">' + titleHtml + '<div class="empty-note" style="padding:14px 0;">Pas assez de captures décidées pour ça.</div></div>';
-      return;
-    }
-    var realRoi = (realCum / (n * stake) * 100).toFixed(1);
-    var invRoi = (invCum / (n * stake) * 100).toFixed(1);
-    var statsHtml = '<div class="pnl-chart-stats">' +
-      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + n + '</span></div>' +
-      '<div class="pnl-chart-stat" title="Ce que Auto Note>7 montre déjà — en suivant le leader"><span class="pnl-chart-stat-label">Réel (suivi whales)</span><span class="pnl-chart-stat-value ' + (realCum >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(realCum)) + ' <span class="dim">(' + (realCum >= 0 ? "+" : "") + realRoi + '%, ' + Math.round(realWin / n * 100) + '% WR)</span></span></div>' +
-      '<div class="pnl-chart-stat" title="Même mise, même trades, mais contre le leader"><span class="pnl-chart-stat-label">Inversé (fade)</span><span class="pnl-chart-stat-value ' + (invCum >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(invCum)) + ' <span class="dim">(' + (invCum >= 0 ? "+" : "") + invRoi + '%, ' + Math.round(invWin / n * 100) + '% WR)</span></span></div>' +
-    '</div>';
-    var boxId = "autoNote7-invertSimBox";
-    el.innerHTML = '<div class="chart-box" id="' + boxId + '"><div class="pnl-chart-header">' + titleHtml + statsHtml + '</div>' +
-      buildHistoryChartSvg(series) +
-      '<div class="chart-hint">Clique un point pour aller au trade correspondant (la vraie carte, pas une version inversée) — reclique pour revenir.</div>' +
-      '<div class="empty-note" style="padding:8px 0 0;">Prix "camp adverse" approximé par 1 − cote du leader (même convention que le ROI-si-gagne affiché ailleurs sur le site) — un ordre de grandeur, pas un prix réellement tradable sur ce camp.</div>' +
-    '</div>';
-    var box = document.getElementById(boxId);
-    if (box) { wireHistoryChartTooltip(box); wireSnapPnlChartClicks(box, store); }
-  }
-  // ---------- Auto Big Trades (on request, 2026-09-22) ----------
-  // LOCAL TRACKING ONLY — this never places a real order. No wallet, key or
-  // trading API is touched anywhere in this file; captureAutoBigTradeSignals
-  // below only ever writes a frozen card into localStorage, the exact same
-  // "what would this have done" record Auto Note>7 already keeps. Same
-  // reasoning as that store's own comment: its own localStorage key, no
+  // ---------- Auto >10k avant-match (on request, 2026-10-04 — replaces
+  // Auto Note>7 and Auto Big Trades) ----------
+  // Captures, with its full Value Trades card, every market where flaznorp
+  // or RN1 has 10 000 $+ on one side while the match hasn't started yet —
+  // the bets the Analyse tab is about. LOCAL TRACKING ONLY: this never
+  // places a real order; no wallet, key or trading API is touched anywhere
+  // in this file, it only writes a frozen card into localStorage. No
   // remotePath/queueKey (enqueueOp skips sync/network for it entirely), so
-  // it's local to this browser only.
-  var AUTO_BIGTRADE_KEY = "vtAutoBigTradeSnapshots";
+  // it's local to this browser. The internal names (autoBigTrade…) are kept
+  // from the store it replaced; the list itself starts empty (new key).
+  var AUTO_BIGTRADE_KEY = "vtAutoPre10kSnapshots";
+  var AUTO_PRE_TRADERS = ["flaznorp", "RN1"];
+  var AUTO_PRE_MIN_STAKE = 10000;
   function loadAutoBigTradeRaw() {
     try { return JSON.parse(localStorage.getItem(AUTO_BIGTRADE_KEY) || "[]"); } catch (e) { return []; }
   }
@@ -7555,9 +7369,9 @@
     allowEditPosition: false, // no cote/manual correction — this list is meant to stay an untouched record of what the rule actually captured
     allowSimStakeSlider: true,
     itemNoun: "snapshot",
-    emptyHint: "Rien capturé pour l'instant — dès qu'un trader suivi met 50 000 $+ sur un value trade (dans le sens du camp déjà leader), il atterrit ici tout seul, plus besoin de cliquer 📌. Un trader à facteur multiplicateur (×N, mise simulée) ne compte jamais pour ce seuil.",
+    emptyHint: "Rien capturé pour l'instant — dès que flaznorp ou RN1 a 10 000 $+ sur un match qui n'a pas encore commencé, le trade atterrit ici tout seul, sur leur camp. Seulement tant que le site est ouvert.",
     dateLabelPrefix: "Capturé le",
-    simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix du marché au moment de la capture"; },
+    simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " sur leur camp, au prix du marché au moment de la capture"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
     els: { count: autoBigTradeCountEl, pnlChart: autoBigTradePnlChartContent,
       tierWinrate: autoBigTradeTierWinrateContent, noteWinrate: autoBigTradeNoteWinrateContent, dist: autoBigTradeDistContent,
@@ -7570,52 +7384,57 @@
       otherStatsToggle: "autoBigTradeOtherStatsToggleBtn", traderTableToggle: "autoBigTradeTraderTableToggleBtn" },
     state: freshStoreState()
   };
-  // Same "legitimate value trade" pool Auto Note>7 uses (valueTradesUnitsGlobal)
-  // — captured once per real-world market forever (unitStableKey), never
-  // dropped for score reasons afterward, same guarantee as Auto Note>7 (see
-  // its own long comment above — identical reasoning, not repeated here).
-  //
-  // Scoped to units where the qualifying big stake sits on the unit's OWN
-  // natural leader side (mergeUnitSides sorts by trader COUNT first, stake
-  // second — a lone $50k+ whale against a crowd of smaller traders on the
-  // other side does not automatically make their side "leader"). A capture
-  // oriented to a side other than parts.leaderName would need its header/
-  // badge rebuilt around that side instead of just reusing buildSnapshotFromUnit
-  // as-is — skipped for now rather than shipped showing a misleading side;
-  // that whale-against-the-crowd case is exactly the kind of trade worth
-  // flagging too, just not built here yet.
+  // Every open market with a tracked position (allUnitsGlobal — not only
+  // the ones Value Trades' note floor lets through), captured once per
+  // real-world market forever (unitStableKey) and never dropped afterwards.
+  // "Before kickoff" needs the precise kickoff from gamma: until it's
+  // cached the unit is skipped (its fetch is queued) and looked at again
+  // on the next cycle. The capture follows THEIR side, even when the crowd
+  // is on the other one: leaderName/leaderPriceAtSnapshot (what the
+  // result and the simulation read) are switched to it, and a banner on
+  // the card says whose bet it was.
   function captureAutoBigTradeSignals() {
-    if (!valueTradesUnitsGlobal.length) return;
+    if (!allUnitsGlobal.length) return;
     var existing = AUTO_BIGTRADE_STORE.loadRaw();
     var alreadyCaptured = {};
     existing.forEach(function (s) { if (s.autoCaptureKey) alreadyCaptured[s.autoCaptureKey] = true; });
-    var added = [];
-    valueTradesUnitsGlobal.forEach(function (u) {
+    var added = [], now = Date.now();
+    allUnitsGlobal.forEach(function (u) {
       var key = unitStableKey(u);
       if (alreadyCaptured[key]) return;
       var mergedSides = mergeUnitSides(u);
-      var maxStake = unitMaxTraderStake(mergedSides);
-      if (maxStake < BIG_TRADE_STAKE_THRESHOLD) return;
-      var bigSide = null;
-      var bigTrader = null;
+      var best = null;
       mergedSides.forEach(function (m) {
+        var byTrader = {};
         m.items.forEach(function (it) {
-          it.s.entries.forEach(function (e) { if (e.stake === maxStake) { bigSide = m.name; bigTrader = e.trader; } });
+          it.s.entries.forEach(function (e) {
+            // What they paid (shares × average price), not what the position
+            // is worth right now — a 12 k$ bet that's drifted down still counts.
+            var paid = e.shares > 0 && e.avgPrice > 0 ? e.shares * e.avgPrice : (e.stake || 0);
+            if (AUTO_PRE_TRADERS.indexOf(e.trader) !== -1) byTrader[e.trader] = (byTrader[e.trader] || 0) + paid;
+          });
+        });
+        Object.keys(byTrader).forEach(function (n) {
+          if (byTrader[n] >= AUTO_PRE_MIN_STAKE && (!best || byTrader[n] > best.stake)) best = { trader: n, stake: byTrader[n], side: m };
         });
       });
-      var parts = computeUnitCardParts(u);
-      if (!bigSide || bigSide !== parts.leaderName) return;
-      // A stakeMultiplier trader's stake here is simulated (see
-      // normalizePredictPosition/normalizePolyPosition) — e.g. a real $500
-      // bet at ×100 reads as $50,000 and would clear BIG_TRADE_STAKE_THRESHOLD
-      // on a bet that was never actually big. Skip the capture whenever the
-      // qualifying stake itself belongs to one of those traders.
-      if (bigTrader && STAKE_MULTIPLIER_BY_NAME[bigTrader]) return;
+      if (!best || !u.matchKey) return;
+      var timing = matchTimingCache[u.matchKey];
+      if (!timing) { scheduleMatchTimingFetch(u.matchKey); return; }
+      if (!timing.kickoff || timing.kickoff.getTime() <= now) return;
+      var price = mergedSideAvgPrice(best.side);
+      if (price == null || price <= 0.01 || price >= 0.99) return;
       alreadyCaptured[key] = true;
       var snap = buildSnapshotFromUnit(u);
       snap.autoCaptureKey = key;
       snap.isAutoCaptured = true;
-      snap.bigTradeStake = maxStake; // the qualifying stake itself, for display context on the card
+      snap.leaderName = best.side.name;
+      snap.leaderPriceAtSnapshot = price;
+      snap.autoTrader = best.trader;
+      snap.autoTraderStake = best.stake;
+      snap.kickoffAt = timing.kickoff.toISOString();
+      snap.cardHtml = '<div class="auto-pre-banner">🐋 <b>' + esc(best.trader) + '</b> · ' + esc(fmtUSD(best.stake)) + ' sur <b>' + esc(best.side.name) + '</b> à ' + esc(fmtCents(price)) +
+        ' · capturé ' + esc(fmtCountdown(timing.kickoff.getTime() - now)) + ' avant le coup d\'envoi</div>' + snap.cardHtml;
       added.push(snap);
     });
     if (added.length) saveAutoBigTradeToStorage(added.concat(existing));
@@ -10767,7 +10586,6 @@
     renderManualVsAuto(list, store);
     renderWeeklyPnl(list, store);
     renderOtherStats(list, store, cardsList, activeFilterLabels);
-    if (store.name === "autoNote7") renderAutoNote7InvertSim(list, store);
     if (!cardsList.length) {
       store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
         ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
@@ -12310,7 +12128,6 @@
       if (btn.getAttribute("data-tab") === "positions") renderPositions();
       if (btn.getAttribute("data-tab") === "archives") renderArchives();
       if (btn.getAttribute("data-tab") === "test") renderTest();
-      if (btn.getAttribute("data-tab") === "auto-note7") renderAutoNote7();
       if (btn.getAttribute("data-tab") === "auto-bigtrade") renderAutoBigTrade();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
@@ -12637,9 +12454,8 @@
         // Runs every cycle regardless of which tab is open — the whole
         // point is capturing a signal the moment it crosses the bar, not
         // only while someone happens to be looking at this tab (unlike the
-        // "only re-render if active" snapshots/positions/autoNote7 checks
+        // "only re-render if active" snapshots/positions checks
         // right below, which are purely a rendering-cost optimization).
-        captureAutoNote7Signals();
         captureAutoBigTradeSignals();
         // Snapshots aren't part of renderAll (rebuilding that list every
         // cycle would fight the user's scroll/expand state for no reason
@@ -12651,8 +12467,6 @@
         if (snapTab && snapTab.classList.contains("active")) renderSnapshots();
         var posTab = document.getElementById("tab-positions");
         if (posTab && posTab.classList.contains("active")) renderPositions();
-        var autoNote7Tab = document.getElementById("tab-auto-note7");
-        if (autoNote7Tab && autoNote7Tab.classList.contains("active")) renderAutoNote7();
         var autoBigTradeTab = document.getElementById("tab-auto-bigtrade");
         if (autoBigTradeTab && autoBigTradeTab.classList.contains("active")) renderAutoBigTrade();
         var homeTab = document.getElementById("tab-home");
@@ -12819,7 +12633,6 @@
     if (name === "positions") return POSITIONS_STORE;
     if (name === "test") return TEST_STORE;
     if (name === "unconfident") return UNCONFIDENT_STORE;
-    if (name === "autoNote7") return AUTO_NOTE7_STORE;
     if (name === "autoBigTrade") return AUTO_BIGTRADE_STORE;
     return SNAPSHOTS_STORE;
   }
@@ -13254,13 +13067,6 @@
       renderTraderTable(traderTableStore.load(), traderTableStore);
       return;
     }
-    var invertSimToggleBtn = e.target.closest ? e.target.closest(".snap-stats-toggle-btn[data-panel='invertsim']") : null;
-    if (invertSimToggleBtn) {
-      var invertSimStore = resolveStoreFromEl(invertSimToggleBtn);
-      invertSimStore.state.invertSimCollapsed = !invertSimStore.state.invertSimCollapsed;
-      renderAutoNote7InvertSim(invertSimStore.load(), invertSimStore);
-      return;
-    }
     // Checked ahead of th.sortable[data-store] below — .trader-table-th also
     // carries the plain "sortable" class (for the shared hover/cursor CSS),
     // so it would otherwise match that generic selector too and re-render
@@ -13525,8 +13331,6 @@
   wireExport(POSITIONS_STORE, "posExportBtn");
   wireExport(TEST_STORE, "testExportBtn");
   wireTrashToggle(TEST_STORE, "testTrashToggleBtn", renderTest);
-  wireExport(AUTO_NOTE7_STORE, "autoNote7ExportBtn");
-  wireTrashToggle(AUTO_NOTE7_STORE, "autoNote7TrashToggleBtn", renderAutoNote7);
   wireExport(AUTO_BIGTRADE_STORE, "autoBigTradeExportBtn");
   wireTrashToggle(AUTO_BIGTRADE_STORE, "autoBigTradeTrashToggleBtn", renderAutoBigTrade);
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
@@ -13965,8 +13769,6 @@
   // the 10s refresh cadence (see checkAutoStoreResolutions's own comment).
   // Once on load too, so a result already settled since the last visit
   // shows up right away instead of waiting a full interval.
-  checkAutoNote7Resolutions();
-  setInterval(checkAutoNote7Resolutions, 300000);
   checkAutoBigTradeResolutions();
   setInterval(checkAutoBigTradeResolutions, 300000);
   // ---------- 🔔 notification center ----------
