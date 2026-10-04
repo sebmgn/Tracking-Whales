@@ -14634,13 +14634,13 @@
       if (!m || !m.oldestTs) return;
       oldest = oldest == null ? m.oldestTs : Math.min(oldest, m.oldestTs);
       newest = newest == null ? m.oldestTs : Math.max(newest, m.oldestTs);
-      per.push(t.name + " : " + new Date(m.oldestTs * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }));
+      per.push(t.name + " depuis le " + new Date(m.oldestTs * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }));
     });
     var parts = [];
     // One date when every trader's history starts the same day, each one's
     // own otherwise (an interrupted "+ jours" can leave them uneven).
     if (oldest) parts.push(newest - oldest > 6 * 3600
-      ? "Historique depuis le " + per.join(", ")
+      ? "Historique : " + per.join(", ")
       : "Historique depuis le " + new Date(oldest * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }));
     parts.push(anNum(count) + (count >= 2 ? " paris" : " pari") + " de 1 000 $ et plus en mémoire");
     if (anState.lastSyncAt) parts.push("mis à jour à " + new Date(anState.lastSyncAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
