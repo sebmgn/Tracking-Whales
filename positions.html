@@ -63,6 +63,16 @@
     --an-t4: #0d9488;
     --an-t5: #be123c;
     --an-t6: #65a30d;
+    --an-t7: #a16207;
+    --an-t8: #0369a1;
+    --an-t9: #9d174d;
+    --an-t10: #15803d;
+    --an-t11: #92400e;
+    --an-t12: #475569;
+    --an-t13: #0e7490;
+    --an-t14: #b91c1c;
+    --an-t15: #a21caf;
+    --an-t16: #3f6212;
     /* Structural corner-rounding scale — small chips/badges/buttons use
        --radius-sm, cards/panels/boxes use --radius-md. Pills (999px) and
        perfect circles (50%) stay literal since those are already a
@@ -105,6 +115,16 @@
       --an-t4: #2dd4bf;
       --an-t5: #fb7185;
       --an-t6: #a3e635;
+      --an-t7: #facc15;
+      --an-t8: #38bdf8;
+      --an-t9: #f472b6;
+      --an-t10: #4ade80;
+      --an-t11: #d6a76c;
+      --an-t12: #cbd5e1;
+      --an-t13: #67e8f9;
+      --an-t14: #f87171;
+      --an-t15: #e879f9;
+      --an-t16: #bef264;
     }
   }
   :root[data-theme="dark"] {
@@ -134,6 +154,16 @@
     --an-t4: #2dd4bf;
     --an-t5: #fb7185;
     --an-t6: #a3e635;
+    --an-t7: #facc15;
+    --an-t8: #38bdf8;
+    --an-t9: #f472b6;
+    --an-t10: #4ade80;
+    --an-t11: #d6a76c;
+    --an-t12: #cbd5e1;
+    --an-t13: #67e8f9;
+    --an-t14: #f87171;
+    --an-t15: #e879f9;
+    --an-t16: #bef264;
   }
   * { box-sizing: border-box; }
   body {
@@ -2388,6 +2418,7 @@
   .an-rline b.an-neg { color: var(--red); }
   .an-gap-title { margin: 6px 0 10px; }
   @media (max-width: 640px) { .an-crow { grid-template-columns: 1fr; } }
+  .an-seg-traders button.an-seg-mini { border-style: dashed; font-weight: 600; }
   .an-seg-traders button { display: inline-flex; align-items: center; }
   .an-seg-traders button small { font-weight: 400; opacity: .75; margin-left: 4px; }
   .an-seg-traders button:not(.active) .an-dot { opacity: .35; }
@@ -2902,7 +2933,7 @@
 
   <div class="tab-panel" id="tab-auto-bigtrade">
     <h2 class="section-title">🐋 Auto &gt;10k avant-match <span class="count-pill" id="autoBigTradeCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte Value Trades complète, tout match où <b>flaznorp</b> ou <b>RN1</b> a mis 10 000 $ ou plus <b>avant le coup d'envoi</b>, sur leur camp et au prix du marché à ce moment-là — pas besoin de cliquer 📌. Suivi LOCAL uniquement : aucun vrai ordre n'est jamais passé. Ne capture que tant que le site est ouvert (avant le début du match), une seule fois par match.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte Value Trades complète, tout match où <b>flaznorp</b> ou <b>RN1</b> a mis 10 000 $ ou plus <b>avant le coup d'envoi</b>, sur leur camp et au prix du marché à ce moment-là — pas besoin de cliquer 📌. Enregistré sur le serveur (AWS) comme Saison 26/27 : visible sur tous tes navigateurs. Aucun vrai ordre n'est jamais passé. La capture se fait quand le site est ouvert sur au moins un appareil avant le début du match ; chaque carte indique quand le pari a vraiment été pris par rapport au coup d'envoi.</div>
     <div class="snap-sync-bar">
       <button type="button" id="autoBigTradeExportBtn" class="snap-sync-link" title="Télécharger les captures automatiques (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button id="autoBigTradeTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
@@ -6356,7 +6387,7 @@
     // ever shows current, active trades. loadSnapshotsRaw() itself stays
     // unfiltered (sync reconciliation and the merge-safe saves both need
     // the true full list).
-    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt && !s.lowConfidence && !s.archivedBatchId; });
+    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt && !s.lowConfidence && !s.archivedBatchId && !s.autoPre; });
   }
   function saveSnapshotsToStorage(list) {
     try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
@@ -6531,7 +6562,7 @@
     });
   }
   function loadTestRaw() {
-    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.lowConfidence; });
+    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.lowConfidence && !s.autoPre; });
     var poss = loadPositionsRaw();
     var takenFromSnapshot = {};
     poss.forEach(function (p) { if (p.sourceSnapshotId) takenFromSnapshot[p.sourceSnapshotId] = true; });
@@ -6815,10 +6846,16 @@
           remote = await fetchRemoteList(store);
         }
       }
+      // Ops queued while this sync was in flight (e.g. an auto-capture landing
+      // mid-fetch) aren't in `remote` yet — re-applied on top so they don't
+      // vanish locally, then pushed by the follow-up sync below.
+      var pendingOps = loadSyncQueue(store);
+      if (pendingOps.length) remote = pendingOps.reduce(function (l, op) { return applyOpToList(l, op); }, remote);
       store.save(remote);
       markEverSynced(store);
       updateSyncStatus(store, hasSecret ? "synced" : "readonly");
       renderStoreView(store);
+      if (pendingOps.length && hasSecret) setTimeout(function () { syncNow(store); }, 1000);
     } catch (e) {
       console.error(store.name + " sync error", e);
       // Whatever's still sitting at the front of the queue is the op that
@@ -6838,7 +6875,7 @@
   // enqueueSnapshotOp / positions-only local-write applyPositionOp.
   function enqueueOp(store, op) {
     store.save(applyOpToList(store.loadRaw(), op));
-    // A store with no remotePath (AUTO_BIGTRADE_STORE — local-only, nothing to
+    // A store with no remotePath (local-only, nothing to
     // reconcile against) has nothing to queue or sync either: skip both
     // rather than push into a queue that would only ever grow, unconsumed,
     // and attempt a fetch against an undefined endpoint.
@@ -7148,6 +7185,7 @@
     name: "snapshots",
     loadRaw: loadSnapshotsRaw, load: loadSnapshots, save: saveSnapshotsToStorage,
     excludeLowConfidence: true, // rejected trades (✕) live in the same list but belong to Snapshots non confiants
+    excludeAutoPre: true, // Auto >10k avant-match captures live in the same list but belong to their own tab
     excludeArchived: true, // archived (past-season) trades live in the same list but belong to All Time
     stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
     allowTakePosition: true,
@@ -7308,7 +7346,7 @@
     var full = store.loadRaw();
     var pending = full.filter(function (s) { return !s.winningSide && !s.deletedAt; });
     if (!pending.length) return;
-    var changed = false;
+    var changed = false, setSideOps = [];
     await Promise.all(pending.map(async function (snap) {
       var m = (snap.cardHtml || "").match(/polymarket\.com\/[a-z-]+\/event\/([a-z0-9-]+)/i);
       if (!m) return; // Predict.fun-only capture — no gamma-api equivalent wired up yet, stays manual
@@ -7330,10 +7368,14 @@
         var winName = outcomes[prices.indexOf(maxPrice)];
         var matchedSide = (snap.sides || []).filter(function (s) { return s.name === winName; })[0]
           || (snap.sides || []).filter(function (s) { return (s.name || "").toLowerCase() === (winName || "").toLowerCase(); })[0];
-        if (matchedSide) { snap.winningSide = matchedSide.name; changed = true; }
+        if (matchedSide) { snap.winningSide = matchedSide.name; changed = true; if (store.remotePath) setSideOps.push({ type: "setSide", id: snap.id, winningSide: matchedSide.name }); }
       } catch (e) { /* best-effort — retried next interval */ }
     }));
-    if (changed) {
+    if (setSideOps.length) {
+      // A synced store records the result through the normal op queue, so
+      // it reaches AWS and every other device too.
+      setSideOps.forEach(function (op) { enqueueOp(store, op); });
+    } else if (changed) {
       store.save(full);
       var tab = document.getElementById(tabId);
       if (tab && tab.classList.contains("active")) renderFn();
@@ -7349,17 +7391,30 @@
   // remotePath/queueKey (enqueueOp skips sync/network for it entirely), so
   // it's local to this browser. The internal names (autoBigTrade…) are kept
   // from the store it replaced; the list itself starts empty (new key).
-  var AUTO_BIGTRADE_KEY = "vtAutoPre10kSnapshots";
+  // Stored in AWS like Saison 26/27: ordinary snapshots in the SAME
+  // vtSnapshots list / DynamoDB table, flagged autoPre:true and filtered out
+  // of every other view (loadSnapshots, All Time, the season archive) — the
+  // same "filtered view over the shared list" pattern as UNCONFIDENT_STORE,
+  // so they survive a cleared browser and show on every device. Ids are
+  // derived from the market (autoPreId), so two browsers capturing the same
+  // bet write the same record instead of a duplicate.
+  var AUTO_PRE_LEGACY_KEY = "vtAutoPre10kSnapshots"; // local-only list from the first version (2026-10-04), moved to AWS on load
   var AUTO_PRE_TRADERS = ["flaznorp", "RN1"];
   var AUTO_PRE_MIN_STAKE = 10000;
+  function autoPreId(key) {
+    var h = 5381;
+    for (var i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
+    return "autopre-" + h.toString(36) + "-" + key.length.toString(36);
+  }
   function loadAutoBigTradeRaw() {
-    try { return JSON.parse(localStorage.getItem(AUTO_BIGTRADE_KEY) || "[]"); } catch (e) { return []; }
+    return loadSnapshotsRaw().filter(function (s) { return s.autoPre === true; });
   }
   function loadAutoBigTrade() {
     return loadAutoBigTradeRaw().filter(function (s) { return !s.deletedAt; });
   }
-  function saveAutoBigTradeToStorage(list) {
-    try { localStorage.setItem(AUTO_BIGTRADE_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
+  function saveAutoBigTradeToStorage(filteredList) {
+    var others = loadSnapshotsRaw().filter(function (s) { return s.autoPre !== true; });
+    saveSnapshotsToStorage(others.concat(filteredList));
   }
   var AUTO_BIGTRADE_STORE = {
     name: "autoBigTrade",
@@ -7369,10 +7424,14 @@
     allowEditPosition: false, // no cote/manual correction — this list is meant to stay an untouched record of what the rule actually captured
     allowSimStakeSlider: true,
     itemNoun: "snapshot",
-    emptyHint: "Rien capturé pour l'instant — dès que flaznorp ou RN1 a 10 000 $+ sur un match qui n'a pas encore commencé, le trade atterrit ici tout seul, sur leur camp. Seulement tant que le site est ouvert.",
+    emptyHint: "Rien capturé pour l'instant — dès que flaznorp ou RN1 a 10 000 $+ sur un match qui n'a pas encore commencé, le trade atterrit ici tout seul, sur leur camp.",
     dateLabelPrefix: "Capturé le",
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " sur leur camp, au prix du marché au moment de la capture"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
+    // Same underlying table/queue as Saison 26/27 — see UNCONFIDENT_STORE's
+    // comment for why a filtered view must delegate syncNow to it.
+    remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY, everSyncedKey: "vtSnapshotsEverSynced",
+    syncStore: SNAPSHOTS_STORE,
     els: { count: autoBigTradeCountEl, pnlChart: autoBigTradePnlChartContent,
       tierWinrate: autoBigTradeTierWinrateContent, noteWinrate: autoBigTradeNoteWinrateContent, dist: autoBigTradeDistContent,
       list: autoBigTradeContent,
@@ -7384,21 +7443,57 @@
       otherStatsToggle: "autoBigTradeOtherStatsToggleBtn", traderTableToggle: "autoBigTradeTraderTableToggleBtn" },
     state: freshStoreState()
   };
+  // The first version kept captures in this browser only — moved into the
+  // shared list once, then the old key is cleared.
+  function migrateLegacyAutoPre() {
+    var legacy;
+    try { legacy = JSON.parse(localStorage.getItem(AUTO_PRE_LEGACY_KEY) || "[]"); } catch (e) { legacy = []; }
+    if (!legacy.length) return;
+    var have = {};
+    loadAutoBigTradeRaw().forEach(function (x) { have[x.id] = true; });
+    legacy.forEach(function (snap) {
+      if (!snap.autoCaptureKey) return;
+      snap.id = autoPreId(snap.autoCaptureKey);
+      snap.autoPre = true;
+      snap.cardHtml = String(snap.cardHtml || "").replace(/^<div class="auto-pre-banner">[\s\S]*?<\/div>/, "");
+      if (!have[snap.id]) { have[snap.id] = true; enqueueOp(AUTO_BIGTRADE_STORE, { type: "add", id: snap.id, snapshot: snap }); }
+    });
+    try { localStorage.removeItem(AUTO_PRE_LEGACY_KEY); } catch (e) { /* retried next load */ }
+  }
+  // "🐋 flaznorp · 12 174 $ sur No à 72¢ · pris 8 h avant le coup d'envoi" —
+  // rendered on the card at display time (cardHtml itself gets rebuilt from
+  // the sides on every read, see refreshSnapshotDisplay).
+  function autoPreRelText(ms, kickoffMs) {
+    var d = kickoffMs - ms;
+    return fmtCountdown(Math.abs(d)) + (d >= 0 ? " avant le coup d'envoi" : " après le coup d'envoi");
+  }
+  function autoPreBannerHtml(snap) {
+    var ko = snap.kickoffAt ? Date.parse(snap.kickoffAt) : NaN;
+    var when;
+    if (snap.tradeTakenAt && !isNaN(ko)) {
+      when = 'pris <b>' + esc(autoPreRelText(Date.parse(snap.tradeTakenAt), ko)) + '</b>' +
+        (snap.firstBuyAt && snap.firstBuyAt !== snap.tradeTakenAt ? ' <span class="dim">(1er achat ' + esc(autoPreRelText(Date.parse(snap.firstBuyAt), ko).replace(" le coup d'envoi", "")) + ')</span>' : '');
+    } else if (!isNaN(ko)) {
+      when = 'capturé ' + esc(autoPreRelText(Date.parse(snap.savedAt), ko)) + ' <span class="dim">(heure exacte du pari en cours de récupération)</span>';
+    } else {
+      when = '';
+    }
+    return '<div class="auto-pre-banner">🐋 <b>' + esc(snap.autoTrader || "?") + '</b> · ' + esc(fmtUSD(snap.autoTraderStake || 0)) + ' sur <b>' + esc(snap.leaderName || "") + '</b>' +
+      (snap.leaderPriceAtSnapshot ? ' à ' + esc(fmtCents(snap.leaderPriceAtSnapshot)) : '') + (when ? ' · ' + when : '') + '</div>';
+  }
   // Every open market with a tracked position (allUnitsGlobal — not only
   // the ones Value Trades' note floor lets through), captured once per
-  // real-world market forever (unitStableKey) and never dropped afterwards.
-  // "Before kickoff" needs the precise kickoff from gamma: until it's
-  // cached the unit is skipped (its fetch is queued) and looked at again
-  // on the next cycle. The capture follows THEIR side, even when the crowd
-  // is on the other one: leaderName/leaderPriceAtSnapshot (what the
-  // result and the simulation read) are switched to it, and a banner on
-  // the card says whose bet it was.
+  // real-world market forever (autoCaptureKey/autoPreId) and never dropped
+  // afterwards. "Before kickoff" needs the precise kickoff from gamma:
+  // until it's cached the unit is skipped (its fetch is queued) and looked
+  // at again on the next cycle. The capture follows THEIR side, even when
+  // the crowd is on the other one: leaderName/leaderPriceAtSnapshot (what
+  // the result and the simulation read) are switched to it.
   function captureAutoBigTradeSignals() {
     if (!allUnitsGlobal.length) return;
-    var existing = AUTO_BIGTRADE_STORE.loadRaw();
     var alreadyCaptured = {};
-    existing.forEach(function (s) { if (s.autoCaptureKey) alreadyCaptured[s.autoCaptureKey] = true; });
-    var added = [], now = Date.now();
+    loadAutoBigTradeRaw().forEach(function (s) { if (s.autoCaptureKey) alreadyCaptured[s.autoCaptureKey] = true; });
+    var now = Date.now(), added = 0;
     allUnitsGlobal.forEach(function (u) {
       var key = unitStableKey(u);
       if (alreadyCaptured[key]) return;
@@ -7425,22 +7520,58 @@
       var price = mergedSideAvgPrice(best.side);
       if (price == null || price <= 0.01 || price >= 0.99) return;
       alreadyCaptured[key] = true;
+      var polyMember = u.members.filter(function (g) { return String(g.key || "").indexOf("polymarket|") === 0; })[0];
       var snap = buildSnapshotFromUnit(u);
+      snap.id = autoPreId(key);
+      snap.autoPre = true;
       snap.autoCaptureKey = key;
       snap.isAutoCaptured = true;
       snap.leaderName = best.side.name;
       snap.leaderPriceAtSnapshot = price;
       snap.autoTrader = best.trader;
-      snap.autoTraderStake = best.stake;
+      snap.autoTraderStake = Math.round(best.stake);
       snap.kickoffAt = timing.kickoff.toISOString();
-      snap.cardHtml = '<div class="auto-pre-banner">🐋 <b>' + esc(best.trader) + '</b> · ' + esc(fmtUSD(best.stake)) + ' sur <b>' + esc(best.side.name) + '</b> à ' + esc(fmtCents(price)) +
-        ' · capturé ' + esc(fmtCountdown(timing.kickoff.getTime() - now)) + ' avant le coup d\'envoi</div>' + snap.cardHtml;
-      added.push(snap);
+      snap.polyCid = polyMember ? polyMember.key.slice("polymarket|".length) : null;
+      enqueueOp(AUTO_BIGTRADE_STORE, { type: "add", id: snap.id, snapshot: snap });
+      added++;
     });
-    if (added.length) saveAutoBigTradeToStorage(added.concat(existing));
+    if (added) fillAutoPreTradeTimes();
+  }
+  // When the bet was really made: from their own fills on that market —
+  // the moment their buys on that side reached AUTO_PRE_MIN_STAKE, plus
+  // their first buy. Fetched once per capture (retried on the 5-min
+  // interval until it works), then synced with the record.
+  var autoPreTimeInFlight = {};
+  function fillAutoPreTradeTimes() {
+    loadAutoBigTrade().forEach(function (snap) {
+      if (snap.tradeTakenAt || !snap.polyCid || autoPreTimeInFlight[snap.id] || (snap.timeTries || 0) >= 5) return;
+      var t = TRADERS.filter(function (x) { return x.name === snap.autoTrader && x.platform === "polymarket" && x.address; })[0];
+      if (!t) return;
+      autoPreTimeInFlight[snap.id] = true;
+      throttledFetch("https://data-api.polymarket.com/activity?user=" + t.address + "&market=" + snap.polyCid + "&type=TRADE&limit=500")
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (rows) {
+          if (!Array.isArray(rows)) throw new Error("no data");
+          var side = String(snap.leaderName || "").toLowerCase();
+          var buys = rows.filter(function (f) { return f.side === "BUY" && String(f.outcome || "").toLowerCase() === side; })
+            .sort(function (a, b) { return a.timestamp - b.timestamp; });
+          var cum = 0, reached = null;
+          buys.forEach(function (f) { cum += Number(f.usdcSize) || 0; if (reached == null && cum >= AUTO_PRE_MIN_STAKE) reached = f.timestamp; });
+          if (!buys.length) throw new Error("no buys");
+          var patch = {
+            firstBuyAt: new Date(buys[0].timestamp * 1000).toISOString(),
+            tradeTakenAt: new Date((reached || buys[buys.length - 1].timestamp) * 1000).toISOString()
+          };
+          enqueueOp(AUTO_BIGTRADE_STORE, { type: "editPosition", id: snap.id, patch: patch });
+        })
+        .catch(function () {
+          enqueueOp(AUTO_BIGTRADE_STORE, { type: "editPosition", id: snap.id, patch: { timeTries: (snap.timeTries || 0) + 1 } });
+        })
+        .finally(function () { delete autoPreTimeInFlight[snap.id]; });
+    });
   }
   function renderAutoBigTrade() { renderStoreView(AUTO_BIGTRADE_STORE); }
-  function checkAutoBigTradeResolutions() { return checkAutoStoreResolutions(AUTO_BIGTRADE_STORE, "tab-auto-bigtrade", renderAutoBigTrade); }
+  function checkAutoBigTradeResolutions() { fillAutoPreTradeTimes(); return checkAutoStoreResolutions(AUTO_BIGTRADE_STORE, "tab-auto-bigtrade", renderAutoBigTrade); }
   // ---------- Archives (bulk "close out the season" tag, reversible) ----------
   // A season close-out tags EVERY current snapshot and position (trashed
   // ones included — loadRaw, not load) with an archivedBatchId in place,
@@ -7564,7 +7695,7 @@
   snapArchiveSeasonBtn.addEventListener("click", async function () {
     // lowConfidence excluded — Snapshots non confiants is its own separate
     // classification axis, not part of "this season"'s regular activity.
-    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.archivedBatchId && !s.lowConfidence; });
+    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.archivedBatchId && !s.lowConfidence && !s.autoPre; });
     var poss = loadPositionsRaw().filter(function (s) { return !s.archivedBatchId; });
     if (!snaps.length && !poss.length) { alert("Rien à archiver — Saison 26/27 et Mes Positions sont déjà vides."); return; }
     if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro) — l'archivage doit aussi se refléter sur le serveur partagé, pas juste sur cet appareil."); return; }
@@ -10409,6 +10540,7 @@
     cardHeadHtml = cardHeadHtml
       .replace(/<button[^>]*class="vt-trash-btn[^"]*"[\s\S]*?<\/button>/, "")
       .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, "");
+    if (snap.autoPre) cardHeadHtml = autoPreBannerHtml(snap) + cardHeadHtml;
     var toolbarHtml;
     if (isTrash) {
       var delFieldTrash = store.deletedAtField || "deletedAt";
@@ -10527,6 +10659,7 @@
     // archived season (Saison 26/27, Mes Positions) sets excludeArchived
     // instead of loadRaw/save filtering them out.
     if (store.excludeArchived) fullList = fullList.filter(function (s) { return !s.archivedBatchId; });
+    if (store.excludeAutoPre) fullList = fullList.filter(function (s) { return !s.autoPre; });
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
     // All Time uses its OWN independent trash field (allTimeDeletedAt) —
     // see the store definition and the delete/restore handlers — so
@@ -13769,6 +13902,7 @@
   // the 10s refresh cadence (see checkAutoStoreResolutions's own comment).
   // Once on load too, so a result already settled since the last visit
   // shows up right away instead of waiting a full interval.
+  migrateLegacyAutoPre();
   checkAutoBigTradeResolutions();
   setInterval(checkAutoBigTradeResolutions, 300000);
   // ---------- 🔔 notification center ----------
@@ -13871,7 +14005,8 @@
   var AN_DATA_API = "https://data-api.polymarket.com";
   var AN_GAMMA_API = "https://gamma-api.polymarket.com";
   var AN_ALWAYS = { RN1: true, VeryLucky888: true, flaznorp: true }; // the first three asked for
-  var AN_MIN_WEIGHT = 8;            // …plus every Polymarket trader rated above this
+  var AN_MIN_WEIGHT = 7;            // …plus every Polymarket trader rated above this
+  var AN_DEFAULT_SHOWN_WEIGHT = 8;  // shown at first: above this (and the first three); the rest one click away
   var AN_MIN_BET = 1000;            // a market counts from this stake on the trader's main side
   var AN_MIN_LEG_COST = 100;        // smaller legs aren't stored — can't move a ≥ 1 000 $ bet
   var AN_INITIAL_DAYS = 30;         // a trader's first scan
@@ -13924,12 +14059,17 @@
       if (p.mode === "hold" || p.mode === "trader") anState.mode = p.mode;
       anState.pre = !!p.pre;
       if (p.hidden && typeof p.hidden === "object") anState.hidden = p.hidden;
+      // Traders rated 7–8 joined the list later: hidden until picked, so
+      // the chart doesn't turn into 16 lines at once.
+      if (!p.hiddenV2) analysisTraders().forEach(function (t) {
+        if (!AN_ALWAYS[t.name] && !((t.weight || 0) > AN_DEFAULT_SHOWN_WEIGHT)) anState.hidden[t.name] = true;
+      });
       if (AN_MY_STAKES.indexOf(p.stake) !== -1) anState.stake = p.stake;
     } catch (e) { /* defaults */ }
   })();
   function anSavePrefs() {
     try {
-      localStorage.setItem(AN_PREFS_KEY, JSON.stringify({ period: anState.period, minStake: anState.minStake, sport: anState.sport, mode: anState.mode, pre: anState.pre, stake: anState.stake, hidden: anState.hidden }));
+      localStorage.setItem(AN_PREFS_KEY, JSON.stringify({ period: anState.period, minStake: anState.minStake, sport: anState.sport, mode: anState.mode, pre: anState.pre, stake: anState.stake, hidden: anState.hidden, hiddenV2: true }));
     } catch (e) { /* convenience only */ }
   }
 
@@ -14607,7 +14747,8 @@
   // ----- Simulation: only finished bets whose result is known -----
   var AN_SPORT_LABELS = { "⚽": "Football", "🎾": "Tennis", "🏀": "Basket", "⚾": "Baseball", "🏈": "Foot US", "🏒": "Hockey",
     "🥊": "MMA / boxe", "🎮": "Esport", "🏏": "Cricket", "🏉": "Rugby", "🏎️": "F1", "🏁": "NASCAR", "⛳": "Golf", "♟️": "Échecs", "🎲": "Autres" };
-  var AN_TRADER_COLORS = ["var(--an-t1)", "var(--an-t2)", "var(--an-t3)", "var(--an-t4)", "var(--an-t5)", "var(--an-t6)"];
+  var AN_TRADER_COLORS = [];
+  for (var anCi = 1; anCi <= 16; anCi++) AN_TRADER_COLORS.push("var(--an-t" + anCi + ")");
   function anSportLabel(e) { return AN_SPORT_LABELS[e] ? e + " " + AN_SPORT_LABELS[e] : (e || "Autres"); }
   // Fixed per trader (his place in the list), whatever is shown or hidden.
   function anTraderColor(name) {
@@ -14644,7 +14785,12 @@
     return fin == null ? null : fin / e.price - 1;
   }
   function anTraderR(b) { return b.total > 0 && b.pnl != null ? b.pnl / b.total : null; }
-  function anR(b, mode, lvl) { return mode === "trader" ? anTraderR(b) : anHoldR(b, lvl); }
+  // "Garder jusqu'à la fin" only counts bets the trader kept to the result
+  // himself (on request) — which is only known once the match is over.
+  function anR(b, mode, lvl) {
+    if (mode === "trader") return anTraderR(b);
+    return anKind(b) === "held" ? anHoldR(b, lvl) : null;
+  }
   function anPeriodStart() {
     return anState.period === "all" ? 0 : Date.now() - Number(anState.period) * 86400000;
   }
@@ -14693,7 +14839,7 @@
       if ((k === "soldWin" || k === "soldLoss") && b.timing && b.timing.firstSell && b.kickoff && b.timing.firstSell * 1000 < b.kickoff) s.soldPre++;
       if (k === "arb") return;
       if (b.two) { s.two++; s.twoRatio += b.other.cost / b.main.cost; }
-      var h = anHoldR(b, lvl), t = anTraderR(b);
+      var h = anR(b, "hold", lvl), t = anTraderR(b);
       if (h != null) { s.hN++; s.hSum += h; if (h > 0) s.hWins++; }
       if (t != null) { s.tN++; s.tSum += t; if (t > 0) s.tWins++; }
     });
@@ -14782,7 +14928,7 @@
     }).join("") + '</div></div>';
   }
   function anStakeLabel(v) { return anNum(v) + " $" + (v === AN_MIN_BET ? " (tous)" : " et +"); }
-  function anModeLabel() { return anState.mode === "trader" ? "en faisant comme lui (ventes et couvertures comprises)" : "en gardant jusqu'à la fin"; }
+  function anModeLabel() { return anState.mode === "trader" ? "en faisant comme lui (ventes et couvertures comprises)" : "en gardant jusqu'à la fin (paris qu'il a lui-même gardés)"; }
   function anScope() {
     return (anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours") +
       " · paris de " + anStakeLabel(anState.minStake) + (anState.pre ? " · avant le match" : "") + (anState.sport !== "all" ? " · " + anSportLabel(anState.sport) : "");
@@ -14796,7 +14942,8 @@
         ' <small>' + esc(String(t.weight).replace(".", ",")) + (t.stakeMultiplier > 1 ? ' · ×' + t.stakeMultiplier : '') + '</small></button>';
     }).join("");
     return '<section class="an-section an-console"><h3 class="an-stitle">Simulateur</h3>' +
-      '<div class="an-crow"><span class="an-clabel">Traders<small>RN1 + les traders notés plus de ' + AN_MIN_WEIGHT + '</small></span><div class="an-seg an-seg-traders" role="group" aria-label="Traders">' + chips + '</div></div>' +
+      '<div class="an-crow"><span class="an-clabel">Traders<small>RN1 + les traders notés plus de ' + AN_MIN_WEIGHT + '</small></span><div class="an-seg an-seg-traders" role="group" aria-label="Traders">' + chips +
+        '<button type="button" class="an-seg-mini" data-an-allt="1">Tous</button><button type="button" class="an-seg-mini" data-an-allt="0">Aucun</button></div></div>' +
       anSegHtml("Stratégie", "data-an-mode", [["hold", "Garder jusqu'à la fin"], ["trader", "Faire comme le trader"]], anState.mode) +
       anSegHtml("Ta mise par pari", "data-an-mystake", AN_MY_STAKES.map(function (v) { return [v, anK(v)]; }), anState.stake) +
       anSegHtml("Paris du trader", "data-an-stake", AN_STAKE_LEVELS.map(function (v) { return [v, v === AN_MIN_BET ? "Tous (1 k$ et +)" : anK(v) + " et +"]; }), anState.minStake, "on copie quand sa mise atteint ce montant") +
@@ -15070,7 +15217,7 @@
   document.addEventListener("click", function (e) {
     var root = document.getElementById("analyseContent");
     if (!root || !root.contains(e.target) || !e.target.closest) return;
-    var el = e.target.closest("[data-an-action], [data-an-period], [data-an-stake], [data-an-sport], [data-an-mode], [data-an-mystake], [data-an-pre], [data-an-trader], [data-an-more]");
+    var el = e.target.closest("[data-an-action], [data-an-period], [data-an-stake], [data-an-sport], [data-an-mode], [data-an-mystake], [data-an-pre], [data-an-trader], [data-an-more], [data-an-allt]");
     if (!el || !root.contains(el)) return;
     if (el.hasAttribute("data-an-action")) { anSyncAll(); renderAnalyse(); return; }
     if (el.hasAttribute("data-an-more")) { anState.jLimit += 50; renderAnalyse(); return; }
@@ -15080,6 +15227,11 @@
     if (el.hasAttribute("data-an-mode")) anState.mode = el.getAttribute("data-an-mode");
     if (el.hasAttribute("data-an-mystake")) anState.stake = Number(el.getAttribute("data-an-mystake")) || 1000;
     if (el.hasAttribute("data-an-pre")) anState.pre = el.getAttribute("data-an-pre") === "1";
+    if (el.hasAttribute("data-an-allt")) {
+      var showAll = el.getAttribute("data-an-allt") === "1";
+      anState.hidden = {};
+      if (!showAll) analysisTraders().forEach(function (t) { anState.hidden[t.name] = true; });
+    }
     if (el.hasAttribute("data-an-trader")) {
       var n = el.getAttribute("data-an-trader");
       if (anState.hidden[n]) delete anState.hidden[n]; else anState.hidden[n] = true;
