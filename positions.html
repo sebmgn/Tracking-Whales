@@ -14005,8 +14005,7 @@
   var AN_DATA_API = "https://data-api.polymarket.com";
   var AN_GAMMA_API = "https://gamma-api.polymarket.com";
   var AN_ALWAYS = { RN1: true, VeryLucky888: true, flaznorp: true }; // the first three asked for
-  var AN_MIN_WEIGHT = 7;            // …plus every Polymarket trader rated above this
-  var AN_DEFAULT_SHOWN_WEIGHT = 8;  // shown at first: above this (and the first three); the rest one click away
+  var AN_DEFAULT_SHOWN_WEIGHT = 8;  // every Polymarket trader is available; shown at first: rated above this (and the first three)
   var AN_MIN_BET = 1000;            // a market counts from this stake on the trader's main side
   var AN_MIN_LEG_COST = 100;        // smaller legs aren't stored — can't move a ≥ 1 000 $ bet
   var AN_INITIAL_DAYS = 30;         // a trader's first scan
@@ -14031,10 +14030,12 @@
     var seen = {};
     anTraderList = TRADERS.filter(function (t) {
       if (t.platform !== "polymarket" || !t.address || seen[t.name]) return false;
-      if (!AN_ALWAYS[t.name] && !((t.weight || 0) > AN_MIN_WEIGHT)) return false;
       seen[t.name] = true;
       return true;
     });
+    // Best rated first, everywhere they're listed (and the order colors are
+    // handed out in, so a trader keeps his color).
+    anTraderList.sort(function (a, b) { return (b.weight || 0) - (a.weight || 0) || a.name.localeCompare(b.name); });
     return anTraderList;
   }
   function anTrader(name) {
@@ -14064,12 +14065,17 @@
       if (!p.hiddenV2) analysisTraders().forEach(function (t) {
         if (!AN_ALWAYS[t.name] && !((t.weight || 0) > AN_DEFAULT_SHOWN_WEIGHT)) anState.hidden[t.name] = true;
       });
+      // Then every other Polymarket trader (2026-10-04): also hidden until
+      // picked — and only fetched once shown (see anSyncTraders).
+      if (!p.hiddenV3) analysisTraders().forEach(function (t) {
+        if (!AN_ALWAYS[t.name] && !((t.weight || 0) > 7)) anState.hidden[t.name] = true;
+      });
       if (AN_MY_STAKES.indexOf(p.stake) !== -1) anState.stake = p.stake;
     } catch (e) { /* defaults */ }
   })();
   function anSavePrefs() {
     try {
-      localStorage.setItem(AN_PREFS_KEY, JSON.stringify({ period: anState.period, minStake: anState.minStake, sport: anState.sport, mode: anState.mode, pre: anState.pre, stake: anState.stake, hidden: anState.hidden, hiddenV2: true }));
+      localStorage.setItem(AN_PREFS_KEY, JSON.stringify({ period: anState.period, minStake: anState.minStake, sport: anState.sport, mode: anState.mode, pre: anState.pre, stake: anState.stake, hidden: anState.hidden, hiddenV2: true, hiddenV3: true }));
     } catch (e) { /* convenience only */ }
   }
 
@@ -14522,7 +14528,14 @@
   }
   function anCoverageDays(meta) { return meta && meta.oldestTs ? (Date.now() / 1000 - meta.oldestTs) / 86400 : 0; }
   function anNeedsBackfill(meta) { return !!(meta && meta.oldestTs && !meta.complete && anCoverageDays(meta) < AN_AUTO_BACKFILL_DAYS); }
-  function anBackfilling() { return analysisTraders().some(function (t) { return anNeedsBackfill(anState.meta[t.name]); }); }
+  // Only the traders shown are fetched: 60+ wallets at once would take
+  // hours and starve the ones actually being looked at. A trader just
+  // switched on (no history yet) counts as backfilling, so he's fetched
+  // within the minute.
+  function anSyncTraders() { return analysisTraders().filter(function (t) { return !anState.hidden[t.name]; }); }
+  function anBackfilling() {
+    return anSyncTraders().some(function (t) { var m = anState.meta[t.name]; return !m || !m.oldestTs || anNeedsBackfill(m); });
+  }
   async function anSyncTrader(t, olderDays) {
     var meta = anState.meta[t.name] || (anState.meta[t.name] = { trader: t.name, newestTs: 0, oldestTs: 0, scan: null });
     await anSyncClosed(t, meta, olderDays);
@@ -14535,7 +14548,7 @@
     anState.errors = {};
     anState.pagesRead = 0;
     anRenderStatus();
-    var traders = analysisTraders();
+    var traders = anSyncTraders();
     // Each sync also reaches AN_BACKFILL_STEP_DAYS further back for every
     // trader whose history isn't all in yet (fills follow, newest first).
     var auto = !olderDays;
@@ -14753,7 +14766,9 @@
   // Fixed per trader (his place in the list), whatever is shown or hidden.
   function anTraderColor(name) {
     var i = analysisTraders().map(function (t) { return t.name; }).indexOf(name);
-    return i >= 0 && i < AN_TRADER_COLORS.length ? AN_TRADER_COLORS[i] : "var(--text-dim)";
+    if (i < 0) return "var(--text-dim)";
+    if (i < AN_TRADER_COLORS.length) return AN_TRADER_COLORS[i];
+    return "oklch(0.64 0.15 " + Math.round((i * 137.5) % 360) + ")"; // golden-angle hues past the 16 named ones
   }
   // arb: both sides held and locked in (a profit whatever happens) — not a
   // bet on the result. Otherwise held to the result, or sold before it, in
@@ -14899,7 +14914,7 @@
   // ----- Status, console -----
   function anStatusHtml() {
     var parts = [];
-    analysisTraders().forEach(function (t) {
+    anSyncTraders().forEach(function (t) {
       var m = anState.meta[t.name];
       if (m && m.oldestTs) parts.push(t.name + " depuis le " + anDay(m.oldestTs * 1000) + (m.complete ? " (tout son historique)" : ""));
     });
@@ -14942,7 +14957,7 @@
         ' <small>' + esc(String(t.weight).replace(".", ",")) + (t.stakeMultiplier > 1 ? ' · ×' + t.stakeMultiplier : '') + '</small></button>';
     }).join("");
     return '<section class="an-section an-console"><h3 class="an-stitle">Simulateur</h3>' +
-      '<div class="an-crow"><span class="an-clabel">Traders<small>RN1 + les traders notés plus de ' + AN_MIN_WEIGHT + '</small></span><div class="an-seg an-seg-traders" role="group" aria-label="Traders">' + chips +
+      '<div class="an-crow"><span class="an-clabel">Traders<small>tous ceux suivis sur Polymarket, par note · seuls ceux cochés sont chargés</small></span><div class="an-seg an-seg-traders" role="group" aria-label="Traders">' + chips +
         '<button type="button" class="an-seg-mini" data-an-allt="1">Tous</button><button type="button" class="an-seg-mini" data-an-allt="0">Aucun</button></div></div>' +
       anSegHtml("Stratégie", "data-an-mode", [["hold", "Garder jusqu'à la fin"], ["trader", "Faire comme le trader"]], anState.mode) +
       anSegHtml("Ta mise par pari", "data-an-mystake", AN_MY_STAKES.map(function (v) { return [v, anK(v)]; }), anState.stake) +
@@ -15239,6 +15254,9 @@
     anState.jLimit = 50;
     anSavePrefs();
     renderAnalyse();
+    // A trader just switched on gets fetched right away (or by the sync
+    // already running, on its next pass).
+    if (el.hasAttribute("data-an-trader") || el.hasAttribute("data-an-allt")) anMaybeSync(true);
   });
   document.addEventListener("mousemove", function (e) {
     if (e.target && e.target.closest && e.target.closest("#anChart")) anChartHover(e);
