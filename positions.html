@@ -14015,7 +14015,7 @@
   var AN_MIN_BET = 1000;            // a market counts from this stake on the trader's main side
   var AN_MIN_LEG_COST = 100;        // smaller legs aren't stored — can't move a ≥ 1 000 $ bet
   var AN_INITIAL_DAYS = 30;         // a trader's first scan
-  var AN_BACKFILL_STEP_DAYS = 3;    // each idle sync reaches this much further back…
+  var AN_BACKFILL_STEP_DAYS = 3;    // each idle sync reaches this much further back (more when few traders are shown, see anBackfillStep)…
   var AN_AUTO_BACKFILL_DAYS = 400;  // …until this much history (or the start of their account)
   var AN_RESYNC_MS = 15 * 60 * 1000;
   var AN_BACKFILL_RESYNC_MS = 60 * 1000; // while history is still being filled in
@@ -14145,7 +14145,7 @@
   var AN_LIMITERS = {
     closed: anLimiter(2, 260),
     positions: anLimiter(1, 450),
-    activity: anLimiter(2, 260),
+    activity: anLimiter(3, 200),
     gamma: anLimiter(2, 200)
   };
   function anLimiterFor(url) {
@@ -14538,6 +14538,9 @@
   // hours and starve the ones actually being looked at. A trader just
   // switched on (no history yet) counts as backfilling, so he's fetched
   // within the minute.
+  // With only a couple of traders shown, history goes back much faster:
+  // the request budget is the same, just shared by fewer wallets.
+  function anBackfillStep(shown) { return Math.max(AN_BACKFILL_STEP_DAYS, Math.min(15, Math.floor(30 / Math.max(1, shown)))); }
   function anSyncTraders() { return analysisTraders().filter(function (t) { return !anState.hidden[t.name]; }); }
   function anBackfilling() {
     return anSyncTraders().some(function (t) { var m = anState.meta[t.name]; return !m || !m.oldestTs || anNeedsBackfill(m); });
@@ -14562,7 +14565,7 @@
       var done = 0;
       await anPool(traders, 3, function (t) {
         var meta = anState.meta[t.name];
-        var extra = olderDays || (auto && anNeedsBackfill(meta) ? AN_BACKFILL_STEP_DAYS : 0);
+        var extra = olderDays || (auto && anNeedsBackfill(meta) ? anBackfillStep(traders.length) : 0);
         return anSyncTrader(t, extra).catch(function (err) { console.warn("Analyse — " + t.name, err); anState.errors[t.name] = (err && err.message) || "erreur"; }).then(function () {
           done++;
           anSetProgress("_pos", "positions des traders " + done + "/" + traders.length + " · " + anNum(anState.pagesRead) + " pages lues");
@@ -14922,7 +14925,14 @@
     var parts = [];
     anSyncTraders().forEach(function (t) {
       var m = anState.meta[t.name];
-      if (m && m.oldestTs) parts.push(t.name + " depuis le " + anDay(m.oldestTs * 1000) + (m.complete ? " (tout son historique)" : ""));
+      if (!m || !m.oldestTs) return;
+      // Loaded vs analysed: a bet only counts once its fills are in, and
+      // those come newest first — so the figures can start later than the
+      // loaded history for a while.
+      var first = null;
+      (anModel()[t.name] || []).forEach(function (b) { if (b.date && b.timing && b.timing.v === AN_TIMING_V && (first == null || b.date < first)) first = b.date; });
+      parts.push(t.name + " chargé depuis le " + anDay(m.oldestTs * 1000) + (m.complete ? " (tout son historique)" : "") +
+        (first && first > m.oldestTs * 1000 + 86400000 ? ", analysé depuis le " + anDay(first) : ""));
     });
     var html = '<span>' + (parts.length ? "Historique enregistré : " + esc(parts.join(" · ")) : "Premier chargement de l'historique…") +
       (anState.lastSyncAt ? ' · mis à jour à ' + new Date(anState.lastSyncAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : '') + '</span>';
