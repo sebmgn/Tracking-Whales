@@ -7355,9 +7355,10 @@
     var changed = false, setSideOps = [];
     await Promise.all(pending.map(async function (snap) {
       var m = (snap.cardHtml || "").match(/polymarket\.com\/[a-z-]+\/event\/([a-z0-9-]+)/i);
-      if (!m) return; // Predict.fun-only capture — no gamma-api equivalent wired up yet, stays manual
+      var eventSlug = snap.eventSlug || (m && m[1]);
+      if (!eventSlug) return; // Predict.fun-only capture — no gamma-api equivalent wired up yet, stays manual
       try {
-        var res = await throttledFetch(GAMMA_EVENTS_BASE + "?slug=" + encodeURIComponent(m[1]));
+        var res = await throttledFetch(GAMMA_EVENTS_BASE + "?slug=" + encodeURIComponent(eventSlug));
         if (!res.ok) return;
         var events = await res.json();
         var event = events && events[0];
@@ -7374,6 +7375,9 @@
         var winName = outcomes[prices.indexOf(maxPrice)];
         var matchedSide = (snap.sides || []).filter(function (s) { return s.name === winName; })[0]
           || (snap.sides || []).filter(function (s) { return (s.name || "").toLowerCase() === (winName || "").toLowerCase(); })[0];
+        // An alert rebuilt from the server log only knows the trader's own
+        // side: any other winner is a clean loss for it (see OTHER_SIDE_SENTINEL).
+        if (!matchedSide && snap.autoPre && (snap.sides || []).length === 1) matchedSide = { name: OTHER_SIDE_SENTINEL };
         if (matchedSide) { snap.winningSide = matchedSide.name; changed = true; if (store.remotePath) setSideOps.push({ type: "setSide", id: snap.id, winningSide: matchedSide.name }); }
       } catch (e) { /* best-effort — retried next interval */ }
     }));
@@ -7519,14 +7523,23 @@
           if (byTrader[n] >= AUTO_PRE_MIN_STAKE && (!best || byTrader[n] > best.stake)) best = { trader: n, stake: byTrader[n], side: m };
         });
       });
-      if (!best || !u.matchKey) return;
-      var timing = matchTimingCache[u.matchKey];
-      if (!timing) { scheduleMatchTimingFetch(u.matchKey); return; }
-      if (!timing.kickoff || timing.kickoff.getTime() <= now) return;
+      if (!best) return;
+      var polyMember = u.members.filter(function (g) { return String(g.key || "").indexOf("polymarket|") === 0; })[0];
+      var polyCid = polyMember ? polyMember.key.slice("polymarket|".length) : null;
+      // Kickoff from the event (shared cache), else from the market itself —
+      // some events carry no start time while their market does.
+      var timing = u.matchKey ? matchTimingCache[u.matchKey] : null;
+      if (u.matchKey && !timing) { scheduleMatchTimingFetch(u.matchKey); return; }
+      var kickoff = timing && timing.kickoff ? timing.kickoff : null;
+      if (!kickoff) {
+        var byCid = polyCid ? autoPreCidKickoff(polyCid) : null;
+        if (byCid === undefined) return; // being fetched — next cycle
+        kickoff = byCid;
+      }
+      if (!kickoff || kickoff.getTime() <= now) return;
       var price = mergedSideAvgPrice(best.side);
       if (price == null || price <= 0.01 || price >= 0.99) return;
       alreadyCaptured[key] = true;
-      var polyMember = u.members.filter(function (g) { return String(g.key || "").indexOf("polymarket|") === 0; })[0];
       var snap = buildSnapshotFromUnit(u);
       snap.id = autoPreId(key);
       snap.autoPre = true;
@@ -7536,19 +7549,139 @@
       snap.leaderPriceAtSnapshot = price;
       snap.autoTrader = best.trader;
       snap.autoTraderStake = Math.round(best.stake);
-      snap.kickoffAt = timing.kickoff.toISOString();
-      snap.polyCid = polyMember ? polyMember.key.slice("polymarket|".length) : null;
+      snap.kickoffAt = kickoff.toISOString();
+      snap.polyCid = polyCid;
       enqueueOp(AUTO_BIGTRADE_STORE, { type: "add", id: snap.id, snapshot: snap });
       added++;
     });
     if (added) fillAutoPreTradeTimes();
+  }
+  // The email alert runs on AWS (tracking-whales-notify, every 15 min, every
+  // browser closed or not) and logs each alert at GET /pre10k. Anything it
+  // alerted on that isn't in this tab yet — no browser was open before
+  // kickoff — is added here: from the live Value Trades card when the market
+  // is still in the feed, else from the alert's own numbers. Checked at most
+  // every 5 min.
+  var autoPreServerAt = 0;
+  function syncAutoPreFromServer() {
+    if (Date.now() - autoPreServerAt < 300000 || !allUnitsGlobal.length) return;
+    autoPreServerAt = Date.now();
+    awsFetch(AWS_NOTIFY_URL + "/pre10k")
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        var byKey = {};
+        (data.log || []).forEach(function (en) { if (en && en.key) byKey[en.key] = en; });
+        Object.keys(data.state || {}).forEach(function (k) { if (!byKey[k]) byKey[k] = { key: k, sentAt: data.state[k] }; });
+        var have = {};
+        loadAutoBigTradeRaw().forEach(function (s) { if (s.autoTrader && s.polyCid) have[s.autoTrader + "|" + s.polyCid] = true; if (s.alertKey) have["alert|" + s.alertKey] = true; });
+        Object.keys(byKey).forEach(function (k) {
+          var en = byKey[k], parts = k.split("|");
+          var trader = en.trader || parts[0], cid = en.cid || parts[1];
+          if (!trader || !cid || have[trader + "|" + cid] || have["alert|" + k]) return;
+          var snap = autoPreSnapFromAlert(en, trader, cid);
+          if (!snap) return;
+          have[trader + "|" + cid] = true;
+          enqueueOp(AUTO_BIGTRADE_STORE, { type: "add", id: snap.id, snapshot: snap });
+        });
+        fillAutoPreTradeTimes();
+      })
+      .catch(function () { autoPreServerAt = 0; /* retried next cycle */ });
+  }
+  function autoPreSnapFromAlert(en, trader, cid) {
+    var u = allUnitsGlobal.filter(function (x) { return x.members.some(function (g) { return g.key === "polymarket|" + cid; }); })[0];
+    var snap;
+    if (u) {
+      var sideName = en.side, best = 0;
+      if (!sideName) mergeUnitSides(u).forEach(function (m) {
+        var paid = 0;
+        m.items.forEach(function (it) { it.s.entries.forEach(function (e) { if (e.trader === trader) paid += e.shares > 0 && e.avgPrice > 0 ? e.shares * e.avgPrice : (e.stake || 0); }); });
+        if (paid > best) { best = paid; sideName = m.name; }
+      });
+      var key = unitStableKey(u);
+      snap = buildSnapshotFromUnit(u);
+      snap.id = autoPreId(key);
+      snap.autoCaptureKey = key;
+      var match = (snap.sides || []).filter(function (sd) { return String(sd.name).toLowerCase() === String(sideName || "").toLowerCase(); })[0];
+      if (match) {
+        snap.leaderName = match.name;
+        var merged = mergeUnitSides(u).filter(function (m) { return m.name === match.name; })[0];
+        var px = merged ? mergedSideAvgPrice(merged) : null;
+        if (px != null) snap.leaderPriceAtSnapshot = px; // their side's price (today's — the alert's own is used when logged)
+      }
+      if (en.paid == null && best) en.paid = best;
+    } else if (en.question && en.side) {
+      // Market already gone from the feed (settled): rebuilt from the
+      // alert alone — his side only, the result fills in from gamma.
+      snap = {
+        id: autoPreId("alert|" + en.key), question: en.question, leaderName: en.side, noteAtSnapshot: null,
+        traderCount: 1, totalStake: en.paid || 0, traderNames: [trader],
+        sides: [{ name: en.side, traderCount: 1, stake: en.paid || 0, traders: [{ trader: trader, stake: en.paid || 0, avgPrice: en.avgPrice || null }] }],
+        cardHtml: '<div class="vt-unit-head"><a href="https://polymarket.com/fr/event/' + esc(en.eventSlug || "") + '" target="_blank" rel="noopener">' + esc(en.question) + '</a></div>',
+        winningSide: null, confidence: null, comment: null
+      };
+    } else {
+      return null; // an old alert whose market has already left the feed — nothing to build it from
+    }
+    snap.savedAt = en.sentAt || new Date().toISOString();
+    snap.autoPre = true;
+    snap.isAutoCaptured = true;
+    snap.fromAlert = true;
+    snap.alertKey = en.key;
+    snap.autoTrader = trader;
+    snap.polyCid = cid;
+    if (en.paid != null) snap.autoTraderStake = en.paid;
+    if (en.curPrice != null) snap.leaderPriceAtSnapshot = en.curPrice; // the price when the alert went out, not now
+    if (en.kickoffAt) snap.kickoffAt = en.kickoffAt;
+    if (en.tradeTakenAt) snap.tradeTakenAt = en.tradeTakenAt;
+    if (en.firstBuyAt) snap.firstBuyAt = en.firstBuyAt;
+    if (en.eventSlug) snap.eventSlug = en.eventSlug;
+    if (!snap.kickoffAt && u && u.matchKey && matchTimingCache[u.matchKey] && matchTimingCache[u.matchKey].kickoff) snap.kickoffAt = matchTimingCache[u.matchKey].kickoff.toISOString();
+    return snap;
   }
   // When the bet was really made: from their own fills on that market —
   // the moment their buys on that side reached AUTO_PRE_MIN_STAKE, plus
   // their first buy. Fetched once per capture (retried on the 5-min
   // interval until it works), then synced with the record.
   var autoPreTimeInFlight = {};
+  // A card rebuilt from a server alert can lack the kickoff (not cached
+  // yet when it was built): taken from the market itself.
+  var autoPreKickoffInFlight = {};
+  function fillAutoPreKickoffs() {
+    loadAutoBigTrade().forEach(function (snap) {
+      if (snap.kickoffAt || !snap.polyCid || autoPreKickoffInFlight[snap.id]) return;
+      autoPreKickoffInFlight[snap.id] = true;
+      var base = GAMMA_MARKETS_FOR_AUTO + "?condition_ids=" + snap.polyCid;
+      throttledFetch(base).then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (list) { return (list && list.length) ? list : throttledFetch(base + "&closed=true").then(function (r) { return r.ok ? r.json() : []; }); })
+        .then(function (list) {
+          var raw = list && list[0] && list[0].gameStartTime;
+          var d = raw ? new Date(String(raw).replace(" ", "T").replace(/\+00(:00)?$/, "Z")) : null;
+          if (d && !isNaN(d.getTime())) enqueueOp(AUTO_BIGTRADE_STORE, { type: "editPosition", id: snap.id, patch: { kickoffAt: d.toISOString() } });
+        })
+        .catch(function () { /* retried next round */ })
+        .finally(function () { delete autoPreKickoffInFlight[snap.id]; });
+    });
+  }
+  var GAMMA_MARKETS_FOR_AUTO = "https://gamma-api.polymarket.com/markets";
+  // Market-level kickoff (gameStartTime), per condition id: Date, null (none
+  // known), or undefined while the lookup is in flight. Re-checked hourly.
+  var autoPreCidKickoffCache = {};
+  function autoPreCidKickoff(cid) {
+    var c = autoPreCidKickoffCache[cid];
+    if (c && (c.pending || Date.now() - c.at < 3600000)) return c.pending ? undefined : c.kickoff;
+    autoPreCidKickoffCache[cid] = { pending: true };
+    throttledFetch(GAMMA_MARKETS_FOR_AUTO + "?condition_ids=" + cid).then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (list) {
+        var raw = list && list[0] && list[0].gameStartTime;
+        var d = raw ? new Date(String(raw).replace(" ", "T").replace(/\+00(:00)?$/, "Z")) : null;
+        autoPreCidKickoffCache[cid] = { kickoff: d && !isNaN(d.getTime()) ? d : null, at: Date.now() };
+      })
+      .catch(function () { autoPreCidKickoffCache[cid] = { kickoff: null, at: Date.now() - 3000000 }; });
+    return undefined;
+  }
   function fillAutoPreTradeTimes() {
+    fillAutoPreKickoffs();
     loadAutoBigTrade().forEach(function (snap) {
       if (snap.tradeTakenAt || !snap.polyCid || autoPreTimeInFlight[snap.id] || (snap.timeTries || 0) >= 5) return;
       var t = TRADERS.filter(function (x) { return x.name === snap.autoTrader && x.platform === "polymarket" && x.address; })[0];
@@ -12596,6 +12729,7 @@
         // "only re-render if active" snapshots/positions checks
         // right below, which are purely a rendering-cost optimization).
         captureAutoBigTradeSignals();
+        syncAutoPreFromServer();
         // Snapshots aren't part of renderAll (rebuilding that list every
         // cycle would fight the user's scroll/expand state for no reason
         // most of the time) — but now that a snapshot can track a live
