@@ -7414,6 +7414,9 @@
   var AUTO_PRE_LEGACY_KEY = "vtAutoPre10kSnapshots"; // local-only list from the first version (2026-10-04), moved to AWS on load
   var AUTO_PRE_TRADERS = ["flaznorp", "RN1"];
   var AUTO_PRE_MIN_STAKE = 10000;
+  // One record per trader × market × side — the same key the notify Lambda
+  // uses when it writes the card itself (see syncAutoPreCards there).
+  function autoPreKey(trader, cid, side) { return "pre|" + trader + "|" + cid + "|" + String(side || "").toLowerCase(); }
   function autoPreId(key) {
     var h = 5381;
     for (var i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
@@ -7505,11 +7508,12 @@
   function captureAutoBigTradeSignals() {
     if (!allUnitsGlobal.length) return;
     var alreadyCaptured = {};
-    loadAutoBigTradeRaw().forEach(function (s) { if (s.autoCaptureKey) alreadyCaptured[s.autoCaptureKey] = true; });
+    loadAutoBigTradeRaw().forEach(function (s) {
+      if (s.autoTrader && s.polyCid) alreadyCaptured[s.autoTrader + "|" + s.polyCid + "|" + String(s.leaderName || "").toLowerCase()] = true;
+    });
     var now = Date.now(), added = 0;
     allUnitsGlobal.forEach(function (u) {
       var key = unitStableKey(u);
-      if (alreadyCaptured[key]) return;
       var mergedSides = mergeUnitSides(u);
       var best = null;
       mergedSides.forEach(function (m) {
@@ -7542,9 +7546,11 @@
       if (!kickoff || kickoff.getTime() <= now) return;
       var price = mergedSideAvgPrice(best.side);
       if (price == null || price <= 0.01 || price >= 0.99) return;
-      alreadyCaptured[key] = true;
+      var dedup = best.trader + "|" + polyCid + "|" + String(best.side.name).toLowerCase();
+      if (!polyCid || alreadyCaptured[dedup]) return;
+      alreadyCaptured[dedup] = true;
       var snap = buildSnapshotFromUnit(u);
-      snap.id = autoPreId(key);
+      snap.id = autoPreId(autoPreKey(best.trader, polyCid, best.side.name));
       snap.autoPre = true;
       snap.autoCaptureKey = key;
       snap.isAutoCaptured = true;
@@ -7559,88 +7565,27 @@
     });
     if (added) fillAutoPreTradeTimes();
   }
-  // The email alert runs on AWS (tracking-whales-notify, every 15 min, every
-  // browser closed or not) and logs each alert at GET /pre10k. Anything it
-  // alerted on that isn't in this tab yet — no browser was open before
-  // kickoff — is added here: from the live Value Trades card when the market
-  // is still in the feed, else from the alert's own numbers. Checked at most
-  // every 5 min.
+  // The notify Lambda (AWS, every 15 min, browsers open or not) writes each
+  // alert's card itself — from the alert alone: his side only — and fills
+  // in results. When a browser sees that market live, the card is upgraded
+  // here to the full Value Trades card (every tracked trader on it), once.
   var autoPreServerAt = 0;
   function syncAutoPreFromServer() {
-    if (Date.now() - autoPreServerAt < 300000 || !allUnitsGlobal.length) return;
+    if (Date.now() - autoPreServerAt < 120000 || !allUnitsGlobal.length) return;
     autoPreServerAt = Date.now();
-    awsFetch(AWS_NOTIFY_URL + "/pre10k")
-      .then(function (res) { return res.ok ? res.json() : null; })
-      .then(function (data) {
-        if (!data) return;
-        var byKey = {};
-        (data.log || []).forEach(function (en) { if (en && en.key) byKey[en.key] = en; });
-        Object.keys(data.state || {}).forEach(function (k) { if (!byKey[k]) byKey[k] = { key: k, sentAt: data.state[k] }; });
-        var have = {};
-        loadAutoBigTradeRaw().forEach(function (s) { if (s.autoTrader && s.polyCid) have[s.autoTrader + "|" + s.polyCid] = true; if (s.alertKey) have["alert|" + s.alertKey] = true; });
-        Object.keys(byKey).forEach(function (k) {
-          var en = byKey[k], parts = k.split("|");
-          var trader = en.trader || parts[0], cid = en.cid || parts[1];
-          if (!trader || !cid || have[trader + "|" + cid] || have["alert|" + k]) return;
-          var snap = autoPreSnapFromAlert(en, trader, cid);
-          if (!snap) return;
-          have[trader + "|" + cid] = true;
-          enqueueOp(AUTO_BIGTRADE_STORE, { type: "add", id: snap.id, snapshot: snap });
-        });
-        fillAutoPreTradeTimes();
-      })
-      .catch(function () { autoPreServerAt = 0; /* retried next cycle */ });
-  }
-  function autoPreSnapFromAlert(en, trader, cid) {
-    var u = allUnitsGlobal.filter(function (x) { return x.members.some(function (g) { return g.key === "polymarket|" + cid; }); })[0];
-    var snap;
-    if (u) {
-      var sideName = en.side, best = 0;
-      if (!sideName) mergeUnitSides(u).forEach(function (m) {
-        var paid = 0;
-        m.items.forEach(function (it) { it.s.entries.forEach(function (e) { if (e.trader === trader) paid += e.shares > 0 && e.avgPrice > 0 ? e.shares * e.avgPrice : (e.stake || 0); }); });
-        if (paid > best) { best = paid; sideName = m.name; }
-      });
-      var key = unitStableKey(u);
-      snap = buildSnapshotFromUnit(u);
-      snap.id = autoPreId(key);
-      snap.autoCaptureKey = key;
-      var match = (snap.sides || []).filter(function (sd) { return String(sd.name).toLowerCase() === String(sideName || "").toLowerCase(); })[0];
-      if (match) {
-        snap.leaderName = match.name;
-        var merged = mergeUnitSides(u).filter(function (m) { return m.name === match.name; })[0];
-        var px = merged ? mergedSideAvgPrice(merged) : null;
-        if (px != null) snap.leaderPriceAtSnapshot = px; // their side's price (today's — the alert's own is used when logged)
-      }
-      if (en.paid == null && best) en.paid = best;
-    } else if (en.question && en.side) {
-      // Market already gone from the feed (settled): rebuilt from the
-      // alert alone — his side only, the result fills in from gamma.
-      snap = {
-        id: autoPreId("alert|" + en.key), question: en.question, leaderName: en.side, noteAtSnapshot: null,
-        traderCount: 1, totalStake: en.paid || 0, traderNames: [trader],
-        sides: [{ name: en.side, traderCount: 1, stake: en.paid || 0, traders: [{ trader: trader, stake: en.paid || 0, avgPrice: en.avgPrice || null }] }],
-        cardHtml: '<div class="vt-unit-head"><a href="https://polymarket.com/fr/event/' + esc(en.eventSlug || "") + '" target="_blank" rel="noopener">' + esc(en.question) + '</a></div>',
-        winningSide: null, confidence: null, comment: null
-      };
-    } else {
-      return null; // an old alert whose market has already left the feed — nothing to build it from
-    }
-    snap.savedAt = en.sentAt || new Date().toISOString();
-    snap.autoPre = true;
-    snap.isAutoCaptured = true;
-    snap.fromAlert = true;
-    snap.alertKey = en.key;
-    snap.autoTrader = trader;
-    snap.polyCid = cid;
-    if (en.paid != null) snap.autoTraderStake = en.paid;
-    if (en.curPrice != null) snap.leaderPriceAtSnapshot = en.curPrice; // the price when the alert went out, not now
-    if (en.kickoffAt) snap.kickoffAt = en.kickoffAt;
-    if (en.tradeTakenAt) snap.tradeTakenAt = en.tradeTakenAt;
-    if (en.firstBuyAt) snap.firstBuyAt = en.firstBuyAt;
-    if (en.eventSlug) snap.eventSlug = en.eventSlug;
-    if (!snap.kickoffAt && u && u.matchKey && matchTimingCache[u.matchKey] && matchTimingCache[u.matchKey].kickoff) snap.kickoffAt = matchTimingCache[u.matchKey].kickoff.toISOString();
-    return snap;
+    loadAutoBigTrade().forEach(function (snap) {
+      if (!snap.fromServer || snap.unitCard || !snap.polyCid) return;
+      var u = allUnitsGlobal.filter(function (x) { return x.members.some(function (g) { return g.key === "polymarket|" + snap.polyCid; }); })[0];
+      if (!u) return;
+      var built = buildSnapshotFromUnit(u);
+      var match = (built.sides || []).filter(function (sd) { return String(sd.name).toLowerCase() === String(snap.leaderName || "").toLowerCase(); })[0];
+      if (!match) return;
+      enqueueOp(AUTO_BIGTRADE_STORE, { type: "editPosition", id: snap.id, patch: {
+        sides: built.sides, traderNames: built.traderNames, traderCount: built.traderCount, totalStake: built.totalStake,
+        noteAtSnapshot: built.noteAtSnapshot, cardHtml: built.cardHtml, leaderName: match.name, autoCaptureKey: unitStableKey(u), unitCard: true
+      } });
+    });
+    fillAutoPreTradeTimes();
   }
   // When the bet was really made: from their own fills on that market —
   // the moment their buys on that side reached AUTO_PRE_MIN_STAKE, plus
