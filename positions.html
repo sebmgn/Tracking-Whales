@@ -1369,7 +1369,7 @@
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn, .snap-take-position-btn, .snap-comment-btn {
+  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn, .snap-take-position-btn, .snap-to-saison-btn, .snap-comment-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     padding: 5px 12px;
@@ -1379,7 +1379,7 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover, .snap-take-position-btn:hover, .snap-comment-btn:hover { border-color: var(--accent); }
+  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover, .snap-take-position-btn:hover, .snap-to-saison-btn:hover, .snap-comment-btn:hover { border-color: var(--accent); }
   .snap-comment-btn { color: var(--text-dim); }
   .snap-comment-btn.active { color: var(--accent); border-color: var(--accent); }
   .snap-comment { margin: 0 0 10px; font-size: 12.5px; color: var(--text); background: var(--row-hover); border-radius: var(--radius-sm); padding: 6px 10px; white-space: pre-wrap; word-break: break-word; }
@@ -1392,6 +1392,7 @@
      (doubling down) is valid, this only changes how it LOOKS once one exists. */
   .snap-take-position-btn.taken { background: color-mix(in srgb, var(--green) 16%, var(--panel)); border-color: var(--green); color: var(--green); }
   .snap-take-position-btn.taken:hover { background: var(--green); color: #fff; }
+  .snap-to-saison-btn.taken { background: color-mix(in srgb, var(--green) 16%, var(--panel)); border-color: var(--green); color: var(--green); cursor: default; }
   /* Reorder via ▲/▼ (store.allowReorder — Mes Positions, Saison 26/27) —
      replaces an earlier drag-and-drop ⠿ handle (2026-09-29, on request):
      same underlying setSavedAt swap, just two discrete clicks instead of a
@@ -2433,6 +2434,8 @@
   .an-tbl-cells td small, .an-journal td small { display: block; font-size: 10.5px; color: var(--text-dim); font-weight: 400; }
   .an-tbl thead th.current { color: var(--text); }
   .an-verdict-cell { font-size: 12px; color: var(--text-dim); white-space: normal; min-width: 150px; }
+  .an-journal tr.an-running td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .an-journal tr.an-jsep td { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); padding-top: 12px; }
   .an-journal td { vertical-align: top; }
   .an-journal .an-jmatch { white-space: normal; min-width: 220px; max-width: 360px; line-height: 1.35; }
   .an-journal a { color: var(--text); text-decoration: none; }
@@ -10729,6 +10732,12 @@
       var takePositionHtml = store.allowTakePosition
         ? '<button type="button" class="snap-take-position-btn' + (hasTakenPosition ? ' taken' : '') + '" data-snap-id="' + esc(snap.id) + '" title="' + (hasTakenPosition ? "Une position a déjà été prise sur ce snapshot — reclique pour en prendre une autre" : "Enregistre une copie de ce snapshot dans Mes Positions avec ta propre mise") + '">' + (hasTakenPosition ? "✅ Position prise" : "🎯 Prendre position") + '</button>'
         : '';
+      // Auto >10k avant-match only: copy the capture into Saison 26/27 as an
+      // ordinary snapshot (on request) — marked done once it's there.
+      var inSaison = store.name === "autoBigTrade" && cachedStoredList(SNAPSHOTS_KEY).some(function (x) { return x.sourceAutoPreId === snap.id && !x.deletedAt; });
+      var toSaisonHtml = store.name === "autoBigTrade"
+        ? '<button type="button" class="snap-to-saison-btn' + (inSaison ? ' taken' : '') + '" data-snap-id="' + esc(snap.id) + '" title="' + (inSaison ? "Déjà dans Saison 26/27" : "Copie ce trade dans Saison 26/27, comme un 📌 sur Value Trades") + '">' + (inSaison ? '✓ Dans Saison 26/27' : '📌 Ajouter à Saison 26/27') + '</button>'
+        : '';
       var editPositionHtml = store.allowEditPosition
         ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
         : '';
@@ -10741,6 +10750,7 @@
         confidenceButtonsHtml +
         magnitudeSectionHtml +
         takePositionHtml +
+        toSaisonHtml +
         editPositionHtml +
         snapCommentBtnHtml(snap, store) +
         '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
@@ -12950,6 +12960,23 @@
       }
       return;
     }
+    var toSaisonBtn = e.target.closest ? e.target.closest(".snap-to-saison-btn") : null;
+    if (toSaisonBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var autoId = toSaisonBtn.getAttribute("data-snap-id");
+      if (loadSnapshotsRaw().some(function (x) { return x.sourceAutoPreId === autoId && !x.deletedAt; })) return; // already there
+      var autoSnap = loadAutoBigTradeRaw().filter(function (x) { return x.id === autoId; })[0];
+      if (!autoSnap) return;
+      var copy = JSON.parse(JSON.stringify(autoSnap));
+      ["autoPre", "fromAlert", "alertKey", "isAutoCaptured", "autoCaptureKey", "deletedAt", "timeTries"].forEach(function (k) { delete copy[k]; });
+      copy.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      copy.savedAt = new Date().toISOString();
+      copy.sourceAutoPreId = autoSnap.id;
+      enqueueOp(SNAPSHOTS_STORE, { type: "add", id: copy.id, snapshot: copy });
+      renderAutoBigTrade();
+      return;
+    }
     var takePosBtn = e.target.closest ? e.target.closest(".snap-take-position-btn") : null;
     if (takePosBtn) {
       e.preventDefault();
@@ -14381,13 +14408,26 @@
   // First offset holding items older than ts (the list is newest first) —
   // there's no time filter, so a scan that resumes or reaches further back
   // finds where to start by probing single items.
+  // Polymarket only pages through the first AN_MAX_OFFSET closed positions
+  // of a list: past that, every offset returns the same item. So, newest
+  // first, history stops AN_MAX_OFFSET positions back (a few weeks for the
+  // busiest traders) — the rest is read the other way, oldest first, from
+  // the very first bet (anScanAsc). Between the two there can be a gap for
+  // the very busiest, which is excluded from the figures (anCovered).
+  var AN_MAX_OFFSET = 100000;
+  // First offset holding items older than ts (the list is newest first);
+  // -1 when that's beyond what the API pages to.
   async function anFindOffset(addr, ts) {
     async function tsAt(off) {
       var r = await anFetchJson(anClosedUrl(addr, off, 1));
       return r && r[0] && r[0].timestamp != null ? r[0].timestamp : -Infinity;
     }
     var lo = 0, hi = 1000;
-    while (await tsAt(hi) >= ts) { lo = hi; hi *= 2; if (hi > 4000000) return lo; }
+    while (await tsAt(hi) >= ts) {
+      if (hi >= AN_MAX_OFFSET) return -1;
+      lo = hi;
+      hi = Math.min(hi * 2, AN_MAX_OFFSET);
+    }
     while (hi - lo > AN_PAGE) {
       var mid = Math.floor((lo + hi) / 2);
       if (await tsAt(mid) >= ts) lo = mid; else hi = mid;
@@ -14395,13 +14435,16 @@
     return lo;
   }
   // Pages newest → oldest from `offset` until items get older than stopTs.
-  // Duplicates (the list shifts while it's being read) are harmless: legs
-  // are keyed, a second copy just overwrites the first.
+  // Returns true at the end of the list, "capped" at the paging limit,
+  // false once stopTs is passed. Duplicates (the list shifts while it's
+  // being read) are harmless: legs are keyed, a second copy overwrites.
   async function anScanClosed(t, offset, stopTs, onBatch) {
     var PAR = 4;
+    if (offset < 0) return "capped";
     for (;;) {
       var offs = [];
-      for (var i = 0; i < PAR; i++) offs.push(offset + i * AN_PAGE);
+      for (var i = 0; i < PAR; i++) if (offset + i * AN_PAGE < AN_MAX_OFFSET) offs.push(offset + i * AN_PAGE);
+      if (!offs.length) return "capped";
       var pages = await Promise.all(offs.map(function (o) { return anFetchJson(anClosedUrl(t.address, o)); }));
       anState.pagesRead += pages.length;
       var legs = [], minTs = Infinity, maxTs = 0, done = false;
@@ -14421,10 +14464,14 @@
       offset += PAR * AN_PAGE;
     }
   }
-  function anFinishScan(meta, s) {
-    if (s.kind === "initial") { meta.newestTs = s.top || Math.floor(Date.now() / 1000); meta.oldestTs = s.stop; }
+  // res: what anScanClosed returned. At the paging limit, history only
+  // reaches as far as was actually read (s.reached), not s.stop.
+  function anFinishScan(meta, s, res) {
+    var capped = res === "capped";
+    if (capped) meta.descCapped = true;
+    if (s.kind === "initial") { meta.newestTs = s.top || Math.floor(Date.now() / 1000); meta.oldestTs = capped && isFinite(s.reached) ? s.reached : s.stop; }
     else if (s.kind === "top") { if (s.top) meta.newestTs = Math.max(meta.newestTs || 0, s.top); }
-    else if (s.kind === "older") { meta.oldestTs = s.stop; }
+    else if (s.kind === "older") { meta.oldestTs = capped ? Math.min(meta.oldestTs || Infinity, s.reached) : s.stop; }
     meta.scan = null;
   }
   async function anSyncClosed(t, meta, olderDays) {
@@ -14436,36 +14483,74 @@
         return Promise.all([anStoreLegs(t, legs), anDbWrite("meta", [meta])]);
       };
     }
+    var res;
     // An interrupted scan (tab closed mid-way) resumes where it stopped.
     if (meta.scan) {
       var s0 = meta.scan;
-      await anScanClosed(t, await anFindOffset(t.address, s0.reached), s0.stop, handler(s0));
-      anFinishScan(meta, s0);
+      res = await anScanClosed(t, await anFindOffset(t.address, s0.reached), s0.stop, handler(s0));
+      if (res === true && s0.kind !== "top") meta.complete = true;
+      anFinishScan(meta, s0, res);
       await anDbWrite("meta", [meta]);
     }
     var now = Math.floor(Date.now() / 1000);
     var top = meta.newestTs
       ? { kind: "top", top: null, reached: Infinity, stop: meta.newestTs - 3600 }
       : { kind: "initial", top: null, reached: Infinity, stop: now - AN_INITIAL_DAYS * 86400 };
-    if (await anScanClosed(t, 0, top.stop, handler(top)) && top.kind === "initial") meta.complete = true;
-    anFinishScan(meta, top);
+    res = await anScanClosed(t, 0, top.stop, handler(top));
+    if (res === true && top.kind === "initial") meta.complete = true;
+    anFinishScan(meta, top, res);
     await anDbWrite("meta", [meta]);
-    if (olderDays && meta.oldestTs) {
-      var older = { kind: "older", top: null, reached: meta.oldestTs, stop: meta.oldestTs - olderDays * 86400 };
-      // Saved before the (several-request) offset search, so a tab closed
-      // right after still extends this trader on the next sync.
-      meta.scan = older;
-      await anDbWrite("meta", [meta]);
-      if (await anScanClosed(t, await anFindOffset(t.address, meta.oldestTs), older.stop, handler(older))) meta.complete = true;
-      anFinishScan(meta, older);
-      await anDbWrite("meta", [meta]);
+    if (!olderDays || !meta.oldestTs || meta.complete) return;
+    if (meta.descCapped) { await anScanAsc(t, meta); return; }
+    var older = { kind: "older", top: null, reached: meta.oldestTs, stop: meta.oldestTs - olderDays * 86400 };
+    // Saved before the (several-request) offset search, so a tab closed
+    // right after still extends this trader on the next sync.
+    meta.scan = older;
+    await anDbWrite("meta", [meta]);
+    res = await anScanClosed(t, await anFindOffset(t.address, meta.oldestTs), older.stop, handler(older));
+    if (res === true) meta.complete = true;
+    anFinishScan(meta, older, res);
+    await anDbWrite("meta", [meta]);
+  }
+  // Oldest first, from their very first bet, up to where the newest-first
+  // reading stopped (or the same paging limit) — AN_ASC_BATCHES × 4 pages
+  // per sync, resumable (meta.ascOffset). ascFrom/ascTop: what it covers.
+  var AN_ASC_BATCHES = 30;
+  async function anScanAsc(t, meta) {
+    var PAR = 4, off = meta.ascOffset || 0;
+    for (var n = 0; n < AN_ASC_BATCHES; n++) {
+      var offs = [];
+      for (var i = 0; i < PAR; i++) if (off + i * AN_PAGE < AN_MAX_OFFSET) offs.push(off + i * AN_PAGE);
+      if (!offs.length) { meta.complete = true; break; }
+      var pages = await Promise.all(offs.map(function (o) {
+        return anFetchJson(AN_DATA_API + "/closed-positions?user=" + t.address + "&limit=" + AN_PAGE + "&offset=" + o + "&sortBy=TIMESTAMP&sortDirection=ASC");
+      }));
+      anState.pagesRead += pages.length;
+      var legs = [], minTs = Infinity, maxTs = 0, done = false;
+      pages.forEach(function (pg) {
+        if (!Array.isArray(pg)) { done = true; return; }
+        if (pg.length < AN_PAGE) done = true;
+        pg.forEach(function (p) {
+          var ts = Number(p.timestamp) || 0;
+          if (ts) { minTs = Math.min(minTs, ts); maxTs = Math.max(maxTs, ts); }
+          var leg = anLeg(t, p, "closed");
+          if (anKeepLeg(t, leg)) legs.push(leg);
+        });
+      });
+      if (minTs !== Infinity && meta.ascFrom == null) meta.ascFrom = minTs;
+      if (maxTs) meta.ascTop = Math.max(meta.ascTop || 0, maxTs);
+      off += PAR * AN_PAGE;
+      meta.ascOffset = off;
+      await Promise.all([anStoreLegs(t, legs), anDbWrite("meta", [meta])]);
+      if (done || (maxTs && maxTs >= meta.oldestTs)) { meta.complete = true; break; }
     }
+    await anDbWrite("meta", [meta]);
   }
   // Settled but never redeemed (mostly lost legs nobody bothers to clear),
   // sorted by the market's end date — scanned down to two days before
   // whatever was already covered.
   async function anSyncResolved(t, meta) {
-    var need = new Date((meta.oldestTs || Math.floor(Date.now() / 1000)) * 1000 - 2 * 86400000).toISOString().slice(0, 10);
+    var need = new Date(Math.min(meta.oldestTs || Math.floor(Date.now() / 1000), meta.ascFrom || Infinity) * 1000 - 2 * 86400000).toISOString().slice(0, 10);
     var floor = (!meta.resolvedFloor || meta.resolvedFloor > need) ? need
       : new Date((meta.resolvedScanAt || Date.now()) - 2 * 86400000).toISOString().slice(0, 10);
     for (var off = 0; off < 30000; off += 500) {
@@ -14617,18 +14702,25 @@
       asset: mainBuys.length ? String(mainBuys[0].asset || "") : "",
       pre: kickoff && total > 0 ? preUsd / total : null,
       firstSell: sellTs.length ? Math.min.apply(null, sellTs) : null, sellUsd: sellUsd,
-      merge: merge, redeemTs: redeemTs, kickoff: kickoff || null, cp: cp, at: Date.now()
+      merge: merge, redeemTs: redeemTs, kickoff: kickoff || null, cp: cp, wasOpen: b.status === "open", at: Date.now()
     };
+  }
+  // Finished bets need their fills once; bets still running get them too
+  // (so they show in the list right away), then once more when they finish.
+  function anNeedsFills(b) {
+    var t = b.timing;
+    if (!(t && t.v === AN_TIMING_V)) return b.status === "decided" || b.status === "open";
+    return b.status === "decided" && !!t.wasOpen;
   }
   function anPendingEnrich() {
     var model = anModel(), n = 0;
-    Object.keys(model).forEach(function (k) { model[k].forEach(function (b) { if (b.status === "decided" && !(b.timing && b.timing.v === AN_TIMING_V)) n++; }); });
+    Object.keys(model).forEach(function (k) { model[k].forEach(function (b) { if (anNeedsFills(b)) n++; }); });
     return n;
   }
   async function anSyncEnrich() {
     var model = anModel(), pending = [];
     Object.keys(model).forEach(function (k) {
-      model[k].forEach(function (b) { if (b.status === "decided" && !(b.timing && b.timing.v === AN_TIMING_V)) pending.push(b); });
+      model[k].forEach(function (b) { if (anNeedsFills(b)) pending.push(b); });
     });
     if (!pending.length) return;
     pending.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
@@ -14985,8 +15077,17 @@
     var m = anState.meta[name];
     return m && m.oldestTs ? m.oldestTs * 1000 : Infinity;
   }
+  // A bet's date is covered when it falls in the newest-first history, or
+  // in the oldest-first one (minus its last 2 days, whose bets may have
+  // closed after what was read).
+  function anCovered(name, date) {
+    var m = anState.meta[name];
+    if (!m || !m.oldestTs || !date) return false;
+    if (date >= m.oldestTs * 1000) return true;
+    return !!(m.ascFrom && date >= m.ascFrom * 1000 && date <= (m.ascTop - 2 * 86400) * 1000);
+  }
   function anBaseOk(b, from) {
-    return b.status === "decided" && b.main.fin != null && (b.date || 0) >= Math.max(from, anCoveredFrom(b.trader));
+    return b.status === "decided" && b.main.fin != null && (b.date || 0) >= from && anCovered(b.trader, b.date);
   }
   function anOpts(opts) {
     opts = opts || {};
@@ -15091,7 +15192,9 @@
       // loaded history for a while.
       var first = null;
       (anModel()[t.name] || []).forEach(function (b) { if (b.date && b.timing && b.timing.v === AN_TIMING_V && (first == null || b.date < first)) first = b.date; });
-      parts.push(t.name + " chargé depuis le " + anDay(m.oldestTs * 1000) + (m.complete ? " (tout son historique)" : "") +
+      var from = m.ascFrom && m.ascFrom < m.oldestTs ? m.ascFrom : m.oldestTs;
+      var gap = m.ascFrom && m.ascTop && m.ascTop < m.oldestTs - 2 * 86400 ? " (trou du " + anDay(m.ascTop * 1000) + " au " + anDay(m.oldestTs * 1000) + ", que Polymarket ne laisse pas lire)" : "";
+      parts.push(t.name + " chargé depuis le " + anDay(from * 1000) + (m.complete ? (m.ascFrom ? " (début de son compte)" : " (tout son historique)") : "") + (m.complete ? gap : "") +
         (first && first > m.oldestTs * 1000 + 86400000 ? ", analysé depuis le " + anDay(first) : ""));
     });
     var html = '<span>' + (parts.length ? "Historique enregistré : " + esc(parts.join(" · ")) : "Premier chargement de l'historique…") +
@@ -15345,12 +15448,47 @@
     return txt;
   }
   var AN_KIND_LABELS = { held: "Gardé", soldWin: "Sorti en gain", soldLoss: "Sorti en perte", arb: "Arbitrage" };
+  // Bets still running (match not played or not settled) that match the
+  // filters — listed above the finished ones, never counted in the figures.
+  function anRunningBets(all) {
+    var from = anPeriodStart();
+    return all.filter(function (b) {
+      if (b.status !== "open" || (b.date || 0) < from || !anCovered(b.trader, b.date)) return false;
+      if (anState.sport !== "all" && b.sport !== anState.sport) return false;
+      var e = anEntry(b, anState.minStake);
+      if (!e) return false;
+      return !anState.pre || !!(b.kickoff && e.ts * 1000 < b.kickoff);
+    });
+  }
+  function anRunningRowHtml(b) {
+    var e = anEntry(b, anState.minStake), cs = anCopySplit(b, anState.minStake);
+    var rel = b.kickoff ? anRelLabel((e.ts * 1000 - b.kickoff) / 60000) : "";
+    var url = b.ev ? "https://polymarket.com/event/" + encodeURIComponent(b.ev) : "";
+    var upcoming = b.kickoff && b.kickoff > Date.now();
+    return '<tr class="an-running">' +
+      '<td class="an-tl an-nowrap">' + esc(anWhenShort(b.kickoff || e.ts * 1000)) + '</td>' +
+      '<td class="an-tl an-nowrap"><span class="an-dot" style="background:' + anTraderColor(b.trader) + '"></span>' + anNameLink(b.trader) + '</td>' +
+      '<td class="an-tl an-jmatch">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + '</td>' +
+      '<td class="an-tl">' + esc(anOutcomeName(b, e.oi)) + '</td>' +
+      '<td>' + anCents(e.price) + (rel ? '<small>' + esc(rel) + '</small>' : '') + '</td>' +
+      '<td>' + anNum(cs ? cs.side.cost : b.main.cost) + '\u00a0$' + (cs && cs.hedge ? '<small>+ ' + anNum(cs.oppCost) + '\u00a0$ en face' + (cs.oppAvg ? ' à ' + anCents(cs.oppAvg) : '') + '</small>' : '') + '</td>' +
+      '<td class="an-tl">' + (upcoming ? 'Pas encore joué' : 'En cours') + '</td>' +
+      '<td class="an-tl an-dimc">En attente</td>' +
+      '<td class="an-dimc">—</td>' +
+    '</tr>';
+  }
   function anJournalHtml(per) {
-    var list = [];
-    per.forEach(function (x) { x.bets.forEach(function (b) { if (!b.arb && anR(b, anState.mode, anState.minStake) != null) list.push(b); }); });
+    var list = [], running = [];
+    per.forEach(function (x) {
+      x.bets.forEach(function (b) { if (!b.arb && anR(b, anState.mode, anState.minStake) != null) list.push(b); });
+      running = running.concat(anRunningBets(x.all));
+    });
     list.sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
-    if (!list.length) return '<div class="an-dim an-empty">Aucun pari avec ces réglages.</div>';
-    var rows = list.slice(0, anState.jLimit).map(function (b) {
+    running.sort(function (a, b) { return (a.date || 0) - (b.date || 0); });
+    if (!list.length && !running.length) return '<div class="an-dim an-empty">Aucun pari avec ces réglages.</div>';
+    var runningHtml = running.length ? '<tr class="an-jsep"><td colspan="9">' + anPl(running.length, "pari pas encore terminé", "paris pas encore terminés") + ' — pas comptés dans les chiffres tant que le résultat n\'est pas connu</td></tr>' + running.map(anRunningRowHtml).join("") +
+      (list.length ? '<tr class="an-jsep"><td colspan="9">Paris terminés</td></tr>' : '') : '';
+    var rows = runningHtml + list.slice(0, anState.jLimit).map(function (b) {
       var e = anEntry(b, anState.minStake), fin = anFinOf(b, e.oi), cs = anCopySplit(b, anState.minStake);
       var r = anR(b, anState.mode, anState.minStake), pnl = r * anState.stake;
       var rel = b.kickoff ? anRelLabel((e.ts * 1000 - b.kickoff) / 60000) : "";
