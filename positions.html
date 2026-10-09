@@ -6382,9 +6382,15 @@
     } catch (e) { /* keep previous cardHtml */ }
     return snap;
   }
+  // A record with no question or no savedAt isn't a trade: it's the bare
+  // { id, winningSide, … } DynamoDB used to create when a tag was set on a
+  // card the server never had (fixed server-side 2026-10-09). Dropped on
+  // read so it can't show up on one device and not another, or break the
+  // date sort of the charts.
+  function isCompleteRecord(s) { return !!(s && s.id && s.question && s.savedAt && !isNaN(new Date(s.savedAt).getTime())); }
   function loadSnapshotsRaw() {
     var list;
-    try { list = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]"); } catch (e) { return []; }
+    try { list = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]").filter(isCompleteRecord); } catch (e) { return []; }
     // See refreshSnapshotDisplay — otherwise a sync pulling an un-migrated
     // copy back down from the server (or just a fresh page load before the
     // button's ever been pressed) silently resurrects the old wrong
@@ -6422,7 +6428,7 @@
   var POSITIONS_KEY = "vtPositions";
   function loadPositionsRaw() {
     var list;
-    try { list = JSON.parse(localStorage.getItem(POSITIONS_KEY) || "[]"); } catch (e) { return []; }
+    try { list = JSON.parse(localStorage.getItem(POSITIONS_KEY) || "[]").filter(isCompleteRecord); } catch (e) { return []; }
     // Same self-healing pass as loadSnapshotsRaw — a position cloned from an
     // un-migrated snapshot inherited the same stale numbers/markup.
     list.forEach(refreshSnapshotDisplay);
