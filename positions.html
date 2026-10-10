@@ -6779,7 +6779,7 @@
       body: JSON.stringify(op)
     });
     if (res.status === 401) { var authErr = new Error("unauthorized"); authErr.unauthorized = true; throw authErr; }
-    if (!res.ok) throw new Error("AWS POST " + res.status);
+    if (!res.ok) { var postErr = new Error("AWS POST " + res.status); postErr.status = res.status; throw postErr; }
     return res.json();
   }
   // `detail` (2026-08-30) — on "error" specifically, syncNow now passes
@@ -6868,6 +6868,18 @@
   function markEverSynced(store) {
     try { localStorage.setItem(store.everSyncedKey, "1"); } catch (e) { /* just means the one-time protection may run again next time — harmless */ }
   }
+  // The server's list with this device's not-yet-pushed edits re-applied on
+  // top. Only once this device has synced before (a first sync with local-
+  // only data goes through the careful path in syncNow instead).
+  async function refreshFromServerKeepingQueue(store) {
+    if (!hasEverSynced(store)) return;
+    var remote = await fetchRemoteList(store);
+    var pendingOps = loadSyncQueue(store);
+    if (pendingOps.length) remote = pendingOps.reduce(function (l, op) { return applyOpToList(l, op); }, remote);
+    store.save(remote);
+    renderStoreView(store);
+    anScheduleRender();
+  }
   async function syncNow(store) {
     if (syncInFlight[store.name]) return;
     syncInFlight[store.name] = true;
@@ -6877,14 +6889,24 @@
       var queue = loadSyncQueue(store);
       if (queue.length && !hasSecret) {
         // Local pending edits (made before a secret existed, or after one
-        // was lost) but nothing to push them with. Leave both the queue and
-        // the local cache untouched — they'll flush automatically the next
-        // time a secret is connected.
+        // was lost) but nothing to push them with. The queue stays (it
+        // flushes once a secret is connected), but the view still follows
+        // the server (2026-10-11 — before, it froze on a stale copy).
+        await refreshFromServerKeepingQueue(store);
         updateSyncStatus(store, "pending-secret");
         return;
       }
       while (queue.length) {
-        await pushOp(store, queue[0]);
+        try {
+          await pushOp(store, queue[0]);
+        } catch (pushErr) {
+          // A 4xx other than 401/429 will never succeed on retry: it used to
+          // jam the queue for good, and with it every later refresh from the
+          // server (so this device kept an old copy). Dropped and logged.
+          var st = pushErr && pushErr.status;
+          if (!(st >= 400 && st < 500 && st !== 401 && st !== 429)) throw pushErr;
+          console.warn(store.name + " — op abandonnée (" + st + ")", queue[0]);
+        }
         queue = loadSyncQueue(store).slice(1);
         saveSyncQueue(store, queue);
       }
@@ -6917,6 +6939,7 @@
       markEverSynced(store);
       updateSyncStatus(store, hasSecret ? "synced" : "readonly");
       renderStoreView(store);
+      anScheduleRender(); // the Analyse tab reads the >10k signals from this same list
       if (pendingOps.length && hasSecret) setTimeout(function () { syncNow(store); }, 1000);
     } catch (e) {
       console.error(store.name + " sync error", e);
@@ -6926,6 +6949,9 @@
       // immediately diagnosable from the status line, not just a generic
       // "erreur" with no way to tell what's actually blocked.
       var stuckOp = loadSyncQueue(store)[0];
+      // Pushing failed (network, server down…): still show the server's
+      // list, with this device's pending edits on top — never a stale copy.
+      try { await refreshFromServerKeepingQueue(store); } catch (e2) { /* offline: keep local */ }
       updateSyncStatus(store, "error", stuckOp ? (stuckOp.type + " · " + stuckOp.id) : null);
     } finally {
       syncInFlight[store.name] = false;
