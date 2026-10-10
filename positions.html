@@ -15486,7 +15486,7 @@
       '<td class="an-tl">' + esc(anOutcomeName(b, e.oi)) + '</td>' +
       '<td>' + anCents(e.price) + (rel ? '<small>' + esc(rel) + '</small>' : '') + '</td>' +
       '<td>' + anNum(cs ? cs.side.cost : b.main.cost) + '\u00a0$' + (cs && cs.hedge ? '<small>+ ' + anNum(cs.oppCost) + '\u00a0$ en face' + (cs.oppAvg ? ' à ' + anCents(cs.oppAvg) : '') + '</small>' : '') + '</td>' +
-      '<td class="an-tl">' + (upcoming ? 'Pas encore joué' : 'En cours') + '</td>' +
+      '<td class="an-tl">' + (b.signal ? '🐋 ' : '') + (upcoming ? 'Pas encore joué' : 'En cours') + (b.signal ? '<small>signal >10k, gardé</small>' : '') + '</td>' +
       '<td class="an-tl an-dimc">En attente</td>' +
       '<td class="an-dimc">—</td>' +
     '</tr>';
@@ -15514,7 +15514,7 @@
         '<td class="an-tl">' + esc(anOutcomeName(b, e.oi)) + '</td>' +
         '<td>' + anCents(e.price) + (rel ? '<small>' + esc(rel) + '</small>' : '') + '</td>' +
         '<td>' + anNum(cs ? cs.side.cost : b.main.cost) + ' $' + (cs && cs.hedge ? '<small>+ ' + anNum(cs.oppCost) + ' $ en face' + (cs.oppAvg ? ' à ' + anCents(cs.oppAvg) : '') + '</small>' : '') + '</td>' +
-        '<td class="an-tl">' + esc(AN_KIND_LABELS[anKind(b)]) + (cs && anKind(b) !== "held" && anKind(b) !== "arb" ? '<small>sorti à ' + anCents(cs.exit) + ' en moyenne</small>' : '') + '</td>' +
+        '<td class="an-tl">' + (b.signal ? '🐋 Signal >10k<small>pris à l\'alerte, gardé</small>' : esc(AN_KIND_LABELS[anKind(b)])) + (!b.signal && cs && anKind(b) !== "held" && anKind(b) !== "arb" ? '<small>sorti à ' + anCents(cs.exit) + ' en moyenne</small>' : '') + '</td>' +
         '<td class="an-tl ' + (fin === 1 ? 'an-pos' : 'an-neg') + '">' + (fin === 1 ? 'Gagné' : 'Perdu') + '</td>' +
         '<td class="' + (pnl >= 0 ? 'an-pos' : 'an-neg') + '" title="' + esc(anCalcText(b, cs, fin)) + '"><b>' + anUsdSigned(pnl) + '</b></td>' +
       '</tr>';
@@ -15608,6 +15608,43 @@
         : '<div class="an-dim an-empty">Aucun signal sur cette sélection.</div>') +
     '</section>';
   }
+  // Every >10k alert (Auto >10k record, written by the notify Lambda) is a
+  // bet in the simulator too (on request, 2026-10-11): taken at the
+  // signal's price and side, held to the result — and it replaces the
+  // version rebuilt from the trader's own fills on that market (which can
+  // differ: a side reached through the event's other outcomes, a later
+  // change of side…). Built in the same shape as anBet's bets so every
+  // figure, chart and list treats it like any other.
+  function anSignalBet(s) {
+    var price = s.leaderPriceAtSnapshot;
+    var stake = s.autoTraderStake || 0;
+    var fin = s.winningSide ? (s.winningSide === s.leaderName ? 1 : 0) : null;
+    var kickoff = s.kickoffAt ? Date.parse(s.kickoffAt) : null;
+    var takenTs = Math.floor(Date.parse(s.tradeTakenAt || s.savedAt) / 1000);
+    var bought = price > 0 ? stake / price : 0;
+    var leg = { oi: 0, outcome: s.leaderName, fin: fin, avg: price, cost: stake, bought: bought, size: 0, src: "closed",
+      pnl: fin == null ? 0 : (fin - price) * bought, held: true, exitAvg: fin, title: s.question, slug: s.eventSlug || "" };
+    var cp = {};
+    AN_STAKE_LEVELS.forEach(function (lvl) { if (stake >= lvl) cp[lvl] = [0, takenTs, price]; });
+    var main = leg;
+    return {
+      key: s.autoTrader + "|signal|" + s.id, trader: s.autoTrader, mult: 1, cid: s.polyCid, title: s.question, slug: s.eventSlug || "", ev: s.eventSlug || "",
+      legs: [leg], main: main, other: null, total: stake, status: fin == null ? "open" : "decided",
+      date: kickoff || Date.parse(s.savedAt), kickoff: kickoff,
+      sport: anSportOf(s.question, s.eventSlug || ""), league: anLeagueOf(s.eventSlug || ""), mtype: marketTypeKey(s.question),
+      two: false, won: fin == null ? null : fin === 1, pnl: fin == null ? null : leg.pnl, livePnl: leg.pnl,
+      behavior: fin == null ? "open" : "held", arb: false, signal: true,
+      timing: { v: AN_TIMING_V, cp: cp, kickoff: kickoff, first: takenTs, half: takenTs }
+    };
+  }
+  function anWithSignals(name, bets) {
+    if (AUTO_PRE_TRADERS.indexOf(name) === -1) return bets;
+    var sigs = loadAutoBigTrade().filter(function (s) { return s.autoTrader === name && s.polyCid && s.leaderPriceAtSnapshot > 0; });
+    if (!sigs.length) return bets;
+    var cids = {};
+    sigs.forEach(function (s) { cids[s.polyCid] = true; });
+    return bets.filter(function (b) { return !cids[b.cid]; }).concat(sigs.map(anSignalBet));
+  }
   function renderAnalyse() {
     var el = document.getElementById("analyseContent");
     if (!el) return;
@@ -15620,7 +15657,7 @@
     var model = anModel();
     anState.pendingN = 0;
     var per = analysisTraders().filter(function (t) { return !anState.hidden[t.name]; }).map(function (t) {
-      var all = model[t.name] || [];
+      var all = anWithSignals(t.name, model[t.name] || []);
       var bets = anFiltered(all);
       var pending = anPendingCount(all);
       anState.pendingN += pending;
