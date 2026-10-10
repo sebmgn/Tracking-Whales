@@ -2369,6 +2369,30 @@
     .an-cal-txt small { display: none; }
   }
   .auto-pre-banner { font-size: 12.5px; padding: 7px 10px; margin-bottom: 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--panel-border)); }
+  /* Seb — the user's own Polymarket bets */
+  .seb-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 12px; font-size: 13px; }
+  .seb-head a { color: var(--accent); font-weight: 700; text-decoration: none; }
+  .seb-dim { color: var(--text-dim); }
+  .seb-btn { font: inherit; font-size: 12px; font-weight: 700; border: 1px solid var(--panel-border); background: var(--panel); color: var(--accent); border-radius: 8px; padding: 5px 11px; cursor: pointer; }
+  .seb-btn:hover { border-color: var(--accent); }
+  .seb-controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .seb-seg { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+  .seb-seg-label { font-size: 12px; font-weight: 700; color: var(--text-dim); min-width: 64px; }
+  .seb-seg button { font: inherit; font-size: 12px; font-weight: 700; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text-dim); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+  .seb-seg button.active { background: var(--text); border-color: var(--text); color: var(--panel); }
+  .seb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px; margin: 14px 0; }
+  .seb-box { margin-bottom: 0; }
+  .seb-scroll { overflow-x: auto; }
+  .seb-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .seb-tbl th, .seb-tbl td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent); }
+  .seb-tbl thead th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
+  .seb-tbl tbody th, .seb-tbl td.seb-q, .seb-list td:nth-child(3) { text-align: left; }
+  .seb-tbl td.seb-q { white-space: normal; min-width: 220px; }
+  .seb-tbl a { color: var(--text); text-decoration: none; }
+  .seb-tbl a:hover { color: var(--accent); text-decoration: underline; }
+  .seb-tbl tr.seb-open td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .seb-nowrap { white-space: nowrap; }
+  .seb-more { margin-top: 10px; }
   /* Analyse v3 — three traders: entry, exit, adverse side, stake levels, sports */
   .an-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; margin-right: 6px; }
   .an-card3 { border-top: 3px solid var(--an-c); }
@@ -2712,6 +2736,7 @@
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
     <button class="tab-btn tab-btn-quiet" data-tab="auto-bigtrade" type="button"><span class="tab-btn-icon">🐋</span>Auto &gt;10k avant-match</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="seb" type="button"><span class="tab-btn-icon">👤</span>Seb</button>
   </div>
 
   <div class="tab-panel active" id="tab-home">
@@ -2939,6 +2964,11 @@
     <div id="testContent" class="value-trades-box">
       <div class="empty-note">Rien à afficher — aucun snapshot actuel ni archivé.</div>
     </div>
+  </div>
+
+  <div class="tab-panel" id="tab-seb">
+    <h2 class="section-title">👤 Seb — mes paris Polymarket</h2>
+    <div id="sebContent"></div>
   </div>
 
   <div class="tab-panel" id="tab-auto-bigtrade">
@@ -12071,7 +12101,9 @@
       '</div>' +
       '</div>';
   }
-  function buildHistoryChartSvg(series) {
+  // opts.noPolicyMarker: leave out the site's own 21/09 policy marker (it's
+  // about the site's snapshots, not e.g. the Seb tab's real bets).
+  function buildHistoryChartSvg(series, opts) {
     if (series.length < 2) return "";
     var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
     var innerW = W - padL - padR, innerH = H - padT - padB;
@@ -12183,7 +12215,7 @@
     var POLICY_MARKER_DATE = new Date(2026, 8, 21);
     var POLICY_MARKER_LABEL = ["21/09 — fin du", "manuel B, que du A"];
     var policyX = null;
-    if (POLICY_MARKER_DATE >= series[0].date) {
+    if (!(opts && opts.noPolicyMarker) && POLICY_MARKER_DATE >= series[0].date) {
       if (POLICY_MARKER_DATE >= series[n - 1].date) {
         policyX = x(n - 1);
       } else {
@@ -12391,6 +12423,7 @@
       if (btn.getAttribute("data-tab") === "archives") renderArchives();
       if (btn.getAttribute("data-tab") === "test") renderTest();
       if (btn.getAttribute("data-tab") === "auto-bigtrade") renderAutoBigTrade();
+      if (btn.getAttribute("data-tab") === "seb") sebOpen();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
       if (btn.getAttribute("data-tab") === "by-match") renderByMatch();
@@ -15663,6 +15696,188 @@
     var cross = document.getElementById("anChCross"), tip = document.getElementById("anChTip");
     if (cross) cross.setAttribute("visibility", "hidden");
     if (tip) tip.hidden = true;
+  });
+
+  // ---------- Seb: the user's own Polymarket bets (on request, 2026-10-10) ----------
+  // Read live from Polymarket's public API on every visit (closed positions,
+  // plus settled-but-unredeemed and still-open ones), so every device shows
+  // the same thing and nothing needs storing. One row = one market × side.
+  var SEB_ADDRESS = "0x062922dcc898a4935b2b87f5e9ea2360b31e0a16";
+  var SEB_PROFILE_URL = "https://polymarket.com/profile/" + SEB_ADDRESS;
+  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40 };
+  var SEB_ODDS = [[0, 0.4, "< 40¢"], [0.4, 0.55, "40–55¢"], [0.55, 0.7, "55–70¢"], [0.7, 0.8, "70–80¢"], [0.8, 0.9, "80–90¢"], [0.9, 1.01, "90¢ +"]];
+  // Direct, not throttledFetch: a handful of requests, and that shared queue
+  // can be busy with the full refresh for a minute or more.
+  async function sebFetchJson(url) {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, 20000);
+    var res = await fetch(url, { signal: ctrl.signal }).finally(function () { clearTimeout(timer); });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+  async function sebLoad() {
+    if (sebState.loading) return;
+    sebState.loading = true;
+    sebState.error = null;
+    renderSeb();
+    try {
+      var closed = [];
+      for (var off = 0; off < 5000; off += 50) {
+        var pg = await sebFetchJson("https://data-api.polymarket.com/closed-positions?user=" + SEB_ADDRESS + "&limit=50&offset=" + off + "&sortBy=TIMESTAMP&sortDirection=DESC");
+        if (!Array.isArray(pg) || !pg.length) break;
+        closed = closed.concat(pg);
+        if (pg.length < 50) break;
+      }
+      var open = await sebFetchJson("https://data-api.polymarket.com/positions?user=" + SEB_ADDRESS + "&limit=500&sizeThreshold=0.01");
+      var bets = [];
+      closed.forEach(function (p) {
+        var stake = (Number(p.totalBought) || 0) * (Number(p.avgPrice) || 0);
+        if (stake < 1) return;
+        bets.push(sebBet(p, stake, Number(p.realizedPnl) || 0, "done", (Number(p.timestamp) || 0) * 1000));
+      });
+      var seen = {};
+      bets.forEach(function (b) { seen[b.key] = true; });
+      (Array.isArray(open) ? open : []).forEach(function (p) {
+        if (seen[p.conditionId + "|" + p.outcomeIndex]) return; // already counted from closed-positions
+        var stake = Number(p.initialValue) || (Number(p.size) || 0) * (Number(p.avgPrice) || 0);
+        if (stake < 1) return;
+        var cur = Number(p.curPrice);
+        var settled = p.redeemable === true || cur === 0 || cur === 1;
+        var end = p.endDate ? Date.parse(String(p.endDate).length === 10 ? p.endDate + "T23:00:00Z" : p.endDate) : Date.now();
+        bets.push(sebBet(p, stake, (Number(p.cashPnl) || 0) + (Number(p.realizedPnl) || 0), settled ? "done" : "open", settled ? end : null));
+      });
+      sebState.bets = bets;
+      sebState.at = Date.now();
+    } catch (e) {
+      sebState.error = (e && e.message) || "erreur réseau";
+    } finally {
+      sebState.loading = false;
+      renderSeb();
+    }
+  }
+  function sebBet(p, stake, pnl, status, doneAt) {
+    var title = p.title || "—";
+    return {
+      key: p.conditionId + "|" + p.outcomeIndex, title: title, outcome: p.outcome || "—", slug: p.eventSlug || p.slug || "",
+      stake: stake, avg: Number(p.avgPrice) || 0, pnl: pnl, status: status, doneAt: doneAt,
+      sport: sportEmojiFor(title, p.slug || ""), win: status === "done" ? pnl > 0 : null
+    };
+  }
+  // Was this bet one of the site's own snapshots (Saison 26/27 or Auto >10k)?
+  function sebFromSite(b) {
+    var set = {};
+    cachedStoredList(SNAPSHOTS_KEY).forEach(function (s) { if (!s.deletedAt && s.question) set[String(s.question).toLowerCase()] = true; });
+    return !!set[b.title.toLowerCase()];
+  }
+  function sebFiltered() {
+    var from = sebState.period === "all" ? 0 : Date.now() - Number(sebState.period) * 86400000;
+    return (sebState.bets || []).filter(function (b) {
+      if (sebState.sport !== "all" && b.sport !== sebState.sport) return false;
+      if (sebState.origin !== "all" && (sebState.origin === "site") !== sebFromSite(b)) return false;
+      if (b.status === "done" && from && b.doneAt < from) return false;
+      return true;
+    });
+  }
+  function sebStats(list) {
+    var done = list.filter(function (b) { return b.status === "done"; });
+    var stake = 0, pnl = 0, wins = 0, priceW = 0;
+    done.forEach(function (b) { stake += b.stake; pnl += b.pnl; if (b.pnl > 0) wins++; priceW += b.avg * b.stake; });
+    return { n: done.length, stake: stake, pnl: pnl, roi: stake ? pnl / stake * 100 : null, win: done.length ? wins / done.length * 100 : null,
+      avgStake: done.length ? stake / done.length : null, avgPrice: stake ? priceW / stake : null };
+  }
+  function sebPct(v) { return v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(1).replace(".", ",") + "%"; }
+  function sebStatTile(label, value, cls) {
+    return '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">' + esc(label) + '</span><span class="pnl-chart-stat-value ' + (cls || "") + '">' + value + '</span></div>';
+  }
+  function sebBreakdownHtml(title, groups) {
+    var rows = groups.filter(function (g) { return g.st.n; }).map(function (g) {
+      var cls = g.st.pnl >= 0 ? "pnl-pos" : "pnl-neg";
+      return '<tr><th>' + esc(g.label) + '</th><td>' + g.st.n + '</td><td>' + (g.st.win == null ? "—" : Math.round(g.st.win) + "%") + '</td><td>' + esc(fmtUSD(g.st.stake)) + '</td><td class="' + cls + '">' + esc(fmtUSDSigned(g.st.pnl)) + '</td><td class="' + cls + '">' + sebPct(g.st.roi) + '</td></tr>';
+    }).join("");
+    return '<div class="chart-box seb-box"><div class="tier-wr-title">' + esc(title) + '</div>' +
+      (rows ? '<div class="seb-scroll"><table class="seb-tbl"><thead><tr><th></th><th>Paris</th><th>Gagnés</th><th>Misé</th><th>PnL</th><th>ROI</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="empty-note">Rien sur cette sélection.</div>') +
+    '</div>';
+  }
+  function sebSeg(label, attr, opts, cur) {
+    return '<div class="seb-seg"><span class="seb-seg-label">' + esc(label) + '</span>' + opts.map(function (o) {
+      return '<button type="button" ' + attr + '="' + esc(o[0]) + '"' + (String(o[0]) === String(cur) ? ' class="active"' : '') + '>' + esc(o[1]) + '</button>';
+    }).join("") + '</div>';
+  }
+  function renderSeb() {
+    var el = document.getElementById("sebContent");
+    if (!el) return;
+    if (!sebState.bets) {
+      el.innerHTML = '<div class="loading-state">' + (sebState.error ? '⚠️ Polymarket n\'a pas répondu (' + esc(sebState.error) + '). <button type="button" class="seb-btn" data-seb-reload="1">Réessayer</button>' : 'Chargement de ton historique Polymarket…') + '</div>';
+      return;
+    }
+    var all = sebState.bets;
+    var sports = {};
+    all.forEach(function (b) { sports[b.sport] = (sports[b.sport] || 0) + 1; });
+    var list = sebFiltered();
+    var st = sebStats(list);
+    var done = list.filter(function (b) { return b.status === "done"; }).sort(function (a, b) { return a.doneAt - b.doneAt; });
+    var open = list.filter(function (b) { return b.status === "open"; });
+    var cum = 0;
+    var series = done.map(function (b) { cum += b.pnl; return { date: new Date(b.doneAt), value: cum, delta: b.pnl, win: b.pnl > 0, pointColor: b.pnl > 0 ? "#00e676" : "#ff1744" }; });
+    var head = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution de ton PnL réel</div><div class="pnl-chart-stats">' +
+      sebStatTile("Paris", st.n || "—") +
+      sebStatTile("PnL réalisé", st.n ? esc(fmtUSDSigned(st.pnl)) : "—", st.pnl >= 0 ? "pnl-pos" : "pnl-neg") +
+      sebStatTile("ROI", sebPct(st.roi), st.roi == null ? "" : (st.roi >= 0 ? "pnl-pos" : "pnl-neg")) +
+      sebStatTile("Gagnés", st.win == null ? "—" : Math.round(st.win) + "%") +
+      sebStatTile("Mise moy.", st.avgStake == null ? "—" : esc(fmtUSD(st.avgStake))) +
+      sebStatTile("Cote moy.", st.avgPrice == null ? "—" : Math.round(st.avgPrice * 100) + "¢") +
+    '</div></div>';
+    var controls = '<div class="seb-controls">' +
+      sebSeg("Période", "data-seb-period", [["7", "7 j"], ["30", "30 j"], ["90", "90 j"], ["all", "Tout"]], sebState.period) +
+      sebSeg("Sport", "data-seb-sport", [["all", "Tous"]].concat(Object.keys(sports).sort(function (a, b) { return sports[b] - sports[a]; }).map(function (k) { return [k, k + " " + (AN_SPORT_LABELS[k] || "") + " · " + sports[k]]; })), sebState.sport) +
+      sebSeg("Origine", "data-seb-origin", [["all", "Tous"], ["site", "📌 Snapshot du site"], ["other", "Hors site"]], sebState.origin) +
+    '</div>';
+    var chart = series.length >= 2 ? buildHistoryChartSvg(series, { noPolicyMarker: true }) + drawdownHtml(series) : '<div class="empty-note" style="padding:14px 0;">Pas assez de paris terminés sur cette sélection pour tracer une courbe.</div>';
+    var byOdds = SEB_ODDS.map(function (o) { return { label: o[2], st: sebStats(list.filter(function (b) { return b.avg >= o[0] && b.avg < o[1]; })) }; });
+    var bySport = Object.keys(sports).map(function (k) { return { label: k + " " + (AN_SPORT_LABELS[k] || ""), st: sebStats(list.filter(function (b) { return b.sport === k; })) }; })
+      .sort(function (a, b) { return b.st.n - a.st.n; });
+    var months = {};
+    done.forEach(function (b) { var d = new Date(b.doneAt); var k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); (months[k] = months[k] || []).push(b); });
+    var byMonth = Object.keys(months).sort().reverse().map(function (k) {
+      return { label: new Date(k + "-15").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }), st: sebStats(months[k]) };
+    });
+    var rowsList = done.slice().reverse();
+    var rows = open.concat(rowsList.slice(0, sebState.limit)).map(function (b) {
+      var url = b.slug ? "https://polymarket.com/event/" + encodeURIComponent(b.slug) : "";
+      var res = b.status === "open" ? '<td class="seb-dim">En cours</td><td class="seb-dim">—</td>'
+        : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td><td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
+      return '<tr' + (b.status === "open" ? ' class="seb-open"' : '') + '><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
+        '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + (sebFromSite(b) ? ' <span class="seb-tag" title="Ce pari est aussi dans Saison 26/27 ou Auto >10k">📌</span>' : '') + '</td>' +
+        '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
+    }).join("");
+    el.innerHTML =
+      '<div class="seb-head"><a href="' + SEB_PROFILE_URL + '" target="_blank" rel="noopener">Ton profil Polymarket ↗</a>' +
+        '<span class="seb-dim">Lu en direct sur Polymarket' + (sebState.at ? ' à ' + new Date(sebState.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : '') + '</span>' +
+        '<button type="button" class="seb-btn" data-seb-reload="1"' + (sebState.loading ? ' disabled' : '') + '>' + (sebState.loading ? 'Mise à jour…' : '↻ Mettre à jour') + '</button></div>' +
+      controls +
+      '<div class="chart-box" id="sebChartBox">' + head + chart + '</div>' +
+      '<div class="seb-grid">' + sebBreakdownHtml("Par sport", bySport) + sebBreakdownHtml("Par cote d'entrée", byOdds) + sebBreakdownHtml("Par mois", byMonth) + '</div>' +
+      '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (open.length ? ' · ' + open.length + ' en cours' : '') + '</div>' +
+        '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr><th>Réglé le</th><th>Marché</th><th>Camp</th><th>Prix moyen</th><th>Misé</th><th>Résultat</th><th>PnL</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        (rowsList.length > sebState.limit ? '<button type="button" class="seb-btn seb-more" data-seb-more="1">Voir 40 de plus (' + (rowsList.length - sebState.limit) + ' restants)</button>' : '') +
+      '</div>';
+    var box = document.getElementById("sebChartBox");
+    if (box && series.length >= 2) wireHistoryChartTooltip(box);
+  }
+  function sebOpen() {
+    if (!sebState.bets || Date.now() - sebState.at > 5 * 60000) sebLoad(); else renderSeb();
+  }
+  document.addEventListener("click", function (e) {
+    var root = document.getElementById("sebContent");
+    if (!root || !e.target.closest || !root.contains(e.target)) return;
+    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more]");
+    if (!el) return;
+    if (el.hasAttribute("data-seb-reload")) { sebLoad(); return; }
+    if (el.hasAttribute("data-seb-period")) sebState.period = el.getAttribute("data-seb-period");
+    if (el.hasAttribute("data-seb-sport")) sebState.sport = el.getAttribute("data-seb-sport");
+    if (el.hasAttribute("data-seb-origin")) sebState.origin = el.getAttribute("data-seb-origin");
+    if (el.hasAttribute("data-seb-more")) sebState.limit += 40; else sebState.limit = 40;
+    renderSeb();
   });
 
   // Reopen whichever tab was last used; a first visit lands on Accueil.
