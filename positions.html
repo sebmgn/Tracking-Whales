@@ -3256,19 +3256,23 @@
     // bets real size; the others are small accounts, hence the requested
     // stakeMultiplier.
     { name: "mrf", platform: "polymarket", address: "0x16cbe223607a6513ae76d1e3751c78e4eabc2704", weight: 7 },
-    { name: "mmaker1", platform: "polymarket", address: "0x81954ba9d2695c473ecfd644e778953d55063fed", weight: 7, stakeMultiplier: 100 },
-    { name: "zaeda", platform: "polymarket", address: "0x124b68288c3b8346883028481101477bdea2bd60", weight: 7, stakeMultiplier: 100 },
-    { name: "manuel9009", platform: "polymarket", address: "0x310188b28701d6492cf2b9b4341215ac2eeee57f", weight: 7, stakeMultiplier: 50 },
-    { name: "rushiya", platform: "polymarket", address: "0xf64745161e46cbd2143f021edd92cf6bed850ccb", weight: 6, stakeMultiplier: 30 },
+    { name: "mmaker1", platform: "polymarket", address: "0x81954ba9d2695c473ecfd644e778953d55063fed", weight: 7, stakeMultiplier: 10 },
+    { name: "zaeda", platform: "polymarket", address: "0x124b68288c3b8346883028481101477bdea2bd60", weight: 7, stakeMultiplier: 10 },
+    { name: "manuel9009", platform: "polymarket", address: "0x310188b28701d6492cf2b9b4341215ac2eeee57f", weight: 7, stakeMultiplier: 20 },
+    { name: "rushiya", platform: "polymarket", address: "0xf64745161e46cbd2143f021edd92cf6bed850ccb", weight: 6.5, stakeMultiplier: 4 },
     // The profile's username really is "0x" + 38 zeros (not an address).
-    { name: "0x00000000000000000000000000000000000000", platform: "polymarket", address: "0xbe9fd078456503f1a5d9115d1ac6d9a7eb42014a", weight: 6, stakeMultiplier: 50 },
+    { name: "0x00000000000000000000000000000000000000", platform: "polymarket", address: "0xbe9fd078456503f1a5d9115d1ac6d9a7eb42014a", weight: 7, stakeMultiplier: 5 },
     { name: "canadiansolar", platform: "polymarket", address: "0x1947814e058caa2ee0844baac3c84853aef094bc", weight: 6, stakeMultiplier: 10 },
     // Added 2026-10-07 (profile @omnibus-076daa) — same wallet as the "anon"
     // tracked 2026-08-08 → 2026-09-05 (see TRADER_HISTORY).
     { name: "omnibus", platform: "polymarket", address: "0x076daa87c4fe1a85402a9b6b8e0a866224388d4c", weight: 7.5 },
     // Added 2026-10-09 (profiles @rayvanmechelen and @limousin).
     { name: "rayvanmechelen", platform: "polymarket", address: "0xcc37dfa0597c3a7706d2ad184e77a2040191c4ea", weight: 6.5, stakeMultiplier: 3 },
-    { name: "Limousin", platform: "polymarket", address: "0x32bb3f0f842da76d3c3bba7d6d76376334733c1a", weight: 8.5 }
+    { name: "Limousin", platform: "polymarket", address: "0x32bb3f0f842da76d3c3bba7d6d76376334733c1a", weight: 8.5 },
+    // Added 2026-10-10 (profiles @mrkite and @sampo-one); same day, notes and
+    // multipliers of mmaker1, zaeda, manuel9009, rushiya and 0x000… revised.
+    { name: "MrKite", platform: "polymarket", address: "0x089c9e678f350d299e01d345ed50f872c28b4dc4", weight: 7, stakeMultiplier: 10 },
+    { name: "sampo-one", platform: "polymarket", address: "0xdc6d3e689396aba34aa21235e7a914a847b231ce", weight: 7, stakeMultiplier: 20 }
   ];
   // Reconstructed 2026-09-14 from git history (this file's own commit log),
   // not tracked live anywhere — TRADERS has never recorded when a profile
@@ -3317,6 +3321,8 @@
     { name: "omnibus", platform: "polymarket", address: "0x076daa87c4fe1a85402a9b6b8e0a866224388d4c", added: "2026-10-07", removed: null },
     { name: "rayvanmechelen", platform: "polymarket", address: "0xcc37dfa0597c3a7706d2ad184e77a2040191c4ea", added: "2026-10-09", removed: null },
     { name: "Limousin", platform: "polymarket", address: "0x32bb3f0f842da76d3c3bba7d6d76376334733c1a", added: "2026-10-09", removed: null },
+    { name: "MrKite", platform: "polymarket", address: "0x089c9e678f350d299e01d345ed50f872c28b4dc4", added: "2026-10-10", removed: null },
+    { name: "sampo-one", platform: "polymarket", address: "0xdc6d3e689396aba34aa21235e7a914a847b231ce", added: "2026-10-10", removed: null },
     { name: "flatbarrel", platform: "polymarket", address: "0x6485f47d0344c03eb4340f985159f6eb2dcba265", added: "2026-08-08", removed: null },
     { name: "tradecraft", platform: "polymarket", address: "0xde9f7f4e77a1595623ceb58e469f776257ccd43c", added: "2026-08-08", removed: null },
     { name: "trmc", platform: "polymarket", address: "0x42c99f38d2b951b0dc8e8bd5371fa80c9dd19623", added: "2026-08-08", removed: null },
