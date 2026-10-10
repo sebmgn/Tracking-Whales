@@ -2436,6 +2436,7 @@
   .an-verdict-cell { font-size: 12px; color: var(--text-dim); white-space: normal; min-width: 150px; }
   .an-journal tr.an-running td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
   .an-journal tr.an-jsep td { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); padding-top: 12px; }
+  .an-note { font-size: 12.5px; line-height: 1.5; background: color-mix(in srgb, var(--accent) 8%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--panel-border)); border-radius: 8px; padding: 8px 11px; margin-bottom: 10px; }
   .an-journal td { vertical-align: top; }
   .an-journal .an-jmatch { white-space: normal; min-width: 220px; max-width: 360px; line-height: 1.35; }
   .an-journal a { color: var(--text); text-decoration: none; }
@@ -15076,7 +15077,7 @@
       if (!anBaseOk(b, from)) return false;
       if (o.sport !== "all" && b.sport !== o.sport) return false;
       var e = anEntry(b, o.lvl);
-      if (!e) return false;
+      if (!e || e.price > AUTO_PRE_MAX_PRICE) return false; // only bets worth > +5 % if they win
       if (o.pre && !(b.kickoff && e.ts * 1000 < b.kickoff)) return false;
       return true;
     });
@@ -15427,7 +15428,7 @@
       if (b.status !== "open" || (b.date || 0) < from || !anCovered(b.trader, b.date)) return false;
       if (anState.sport !== "all" && b.sport !== anState.sport) return false;
       var e = anEntry(b, anState.minStake);
-      if (!e) return false;
+      if (!e || e.price > AUTO_PRE_MAX_PRICE) return false;
       return !anState.pre || !!(b.kickoff && e.ts * 1000 < b.kickoff);
     });
   }
@@ -15603,7 +15604,8 @@
           (anState.pendingN ? ' · <b>' + anPl(anState.pendingN, "pari encore en cours d'analyse", "paris encore en cours d'analyse") + '</b>, ajoutés au fur et à mesure' : '') + '</div>' +
         anResultsHtml(per) + anChartHtml(per) + '</section>' +
       '<section class="an-section"><h3 class="an-stitle">Les paris</h3>' +
-        '<div class="an-ssub">Exactement ceux qui font les chiffres ci-dessus, du plus récent au plus ancien · « Toi » : ce que la stratégie choisie t\'aurait rapporté avec ' + anK(anState.stake) + '.</div>' +
+        '<div class="an-ssub">Exactement ceux qui font les chiffres ci-dessus, du plus récent au plus ancien, rebâtis à partir de ses achats sur chaque marché · seulement ceux qui rapportent plus de 5 % s\'ils gagnent · « Toi » : ce que la stratégie choisie t\'aurait rapporté avec ' + anK(anState.stake) + '.</div>' +
+        (AUTO_PRE_TRADERS.some(function (n) { return !anState.hidden[n]; }) ? '<div class="an-note">Les signaux >10k de flaznorp et RN1 (ceux des alertes email, pris au moment de l\'alerte même s\'il change d\'avis ensuite) sont tous dans la section <b>🐋 Signaux >10k avant-match</b> en haut de la page. Ici, un pari où il a changé de camp (ex. Barcelona) apparaît sur le camp qu\'il a réellement acheté sur ce marché.</div>' : '') +
         anJournalHtml(per) + '</section>' +
       '<section class="an-section"><h3 class="an-stitle">Plus il mise, mieux c\'est ?</h3>' +
         '<div class="an-ssub">ROI moyen par pari selon le montant atteint par le trader, stratégie choisie · ' + esc(period + (anState.pre ? " · avant le match" : "") + (anState.sport !== "all" ? " · " + anSportLabel(anState.sport) : "")) + '</div>' +
