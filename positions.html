@@ -3690,7 +3690,7 @@
   function freshStoreState() {
     return {
       tierCardFilter: [], snapDistCellFilter: null, noteCardFilter: null, manualVsAutoFilter: null,
-      pnlChartOddsFilter: null, pnlChartTierFilter: [], pnlChartDays: null, pnlChartNoteFilter: null,
+      pnlChartOddsFilter: null, pnlChartTierFilter: [], pnlChartDays: null, pnlChartNoteFilter: null, pnlChartOriginFilter: "",
       pnlChartSimStake: null, pnlChartTraderFilter: [], pnlChartTraderFilterOpen: false,
       // Console avancée (on request): 2 lignes fixes (manuel/auto), chacune
       // avec ses propres filtres multi-select — indépendant de
@@ -9617,6 +9617,8 @@
     var activeNoteBinIsLast = st.pnlChartNoteFilter != null && NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === st.pnlChartNoteFilter;
     var decidedFiltered = decidedAll.filter(function (s) {
       if (st.pnlChartTierFilter.length && st.pnlChartTierFilter.indexOf(s.confidence) === -1) return false;
+      if (st.pnlChartOriginFilter === "manual" && !s.isManual) return false;
+      if (st.pnlChartOriginFilter === "auto" && s.isManual) return false;
       if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
       if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
       if (st.pnlChartDays != null) {
@@ -9763,10 +9765,6 @@
       '</div>';
     }
     var filterNote = st.pnlChartConsoleOpen ? ' — <b>console avancée</b>' : (st.tierCardFilter.length ? ' — <b>' + esc(st.tierCardFilter.join(", ")) + '</b> uniquement' : '');
-    var oddsOptionsHtml = '<option value="">Toutes</option>' + DIST_ODDS_BUCKETS.map(function (b) {
-      var sel = st.pnlChartOddsFilter && st.pnlChartOddsFilter[0] === b[0] && st.pnlChartOddsFilter[1] === b[1] ? ' selected' : '';
-      return '<option value="' + b[0] + '-' + b[1] + '"' + sel + '>' + b[0] + '–' + b[1] + '¢</option>';
-    }).join("");
     // Chips, not a select (2026-09-26, on request, replacing the old
     // "Diviser par confiance" overlay of 3 crossing lines) — clicking one
     // just filters this same single-line chart to that tier's own decided
@@ -9822,7 +9820,12 @@
         : '') +
     '</div>';
     var controlsHtml = '<div class="pnl-chart-filters">' +
-      '<label>Cote <select id="' + idp + 'pnlChartOddsSelect">' + oddsOptionsHtml + '</select></label>' +
+      // "Cote" select removed and "Manuel / Auto" added here (on request,
+      // 2026-10-10) — the same split the console avancée makes, as a plain filter.
+      '<label>Type <select id="' + idp + 'pnlChartOriginSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' +
+        [["", "Tout"], ["manual", "✍️ Manuel"], ["auto", "🎯 Auto"]].map(function (o) {
+          return '<option value="' + o[0] + '"' + (st.pnlChartOriginFilter === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join("") + '</select></label>' +
       tierChipsHtml +
       '<label>Note <select id="' + idp + 'pnlChartNoteSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + timeOptionsHtml + '</select></label>' +
@@ -9914,6 +9917,11 @@
   function wirePnlChartFilterControls(cardsList, store) {
     var idp = store.name + "-";
     var oddsSelect = document.getElementById(idp + "pnlChartOddsSelect");
+    var originSelect = document.getElementById(idp + "pnlChartOriginSelect");
+    if (originSelect) originSelect.addEventListener("change", function () {
+      store.state.pnlChartOriginFilter = originSelect.value;
+      renderSnapPnlChart(cardsList, store);
+    });
     var noteSelect = document.getElementById(idp + "pnlChartNoteSelect");
     var timeSelect = document.getElementById(idp + "pnlChartTimeSelect");
     if (oddsSelect) oddsSelect.addEventListener("change", function () {
