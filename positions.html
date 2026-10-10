@@ -7429,6 +7429,11 @@
   var AUTO_PRE_LEGACY_KEY = "vtAutoPre10kSnapshots"; // local-only list from the first version (2026-10-04), moved to AWS on load
   var AUTO_PRE_TRADERS = ["flaznorp", "RN1"];
   var AUTO_PRE_MIN_STAKE = 10000;
+  // A signal counts only while it's still worth more than +5 % if it wins
+  // (on request, 2026-10-10): price at most 1 / 1.05 ≈ 95.2¢. Same rule in
+  // the notify Lambda. Older captures above it stay stored, just not shown.
+  var AUTO_PRE_MAX_PRICE = 1 / 1.05;
+  function autoPreCounts(s) { return s.leaderPriceAtSnapshot == null || s.leaderPriceAtSnapshot <= AUTO_PRE_MAX_PRICE; }
   // One record per trader × market × side — the same key the notify Lambda
   // uses when it writes the card itself (see syncAutoPreCards there).
   function autoPreKey(trader, cid, side) { return "pre|" + trader + "|" + cid + "|" + String(side || "").toLowerCase(); }
@@ -7441,7 +7446,7 @@
     return loadSnapshotsRaw().filter(function (s) { return s.autoPre === true; });
   }
   function loadAutoBigTrade() {
-    return loadAutoBigTradeRaw().filter(function (s) { return !s.deletedAt; });
+    return loadAutoBigTradeRaw().filter(function (s) { return !s.deletedAt && autoPreCounts(s); });
   }
   function saveAutoBigTradeToStorage(filteredList) {
     var others = loadSnapshotsRaw().filter(function (s) { return s.autoPre !== true; });
@@ -7560,7 +7565,7 @@
       }
       if (!kickoff || kickoff.getTime() <= now) return;
       var price = mergedSideAvgPrice(best.side);
-      if (price == null || price <= 0.01 || price >= 0.99) return;
+      if (price == null || price <= 0.01 || price > AUTO_PRE_MAX_PRICE) return;
       var dedup = best.trader + "|" + polyCid + "|" + String(best.side.name).toLowerCase();
       if (!polyCid || alreadyCaptured[dedup]) return;
       alreadyCaptured[dedup] = true;
@@ -15486,6 +15491,74 @@
     '</ul></details>';
   }
 
+  // ----- Signaux >10k: the Auto >10k avant-match records (on AWS) -----
+  // Every pre-match signal of flaznorp / RN1 (≥ 10 k$ on one side before
+  // kickoff, worth > +5 % if it wins), taken at the signal's price and held
+  // to the result whatever the trader did next (on request, 2026-10-10).
+  // Same records as the Auto >10k tab: never deleted, identical on every
+  // device. They follow the period, sport, stake and trader filters above.
+  function anSignals() {
+    var from = anPeriodStart();
+    return loadAutoBigTrade().filter(function (s) {
+      if (!s.autoTrader || anState.hidden[s.autoTrader]) return false;
+      if (from && Date.parse(s.kickoffAt || s.savedAt) < from) return false;
+      if (anState.sport !== "all" && anSportOf(s.question, s.eventSlug || "") !== anState.sport) return false;
+      return true;
+    }).sort(function (a, b) { return Date.parse(b.kickoffAt || b.savedAt) - Date.parse(a.kickoffAt || a.savedAt); });
+  }
+  function anSignalPnl(s, stake) {
+    if (!s.winningSide || !(s.leaderPriceAtSnapshot > 0)) return null;
+    return s.winningSide === s.leaderName ? stake * (1 / s.leaderPriceAtSnapshot - 1) : -stake;
+  }
+  function anSignalsHtml() {
+    var list = anSignals(), S = anState.stake;
+    var names = AUTO_PRE_TRADERS.filter(function (n) { return !anState.hidden[n]; });
+    if (!names.length) return '';
+    var summary = '<div class="an-results">' + names.map(function (n) {
+      var mine = list.filter(function (x) { return x.autoTrader === n; });
+      var done = mine.filter(function (x) { return anSignalPnl(x, S) != null; });
+      var pnl = 0, wins = 0;
+      done.forEach(function (x) { var v = anSignalPnl(x, S); pnl += v; if (v > 0) wins++; });
+      var roi = done.length ? pnl / (done.length * S) * 100 : null;
+      return '<div class="an-result" style="--an-c:' + anTraderColor(n) + '">' +
+        '<div class="an-card-head"><span class="an-dot" style="background:' + anTraderColor(n) + '"></span><span class="an-name">' + anNameLink(n) + '</span>' +
+          (mine.length - done.length ? '<span class="an-dim">+ ' + anNum(mine.length - done.length) + ' en attente</span>' : '') + '</div>' +
+        '<div class="an-big ' + anRoiCls(roi, done.length) + '">' + (done.length ? anUsdSigned(pnl) : '—') + '</div>' +
+        '<div class="an-rline"><span>' + anPl(done.length, "signal terminé", "signaux terminés") + '</span><span>ROI <b class="' + anRoiCls(roi, done.length) + '">' + anPct(roi, true) + '</b></span>' +
+          '<span>' + (done.length ? anPct(wins / done.length * 100, false, 0) : '—') + ' gagnants</span></div>' +
+      '</div>';
+    }).join("") + '</div>';
+    var rows = list.map(function (x) {
+      var ko = Date.parse(x.kickoffAt || "");
+      var taken = x.tradeTakenAt && !isNaN(ko) ? anRelLabel((Date.parse(x.tradeTakenAt) - ko) / 60000) : "";
+      var pnl = anSignalPnl(x, S);
+      var res = !x.winningSide ? '<td class="an-tl an-dimc">En attente</td>' : (x.winningSide === x.leaderName ? '<td class="an-tl an-pos">Gagné</td>' : '<td class="an-tl an-neg">Perdu</td>');
+      var url = x.eventSlug ? "https://polymarket.com/event/" + encodeURIComponent(x.eventSlug) : "";
+      var roiIfWin = x.leaderPriceAtSnapshot > 0 ? (1 / x.leaderPriceAtSnapshot - 1) * 100 : null;
+      return '<tr' + (x.winningSide ? '' : ' class="an-running"') + '>' +
+        '<td class="an-tl an-nowrap">' + esc(anWhenShort(isNaN(ko) ? Date.parse(x.savedAt) : ko)) + '</td>' +
+        '<td class="an-tl an-nowrap"><span class="an-dot" style="background:' + anTraderColor(x.autoTrader) + '"></span>' + anNameLink(x.autoTrader) + '</td>' +
+        '<td class="an-tl an-jmatch">' + esc(anSportOf(x.question, x.eventSlug || "")) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(x.question) + '</a>' : esc(x.question)) + '</td>' +
+        '<td class="an-tl">' + esc(x.leaderName === "Yes" ? "Oui" : (x.leaderName === "No" ? "Non" : x.leaderName)) + '</td>' +
+        '<td>' + anCents(x.leaderPriceAtSnapshot) + (taken ? '<small>' + esc(taken) + '</small>' : '') + '</td>' +
+        '<td>' + (x.autoTraderStake ? anNum(x.autoTraderStake) + ' $' : '—') + '</td>' +
+        '<td>' + (roiIfWin != null ? '+' + anNum(roiIfWin) + ' %' : '—') + '</td>' +
+        res +
+        '<td class="' + (pnl == null ? 'an-dimc' : (pnl >= 0 ? 'an-pos' : 'an-neg')) + '"><b>' + (pnl == null ? '—' : anUsdSigned(pnl)) + '</b></td>' +
+      '</tr>';
+    }).join("");
+    return '<section class="an-section an-signals"><h3 class="an-stitle">🐋 Signaux >10k avant-match : pris au signal, gardés jusqu\'au bout</h3>' +
+      '<div class="an-ssub">Chaque fois que flaznorp ou RN1 a 10 000 $ ou plus sur un camp avant le coup d\'envoi, et que ce camp rapporte plus de 5 % s\'il gagne (cote ≤ 95,2¢). ' +
+        'Tu prends ' + anK(S) + ' au prix du signal et tu gardes jusqu\'au résultat, quoi qu\'il fasse ensuite. Mêmes signaux que l\'onglet Auto >10k, jamais supprimés · ' +
+        esc((anState.period === "all" ? "tout l'historique" : anState.period + " derniers jours") + (anState.sport !== "all" ? " · " + anSportLabel(anState.sport) : "")) + '</div>' +
+      summary +
+      (list.length ? '<div class="an-scroll"><table class="an-tbl an-journal"><thead><tr>' +
+        '<th class="an-tl">Match</th><th class="an-tl">Trader</th><th class="an-tl">Marché</th><th class="an-tl">Camp</th>' +
+        '<th title="Prix au moment du signal, et quand il a atteint 10 k$">Prix</th><th>Sa mise</th><th title="Ce que rapporte le camp s\'il gagne, au prix du signal">Si gagne</th>' +
+        '<th class="an-tl">Résultat</th><th>Toi</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+        : '<div class="an-dim an-empty">Aucun signal sur cette sélection.</div>') +
+    '</section>';
+  }
   function renderAnalyse() {
     var el = document.getElementById("analyseContent");
     if (!el) return;
@@ -15517,6 +15590,7 @@
         '<div class="an-head-actions"><button type="button" class="an-btn" data-an-action="refresh"' + (anState.syncing ? ' disabled' : '') + '>↻ Mettre à jour</button></div></div>' +
       '<div class="an-status" id="anStatus">' + anStatusHtml() + '</div>' +
       anConsoleHtml(sports) +
+      anSignalsHtml() +
       (per.length ? '' : '<div class="an-dim an-empty">Choisis au moins un trader.</div>') +
       '<section class="an-section"><h3 class="an-stitle">Résultat avec ' + anK(anState.stake) + ' par pari, ' + esc(anModeLabel()) + '</h3>' +
         '<div class="an-ssub">' + esc(anScope()) + ' · hors arbitrages' +
