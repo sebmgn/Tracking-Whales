@@ -2393,6 +2393,7 @@
   .seb-tbl tr.seb-open td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
   .seb-nowrap { white-space: nowrap; }
   .seb-more { margin-top: 10px; }
+  .seb-tbl tr.seb-focus td { background: color-mix(in srgb, var(--gold) 22%, var(--panel)); }
   /* Analyse v3 — three traders: entry, exit, adverse side, stake levels, sports */
   .an-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; margin-right: 6px; }
   .an-card3 { border-top: 3px solid var(--an-c); }
@@ -15818,7 +15819,7 @@
     var done = list.filter(function (b) { return b.status === "done"; }).sort(function (a, b) { return a.doneAt - b.doneAt; });
     var open = list.filter(function (b) { return b.status === "open"; });
     var cum = 0;
-    var series = done.map(function (b) { cum += b.pnl; return { date: new Date(b.doneAt), value: cum, delta: b.pnl, win: b.pnl > 0, pointColor: b.pnl > 0 ? "#00e676" : "#ff1744" }; });
+    var series = done.map(function (b) { cum += b.pnl; return { id: b.key, date: new Date(b.doneAt), value: cum, delta: b.pnl, win: b.pnl > 0, pointColor: b.pnl > 0 ? "#00e676" : "#ff1744" }; });
     var head = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution de ton PnL réel</div><div class="pnl-chart-stats">' +
       sebStatTile("Paris", st.n || "—") +
       sebStatTile("PnL réalisé", st.n ? esc(fmtUSDSigned(st.pnl)) : "—", st.pnl >= 0 ? "pnl-pos" : "pnl-neg") +
@@ -15846,7 +15847,7 @@
       var url = b.slug ? "https://polymarket.com/event/" + encodeURIComponent(b.slug) : "";
       var res = b.status === "open" ? '<td class="seb-dim">En cours</td><td class="seb-dim">—</td>'
         : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td><td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
-      return '<tr' + (b.status === "open" ? ' class="seb-open"' : '') + '><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
+      return '<tr data-seb-key="' + esc(b.key) + '" class="' + (b.status === "open" ? 'seb-open' : '') + (sebState.focus === b.key ? ' seb-focus' : '') + '"><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
         '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + (sebFromSite(b) ? ' <span class="seb-tag" title="Ce pari est aussi dans Saison 26/27 ou Auto >10k">📌</span>' : '') + '</td>' +
         '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
     }).join("");
@@ -15855,14 +15856,48 @@
         '<span class="seb-dim">Lu en direct sur Polymarket' + (sebState.at ? ' à ' + new Date(sebState.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : '') + '</span>' +
         '<button type="button" class="seb-btn" data-seb-reload="1"' + (sebState.loading ? ' disabled' : '') + '>' + (sebState.loading ? 'Mise à jour…' : '↻ Mettre à jour') + '</button></div>' +
       controls +
-      '<div class="chart-box" id="sebChartBox">' + head + chart + '</div>' +
+      '<div class="chart-box" id="sebChartBox">' + head + chart + '<div class="chart-hint" id="sebChartHint">Clique un point pour aller au pari correspondant — reclique pour revenir.</div></div>' +
       '<div class="seb-grid">' + sebBreakdownHtml("Par sport", bySport) + sebBreakdownHtml("Par cote d'entrée", byOdds) + sebBreakdownHtml("Par mois", byMonth) + '</div>' +
       '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (open.length ? ' · ' + open.length + ' en cours' : '') + '</div>' +
         '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr><th>Réglé le</th><th>Marché</th><th>Camp</th><th>Prix moyen</th><th>Misé</th><th>Résultat</th><th>PnL</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
         (rowsList.length > sebState.limit ? '<button type="button" class="seb-btn seb-more" data-seb-more="1">Voir 40 de plus (' + (rowsList.length - sebState.limit) + ' restants)</button>' : '') +
       '</div>';
     var box = document.getElementById("sebChartBox");
-    if (box && series.length >= 2) wireHistoryChartTooltip(box);
+    if (box && series.length >= 2) {
+      wireHistoryChartTooltip(box);
+      // Click a point → its bet in the list below (highlighted); click the
+      // same point again → back to where you were (same as Saison 26/27).
+      box.querySelectorAll(".chart-pt[data-id]").forEach(function (pt) {
+        pt.style.cursor = "pointer";
+        pt.addEventListener("click", function () { sebJumpTo(pt.getAttribute("data-id"), rowsList); });
+      });
+    }
+    var hint = document.getElementById("sebChartHint");
+    if (hint) hint.hidden = series.length < 2;
+  }
+  function sebJumpTo(key, rowsList) {
+    if (sebState.focus === key && sebState.backY != null) {
+      var y = sebState.backY;
+      sebState.focus = null;
+      sebState.backY = null;
+      renderSeb();
+      window.scrollTo({ top: y, behavior: "smooth" });
+      setTimeout(function () { if (Math.abs(window.scrollY - y) > 40) window.scrollTo(0, y); }, 700); // smooth scroll skipped (background tab)
+      return;
+    }
+    var idx = rowsList.map(function (b) { return b.key; }).indexOf(key);
+    if (idx >= sebState.limit) sebState.limit = Math.ceil((idx + 1) / 40) * 40;
+    sebState.focus = key;
+    sebState.backY = window.scrollY;
+    renderSeb();
+    var row = document.querySelector('#sebContent tr[data-seb-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(function () {
+        var r = row.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight) row.scrollIntoView({ block: "center" });
+      }, 700);
+    }
   }
   function sebOpen() {
     if (!sebState.bets || Date.now() - sebState.at > 5 * 60000) sebLoad(); else renderSeb();
