@@ -7052,6 +7052,7 @@
       // available at save time.
       leaderPriceAtSnapshot: parts.leaderAvgPrice,
       noteAtSnapshot: u.score, // the trade's 1-10 note (unitScoreInfo) the moment this was saved — frozen like everything else here
+      eventDate: unitEventDateIso(u), // when the match takes place — shown on the card, orders the cards
       traderCount: u.traderCount,
       totalStake: u.totalStake,
       sides: sidesData,
@@ -7682,6 +7683,7 @@
       snap.autoTrader = best.trader;
       snap.autoTraderStake = Math.round(best.stake);
       snap.kickoffAt = kickoff.toISOString();
+      snap.eventDate = snap.kickoffAt;
       snap.polyCid = polyCid;
       enqueueOp(AUTO_BIGTRADE_STORE, { type: "add", id: snap.id, snapshot: snap });
       added++;
@@ -10955,7 +10957,7 @@
     // display order would depend on whether the last render came from a
     // local edit or a sync.
     var list = fullList.filter(function (s) { return !s[delField]; })
-      .sort(function (a, b) { return new Date(b.savedAt) - new Date(a.savedAt); });
+      .sort(function (a, b) { return (snapSortTime(b) - snapSortTime(a)) || (new Date(b.savedAt) - new Date(a.savedAt)); });
     if (store.name === "positions") computePositionOpposedColors(list);
     // Dashboard/tier-gauge/recap table always reflect every (non-trashed)
     // item — only the card list below is narrowed by tierCardFilter /
@@ -13961,6 +13963,35 @@
   // (still intact in snap.cardHtml at this point, not yet overwritten) is
   // consulted once, as a last resort to recover a missing price before
   // it's gone for good — handled inside normalizeSnapshotNumbers.
+  // The event's date (2026-10-11): stored on every card as `eventDate` —
+  // an ISO date ("2026-10-15", manual bets) or date-time (kickoff) — shown
+  // bottom-right and used to order the cards (snapSortTime).
+  function snapEventTime(snap) {
+    var d = snap && snap.eventDate ? Date.parse(snap.eventDate) : NaN;
+    return isNaN(d) ? null : d;
+  }
+  function snapEventLabel(snap) {
+    var t = snapEventTime(snap);
+    if (t == null) return "";
+    var d = new Date(t);
+    var day = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return String(snap.eventDate).length > 10 ? day + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : day;
+  }
+  // Cards are ordered by when the event takes place (latest first), the
+  // save time breaking ties (so ▲▼ still reorders bets of the same day).
+  function snapSortTime(snap) {
+    var t = snapEventTime(snap);
+    return t != null ? t : new Date(snap.savedAt).getTime();
+  }
+  // Best event date known for a live Value Trades unit: the precise
+  // kickoff from gamma when cached, else the day in the market itself.
+  function unitEventDateIso(u) {
+    var cached = u.matchKey ? matchTimingCache[u.matchKey] : null;
+    if (cached && cached.kickoff) return cached.kickoff.toISOString();
+    var d = extractMatchDate(u.members[0].question, u.matchKey);
+    if (!d) return null;
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
   function rebuildFullSnapshotCardHtml(snap) {
     normalizeSnapshotNumbers(snap);
     if (!snap.sides || !snap.sides.length) return null;
@@ -14027,7 +14058,9 @@
       '<div class="balance-row"><span class="balance-label">Mises</span><div class="balance-bar bar-dollars">' + dollarSegs + '</div></div></div>';
 
     // ---- bottom row ----
-    var bottomHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders"><b class="vt-bottom-traders-num">' + snap.traderCount + '</b> traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(snap.totalStake) + '</span></span></div>';
+    var evLabel = snapEventLabel(snap);
+    var bottomHtml = '<div class="vt-bottom-row"><span class="vt-bottom-meta"><span class="vt-bottom-traders"><b class="vt-bottom-traders-num">' + snap.traderCount + '</b> traders</span><span class="vt-badge-sep">·</span><span class="vt-bottom-stake">' + fmtUSD(snap.totalStake) + '</span></span>' +
+      (evLabel ? '<span class="vt-exact-time" title="Date de l\'événement">' + esc(evLabel) + '</span>' : '') + '</div>';
 
     // ---- detail: sides legend + trader rows (dust already excluded above) ----
     var legendHtml = '<div class="vt-sides-legend">' + sides.map(function (m) {
