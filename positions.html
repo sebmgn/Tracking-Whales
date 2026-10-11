@@ -6451,9 +6451,48 @@
     // the true full list).
     return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt && !s.lowConfidence && !s.archivedBatchId && !s.autoPre; });
   }
-  function saveSnapshotsToStorage(list) {
-    try { localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
+  // localStorage gives a site ~5 MB, and the synced lists had grown past it
+  // (2026-10-11: ~3.2 MB of snapshots, 2.7 MB of it card markup) — every
+  // save then failed silently: a device kept an old list and a 📌 was never
+  // even queued. The markup isn't needed locally: refreshSnapshotDisplay
+  // rebuilds it from `sides` on every read (the server keeps the original).
+  // Kept only where it can't be rebuilt (no sides, manual bets); the
+  // Polymarket link it carried is kept as eventSlug (used for results).
+  function compactForStorage(list) {
+    return list.map(function (s) {
+      if (!s || !s.cardHtml || !s.sides || !s.sides.length || s.isManual) return s;
+      var c = Object.assign({}, s);
+      if (!c.eventSlug) {
+        var m = s.cardHtml.match(/polymarket\.com\/[a-z-]+\/event\/([a-z0-9-]+)/i);
+        if (m) c.eventSlug = m[1];
+      }
+      delete c.cardHtml;
+      return c;
+    });
   }
+  // Data of removed features (Auto Note>7, the old Auto Big Trades list) —
+  // dead weight that helped fill the storage quota.
+  var DEAD_STORAGE_KEYS = ["vtAutoNote7Snapshots", "vtAutoBigTradeSnapshots", "vtAutoPre10kSnapshots"];
+  function freeDeadStorage() {
+    DEAD_STORAGE_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+  }
+  freeDeadStorage();
+  var storageFullWarned = false;
+  function storeListSafely(key, list) {
+    var json = JSON.stringify(compactForStorage(list));
+    try {
+      localStorage.setItem(key, json);
+      return true;
+    } catch (e) {
+      freeDeadStorage();
+      try { localStorage.setItem(key, json); return true; } catch (e2) {
+        console.error("Stockage local plein — " + key + " non enregistré", e2);
+        if (!storageFullWarned) { storageFullWarned = true; alert("⚠️ La mémoire de ce navigateur pour le site est pleine : les dernières modifications ne sont pas enregistrées ici (elles restent sur le serveur si elles ont été envoyées). Préviens Claude."); }
+        return false;
+      }
+    }
+  }
+  function saveSnapshotsToStorage(list) { storeListSafely(SNAPSHOTS_KEY, list); }
   // Positions sync the same way snapshots do — its own Lambda route
   // (/positions, /positions/op) and its own DynamoDB table
   // (tracking-whales-positions), same WRITE_SECRET, so a position taken on
@@ -6554,9 +6593,7 @@
     if (!targets.some(function (t) { return t.id === id; })) targets.push(self[0]);
     return targets;
   }
-  function savePositionsToStorage(list) {
-    try { localStorage.setItem(POSITIONS_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable/full — list just won't persist this time */ }
-  }
+  function savePositionsToStorage(list) { storeListSafely(POSITIONS_KEY, list); }
   // All Time: every snapshot ever taken, archived or not — archived items
   // used to live in a separate local-only structure (loadArchive), which is
   // exactly why All Time used to show a different total on every browser/
