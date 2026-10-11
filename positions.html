@@ -6900,11 +6900,13 @@
         try {
           await pushOp(store, queue[0]);
         } catch (pushErr) {
-          // A 4xx other than 401/429 will never succeed on retry: it used to
-          // jam the queue for good, and with it every later refresh from the
-          // server (so this device kept an old copy). Dropped and logged.
+          // Only the Lambda's own 400 (an op it can never accept: unknown
+          // type, missing field) is dropped — anything else (403, 413, 5xx,
+          // network) keeps the op and retries, so a pin is never lost
+          // silently (2026-10-11: dropping every 4xx did lose one). The view
+          // still follows the server meanwhile (see the catch below).
           var st = pushErr && pushErr.status;
-          if (!(st >= 400 && st < 500 && st !== 401 && st !== 429)) throw pushErr;
+          if (st !== 400) throw pushErr;
           console.warn(store.name + " — op abandonnée (" + st + ")", queue[0]);
         }
         queue = loadSyncQueue(store).slice(1);
