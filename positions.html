@@ -7929,6 +7929,7 @@
     { key: "auto", label: "🎯 Suivi des whales", color: "#38bdf8", match: function (s) { return !s.isManual; } }
   ];
   function renderManualVsAuto(list, store) {
+    list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.manualVsAuto;
     if (!el) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
@@ -8197,6 +8198,7 @@
     return '<div class="weekly-table-wrap">' + toggleHtml + '<div class="table-scroll"><table class="weekly-data-table">' + theadHtml + '<tbody>' + bodyHtml + '</tbody></table></div></div>';
   }
   function renderWeeklyPnl(list, store) {
+    list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.weeklyPnl;
     if (!el) return;
     var weeks = computeWeeklyPnl(list, store);
@@ -9255,6 +9257,7 @@
   // use) so they keep reflecting the same active card filters they always
   // have, same reasoning as before the move.
   function renderOtherStats(list, store, dashboardList, dashboardFilterLabels) {
+    list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.otherStats;
     if (!el) return;
     syncSnapToggleLabel(store.ids.otherStatsToggle, store.state.otherStatsCollapsed, "autres stats");
@@ -9432,6 +9435,7 @@
     btn.classList.toggle("active", !collapsed);
   }
   function renderTierWinrate(list, store) {
+    list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.tierWinrate;
     if (!el) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
@@ -9515,6 +9519,7 @@
     return byBin;
   }
   function renderNoteWinrate(list, store) {
+    list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.noteWinrate;
     if (!el) return;
     var decidedAll = list.filter(function (s) { return !!s.winningSide; });
@@ -9661,7 +9666,51 @@
     '</div>';
     return '<div class="compare-col" style="--sub-color:' + color + '"><div class="compare-col-title">' + esc(groupLabel) + '</div>' + fieldsHtml + '</div>';
   }
+  // The chart's own filters — Type, Confiance, Note, Période, Traders, or
+  // the console avancée's when it's open — applied to any list, so every
+  // panel under the chart follows them too (on request, 2026-10-11). Pure
+  // predicates: applying it twice changes nothing.
+  function pnlChartFilterList(list, store) {
+    var st = store.state;
+    if (!st) return list;
+    if (st.pnlChartConsoleOpen) {
+      var weekOptions = computeWeekFloorOptions(list.filter(function (s) { return !!s.winningSide; }));
+      var mCfg = st.pnlChartCompareFilters.manual, aCfg = st.pnlChartCompareFilters.auto;
+      return list.filter(function (s) {
+        if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
+        return snapMatchesCompareFilters(s, s.isManual ? mCfg : aCfg, weekOptions);
+      });
+    }
+    var activeNoteBin = st.pnlChartNoteFilter != null ? NOTE_WR_BINS.filter(function (b) { return b[0] === st.pnlChartNoteFilter; })[0] : null;
+    var activeNoteBinIsLast = st.pnlChartNoteFilter != null && NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === st.pnlChartNoteFilter;
+    var cutoff = st.pnlChartDays != null ? Date.now() - st.pnlChartDays * 86400000 : null;
+    return list.filter(function (s) {
+      if (st.pnlChartTierFilter && st.pnlChartTierFilter.length && st.pnlChartTierFilter.indexOf(s.confidence) === -1) return false;
+      if (st.pnlChartOriginFilter === "manual" && !s.isManual) return false;
+      if (st.pnlChartOriginFilter === "auto" && s.isManual) return false;
+      if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
+      if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
+      if (cutoff != null && new Date(s.savedAt).getTime() < cutoff) return false;
+      if (st.pnlChartTraderFilter && st.pnlChartTraderFilter.length && !(s.traderNames || []).some(function (n) { return st.pnlChartTraderFilter.indexOf(n) !== -1; })) return false;
+      return true;
+    });
+  }
+  // Every filter control of the chart calls renderSnapPnlChart: this wrapper
+  // redraws the panels under it right after, from the list renderStoreView
+  // last built (they filter it themselves, see pnlChartFilterList).
   function renderSnapPnlChart(cardsList, store) {
+    renderSnapPnlChartOnly(cardsList, store);
+    var a = store.state && store.state.panelArgs;
+    if (!a || store.state.panelsLock) return;
+    renderTierWinrate(a.list, store);
+    renderNoteWinrate(a.list, store);
+    renderSnapDistribution(a.list, store);
+    renderTraderTable(a.list, store);
+    renderManualVsAuto(a.list, store);
+    renderWeeklyPnl(a.list, store);
+    renderOtherStats(a.list, store, a.cardsList, a.labels);
+  }
+  function renderSnapPnlChartOnly(cardsList, store) {
     var el = store.els.pnlChart;
     if (!el) return;
     var st = store.state;
@@ -10146,6 +10195,7 @@
   // something to parse on every visit.
   var DIST_ODDS_BUCKETS = [[0, 40], [40, 55], [55, 70], [70, 80], [80, 90], [90, 95], [95, 100]];
   function renderSnapDistribution(list, store) {
+    list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.dist;
     if (!el) return;
     var decided = list.filter(function (s) { return !!s.winningSide && s.leaderName; });
@@ -10454,6 +10504,7 @@
     });
   }
   function renderTraderTable(list, store) {
+    list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.traderTable;
     if (!el) return;
     syncSnapToggleLabel(store.ids.traderTableToggle, store.state.traderTableCollapsed, "le tableau des traders");
@@ -10897,9 +10948,12 @@
     store.els.count.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + list.length + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
+    st.panelArgs = { list: list, cardsList: cardsList, labels: activeFilterLabels };
     renderTierWinrate(list, store);
     renderNoteWinrate(list, store);
+    st.panelsLock = true;
     renderSnapPnlChart(cardsList, store);
+    st.panelsLock = false;
     renderSnapDistribution(list, store);
     renderTraderTable(list, store);
     renderManualVsAuto(list, store);
