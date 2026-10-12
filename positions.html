@@ -9739,17 +9739,26 @@
   // Every filter control of the chart calls renderSnapPnlChart: this wrapper
   // redraws the panels under it right after, from the list renderStoreView
   // last built (they filter it themselves, see pnlChartFilterList).
+  // Since 2026-10-12 the card list follows those filters too, so a filter
+  // change re-renders the whole view (renderStoreView draws the chart
+  // itself under panelsLock, which lands in the plain chart-only branch).
   function renderSnapPnlChart(cardsList, store) {
-    renderSnapPnlChartOnly(cardsList, store);
-    var a = store.state && store.state.panelArgs;
-    if (!a || store.state.panelsLock) return;
-    renderTierWinrate(a.list, store);
-    renderNoteWinrate(a.list, store);
-    renderSnapDistribution(a.list, store);
-    renderTraderTable(a.list, store);
-    renderManualVsAuto(a.list, store);
-    renderWeeklyPnl(a.list, store);
-    renderOtherStats(a.list, store, a.cardsList, a.labels);
+    if (!store.state || store.state.panelsLock || !store.state.panelArgs) { renderSnapPnlChartOnly(cardsList, store); return; }
+    renderStoreView(store);
+  }
+  // Short labels for the chart filters in effect, for the card count line.
+  function pnlChartFilterLabels(store) {
+    var st = store.state, out = [];
+    if (!st) return out;
+    if (st.pnlChartConsoleOpen) return ["console avancée"];
+    if (st.pnlChartTierFilter && st.pnlChartTierFilter.length) out.push("confiance " + st.pnlChartTierFilter.join("+"));
+    if (st.pnlChartOriginFilter === "manual") out.push("manuels");
+    if (st.pnlChartOriginFilter === "auto") out.push("auto");
+    if (st.pnlChartOddsFilter) out.push("cote " + st.pnlChartOddsFilter[0] + "–" + st.pnlChartOddsFilter[1] + "¢");
+    if (st.pnlChartNoteFilter != null) out.push("note " + st.pnlChartNoteFilter + "-" + (st.pnlChartNoteFilter + 1));
+    if (st.pnlChartDays != null) out.push(st.pnlChartDays + " derniers jours");
+    if (st.pnlChartTraderFilter && st.pnlChartTraderFilter.length) out.push(st.pnlChartTraderFilter.length === 1 ? "trader " + st.pnlChartTraderFilter[0] : st.pnlChartTraderFilter.length + " traders");
+    return out;
   }
   function renderSnapPnlChartOnly(cardsList, store) {
     var el = store.els.pnlChart;
@@ -10986,6 +10995,13 @@
     if (st.noteCardFilter != null) activeFilterLabels.push("note " + st.noteCardFilter + "-" + (st.noteCardFilter + 1));
     if (st.manualVsAutoFilter != null) activeFilterLabels.push(st.manualVsAutoFilter === "manual" ? "paris manuels" : "suivi auto");
     if (st.traderCardFilter != null) activeFilterLabels.push("trader " + st.traderCardFilter);
+    // The chart's own filters (Type, Confiance, Note, Période, Traders,
+    // console) narrow the cards too, on request (2026-10-12). The chart
+    // still gets the pre-filter list: it applies them itself and builds
+    // its trader/period choices from the whole pool.
+    var chartCardsList = cardsList;
+    cardsList = pnlChartFilterList(cardsList, store);
+    activeFilterLabels = activeFilterLabels.concat(pnlChartFilterLabels(store));
     store.els.count.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + list.length + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
@@ -10993,7 +11009,7 @@
     renderTierWinrate(list, store);
     renderNoteWinrate(list, store);
     st.panelsLock = true;
-    renderSnapPnlChart(cardsList, store);
+    renderSnapPnlChart(chartCardsList, store);
     st.panelsLock = false;
     renderSnapDistribution(list, store);
     renderTraderTable(list, store);
