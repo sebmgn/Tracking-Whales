@@ -9303,14 +9303,14 @@
     if (!el) return;
     syncSnapToggleLabel(store.ids.otherStatsToggle, store.state.otherStatsCollapsed, "autres stats");
     if (store.state.otherStatsCollapsed) { el.innerHTML = ""; return; }
-    var decided = list.filter(function (s) { return !!s.winningSide; }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    var decided = list.filter(function (s) { return !!s.winningSide; }).slice().sort(function (a, b) { return snapChronoCmp(a, b); });
     var cum = 0;
     var series = [];
     decided.forEach(function (snap) {
       var pnl = hypotheticalFlatPnl(snap, store.stakeFor(snap));
       if (pnl == null) return;
       cum += pnl;
-      series.push({ date: new Date(snap.savedAt), value: cum, win: snap.leaderName === snap.winningSide });
+      series.push({ date: new Date(snapSortTime(snap)), value: cum, win: snap.leaderName === snap.winningSide });
     });
     var blocks = [
       edgeMapHtml(list, store),
@@ -9731,7 +9731,7 @@
       if (st.pnlChartOriginFilter === "auto" && s.isManual) return false;
       if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
       if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
-      if (cutoff != null && new Date(s.savedAt).getTime() < cutoff) return false;
+      if (cutoff != null && snapSortTime(s) < cutoff) return false;
       if (st.pnlChartTraderFilter && st.pnlChartTraderFilter.length && !(s.traderNames || []).some(function (n) { return st.pnlChartTraderFilter.indexOf(n) !== -1; })) return false;
       return true;
     });
@@ -9779,14 +9779,14 @@
       if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
       if (st.pnlChartDays != null) {
         var cutoff = Date.now() - st.pnlChartDays * 86400000;
-        if (new Date(s.savedAt).getTime() < cutoff) return false;
+        if (snapSortTime(s) < cutoff) return false;
       }
       // OR semantics (checking VeryLucky888 and swisstony shows trades with
       // EITHER, not just ones with both) — same convention as rtSelectedPlayers.
       if (st.pnlChartTraderFilter.length && !(s.traderNames || []).some(function (n) { return st.pnlChartTraderFilter.indexOf(n) !== -1; })) return false;
       return true;
     });
-    var decided = decidedFiltered.slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+    var decided = decidedFiltered.slice().sort(function (a, b) { return snapChronoCmp(a, b); });
     // "Et si" slider (allowSimStakeSlider stores only — flat-stake sim, not
     // Positions' real stakeUsd): recomputes this chart (and the weekly panel
     // under it, since they share the same loop) at a different flat stake
@@ -9832,7 +9832,7 @@
       decidedForLoop = decidedAll.filter(function (s) {
         if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
         return snapMatchesCompareFilters(s, s.isManual ? mCfg : aCfg, weekOptions);
-      }).slice().sort(function (a, b) { return new Date(a.savedAt) - new Date(b.savedAt); });
+      }).slice().sort(function (a, b) { return snapChronoCmp(a, b); });
       // Same rule as the simple Traders popover below (traderFilterCoversEveryone):
       // with specific Auto traders checked (not the whole roster), score
       // each snapshot on THOSE traders' own side via traderFilteredFlatPnl —
@@ -9897,8 +9897,8 @@
       // (hypotheticalFlatPnl is only ever positive on a leader win, always
       // -stake on a loss).
       var won = pnl >= 0;
-      series.push({ date: new Date(snap.savedAt), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744", isManual: !!snap.isManual, confidence: snap.confidence });
-      weeklySeries.push({ date: new Date(snap.savedAt), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
+      series.push({ date: new Date(snapSortTime(snap)), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744", isManual: !!snap.isManual, confidence: snap.confidence });
+      weeklySeries.push({ date: new Date(snapSortTime(snap)), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, confidence: snap.confidence });
     });
     subStats.manual.roi = subStats.manual.stakeSum > 0 ? (subStats.manual.pnl / subStats.manual.stakeSum * 100) : null;
     subStats.auto.roi = subStats.auto.stakeSum > 0 ? (subStats.auto.pnl / subStats.auto.stakeSum * 100) : null;
@@ -13998,6 +13998,11 @@
   function snapSortTime(snap) {
     var t = snapEventTime(snap);
     return t != null ? t : new Date(snap.savedAt).getTime();
+  }
+  // Oldest event first — the PnL chart and its series run in event order
+  // (on request, 2026-10-13), save time breaking ties.
+  function snapChronoCmp(a, b) {
+    return (snapSortTime(a) - snapSortTime(b)) || (new Date(a.savedAt) - new Date(b.savedAt));
   }
   // Best event date known for a live Value Trades unit: the precise
   // kickoff from gamma when cached, else the day in the market itself.
