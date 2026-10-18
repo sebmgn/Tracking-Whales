@@ -2693,6 +2693,31 @@
     .vt-leader { padding: 2px 8px; font-size: 11px; margin-left: 6px; }
     .vt-top-left { gap: 6px; }
   }
+  /* Comparateur (Polymarket vs Winamax) — one card per proposal, plus the
+     Δ ROI line the pinned copy keeps in Saison 26/27 / Mes Positions / All Time. */
+  .cmp-status { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12px; color: var(--text-dim); margin: 0 4px 10px; }
+  .cmp-list { display: flex; flex-direction: column; gap: 8px; }
+  .cmp-day-title { font-size: 13px; font-weight: 800; color: var(--text); margin: 10px 4px 2px; text-transform: capitalize; }
+  .cmp-card { background: var(--panel); border: 1px solid var(--panel-border); border-left: 4px solid var(--gold); border-radius: 10px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .cmp-main { flex: 1 1 260px; min-width: 0; }
+  .cmp-match { font-size: 12px; color: var(--text-dim); }
+  .cmp-match a { color: inherit; }
+  .cmp-market { font-size: 14.5px; font-weight: 800; color: var(--text); margin-top: 2px; overflow-wrap: anywhere; }
+  .cmp-odds { display: flex; gap: 14px; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .cmp-odds b { color: var(--text); font-size: 13px; }
+  .cmp-odds .cmp-poly b { color: var(--green); }
+  .cmp-delta, .snap-cmp-delta { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--green) 35%, var(--panel-border)); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+  .cmp-delta { font-size: 14px; }
+  .cmp-pin-btn { font: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text); cursor: pointer; white-space: nowrap; }
+  .cmp-pin-btn:hover { border-color: var(--accent); }
+  .cmp-pin-btn.pinned { border-color: var(--green); color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); }
+  .snap-cmp-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-dim); margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .snap-cmp-delta { font-size: 12px; padding: 1px 8px; }
+  .snap-cmp-badge { font-size: 11px; font-weight: 700; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--panel-border)); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+  @media (max-width: 640px) {
+    .cmp-card { padding: 9px 10px; }
+    .cmp-odds { gap: 10px; flex-wrap: wrap; }
+  }
 </style>
 </head>
 <body>
@@ -2734,6 +2759,7 @@
     <button class="tab-btn tab-btn-primary" data-tab="analyse" type="button"><span class="tab-btn-icon">🔬</span>Analyse</button>
     <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="comparateur" type="button"><span class="tab-btn-icon">⚖️</span>Comparateur</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
     <button class="tab-btn tab-btn-quiet" data-tab="auto-bigtrade" type="button"><span class="tab-btn-icon">🐋</span>Auto &gt;10k avant-match</button>
@@ -2970,6 +2996,19 @@
   <div class="tab-panel" id="tab-seb">
     <h2 class="section-title">👤 Seb — mes paris Polymarket</h2>
     <div id="sebContent"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-comparateur">
+    <h2 class="section-title">⚖️ Comparateur Polymarket / Winamax <span class="count-pill" id="cmpCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que Winamax, sur la Ligue 1, la Premier League, la LaLiga, la Serie A, la Bundesliga et les 3 coupes d'Europe, jusqu'au dimanche suivant. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 50 % des deux côtés, delta de ROI &gt; 50 % (écart relatif : 12 % contre 6 % = +100 %), sans corners, marchés Polymarket sans liquidité (écart achat/vente &gt; 5¢) exclus. Prix Polymarket = meilleur vendeur, frais non déduits. Calculé sur le serveur (AWS), mis à jour quand la page est ouverte si les données ont plus de 15 min. 📌 ajoute le pari à Saison 26/27 avec son delta. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="cmp-status">
+      <span id="cmpUpdated">Chargement…</span>
+      <button type="button" id="cmpRefreshBtn" class="snap-sync-link" title="Relancer le calcul sur le serveur (~1 min)">🔄 Actualiser</button>
+    </div>
+    <div class="vt-filters" id="cmpDayFilters"></div>
+    <div id="cmpContent" class="cmp-list">
+      <div class="loading-state">Chargement des propositions…</div>
+    </div>
   </div>
 
   <div class="tab-panel" id="tab-auto-bigtrade">
@@ -10683,8 +10722,16 @@
     '</span>';
     var leaderColor = (store.name === "positions" && positionOpposedColors[snap.id]) || sideColorFor(snap.leaderName);
     var leaderBadge = '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(snap.leaderName) + '</span>';
-    var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">✍️</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
-      statsHtml + '<span class="vt-badge-group"><span class="snap-manual-badge">✍️ Pari manuel</span></span></div>';
+    // A bet pinned from the Comparateur tab (snap.cmp) rides on this same
+    // manual-bet card — no traders behind it either — and keeps the ROI
+    // comparison that made it worth taking, frozen at pin time.
+    var cmp = snap.cmp;
+    var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">' + (cmp ? '⚖️' : '✍️') + '</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
+      statsHtml + '<span class="vt-badge-group">' + (cmp ? '<span class="snap-cmp-badge">⚖️ Comparateur</span>' : '<span class="snap-manual-badge">✍️ Pari manuel</span>') + '</span></div>' +
+      (cmp ? '<div class="snap-cmp-line"><span class="snap-cmp-delta">Δ ROI +' + esc(String(cmp.delta)) + ' %</span>' +
+        '<span>Polymarket <b>+' + esc(Number(cmp.roiPoly).toFixed(1)) + ' %</b> (' + esc(fmtCents(cmp.polyPrice)) + ')</span>' +
+        '<span>Winamax <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')</span>' +
+        (cmp.comp ? '<span>' + esc(cmp.comp) + '</span>' : '') + '</div>' : '');
     var eventDateHtml = snap.eventDate
       ? '<div class="vt-bottom-row"><span class="vt-bottom-meta"></span><span class="vt-exact-time">' + esc(new Date(snap.eventDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })) + '</span></div>'
       : '';
@@ -12561,6 +12608,7 @@
       if (btn.getAttribute("data-tab") === "archives") renderArchives();
       if (btn.getAttribute("data-tab") === "test") renderTest();
       if (btn.getAttribute("data-tab") === "auto-bigtrade") renderAutoBigTrade();
+      if (btn.getAttribute("data-tab") === "comparateur") cmpOpen();
       if (btn.getAttribute("data-tab") === "seb") sebOpen();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
@@ -14259,6 +14307,161 @@
   migrateLegacyAutoPre();
   checkAutoBigTradeResolutions();
   setInterval(checkAutoBigTradeResolutions, 300000);
+  // ---------- ⚖️ Comparateur (Polymarket vs Winamax, on request 2026-10-18) ----------
+  // The comparison itself runs server-side (Lambda tracking-whales-comparator:
+  // Winamax has no public API and the browser can't read it cross-origin),
+  // which returns its last result from DynamoDB and recomputes in the
+  // background once that's older than ~15 min (refreshing: true). Kept in
+  // memory only — localStorage is already near its quota (see
+  // compactForStorage). 📌 writes an ordinary manual-bet snapshot carrying a
+  // frozen `cmp` block, rendered by manualCardHtml in Saison 26/27, Mes
+  // Positions and All Time alike (a position's deep clone keeps it).
+  var AWS_COMPARATOR_URL = "https://n6ulxf7yidnnwgxi6fexcuzdj40ptxgt.lambda-url.eu-north-1.on.aws/";
+  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpLoading = false, cmpRetryTimer = null, cmpError = null;
+  var cmpContentEl = document.getElementById("cmpContent");
+  var cmpDayFiltersEl = document.getElementById("cmpDayFilters");
+  var cmpUpdatedEl = document.getElementById("cmpUpdated");
+  var cmpCountEl = document.getElementById("cmpCount");
+  var cmpRefreshBtn = document.getElementById("cmpRefreshBtn");
+  function cmpDayKey(ts) { return new Date(ts * 1000).toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }); } // YYYY-MM-DD, Paris day
+  function cmpDayLabel(key) { return new Date(key + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }); }
+  function cmpKickoffLabel(ts) {
+    var d = new Date(ts * 1000);
+    return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" }) + " · " +
+      d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+  }
+  function cmpPinnedIds() {
+    var ids = {};
+    loadSnapshotsRaw().forEach(function (s) { if (s.cmp && s.cmp.id && !s.deletedAt) ids[s.cmp.id] = true; });
+    return ids;
+  }
+  function cmpVisibleRows() {
+    var now = Date.now() / 1000;
+    return ((cmpData && cmpData.rows) || []).filter(function (r) { return r.start > now; });
+  }
+  async function cmpFetch(force) {
+    if (cmpLoading) return;
+    cmpLoading = true;
+    cmpError = null;
+    renderCmp();
+    try {
+      var res = await fetch(AWS_COMPARATOR_URL + (force ? "?refresh=1" : ""), { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      cmpData = await res.json();
+      cmpFetchedAt = Date.now();
+    } catch (e) {
+      cmpError = e.message || String(e);
+    }
+    cmpLoading = false;
+    // The server recomputes in the background (~1 min) — come back for the
+    // fresh copy once, while the tab is still open.
+    clearTimeout(cmpRetryTimer);
+    if (cmpData && cmpData.refreshing) {
+      cmpRetryTimer = setTimeout(function () {
+        var tab = document.getElementById("tab-comparateur");
+        if (tab && tab.classList.contains("active")) cmpFetch(false);
+      }, 65000);
+    }
+    renderCmp();
+  }
+  function cmpOpen() {
+    renderCmp();
+    if (!cmpData || Date.now() - cmpFetchedAt > 5 * 60 * 1000) cmpFetch(false);
+  }
+  function cmpCardHtml(r, pinned) {
+    var url = "https://polymarket.com/fr/event/" + encodeURIComponent(r.slug);
+    return '<div class="cmp-card" data-cmp-id="' + esc(r.id) + '">' +
+      '<div class="cmp-main">' +
+        '<div class="cmp-match"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(r.match) + '</a> · ' + esc(r.comp) + ' · ' + esc(cmpKickoffLabel(r.start)) + '</div>' +
+        '<div class="cmp-market">' + esc(r.market) + '</div>' +
+      '</div>' +
+      '<div class="cmp-odds">' +
+        '<span class="cmp-poly">Polymarket <b>+' + r.roiPoly.toFixed(1) + ' %</b> · ' + esc(fmtCents(r.polyPrice)) + '</span>' +
+        '<span>Winamax <b>+' + r.roiWinamax.toFixed(1) + ' %</b> · cote ' + r.winamaxOdd.toFixed(2) + '</span>' +
+      '</div>' +
+      '<span class="cmp-delta" title="Écart relatif entre les deux ROI">Δ +' + r.delta + ' %</span>' +
+      '<button type="button" class="cmp-pin-btn' + (pinned ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '">' + (pinned ? '✅ Dans Saison 26/27' : '📌 Saison 26/27') + '</button>' +
+    '</div>';
+  }
+  function renderCmp() {
+    if (!cmpContentEl) return;
+    var rows = cmpVisibleRows();
+    if (cmpCountEl) cmpCountEl.textContent = cmpData ? String(rows.length) : "—";
+    // Status line
+    var status;
+    if (cmpError && !cmpData) status = "Erreur de chargement (" + cmpError + ")";
+    else if (!cmpData) status = cmpLoading ? "Chargement…" : "—";
+    else if (cmpData.pending) status = "Premier calcul en cours sur le serveur (~1 min)…";
+    else {
+      var mins = Math.max(0, Math.round((Date.now() - new Date(cmpData.generatedAt).getTime()) / 60000));
+      status = "Mis à jour il y a " + (mins < 1 ? "moins d'1 min" : mins + " min") + " · " + cmpData.matches + " matchs, " + cmpData.compared + " paris comparés";
+      if (cmpData.refreshing) status += " · mise à jour en cours (~1 min)…";
+      if (cmpError) status += " · erreur au dernier rechargement (" + cmpError + ")";
+    }
+    cmpUpdatedEl.textContent = (cmpLoading && cmpData ? "Rechargement… " : "") + status;
+    // Day filter — one button per match day, "Tous" first
+    var byDay = {};
+    rows.forEach(function (r) { var k = cmpDayKey(r.start); byDay[k] = (byDay[k] || 0) + 1; });
+    var days = Object.keys(byDay).sort();
+    if (cmpDay !== "all" && !byDay[cmpDay]) cmpDay = "all";
+    cmpDayFiltersEl.innerHTML = !rows.length ? "" :
+      '<button type="button" data-cmp-day="all" class="' + (cmpDay === "all" ? "active" : "") + '">Tous<span class="vt-filter-count"> · ' + rows.length + '</span></button>' +
+      days.map(function (k) {
+        return '<button type="button" data-cmp-day="' + k + '" class="' + (cmpDay === k ? "active" : "") + '">' + esc(cmpDayLabel(k)) + '<span class="vt-filter-count"> · ' + byDay[k] + '</span></button>';
+      }).join("");
+    // Cards — delta descending (the server already sorts them that way)
+    if (!cmpData) { cmpContentEl.innerHTML = '<div class="loading-state">Chargement des propositions…</div>'; return; }
+    var shown = cmpDay === "all" ? rows : rows.filter(function (r) { return cmpDayKey(r.start) === cmpDay; });
+    shown = shown.slice().sort(function (a, b) { return b.delta - a.delta; });
+    if (!shown.length) { cmpContentEl.innerHTML = '<div class="empty-note">Aucune proposition pour l\'instant.</div>'; return; }
+    var pinned = cmpPinnedIds();
+    cmpContentEl.innerHTML = shown.map(function (r) { return cmpCardHtml(r, !!pinned[r.id]); }).join("");
+  }
+  function cmpPin(row) {
+    var snap = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      isManual: true,
+      question: row.match,
+      leaderName: row.market,
+      leaderPriceAtSnapshot: row.polyPrice,
+      eventDate: new Date(row.start * 1000).toISOString(),
+      confidence: null,
+      winningSide: null,
+      savedAt: new Date().toISOString(),
+      cmp: {
+        id: row.id, delta: row.delta, roiPoly: row.roiPoly, roiWinamax: row.roiWinamax,
+        polyPrice: row.polyPrice, winamaxOdd: row.winamaxOdd, comp: row.comp, key: row.key,
+        slug: row.slug, polyQuestion: row.question, cid: row.cid, oi: row.oi, marketSlug: row.marketSlug,
+        computedAt: cmpData && cmpData.generatedAt
+      }
+    };
+    enqueueOp(SNAPSHOTS_STORE, { type: "add", id: snap.id, snapshot: snap });
+  }
+  if (cmpContentEl) {
+    cmpDayFiltersEl.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("[data-cmp-day]") : null;
+      if (!b) return;
+      cmpDay = b.getAttribute("data-cmp-day");
+      renderCmp();
+    });
+    cmpContentEl.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest(".cmp-pin-btn") : null;
+      if (!b) return;
+      var id = b.getAttribute("data-cmp-id");
+      if (cmpPinnedIds()[id]) { alert("Déjà dans Saison 26/27."); return; }
+      var row = cmpVisibleRows().filter(function (r) { return r.id === id; })[0];
+      if (!row) return;
+      cmpPin(row);
+      b.classList.add("pinned");
+      b.textContent = "✅ Dans Saison 26/27";
+    });
+    cmpRefreshBtn.addEventListener("click", function () { cmpFetch(true); });
+    // "Mis à jour il y a X min" stays honest while the tab sits open.
+    setInterval(function () {
+      var tab = document.getElementById("tab-comparateur");
+      if (tab && tab.classList.contains("active")) renderCmp();
+    }, 60000);
+  }
   // ---------- 🔔 notification center ----------
   // Read-only history of the emails tracking-whales-notify actually sent
   // (see AWS_NOTIFY_URL) — useful when an alert email is missed, deleted, or
