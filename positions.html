@@ -2696,18 +2696,19 @@
   /* Comparateur (Polymarket vs Winamax) — one card per proposal, plus the
      Δ ROI line the pinned copy keeps in Saison 26/27 / Mes Positions / All Time. */
   .cmp-status { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12px; color: var(--text-dim); margin: 0 4px 10px; }
-  .cmp-list { display: flex; flex-direction: column; gap: 8px; }
-  .cmp-day-title { font-size: 13px; font-weight: 800; color: var(--text); margin: 10px 4px 2px; text-transform: capitalize; }
-  .cmp-card { background: var(--panel); border: 1px solid var(--panel-border); border-left: 4px solid var(--gold); border-radius: 10px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
-  .cmp-main { flex: 1 1 260px; min-width: 0; }
-  .cmp-match { font-size: 12px; color: var(--text-dim); }
-  .cmp-match a { color: inherit; }
-  .cmp-market { font-size: 14.5px; font-weight: 800; color: var(--text); margin-top: 2px; overflow-wrap: anywhere; }
-  .cmp-odds { display: flex; gap: 14px; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
-  .cmp-odds b { color: var(--text); font-size: 13px; }
-  .cmp-odds .cmp-poly b { color: var(--green); }
+  .cmp-table-wrap { max-height: none; overflow-x: auto; background: var(--panel); }
+  .cmp-table-wrap thead th { white-space: nowrap; }
+  .cmp-table td { font-size: 13px; }
+  .cmp-table td.cmp-match-cell { min-width: 170px; }
+  .cmp-table td.cmp-match-cell a { color: var(--text); font-weight: 600; text-decoration: none; }
+  .cmp-table td.cmp-match-cell a:hover { text-decoration: underline; }
+  .cmp-table td.cmp-date-cell { white-space: nowrap; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .cmp-table td.cmp-market-cell { font-weight: 800; min-width: 150px; }
+  .cmp-table td.num b { font-size: 13.5px; }
+  .cmp-table td.cmp-poly-cell b { color: var(--green); }
+  .cmp-table .market-sub { white-space: nowrap; }
   .cmp-delta, .snap-cmp-delta { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--green) 35%, var(--panel-border)); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
-  .cmp-delta { font-size: 14px; }
+  .cmp-delta { font-size: 13px; }
   .cmp-pin-btn { font: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text); cursor: pointer; white-space: nowrap; }
   .cmp-pin-btn:hover { border-color: var(--accent); }
   .cmp-pin-btn.pinned { border-color: var(--green); color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); }
@@ -2715,8 +2716,7 @@
   .snap-cmp-delta { font-size: 12px; padding: 1px 8px; }
   .snap-cmp-badge { font-size: 11px; font-weight: 700; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--panel-border)); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
   @media (max-width: 640px) {
-    .cmp-card { padding: 9px 10px; }
-    .cmp-odds { gap: 10px; flex-wrap: wrap; }
+    .cmp-table td, .cmp-table-wrap thead th { padding: 8px 8px; }
   }
 </style>
 </head>
@@ -3006,7 +3006,7 @@
       <button type="button" id="cmpRefreshBtn" class="snap-sync-link" title="Relancer le calcul sur le serveur (~1 min)">🔄 Actualiser</button>
     </div>
     <div class="vt-filters" id="cmpDayFilters"></div>
-    <div id="cmpContent" class="cmp-list">
+    <div id="cmpContent">
       <div class="loading-state">Chargement des propositions…</div>
     </div>
   </div>
@@ -14368,20 +14368,37 @@
     renderCmp();
     if (!cmpData || Date.now() - cmpFetchedAt > 5 * 60 * 1000) cmpFetch(false);
   }
-  function cmpCardHtml(r, pinned) {
+  // Sortable table — click a header to sort by it, click again to flip the
+  // direction. Numbers start descending, text/date ascending.
+  var CMP_COLUMNS = [
+    { key: "match", label: "Match", get: function (r) { return r.match; } },
+    { key: "start", label: "Date", get: function (r) { return r.start; } },
+    { key: "market", label: "Pari", get: function (r) { return r.market; } },
+    { key: "roiPoly", label: "ROI Polymarket", num: true, get: function (r) { return r.roiPoly; } },
+    { key: "roiWinamax", label: "ROI Winamax", num: true, get: function (r) { return r.roiWinamax; } },
+    { key: "delta", label: "Delta", num: true, get: function (r) { return r.delta; } }
+  ];
+  var cmpSort = { key: "delta", dir: "desc" };
+  function cmpSortRows(rows) {
+    var col = CMP_COLUMNS.filter(function (c) { return c.key === cmpSort.key; })[0] || CMP_COLUMNS[5];
+    var sign = cmpSort.dir === "asc" ? 1 : -1;
+    return rows.slice().sort(function (a, b) {
+      var va = col.get(a), vb = col.get(b);
+      var c = typeof va === "string" ? va.localeCompare(vb, "fr") : va - vb;
+      return c !== 0 ? sign * c : b.delta - a.delta;
+    });
+  }
+  function cmpRowHtml(r, pinned) {
     var url = "https://polymarket.com/fr/event/" + encodeURIComponent(r.slug);
-    return '<div class="cmp-card" data-cmp-id="' + esc(r.id) + '">' +
-      '<div class="cmp-main">' +
-        '<div class="cmp-match"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(r.match) + '</a> · ' + esc(r.comp) + ' · ' + esc(cmpKickoffLabel(r.start)) + '</div>' +
-        '<div class="cmp-market">' + esc(r.market) + '</div>' +
-      '</div>' +
-      '<div class="cmp-odds">' +
-        '<span class="cmp-poly">Polymarket <b>+' + r.roiPoly.toFixed(1) + ' %</b> · ' + esc(fmtCents(r.polyPrice)) + '</span>' +
-        '<span>Winamax <b>+' + r.roiWinamax.toFixed(1) + ' %</b> · cote ' + r.winamaxOdd.toFixed(2) + '</span>' +
-      '</div>' +
-      '<span class="cmp-delta" title="Écart relatif entre les deux ROI">Δ +' + r.delta + ' %</span>' +
-      '<button type="button" class="cmp-pin-btn' + (pinned ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '">' + (pinned ? '✅ Dans Saison 26/27' : '📌 Saison 26/27') + '</button>' +
-    '</div>';
+    return '<tr data-cmp-id="' + esc(r.id) + '">' +
+      '<td class="cmp-match-cell"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(r.match) + '</a><div class="market-sub">' + esc(r.comp) + '</div></td>' +
+      '<td class="cmp-date-cell">' + esc(cmpKickoffLabel(r.start)) + '</td>' +
+      '<td class="cmp-market-cell">' + esc(r.market) + '</td>' +
+      '<td class="num cmp-poly-cell"><b>+' + r.roiPoly.toFixed(1) + ' %</b><div class="market-sub">' + esc(fmtCents(r.polyPrice)) + '</div></td>' +
+      '<td class="num"><b>+' + r.roiWinamax.toFixed(1) + ' %</b><div class="market-sub">cote ' + r.winamaxOdd.toFixed(2) + '</div></td>' +
+      '<td class="num"><span class="cmp-delta" title="Écart relatif entre les deux ROI">+' + r.delta + ' %</span></td>' +
+      '<td><button type="button" class="cmp-pin-btn' + (pinned ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '">' + (pinned ? '✅ Dans Saison 26/27' : '📌 Saison 26/27') + '</button></td>' +
+    '</tr>';
   }
   function renderCmp() {
     if (!cmpContentEl) return;
@@ -14409,13 +14426,18 @@
       days.map(function (k) {
         return '<button type="button" data-cmp-day="' + k + '" class="' + (cmpDay === k ? "active" : "") + '">' + esc(cmpDayLabel(k)) + '<span class="vt-filter-count"> · ' + byDay[k] + '</span></button>';
       }).join("");
-    // Cards — delta descending (the server already sorts them that way)
     if (!cmpData) { cmpContentEl.innerHTML = '<div class="loading-state">Chargement des propositions…</div>'; return; }
     var shown = cmpDay === "all" ? rows : rows.filter(function (r) { return cmpDayKey(r.start) === cmpDay; });
-    shown = shown.slice().sort(function (a, b) { return b.delta - a.delta; });
     if (!shown.length) { cmpContentEl.innerHTML = '<div class="empty-note">Aucune proposition pour l\'instant.</div>'; return; }
+    shown = cmpSortRows(shown);
     var pinned = cmpPinnedIds();
-    cmpContentEl.innerHTML = shown.map(function (r) { return cmpCardHtml(r, !!pinned[r.id]); }).join("");
+    var head = CMP_COLUMNS.map(function (c) {
+      var active = cmpSort.key === c.key;
+      var arrow = '<span class="sort-arrow">' + (active ? (cmpSort.dir === "asc" ? "▲" : "▼") : "↕") + '</span>';
+      return '<th class="sortable' + (c.num ? " num" : "") + (active ? " sorted" : "") + '" data-cmp-sort="' + c.key + '">' + esc(c.label) + arrow + '</th>';
+    }).join("") + '<th></th>';
+    cmpContentEl.innerHTML = '<div class="table-scroll cmp-table-wrap"><table class="cmp-table"><thead><tr>' + head + '</tr></thead><tbody>' +
+      shown.map(function (r) { return cmpRowHtml(r, !!pinned[r.id]); }).join("") + '</tbody></table></div>';
   }
   function cmpPin(row) {
     var snap = {
@@ -14445,6 +14467,15 @@
       renderCmp();
     });
     cmpContentEl.addEventListener("click", function (e) {
+      var th = e.target.closest ? e.target.closest("th[data-cmp-sort]") : null;
+      if (th) {
+        var key = th.getAttribute("data-cmp-sort");
+        var col = CMP_COLUMNS.filter(function (c) { return c.key === key; })[0];
+        if (cmpSort.key === key) cmpSort.dir = cmpSort.dir === "asc" ? "desc" : "asc";
+        else cmpSort = { key: key, dir: col && col.num ? "desc" : "asc" };
+        renderCmp();
+        return;
+      }
       var b = e.target.closest ? e.target.closest(".cmp-pin-btn") : null;
       if (!b) return;
       var id = b.getAttribute("data-cmp-id");
