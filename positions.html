@@ -2712,6 +2712,8 @@
   .cmp-pin-btn { font: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text); cursor: pointer; white-space: nowrap; }
   .cmp-pin-btn:hover { border-color: var(--accent); }
   .cmp-pin-btn.pinned { border-color: var(--green); color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); }
+  .cmp-actions-cell { white-space: nowrap; }
+  .cmp-actions-cell .cmp-pin-btn + .cmp-pin-btn { margin-left: 6px; }
   .snap-cmp-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-dim); margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
   .snap-cmp-delta { font-size: 12px; padding: 1px 8px; }
   .snap-cmp-badge { font-size: 11px; font-weight: 700; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--panel-border)); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
@@ -2760,6 +2762,8 @@
     <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
     <button class="tab-btn tab-btn-quiet" data-tab="comparateur" type="button"><span class="tab-btn-icon">⚖️</span>Comparateur</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="cmp-auto" type="button"><span class="tab-btn-icon">🧪</span>Test comparatif</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="cmp-pick" type="button"><span class="tab-btn-icon">✋</span>Choix comparateur</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
     <button class="tab-btn tab-btn-quiet" data-tab="auto-bigtrade" type="button"><span class="tab-btn-icon">🐋</span>Auto &gt;10k avant-match</button>
@@ -3008,6 +3012,64 @@
     <div class="vt-filters" id="cmpDayFilters"></div>
     <div id="cmpContent">
       <div class="loading-state">Chargement des propositions…</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-cmp-auto">
+    <h2 class="section-title">🧪 Test comparatif <span class="count-pill" id="cmpAutoCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement chaque proposition du Comparateur dont le delta de ROI dépasse <b>+75 %</b>, au prix Polymarket du moment, avant le coup d'envoi — pas besoin de cliquer. Le résultat (camp gagnant) se remplit tout seul quand le marché Polymarket est résolu. Enregistré sur le serveur (AWS) comme Saison 26/27 : visible sur tous tes navigateurs. La capture se fait quand le site est ouvert sur au moins un appareil. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="cmpAutoExportBtn" class="snap-sync-link" title="Télécharger cette liste (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button id="cmpAutoTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
+    </div>
+    <div id="cmpAutoPnlChartContent"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="cmpAutoTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="cmpAuto">▸ Le winrate par conviction</button>
+      <button type="button" id="cmpAutoNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="cmpAuto">▸ L'analyse winrate × note</button>
+      <button type="button" id="cmpAutoDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="cmpAuto">▸ L'analyse cote × confiance</button>
+      <button type="button" id="cmpAutoManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="cmpAuto">▸ Manuel vs suivi auto</button>
+      <button type="button" id="cmpAutoWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="cmpAuto">▸ Paris par semaine</button>
+      <button type="button" id="cmpAutoOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="cmpAuto">▸ Autres stats</button>
+      <button type="button" id="cmpAutoTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="cmpAuto">▸ Le tableau des traders</button>
+    </div>
+    <div id="cmpAutoTierWinrateContent"></div>
+    <div id="cmpAutoNoteWinrateContent"></div>
+    <div id="cmpAutoDistContent"></div>
+    <div id="cmpAutoManualVsAutoContent"></div>
+    <div id="cmpAutoWeeklyPnlContent"></div>
+    <div id="cmpAutoOtherStatsContent"></div>
+    <div id="cmpAutoTraderTableContent"></div>
+    <div id="cmpAutoContent" class="value-trades-box">
+      <div class="empty-note">Rien capturé pour l'instant.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-cmp-pick">
+    <h2 class="section-title">✋ Choix comparateur <span class="count-pill" id="cmpPickCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Les propositions du Comparateur que tu as choisies avec le bouton ✋ — au prix Polymarket du moment du clic, avec leur delta de ROI. Le résultat (camp gagnant) se remplit tout seul quand le marché Polymarket est résolu. Enregistré sur le serveur (AWS) comme Saison 26/27. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="cmpPickExportBtn" class="snap-sync-link" title="Télécharger cette liste (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button id="cmpPickTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
+    </div>
+    <div id="cmpPickPnlChartContent"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="cmpPickTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="cmpPick">▸ Le winrate par conviction</button>
+      <button type="button" id="cmpPickNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="cmpPick">▸ L'analyse winrate × note</button>
+      <button type="button" id="cmpPickDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="cmpPick">▸ L'analyse cote × confiance</button>
+      <button type="button" id="cmpPickManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="cmpPick">▸ Manuel vs suivi auto</button>
+      <button type="button" id="cmpPickWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="cmpPick">▸ Paris par semaine</button>
+      <button type="button" id="cmpPickOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="cmpPick">▸ Autres stats</button>
+      <button type="button" id="cmpPickTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="cmpPick">▸ Le tableau des traders</button>
+    </div>
+    <div id="cmpPickTierWinrateContent"></div>
+    <div id="cmpPickNoteWinrateContent"></div>
+    <div id="cmpPickDistContent"></div>
+    <div id="cmpPickManualVsAutoContent"></div>
+    <div id="cmpPickWeeklyPnlContent"></div>
+    <div id="cmpPickOtherStatsContent"></div>
+    <div id="cmpPickTraderTableContent"></div>
+    <div id="cmpPickContent" class="value-trades-box">
+      <div class="empty-note">Aucun trade choisi pour l'instant — clique ✋ sur une ligne du Comparateur.</div>
     </div>
   </div>
 
@@ -6488,7 +6550,7 @@
     // ever shows current, active trades. loadSnapshotsRaw() itself stays
     // unfiltered (sync reconciliation and the merge-safe saves both need
     // the true full list).
-    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt && !s.lowConfidence && !s.archivedBatchId && !s.autoPre; });
+    return loadSnapshotsRaw().filter(function (s) { return !s.deletedAt && !s.lowConfidence && !s.archivedBatchId && !s.autoPre && !isCmpSideList(s); });
   }
   // localStorage gives a site ~5 MB, and the synced lists had grown past it
   // (2026-10-11: ~3.2 MB of snapshots, 2.7 MB of it card markup) — every
@@ -6700,7 +6762,7 @@
     });
   }
   function loadTestRaw() {
-    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.lowConfidence && !s.autoPre; });
+    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.lowConfidence && !s.autoPre && !isCmpSideList(s); });
     var poss = loadPositionsRaw();
     var takenFromSnapshot = {};
     poss.forEach(function (p) { if (p.sourceSnapshotId) takenFromSnapshot[p.sourceSnapshotId] = true; });
@@ -7823,6 +7885,140 @@
   }
   function renderAutoBigTrade() { renderStoreView(AUTO_BIGTRADE_STORE); }
   function checkAutoBigTradeResolutions() { fillAutoPreTradeTimes(); return checkAutoStoreResolutions(AUTO_BIGTRADE_STORE, "tab-auto-bigtrade", renderAutoBigTrade); }
+  // ---------- 🧪 Test comparatif / ✋ Choix comparateur (on request, 2026-10-18) ----------
+  // Two more filtered views over the shared snapshots list, same pattern as
+  // Auto >10k (stored in AWS, flag-filtered out of Saison 26/27, All Time and
+  // the season archive — see isCmpSideList): cmpAuto = every Comparateur
+  // proposal whose ROI delta tops CMP_AUTO_MIN_DELTA, captured on its own
+  // (cmpAutoCapture, run on each Comparateur fetch); cmpPick = the ones
+  // picked by hand with ✋. Both are manual-bet records (isManual + the
+  // frozen `cmp` block, see cmpRecordFromRow) — no traders behind them —
+  // and get their result straight from the Polymarket market
+  // (checkCmpResolutions). LOCAL TRACKING ONLY: no order is ever placed.
+  var CMP_AUTO_MIN_DELTA = 75;
+  function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true); }
+  function cmpViewStore(name, opts) {
+    function loadRaw() { return loadSnapshotsRaw().filter(function (s) { return s[name] === true; }); }
+    function load() { return loadRaw().filter(function (s) { return !s.deletedAt; }); }
+    function save(filteredList) { saveSnapshotsToStorage(loadSnapshotsRaw().filter(function (s) { return s[name] !== true; }).concat(filteredList)); }
+    function el(suffix) { return document.getElementById(name + suffix); }
+    return {
+      name: name,
+      loadRaw: loadRaw, load: load, save: save,
+      stakeFor: function (snap) { return HYPOTHETICAL_FLAT_STAKE; },
+      allowTakePosition: false,
+      allowEditPosition: false, // an untouched record of the price the rule / the click actually got
+      allowSimStakeSlider: true,
+      itemNoun: "snapshot",
+      emptyHint: opts.emptyHint,
+      dateLabelPrefix: opts.dateLabelPrefix,
+      simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " au prix Polymarket " + opts.priceMoment; },
+      cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
+      // Same underlying table/queue as Saison 26/27 (see AUTO_BIGTRADE_STORE).
+      remotePath: "snapshots", queueKey: SNAPSHOTS_QUEUE_KEY, everSyncedKey: "vtSnapshotsEverSynced",
+      syncStore: SNAPSHOTS_STORE,
+      els: { count: el("Count"), pnlChart: el("PnlChartContent"),
+        tierWinrate: el("TierWinrateContent"), noteWinrate: el("NoteWinrateContent"), dist: el("DistContent"),
+        list: el("Content"),
+        manualVsAuto: el("ManualVsAutoContent"), weeklyPnl: el("WeeklyPnlContent"), otherStats: el("OtherStatsContent"),
+        traderTable: el("TraderTableContent") },
+      ids: { distToggle: name + "DistToggleBtn",
+        tierToggle: name + "TierWinrateToggleBtn", noteToggle: name + "NoteWinrateToggleBtn",
+        manualVsAutoToggle: name + "ManualVsAutoToggleBtn", weeklyPnlToggle: name + "WeeklyPnlToggleBtn",
+        otherStatsToggle: name + "OtherStatsToggleBtn", traderTableToggle: name + "TraderTableToggleBtn" },
+      state: freshStoreState()
+    };
+  }
+  var CMP_AUTO_STORE = cmpViewStore("cmpAuto", {
+    emptyHint: "Rien capturé pour l'instant — dès qu'une proposition du Comparateur dépasse +" + CMP_AUTO_MIN_DELTA + " % de delta, elle atterrit ici toute seule.",
+    dateLabelPrefix: "Capturé le", priceMoment: "au moment de la capture"
+  });
+  var CMP_PICK_STORE = cmpViewStore("cmpPick", {
+    emptyHint: "Aucun trade choisi pour l'instant — clique ✋ sur une ligne du Comparateur.",
+    dateLabelPrefix: "Choisi le", priceMoment: "au moment du clic"
+  });
+  // Deterministic id (one auto capture per Comparateur line, whichever
+  // browser sees it first) — same djb2 scheme as autoPreId.
+  function cmpRecordId(prefix, rowId) {
+    var h = 5381;
+    for (var i = 0; i < rowId.length; i++) h = ((h * 33) ^ rowId.charCodeAt(i)) >>> 0;
+    return prefix + "-" + h.toString(36) + "-" + rowId.length.toString(36);
+  }
+  // One Comparateur line -> a manual-bet record with its frozen `cmp` block
+  // (rendered by manualCardHtml). Shared by 📌 Saison 26/27, ✋ and the auto capture.
+  function cmpRecordFromRow(row, generatedAt) {
+    return {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      isManual: true,
+      question: row.match,
+      leaderName: row.market,
+      leaderPriceAtSnapshot: row.polyPrice,
+      eventDate: new Date(row.start * 1000).toISOString(),
+      confidence: null,
+      winningSide: null,
+      savedAt: new Date().toISOString(),
+      cmp: {
+        id: row.id, delta: row.delta, roiPoly: row.roiPoly, roiWinamax: row.roiWinamax,
+        polyPrice: row.polyPrice, winamaxOdd: row.winamaxOdd, comp: row.comp, key: row.key,
+        slug: row.slug, polyQuestion: row.question, cid: row.cid, oi: row.oi, marketSlug: row.marketSlug,
+        computedAt: generatedAt || null
+      }
+    };
+  }
+  function cmpAutoCapture(rows, generatedAt) {
+    var have = {};
+    loadSnapshotsRaw().forEach(function (s) { have[s.id] = true; }); // trashed ones too — a trashed capture stays trashed
+    var now = Date.now() / 1000;
+    rows.forEach(function (row) {
+      if (!(row.delta > CMP_AUTO_MIN_DELTA) || !(row.start > now) || !row.cid) return;
+      var rec = cmpRecordFromRow(row, generatedAt);
+      rec.id = cmpRecordId("cmpauto", row.id);
+      if (have[rec.id]) return;
+      have[rec.id] = true;
+      rec.cmpAuto = true;
+      enqueueOp(CMP_AUTO_STORE, { type: "add", id: rec.id, snapshot: rec });
+    });
+  }
+  // Fills "camp gagnant" once the bet's own Polymarket market has resolved:
+  // won if the winning outcome is the one bought (cmp.oi), else the
+  // OTHER_SIDE_SENTINEL "Camp adverse" — the two buttons a manual card has.
+  // gamma-api's /markets?condition_ids=…&closed=true only returns markets
+  // that are already closed, so a still-open bet just comes back absent.
+  var GAMMA_MARKETS_BASE = "https://gamma-api.polymarket.com/markets";
+  async function checkCmpResolutions() {
+    var stores = [CMP_AUTO_STORE, CMP_PICK_STORE];
+    var pendingByCid = {};
+    stores.forEach(function (store) {
+      store.loadRaw().forEach(function (s) {
+        if (s.winningSide || s.deletedAt || !s.cmp || !s.cmp.cid) return;
+        (pendingByCid[s.cmp.cid] = pendingByCid[s.cmp.cid] || []).push({ store: store, snap: s });
+      });
+    });
+    var cids = Object.keys(pendingByCid);
+    for (var i = 0; i < cids.length; i += 20) {
+      var chunk = cids.slice(i, i + 20);
+      if (!chunk.length) break;
+      try {
+        // plain fetch, not throttledFetch: a handful of calls (20 markets each) that
+        // would otherwise wait behind the whole traders refresh queue on page load
+        var res = await fetch(GAMMA_MARKETS_BASE + "?closed=true&" + chunk.map(function (c) { return "condition_ids=" + encodeURIComponent(c); }).join("&"));
+        if (!res.ok) continue;
+        var markets = await res.json();
+        (Array.isArray(markets) ? markets : []).forEach(function (mk) {
+          var entries = pendingByCid[mk.conditionId];
+          if (!entries || !mk.closed || !mk.outcomePrices) return;
+          var prices = JSON.parse(mk.outcomePrices).map(Number);
+          var maxPrice = Math.max.apply(null, prices);
+          if (maxPrice < 0.95) return; // voided / 50-50 — left for a human to look at
+          var winIdx = prices.indexOf(maxPrice);
+          entries.forEach(function (x) {
+            var side = winIdx === Number(x.snap.cmp.oi) ? x.snap.leaderName : OTHER_SIDE_SENTINEL;
+            enqueueOp(x.store, { type: "setSide", id: x.snap.id, winningSide: side });
+          });
+        });
+      } catch (e) { /* best-effort — retried next interval */ }
+    }
+  }
   // ---------- Archives (bulk "close out the season" tag, reversible) ----------
   // A season close-out tags EVERY current snapshot and position (trashed
   // ones included — loadRaw, not load) with an archivedBatchId in place,
@@ -7946,7 +8142,7 @@
   snapArchiveSeasonBtn.addEventListener("click", async function () {
     // lowConfidence excluded — Snapshots non confiants is its own separate
     // classification axis, not part of "this season"'s regular activity.
-    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.archivedBatchId && !s.lowConfidence && !s.autoPre; });
+    var snaps = loadSnapshotsRaw().filter(function (s) { return !s.archivedBatchId && !s.lowConfidence && !s.autoPre && !isCmpSideList(s); });
     var poss = loadPositionsRaw().filter(function (s) { return !s.archivedBatchId; });
     if (!snaps.length && !poss.length) { alert("Rien à archiver — Saison 26/27 et Mes Positions sont déjà vides."); return; }
     if (!getWriteSecret()) { alert("Connecte d'abord une clé de synchro (⚙️ Config. synchro) — l'archivage doit aussi se refléter sur le serveur partagé, pas juste sur cet appareil."); return; }
@@ -10993,7 +11189,7 @@
     // archived season (Saison 26/27, Mes Positions) sets excludeArchived
     // instead of loadRaw/save filtering them out.
     if (store.excludeArchived) fullList = fullList.filter(function (s) { return !s.archivedBatchId; });
-    if (store.excludeAutoPre) fullList = fullList.filter(function (s) { return !s.autoPre; });
+    if (store.excludeAutoPre) fullList = fullList.filter(function (s) { return !s.autoPre && !isCmpSideList(s); });
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
     // All Time uses its OWN independent trash field (allTimeDeletedAt) —
     // see the store definition and the delete/restore handlers — so
@@ -12609,6 +12805,8 @@
       if (btn.getAttribute("data-tab") === "test") renderTest();
       if (btn.getAttribute("data-tab") === "auto-bigtrade") renderAutoBigTrade();
       if (btn.getAttribute("data-tab") === "comparateur") cmpOpen();
+      if (btn.getAttribute("data-tab") === "cmp-auto") renderStoreView(CMP_AUTO_STORE);
+      if (btn.getAttribute("data-tab") === "cmp-pick") renderStoreView(CMP_PICK_STORE);
       if (btn.getAttribute("data-tab") === "seb") sebOpen();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
@@ -13116,6 +13314,8 @@
     if (name === "test") return TEST_STORE;
     if (name === "unconfident") return UNCONFIDENT_STORE;
     if (name === "autoBigTrade") return AUTO_BIGTRADE_STORE;
+    if (name === "cmpAuto") return CMP_AUTO_STORE;
+    if (name === "cmpPick") return CMP_PICK_STORE;
     return SNAPSHOTS_STORE;
   }
   // All Time is a merged VIEW (snapshots + positions, see loadTestRaw) with
@@ -13832,6 +14032,10 @@
   wireTrashToggle(TEST_STORE, "testTrashToggleBtn", renderTest);
   wireExport(AUTO_BIGTRADE_STORE, "autoBigTradeExportBtn");
   wireTrashToggle(AUTO_BIGTRADE_STORE, "autoBigTradeTrashToggleBtn", renderAutoBigTrade);
+  wireExport(CMP_AUTO_STORE, "cmpAutoExportBtn");
+  wireTrashToggle(CMP_AUTO_STORE, "cmpAutoTrashToggleBtn", function () { renderStoreView(CMP_AUTO_STORE); });
+  wireExport(CMP_PICK_STORE, "cmpPickExportBtn");
+  wireTrashToggle(CMP_PICK_STORE, "cmpPickTrashToggleBtn", function () { renderStoreView(CMP_PICK_STORE); });
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
   // Archives are tagged items in the same synced lists now (see the
   // "archive" op), not a separate local structure — so there's nothing left
@@ -14332,7 +14536,7 @@
   }
   function cmpPinnedIds() {
     var ids = {};
-    loadSnapshotsRaw().forEach(function (s) { if (s.cmp && s.cmp.id && !s.deletedAt) ids[s.cmp.id] = true; });
+    loadSnapshotsRaw().forEach(function (s) { if (s.cmp && s.cmp.id && !s.deletedAt && !isCmpSideList(s)) ids[s.cmp.id] = true; });
     return ids;
   }
   function cmpVisibleRows() {
@@ -14349,6 +14553,7 @@
       if (!res.ok) throw new Error("HTTP " + res.status);
       cmpData = await res.json();
       cmpFetchedAt = Date.now();
+      try { cmpAutoCapture(cmpData.rows || [], cmpData.generatedAt); } catch (e) { /* capture is best-effort, retried next fetch */ }
     } catch (e) {
       cmpError = e.message || String(e);
     }
@@ -14388,7 +14593,7 @@
       return c !== 0 ? sign * c : b.delta - a.delta;
     });
   }
-  function cmpRowHtml(r, pinned) {
+  function cmpRowHtml(r, pinned, picked) {
     var url = "https://polymarket.com/fr/event/" + encodeURIComponent(r.slug);
     return '<tr data-cmp-id="' + esc(r.id) + '">' +
       '<td class="cmp-match-cell"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(r.match) + '</a><div class="market-sub">' + esc(r.comp) + '</div></td>' +
@@ -14397,7 +14602,8 @@
       '<td class="num cmp-poly-cell"><b>+' + r.roiPoly.toFixed(1) + ' %</b><div class="market-sub">' + esc(fmtCents(r.polyPrice)) + '</div></td>' +
       '<td class="num"><b>+' + r.roiWinamax.toFixed(1) + ' %</b><div class="market-sub">cote ' + r.winamaxOdd.toFixed(2) + '</div></td>' +
       '<td class="num"><span class="cmp-delta" title="Écart relatif entre les deux ROI">+' + r.delta + ' %</span></td>' +
-      '<td><button type="button" class="cmp-pin-btn' + (pinned ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '">' + (pinned ? '✅ Dans Saison 26/27' : '📌 Saison 26/27') + '</button></td>' +
+      '<td class="cmp-actions-cell"><button type="button" class="cmp-pin-btn' + (pinned ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '">' + (pinned ? '✅ Dans Saison 26/27' : '📌 Saison 26/27') + '</button>' +
+        '<button type="button" class="cmp-pin-btn cmp-pick-btn' + (picked ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '" title="Compter ce trade dans Choix comparateur">' + (picked ? '✅ Choisi' : '✋ Choisir') + '</button></td>' +
     '</tr>';
   }
   function renderCmp() {
@@ -14430,34 +14636,28 @@
     var shown = cmpDay === "all" ? rows : rows.filter(function (r) { return cmpDayKey(r.start) === cmpDay; });
     if (!shown.length) { cmpContentEl.innerHTML = '<div class="empty-note">Aucune proposition pour l\'instant.</div>'; return; }
     shown = cmpSortRows(shown);
-    var pinned = cmpPinnedIds();
+    var pinned = cmpPinnedIds(), picked = cmpPickedIds();
     var head = CMP_COLUMNS.map(function (c) {
       var active = cmpSort.key === c.key;
       var arrow = '<span class="sort-arrow">' + (active ? (cmpSort.dir === "asc" ? "▲" : "▼") : "↕") + '</span>';
       return '<th class="sortable' + (c.num ? " num" : "") + (active ? " sorted" : "") + '" data-cmp-sort="' + c.key + '">' + esc(c.label) + arrow + '</th>';
     }).join("") + '<th></th>';
     cmpContentEl.innerHTML = '<div class="table-scroll cmp-table-wrap"><table class="cmp-table"><thead><tr>' + head + '</tr></thead><tbody>' +
-      shown.map(function (r) { return cmpRowHtml(r, !!pinned[r.id]); }).join("") + '</tbody></table></div>';
+      shown.map(function (r) { return cmpRowHtml(r, !!pinned[r.id], !!picked[r.id]); }).join("") + '</tbody></table></div>';
   }
   function cmpPin(row) {
-    var snap = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-      isManual: true,
-      question: row.match,
-      leaderName: row.market,
-      leaderPriceAtSnapshot: row.polyPrice,
-      eventDate: new Date(row.start * 1000).toISOString(),
-      confidence: null,
-      winningSide: null,
-      savedAt: new Date().toISOString(),
-      cmp: {
-        id: row.id, delta: row.delta, roiPoly: row.roiPoly, roiWinamax: row.roiWinamax,
-        polyPrice: row.polyPrice, winamaxOdd: row.winamaxOdd, comp: row.comp, key: row.key,
-        slug: row.slug, polyQuestion: row.question, cid: row.cid, oi: row.oi, marketSlug: row.marketSlug,
-        computedAt: cmpData && cmpData.generatedAt
-      }
-    };
+    var snap = cmpRecordFromRow(row, cmpData && cmpData.generatedAt);
     enqueueOp(SNAPSHOTS_STORE, { type: "add", id: snap.id, snapshot: snap });
+  }
+  function cmpPickedIds() {
+    var ids = {};
+    CMP_PICK_STORE.load().forEach(function (s) { if (s.cmp && s.cmp.id) ids[s.cmp.id] = true; });
+    return ids;
+  }
+  function cmpPick(row) {
+    var rec = cmpRecordFromRow(row, cmpData && cmpData.generatedAt);
+    rec.cmpPick = true;
+    enqueueOp(CMP_PICK_STORE, { type: "add", id: rec.id, snapshot: rec });
   }
   if (cmpContentEl) {
     cmpDayFiltersEl.addEventListener("click", function (e) {
@@ -14476,6 +14676,17 @@
         renderCmp();
         return;
       }
+      var pk = e.target.closest ? e.target.closest(".cmp-pick-btn") : null;
+      if (pk) {
+        var pid = pk.getAttribute("data-cmp-id");
+        if (cmpPickedIds()[pid]) { alert("Déjà dans Choix comparateur."); return; }
+        var prow = cmpVisibleRows().filter(function (r) { return r.id === pid; })[0];
+        if (!prow) return;
+        cmpPick(prow);
+        pk.classList.add("pinned");
+        pk.textContent = "✅ Choisi";
+        return;
+      }
       var b = e.target.closest ? e.target.closest(".cmp-pin-btn") : null;
       if (!b) return;
       var id = b.getAttribute("data-cmp-id");
@@ -14487,6 +14698,14 @@
       b.textContent = "✅ Dans Saison 26/27";
     });
     cmpRefreshBtn.addEventListener("click", function () { cmpFetch(true); });
+    // Test comparatif captures on every fetch, so the Comparateur is also
+    // fetched in the background while the site is open (this is what keeps
+    // the server-side copy fresh, too — see the Lambda's self-refresh).
+    setTimeout(function () { cmpFetch(false); }, 8000);
+    setInterval(function () { cmpFetch(false); }, 10 * 60 * 1000);
+    // Results of both comparator lists — a match takes hours to settle.
+    setTimeout(checkCmpResolutions, 15000);
+    setInterval(checkCmpResolutions, 5 * 60 * 1000);
     // "Mis à jour il y a X min" stays honest while the tab sits open.
     setInterval(function () {
       var tab = document.getElementById("tab-comparateur");
