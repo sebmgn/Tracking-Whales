@@ -337,7 +337,7 @@
   /* --- Tabs --- */
   .tab-bar {
     display: flex;
-    gap: 22px;
+    gap: 16px;
     border-bottom: 1px solid var(--panel-border);
     margin-bottom: 4px;
   }
@@ -375,10 +375,15 @@
   .tab-bar .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
-  /* When the window is narrower than the tab row (a phone, a half-screen
-     window — it needs ~1 150px) the row scrolls inside itself instead of
-     widening the whole page (which made phones zoom the entire site out). */
-  .tab-bar { overflow-x: auto; scrollbar-width: thin; }
+  /* Every tab stays visible (on request, 2026-10-19): the row wraps onto a
+     second line when the window is too narrow instead of scrolling
+     sideways, and labels never break inside themselves. */
+  .tab-bar { flex-wrap: wrap; column-gap: 16px; row-gap: 0; }
+  .tab-bar .tab-btn { white-space: nowrap; }
+  /* Main tabs on the first line, the secondary ones on a second line. */
+  .tab-break { flex-basis: 100%; height: 0; }
+  .tab-bar .tab-btn.tab-btn-quiet { padding-top: 4px; padding-bottom: 7px; }
+  .tab-bar .tab-btn-group-start { margin-left: 0; }
 
   /* --- Value trades --- */
   .value-trades-box { display: flex; flex-direction: column; gap: 14px; }
@@ -2752,13 +2757,13 @@
   </div>
 
   <div class="tab-bar">
-    <button class="tab-btn tab-btn-primary active" data-tab="home" type="button"><span class="tab-btn-icon">🏠</span>Accueil</button>
-    <button class="tab-btn tab-btn-primary tab-gold-1" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
+    <button class="tab-btn tab-btn-primary tab-gold-1 active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary tab-gold-2" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Saison 26/27</button>
     <button class="tab-btn tab-btn-primary" data-tab="unconfident" type="button"><span class="tab-btn-icon">✕</span>Non confiants</button>
     <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-primary tab-gold-3" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Matchs</button>
     <button class="tab-btn tab-btn-primary" data-tab="analyse" type="button"><span class="tab-btn-icon">🔬</span>Analyse</button>
+    <span class="tab-break" aria-hidden="true"></span>
     <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
     <button class="tab-btn tab-btn-quiet" data-tab="comparateur" type="button"><span class="tab-btn-icon">⚖️</span>Comparateur</button>
@@ -2766,15 +2771,14 @@
     <button class="tab-btn tab-btn-quiet" data-tab="cmp-pick" type="button"><span class="tab-btn-icon">✋</span>Choix comparateur</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="auto-bigtrade" type="button"><span class="tab-btn-icon">🐋</span>Auto &gt;10k avant-match</button>
     <button class="tab-btn tab-btn-quiet" data-tab="seb" type="button"><span class="tab-btn-icon">👤</span>Seb</button>
   </div>
 
-  <div class="tab-panel active" id="tab-home">
+  <div class="tab-panel" id="tab-home">
     <div id="homeContent"></div>
   </div>
 
-  <div class="tab-panel" id="tab-value-trades">
+  <div class="tab-panel active" id="tab-value-trades">
     <div class="vt-header-row">
       <div class="vt-header-left">
         <div class="vt-title-row">
@@ -16578,12 +16582,14 @@
     renderSeb();
   });
 
-  // Reopen whichever tab was last used; a first visit lands on Accueil.
+  // Reopen whichever tab was last used; a first visit lands on Value
+  // Trades (Accueil and Auto >10k lost their tab buttons on request,
+  // 2026-10-19 — their panels stay so the >10k capture keeps feeding Analyse).
   (function () {
     var saved = null;
     try { saved = localStorage.getItem("vtLastTab"); } catch (e) { saved = null; }
-    var savedBtn = saved && saved !== "home" ? document.querySelector('.tab-btn[data-tab="' + saved + '"]') : null;
-    if (savedBtn) savedBtn.click(); else renderHome();
+    var savedBtn = saved ? document.querySelector('.tab-btn[data-tab="' + saved + '"]') : null;
+    (savedBtn || document.querySelector('.tab-btn[data-tab="value-trades"]')).click();
   })();
 
   refresh(true);
