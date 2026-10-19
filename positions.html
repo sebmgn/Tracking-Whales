@@ -2718,6 +2718,10 @@
   .cmp-pin-btn:hover { border-color: var(--accent); }
   .cmp-pin-btn.pinned { border-color: var(--green); color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); }
   .cmp-actions-cell { white-space: nowrap; }
+  .cmp-alerts-toggle { margin: 0 0 10px; }
+  .cmp-alerts-box { margin: 0 0 14px; }
+  .cmp-alerts-box td { font-size: 12.5px; }
+  .cmp-alert-now-gone { color: var(--text-dim); font-style: italic; }
   .cmp-actions-cell .cmp-pin-btn + .cmp-pin-btn { margin-left: 6px; }
   .snap-cmp-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-dim); margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
   .snap-cmp-delta { font-size: 12px; padding: 1px 8px; }
@@ -3008,12 +3012,14 @@
 
   <div class="tab-panel" id="tab-comparateur">
     <h2 class="section-title">⚖️ Comparateur Polymarket / Winamax <span class="count-pill" id="cmpCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que Winamax, sur 20 championnats (Ligue 1, Premier League, LaLiga, Serie A, Bundesliga, Ligue des champions, Europa League, Conference League, Liga Portugal, Eredivisie, Brasileirão, Primera División argentine, Championship, Süper Lig, MLS, Liga MX, Saudi Pro League, Ligue 2, 2. Bundesliga, LaLiga 2), sur les 7 prochains jours. <b>ROI Polymarket = ce que rapporterait vraiment une mise de 1 000 $</b> : achat simulé dans le carnet d'ordres réel (prix après prix) et frais Polymarket inclus — une ligne que le carnet ne peut pas remplir pour 1 000 $ est exclue. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 100 % des deux côtés, delta de ROI &gt; 50 % (écart relatif : 12 % contre 6 % = +100 %), sans corners. Calculé sur le serveur (AWS) toutes les 15 min environ. 📧 Email d'alerte dès qu'une ligne dépasse +100 % de delta. 📌 ajoute le pari à Saison 26/27, ✋ à Choix comparateur. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que Winamax, sur 20 championnats (Ligue 1, Premier League, LaLiga, Serie A, Bundesliga, Ligue des champions, Europa League, Conference League, Liga Portugal, Eredivisie, Brasileirão, Primera División argentine, Championship, Süper Lig, MLS, Liga MX, Saudi Pro League, Ligue 2, 2. Bundesliga, LaLiga 2), sur les 7 prochains jours. <b>ROI Polymarket = ce que rapporterait vraiment une mise de 1 000 $</b> : achat simulé dans le carnet d'ordres réel (prix après prix) et frais Polymarket inclus — une ligne que le carnet ne peut pas remplir pour 1 000 $ est exclue. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 100 % des deux côtés, delta de ROI &gt; 30 % (écart relatif : 12 % contre 6 % = +100 %), sans corners. Calculé sur le serveur (AWS) toutes les 15 min environ. 📧 Email d'alerte dès qu'une ligne dépasse +100 % de delta. 📌 ajoute le pari à Saison 26/27, ✋ à Choix comparateur. Aucun vrai ordre n'est jamais passé.</div>
     <div class="cmp-status">
       <span id="cmpUpdated">Chargement…</span>
       <button type="button" id="cmpRefreshBtn" class="snap-sync-link" title="Relancer le calcul sur le serveur (~1 min)">🔄 Actualiser</button>
     </div>
     <div class="vt-filters" id="cmpDayFilters"></div>
+    <div class="vt-filters" id="cmpCompFilters"></div>
+    <div id="cmpAlerts"></div>
     <div id="cmpContent">
       <div class="loading-state">Chargement des propositions…</div>
     </div>
@@ -14525,9 +14531,11 @@
   // frozen `cmp` block, rendered by manualCardHtml in Saison 26/27, Mes
   // Positions and All Time alike (a position's deep clone keeps it).
   var AWS_COMPARATOR_URL = "https://n6ulxf7yidnnwgxi6fexcuzdj40ptxgt.lambda-url.eu-north-1.on.aws/";
-  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpLoading = false, cmpRetryTimer = null, cmpError = null;
+  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpComp = "all", cmpAlertsOpen = false, cmpLoading = false, cmpRetryTimer = null, cmpError = null;
   var cmpContentEl = document.getElementById("cmpContent");
   var cmpDayFiltersEl = document.getElementById("cmpDayFilters");
+  var cmpCompFiltersEl = document.getElementById("cmpCompFilters");
+  var cmpAlertsEl = document.getElementById("cmpAlerts");
   var cmpUpdatedEl = document.getElementById("cmpUpdated");
   var cmpCountEl = document.getElementById("cmpCount");
   var cmpRefreshBtn = document.getElementById("cmpRefreshBtn");
@@ -14634,18 +14642,35 @@
       if (cmpError) status += " · erreur au dernier rechargement (" + cmpError + ")";
     }
     cmpUpdatedEl.textContent = (cmpLoading && cmpData ? "Rechargement… " : "") + status;
-    // Day filter — one button per match day, "Tous" first
-    var byDay = {};
-    rows.forEach(function (r) { var k = cmpDayKey(r.start); byDay[k] = (byDay[k] || 0) + 1; });
-    var days = Object.keys(byDay).sort();
+    // Two filters that combine: match day and competition — each one's
+    // counts reflect the other's current choice.
+    var inComp = function (r) { return cmpComp === "all" || r.comp === cmpComp; };
+    var inDay = function (r) { return cmpDay === "all" || cmpDayKey(r.start) === cmpDay; };
+    var byDay = {}, byComp = {};
+    rows.forEach(function (r) {
+      if (inComp(r)) { var k = cmpDayKey(r.start); byDay[k] = (byDay[k] || 0) + 1; }
+      if (inDay(r)) byComp[r.comp] = (byComp[r.comp] || 0) + 1;
+    });
     if (cmpDay !== "all" && !byDay[cmpDay]) cmpDay = "all";
+    if (cmpComp !== "all" && !byComp[cmpComp]) cmpComp = "all";
+    var days = Object.keys(byDay).sort();
+    var comps = Object.keys(byComp).sort(function (a, b) { return byComp[b] - byComp[a] || a.localeCompare(b, "fr"); });
+    var dayTotal = rows.filter(inComp).length, compTotal = rows.filter(inDay).length;
     cmpDayFiltersEl.innerHTML = !rows.length ? "" :
-      '<button type="button" data-cmp-day="all" class="' + (cmpDay === "all" ? "active" : "") + '">Tous<span class="vt-filter-count"> · ' + rows.length + '</span></button>' +
+      '<span class="vt-sort-label">Jour</span>' +
+      '<button type="button" data-cmp-day="all" class="' + (cmpDay === "all" ? "active" : "") + '">Tous<span class="vt-filter-count"> · ' + dayTotal + '</span></button>' +
       days.map(function (k) {
         return '<button type="button" data-cmp-day="' + k + '" class="' + (cmpDay === k ? "active" : "") + '">' + esc(cmpDayLabel(k)) + '<span class="vt-filter-count"> · ' + byDay[k] + '</span></button>';
       }).join("");
+    cmpCompFiltersEl.innerHTML = !rows.length ? "" :
+      '<span class="vt-sort-label">Championnat</span>' +
+      '<button type="button" data-cmp-comp="all" class="' + (cmpComp === "all" ? "active" : "") + '">Tous<span class="vt-filter-count"> · ' + compTotal + '</span></button>' +
+      comps.map(function (c) {
+        return '<button type="button" data-cmp-comp="' + esc(c) + '" class="' + (cmpComp === c ? "active" : "") + '">' + esc(c) + '<span class="vt-filter-count"> · ' + byComp[c] + '</span></button>';
+      }).join("");
+    renderCmpAlerts(rows);
     if (!cmpData) { cmpContentEl.innerHTML = '<div class="loading-state">Chargement des propositions…</div>'; return; }
-    var shown = cmpDay === "all" ? rows : rows.filter(function (r) { return cmpDayKey(r.start) === cmpDay; });
+    var shown = rows.filter(function (r) { return inDay(r) && inComp(r); });
     if (!shown.length) { cmpContentEl.innerHTML = '<div class="empty-note">Aucune proposition pour l\'instant.</div>'; return; }
     shown = cmpSortRows(shown);
     var pinned = cmpPinnedIds(), picked = cmpPickedIds();
@@ -14656,6 +14681,35 @@
     }).join("") + '<th></th>';
     cmpContentEl.innerHTML = '<div class="table-scroll cmp-table-wrap"><table class="cmp-table"><thead><tr>' + head + '</tr></thead><tbody>' +
       shown.map(function (r) { return cmpRowHtml(r, !!pinned[r.id], !!picked[r.id]); }).join("") + '</tbody></table></div>';
+  }
+  // "📧 Alertes envoyées" — every line emailed (Δ > 100 %), with its numbers
+  // as emailed next to where it stands now: odds move, so a line can drop
+  // below the threshold or out of the list between the email and a visit.
+  function renderCmpAlerts(rows) {
+    var alerts = (cmpData && cmpData.alerts) || [];
+    if (!alerts.length) { cmpAlertsEl.innerHTML = ""; return; }
+    var nowById = {};
+    rows.forEach(function (r) { nowById[r.id] = r; });
+    var html = '<button type="button" class="collapse-btn snap-stats-toggle-btn cmp-alerts-toggle" id="cmpAlertsToggle">' + (cmpAlertsOpen ? "▾" : "▸") + ' 📧 Alertes envoyées · ' + alerts.length + '</button>';
+    if (cmpAlertsOpen) {
+      var nowSec = Date.now() / 1000;
+      html += '<div class="table-scroll cmp-table-wrap cmp-alerts-box"><table class="cmp-table"><thead><tr><th>Envoyée</th><th>Match</th><th>Pari</th><th class="num">À l\'envoi</th><th class="num">Maintenant</th></tr></thead><tbody>' +
+        alerts.map(function (a) {
+          var r = a.row || {};
+          var cur = nowById[a.id];
+          var nowCell;
+          if (cur) nowCell = '<span class="cmp-delta">+' + cur.delta + ' %</span><div class="market-sub">Poly +' + cur.roiPoly.toFixed(1) + ' % · Wina +' + cur.roiWinamax.toFixed(1) + ' %</div>';
+          else if (r.start && r.start <= nowSec) nowCell = '<span class="cmp-alert-now-gone">match commencé</span>';
+          else nowCell = '<span class="cmp-alert-now-gone">plus dans la liste (delta ≤ 30 % ou cotes changées)</span>';
+          var d = new Date(a.sentAt);
+          return '<tr><td class="cmp-date-cell">' + esc(d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) + '</td>' +
+            '<td class="cmp-match-cell">' + esc(r.match || "—") + (r.comp ? '<div class="market-sub">' + esc(r.comp) + '</div>' : '') + '</td>' +
+            '<td class="cmp-market-cell">' + esc(r.market || "—") + '</td>' +
+            '<td class="num"><b>+' + esc(String(r.delta)) + ' %</b>' + (r.roiPoly != null ? '<div class="market-sub">Poly +' + Number(r.roiPoly).toFixed(1) + ' % · Wina +' + Number(r.roiWinamax).toFixed(1) + ' %</div>' : '') + '</td>' +
+            '<td class="num">' + nowCell + '</td></tr>';
+        }).join("") + '</tbody></table></div>';
+    }
+    cmpAlertsEl.innerHTML = html;
   }
   function cmpPin(row) {
     var snap = cmpRecordFromRow(row, cmpData && cmpData.generatedAt);
@@ -14672,6 +14726,17 @@
     enqueueOp(CMP_PICK_STORE, { type: "add", id: rec.id, snapshot: rec });
   }
   if (cmpContentEl) {
+    cmpCompFiltersEl.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("[data-cmp-comp]") : null;
+      if (!b) return;
+      cmpComp = b.getAttribute("data-cmp-comp");
+      renderCmp();
+    });
+    cmpAlertsEl.addEventListener("click", function (e) {
+      if (!(e.target.closest && e.target.closest("#cmpAlertsToggle"))) return;
+      cmpAlertsOpen = !cmpAlertsOpen;
+      renderCmp();
+    });
     cmpDayFiltersEl.addEventListener("click", function (e) {
       var b = e.target.closest ? e.target.closest("[data-cmp-day]") : null;
       if (!b) return;
