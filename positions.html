@@ -3008,7 +3008,7 @@
 
   <div class="tab-panel" id="tab-comparateur">
     <h2 class="section-title">⚖️ Comparateur Polymarket / Winamax <span class="count-pill" id="cmpCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que Winamax, sur la Ligue 1, la Premier League, la LaLiga, la Serie A, la Bundesliga et les 3 coupes d'Europe, jusqu'au dimanche suivant. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 100 % des deux côtés, delta de ROI &gt; 50 % (écart relatif : 12 % contre 6 % = +100 %), sans corners, marchés Polymarket sans liquidité (écart achat/vente &gt; 5¢) exclus. Prix Polymarket = meilleur vendeur, frais non déduits. Calculé sur le serveur (AWS), mis à jour quand la page est ouverte si les données ont plus de 15 min. 📌 ajoute le pari à Saison 26/27 avec son delta. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que Winamax, sur la Ligue 1, la Premier League, la LaLiga, la Serie A, la Bundesliga et les 3 coupes d'Europe, sur les 7 prochains jours. <b>ROI Polymarket = ce que rapporterait vraiment une mise de 1 000 $</b> : achat simulé dans le carnet d'ordres réel (prix après prix) et frais Polymarket inclus — une ligne que le carnet ne peut pas remplir pour 1 000 $ est exclue. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 100 % des deux côtés, delta de ROI &gt; 50 % (écart relatif : 12 % contre 6 % = +100 %), sans corners. Calculé sur le serveur (AWS) toutes les 15 min environ. 📧 Email d'alerte dès qu'une ligne dépasse +100 % de delta. 📌 ajoute le pari à Saison 26/27, ✋ à Choix comparateur. Aucun vrai ordre n'est jamais passé.</div>
     <div class="cmp-status">
       <span id="cmpUpdated">Chargement…</span>
       <button type="button" id="cmpRefreshBtn" class="snap-sync-link" title="Relancer le calcul sur le serveur (~1 min)">🔄 Actualiser</button>
@@ -14583,7 +14583,7 @@
     { key: "match", label: "Match", get: function (r) { return r.match; } },
     { key: "start", label: "Date", get: function (r) { return r.start; } },
     { key: "market", label: "Pari", get: function (r) { return r.market; } },
-    { key: "roiPoly", label: "ROI Polymarket", num: true, get: function (r) { return r.roiPoly; } },
+    { key: "roiPoly", label: "ROI Polymarket (1 000 $)", num: true, get: function (r) { return r.roiPoly; } },
     { key: "roiWinamax", label: "ROI Winamax", num: true, get: function (r) { return r.roiWinamax; } },
     { key: "delta", label: "Delta", num: true, get: function (r) { return r.delta; } }
   ];
@@ -14597,13 +14597,21 @@
       return c !== 0 ? sign * c : b.delta - a.delta;
     });
   }
+  // Tooltip on the Polymarket cell: how the 1 000 $ price breaks down.
+  function cmpPriceTitle(r) {
+    var parts = ["Prix réel par part pour 1 000 $, frais inclus : " + fmtCents(r.polyPrice)];
+    if (r.avgPrice != null) parts.push("prix moyen du carnet : " + fmtCents(r.avgPrice));
+    if (r.bestPrice != null) parts.push("meilleur prix affiché : " + fmtCents(r.bestPrice));
+    if (r.feeRate) parts.push("frais Polymarket : " + (r.feeRate * 100).toFixed(0) + " % × p × (1 − p) par part");
+    return parts.join(" · ");
+  }
   function cmpRowHtml(r, pinned, picked) {
     var url = "https://polymarket.com/fr/event/" + encodeURIComponent(r.slug);
     return '<tr data-cmp-id="' + esc(r.id) + '">' +
       '<td class="cmp-match-cell"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(r.match) + '</a><div class="market-sub">' + esc(r.comp) + '</div></td>' +
       '<td class="cmp-date-cell">' + esc(cmpKickoffLabel(r.start)) + '</td>' +
       '<td class="cmp-market-cell">' + esc(r.market) + '</td>' +
-      '<td class="num cmp-poly-cell"><b>+' + r.roiPoly.toFixed(1) + ' %</b><div class="market-sub">' + esc(fmtCents(r.polyPrice)) + '</div></td>' +
+      '<td class="num cmp-poly-cell" title="' + esc(cmpPriceTitle(r)) + '"><b>+' + r.roiPoly.toFixed(1) + ' %</b><div class="market-sub">' + esc(fmtCents(r.polyPrice)) + ' frais incl.</div></td>' +
       '<td class="num"><b>+' + r.roiWinamax.toFixed(1) + ' %</b><div class="market-sub">cote ' + r.winamaxOdd.toFixed(2) + '</div></td>' +
       '<td class="num"><span class="cmp-delta" title="Écart relatif entre les deux ROI">+' + r.delta + ' %</span></td>' +
       '<td class="cmp-actions-cell"><button type="button" class="cmp-pin-btn' + (pinned ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '">' + (pinned ? '✅ Dans Saison 26/27' : '📌 Saison 26/27') + '</button>' +
