@@ -673,7 +673,7 @@
      is its OWN class, never combined with .vt-snap-btn on the same
      element, or the delegated click handler's .vt-snap-btn check (which
      runs first and returns early) would swallow their clicks too. */
-  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn, .vt-sibling-btn, .vt-comment-btn, .vt-reject-btn {
+  .vt-snap-btn, .vt-follow-btn, .vt-trash-btn, .vt-sibling-btn, .vt-comment-btn, .vt-reject-btn, .vt-sandbox-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     color: var(--gold);
@@ -691,6 +691,8 @@
      passed on, saved so you can check later whether skipping it was right.
      Red-ish (vs. the snapshot button's gold) so the two read as opposite
      actions at a glance, never confusable. */
+  .vt-sandbox-btn:hover { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 45%, transparent); }
+  .vt-sandbox-btn:disabled { opacity: .6; cursor: default; }
   .vt-reject-btn { color: var(--red); }
   .vt-reject-btn:hover { border-color: var(--red); box-shadow: 0 0 8px color-mix(in srgb, var(--red) 45%, transparent); }
   .vt-reject-btn:disabled { opacity: .6; cursor: default; }
@@ -2767,6 +2769,7 @@
     <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-primary tab-gold-3" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Matchs</button>
     <button class="tab-btn tab-btn-primary" data-tab="analyse" type="button"><span class="tab-btn-icon">🔬</span>Analyse</button>
+    <button class="tab-btn tab-btn-primary" data-tab="sandbox" type="button"><span class="tab-btn-icon">📝</span>Test</button>
     <span class="tab-break" aria-hidden="true"></span>
     <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
@@ -3080,6 +3083,35 @@
     <div id="cmpPickTraderTableContent"></div>
     <div id="cmpPickContent" class="value-trades-box">
       <div class="empty-note">Aucun trade choisi pour l'instant — clique ✋ sur une ligne du Comparateur.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-sandbox">
+    <h2 class="section-title">📝 Test <span class="count-pill" id="sandboxCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Une Saison 26/27 vierge pour tester : clique 📝 sur une carte Value Trades pour y enregistrer le pari (même carte, même prix figé qu'avec 📌). Le résultat se remplit tout seul quand le marché Polymarket est résolu, et reste modifiable à la main. Enregistré sur le serveur (AWS) comme Saison 26/27, mais jamais mélangé avec Saison 26/27, Mes Positions ni All Time. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="sandboxExportBtn" class="snap-sync-link" title="Télécharger cette liste (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button id="sandboxTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
+    </div>
+    <div id="sandboxPnlChartContent"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="sandboxTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="sandbox">▸ Le winrate par conviction</button>
+      <button type="button" id="sandboxNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="sandbox">▸ L'analyse winrate × note</button>
+      <button type="button" id="sandboxDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="sandbox">▸ L'analyse cote × confiance</button>
+      <button type="button" id="sandboxManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="sandbox">▸ Manuel vs suivi auto</button>
+      <button type="button" id="sandboxWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="sandbox">▸ Paris par semaine</button>
+      <button type="button" id="sandboxOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="sandbox">▸ Autres stats</button>
+      <button type="button" id="sandboxTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="sandbox">▸ Le tableau des traders</button>
+    </div>
+    <div id="sandboxTierWinrateContent"></div>
+    <div id="sandboxNoteWinrateContent"></div>
+    <div id="sandboxDistContent"></div>
+    <div id="sandboxManualVsAutoContent"></div>
+    <div id="sandboxWeeklyPnlContent"></div>
+    <div id="sandboxOtherStatsContent"></div>
+    <div id="sandboxTraderTableContent"></div>
+    <div id="sandboxContent" class="value-trades-box">
+      <div class="empty-note">Aucun pari pour l'instant — clique 📝 sur une carte Value Trades pour l'enregistrer ici.</div>
     </div>
   </div>
 
@@ -6088,6 +6120,7 @@
     var sparkHtml = sparklineHtml(stableKey);
 
     var snapBtnHtml = '<button type="button" class="vt-snap-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Saison 26/27">📌</button>';
+    var sandboxBtnHtml = '<button type="button" class="vt-sandbox-btn" data-snap-key="' + esc(primary.key) + '" title="Sauvegarder ce value trade dans Test">📝</button>';
     var rejectBtnHtml = '<button type="button" class="vt-reject-btn" data-snap-key="' + esc(primary.key) + '" title="Pas assez confiant pour ce trade — sauvegarder dans Snapshots non confiants pour voir plus tard si c\'était intéressant ou non">✕</button>';
     var isFollowed = !!followedKeys[stableKey];
     var followBtnHtml = '<button type="button" class="vt-follow-btn' + (isFollowed ? ' active' : '') + '" data-follow-key="' + esc(stableKey) + '" title="' + (isFollowed ? "Retirer des suivis" : "Ajouter aux suivis — reste visible même si le trade devient inéligible") + '">' + (isFollowed ? '⭐' : '☆') + '</button>';
@@ -6223,7 +6256,7 @@
       '<div class="vt-top">' +
         '<span class="vt-top-left"><span class="vt-sport-emoji" title="Type de pari">' + sportEmoji + '</span><span class="vt-question">' + questionHtmlWithLeadTint(primary.question, mergedSides, distinctColors) + '</span>' + sparkHtml + leaderBadge + '</span>' +
         statsHtml +
-        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + rejectBtnHtml + siblingBtnHtml + commentBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate, stableKey) + trashBtnHtml + '</span>' +
+        '<span class="vt-badge-group">' + followBtnHtml + snapBtnHtml + sandboxBtnHtml + rejectBtnHtml + siblingBtnHtml + commentBtnHtml + scoreBadgeHtml(u.score, u.scoreFactors, null, u.scoreGate, stableKey) + trashBtnHtml + '</span>' +
       '</div>' + marketLinksHtml;
     // Volume + trader count moved down here (was in the top-right badge
     // group) — sits on the card's real bottom row, in normal flow so it
@@ -7089,6 +7122,12 @@
       markEverSynced(store);
       updateSyncStatus(store, hasSecret ? "synced" : "readonly");
       renderStoreView(store);
+      // Views filtered out of this same list (📝 Test, Comparateur ones)
+      // redraw too when they're the open tab, so another device's adds show.
+      if (store === SNAPSHOTS_STORE) [["tab-sandbox", SANDBOX_STORE], ["tab-cmp-auto", CMP_AUTO_STORE], ["tab-cmp-pick", CMP_PICK_STORE]].forEach(function (v) {
+        var tab = document.getElementById(v[0]);
+        if (tab && tab.classList.contains("active")) renderStoreView(v[1]);
+      });
       anScheduleRender(); // the Analyse tab reads the >10k signals from this same list
       if (pendingOps.length && hasSecret) setTimeout(function () { syncNow(store); }, 1000);
     } catch (e) {
@@ -7177,6 +7216,7 @@
       cardHtml: (parts.headerHtml + parts.bodyHtml)
         .replace(/<button[^>]*class="vt-snap-btn"[\s\S]*?<\/button>/, "")
         .replace(/<button[^>]*class="vt-reject-btn"[\s\S]*?<\/button>/, "")
+        .replace(/<button[^>]*class="vt-sandbox-btn"[\s\S]*?<\/button>/, "")
         .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, ""),
       winningSide: null, // side name (e.g. "No") once marked, or null = result not known yet
       confidence: null, // "S" | "A" | "B" conviction tag, set once the bet is placed — lets backtests correlate tier with winrate
@@ -7193,6 +7233,12 @@
   // through UNCONFIDENT_STORE, which is really just a filtered view over
   // this same snapshots list (see UNCONFIDENT_STORE below) — no separate
   // backend table needed.
+  // "📝" on a Value Trades card — same snapshot as 📌, routed to Test.
+  function saveSandboxSnapshot(u) {
+    var snap = buildSnapshotFromUnit(u);
+    snap.sandbox = true;
+    enqueueOp(SANDBOX_STORE, { type: "add", id: snap.id, snapshot: snap });
+  }
   function saveUnconfidentSnapshot(u) {
     var snap = buildSnapshotFromUnit(u);
     snap.lowConfidence = true;
@@ -7906,7 +7952,7 @@
   // and get their result straight from the Polymarket market
   // (checkCmpResolutions). LOCAL TRACKING ONLY: no order is ever placed.
   var CMP_AUTO_MIN_DELTA = 75;
-  function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true); }
+  function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true || s.sandbox === true); }
   function cmpViewStore(name, opts) {
     function loadRaw() { return loadSnapshotsRaw().filter(function (s) { return s[name] === true; }); }
     function load() { return loadRaw().filter(function (s) { return !s.deletedAt; }); }
@@ -7947,6 +7993,19 @@
     emptyHint: "Aucun trade choisi pour l'instant — clique ✋ sur une ligne du Comparateur.",
     dateLabelPrefix: "Choisi le", priceMoment: "au moment du clic"
   });
+  // 📝 Test (on request, 2026-10-21): a blank Saison 26/27 — same cards,
+  // panels and controls, filled with 📝 on a Value Trades card. Same
+  // flag-filtered-view pattern (sandbox:true, kept out of Saison, Mes
+  // Positions, All Time and the archive by isCmpSideList). No "Prendre
+  // position", so nothing here ever lands in Mes Positions.
+  var SANDBOX_STORE = cmpViewStore("sandbox", {
+    emptyHint: "Aucun pari pour l'instant — clique 📝 sur une carte Value Trades pour l'enregistrer ici.",
+    dateLabelPrefix: "Sauvegardé le", priceMoment: "au moment de l'enregistrement"
+  });
+  SANDBOX_STORE.allowEditPosition = true;
+  SANDBOX_STORE.allowReorder = true;
+  function renderSandbox() { renderStoreView(SANDBOX_STORE); }
+  function checkSandboxResolutions() { return checkAutoStoreResolutions(SANDBOX_STORE, "tab-sandbox", renderSandbox); }
   // Deterministic id (one auto capture per Comparateur line, whichever
   // browser sees it first) — same djb2 scheme as autoPreId.
   function cmpRecordId(prefix, rowId) {
@@ -12817,6 +12876,7 @@
       if (btn.getAttribute("data-tab") === "comparateur") cmpOpen();
       if (btn.getAttribute("data-tab") === "cmp-auto") renderStoreView(CMP_AUTO_STORE);
       if (btn.getAttribute("data-tab") === "cmp-pick") renderStoreView(CMP_PICK_STORE);
+      if (btn.getAttribute("data-tab") === "sandbox") renderSandbox();
       if (btn.getAttribute("data-tab") === "seb") sebOpen();
       if (btn.getAttribute("data-tab") === "recent-trades") ensureRecentMatchesFresh();
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
@@ -13326,6 +13386,7 @@
     if (name === "autoBigTrade") return AUTO_BIGTRADE_STORE;
     if (name === "cmpAuto") return CMP_AUTO_STORE;
     if (name === "cmpPick") return CMP_PICK_STORE;
+    if (name === "sandbox") return SANDBOX_STORE;
     return SNAPSHOTS_STORE;
   }
   // All Time is a merged VIEW (snapshots + positions, see loadTestRaw) with
@@ -13340,6 +13401,18 @@
     return SNAPSHOTS_STORE;
   }
   document.addEventListener("click", function (e) {
+    var sandboxBtn = e.target.closest ? e.target.closest(".vt-sandbox-btn") : null;
+    if (sandboxBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var sandboxUnit = unitByMarketKey[sandboxBtn.getAttribute("data-snap-key")];
+      if (sandboxUnit) {
+        saveSandboxSnapshot(sandboxUnit);
+        sandboxBtn.textContent = "✅";
+        sandboxBtn.disabled = true;
+      }
+      return;
+    }
     var rejectBtn = e.target.closest ? e.target.closest(".vt-reject-btn") : null;
     if (rejectBtn) {
       e.preventDefault();
@@ -14046,6 +14119,8 @@
   wireTrashToggle(CMP_AUTO_STORE, "cmpAutoTrashToggleBtn", function () { renderStoreView(CMP_AUTO_STORE); });
   wireExport(CMP_PICK_STORE, "cmpPickExportBtn");
   wireTrashToggle(CMP_PICK_STORE, "cmpPickTrashToggleBtn", function () { renderStoreView(CMP_PICK_STORE); });
+  wireExport(SANDBOX_STORE, "sandboxExportBtn");
+  wireTrashToggle(SANDBOX_STORE, "sandboxTrashToggleBtn", renderSandbox);
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
   // Archives are tagged items in the same synced lists now (see the
   // "archive" op), not a separate local structure — so there's nothing left
@@ -14521,6 +14596,8 @@
   migrateLegacyAutoPre();
   checkAutoBigTradeResolutions();
   setInterval(checkAutoBigTradeResolutions, 300000);
+  checkSandboxResolutions();
+  setInterval(checkSandboxResolutions, 300000);
   // ---------- ⚖️ Comparateur (Polymarket vs Winamax, on request 2026-10-18) ----------
   // The comparison itself runs server-side (Lambda tracking-whales-comparator:
   // Winamax has no public API and the browser can't read it cross-origin),
