@@ -1682,8 +1682,8 @@
   .snap-sync-setup input[type="number"]:focus,
   .snap-sync-setup input[type="date"]:focus,
   .snap-sync-setup select:focus { outline: none; border-color: var(--accent); }
-  #manualTitleInput, #manualSideInput { flex: 1 1 160px; min-width: 120px; }
-  #manualCoteInput { flex: 0 1 90px; }
+  #manualTitleInput, #manualSideInput, #sandboxManualTitleInput, #sandboxManualSideInput { flex: 1 1 160px; min-width: 120px; }
+  #manualCoteInput, #sandboxManualCoteInput { flex: 0 1 90px; }
   .snap-manual-badge {
     display: inline-flex;
     align-items: center;
@@ -3088,10 +3088,26 @@
 
   <div class="tab-panel" id="tab-sandbox">
     <h2 class="section-title">📝 Test <span class="count-pill" id="sandboxCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Une Saison 26/27 vierge pour tester : clique 📝 sur une carte Value Trades pour y enregistrer le pari (même carte, même prix figé qu'avec 📌). Le résultat se remplit tout seul quand le marché Polymarket est résolu, et reste modifiable à la main. Enregistré sur le serveur (AWS) comme Saison 26/27, mais jamais mélangé avec Saison 26/27, Mes Positions ni All Time. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Une Saison 26/27 vierge pour tester : clique 📝 sur une carte Value Trades pour y enregistrer le pari (même carte, même prix figé qu'avec 📌), ou ✍️ Pari manuel pour en saisir un à la main. Le résultat se remplit tout seul quand le marché Polymarket est résolu, et reste modifiable à la main. Enregistré sur le serveur (AWS) comme Saison 26/27, mais jamais mélangé avec Saison 26/27, Mes Positions ni All Time. Aucun vrai ordre n'est jamais passé.</div>
     <div class="snap-sync-bar">
       <button type="button" id="sandboxExportBtn" class="snap-sync-link" title="Télécharger cette liste (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button type="button" id="sandboxAddManualBtn" class="snap-sync-link" title="Enregistrer un pari pris en dehors des traders suivis — pas de note, juste titre/camp/cote/date/confiance">✍️ Pari manuel</button>
       <button id="sandboxTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
+    </div>
+    <div id="sandboxManualForm" class="snap-sync-setup" style="display:none;">
+      <input type="text" id="sandboxManualTitleInput" placeholder="Titre (ex: PSG vs Lens)" />
+      <input type="text" id="sandboxManualSideInput" placeholder="Camp (ex: PSG)" />
+      <input type="number" id="sandboxManualCoteInput" placeholder="Cote (¢)" min="0.1" max="100" step="0.1" />
+      <input type="date" id="sandboxManualDateInput" />
+      <select id="sandboxManualConfSelect">
+        <option value="">Confiance (optionnel)</option>
+        <option value="S">S</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+      </select>
+      <button type="button" id="sandboxManualFormSave">Enregistrer</button>
+      <button type="button" id="sandboxManualFormCancel">Annuler</button>
+      <div class="empty-note" style="padding:6px 0 0;">Pari manuel enregistré dans Test uniquement — marqué "✍️ Pari manuel" sur la carte, résultat à cocher à la main (camp gagnant / camp adverse).</div>
     </div>
     <div id="sandboxPnlChartContent"></div>
     <div class="snap-toggle-bar">
@@ -13992,42 +14008,47 @@
   // tracked traders entirely, so there's no unit/side data to build a
   // snapshot from the usual way. Just the handful of fields the card
   // actually shows, no note (nothing to score it against).
-  function clearManualForm() {
-    manualTitleInput.value = "";
-    manualSideInput.value = "";
-    manualCoteInput.value = "";
-    manualDateInput.value = "";
-    manualConfSelect.value = "";
+  // Shared by Saison 26/27 and 📝 Test (prefix "" vs "sandbox", on
+  // request 2026-10-21): same form, same record, written to `store` with
+  // `flags` merged in (sandbox:true keeps it out of Saison).
+  function wireManualForm(store, ids, flags) {
+    var g = function (id) { return document.getElementById(id); };
+    var addBtn = g(ids.add), form = g(ids.form), titleIn = g(ids.title), sideIn = g(ids.side),
+      coteIn = g(ids.cote), dateIn = g(ids.date), confSel = g(ids.conf), saveBtn = g(ids.save), cancelBtn = g(ids.cancel);
+    if (!addBtn || !form) return;
+    function clear() { titleIn.value = ""; sideIn.value = ""; coteIn.value = ""; dateIn.value = ""; confSel.value = ""; }
+    addBtn.addEventListener("click", function () {
+      form.style.display = form.style.display === "none" ? "flex" : "none";
+    });
+    cancelBtn.addEventListener("click", function () { form.style.display = "none"; clear(); });
+    saveBtn.addEventListener("click", function () {
+      var title = titleIn.value.trim();
+      var side = sideIn.value.trim();
+      var cote = parseFloat(String(coteIn.value).trim().replace(",", "."));
+      if (!title) { alert("Titre manquant."); return; }
+      if (!side) { alert("Camp manquant."); return; }
+      if (!isFinite(cote) || cote <= 0 || cote > 100) { alert("Cote invalide — entre un nombre entre 0 et 100 (¢)."); return; }
+      var manualSnap = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        isManual: true,
+        question: title,
+        leaderName: side,
+        leaderPriceAtSnapshot: cote / 100,
+        eventDate: dateIn.value || null,
+        confidence: confSel.value || null,
+        winningSide: null,
+        savedAt: new Date().toISOString()
+      };
+      Object.keys(flags || {}).forEach(function (k) { manualSnap[k] = flags[k]; });
+      enqueueOp(store, { type: "add", id: manualSnap.id, snapshot: manualSnap });
+      clear();
+      form.style.display = "none";
+    });
   }
-  snapAddManualBtn.addEventListener("click", function () {
-    snapManualForm.style.display = snapManualForm.style.display === "none" ? "flex" : "none";
-  });
-  manualFormCancel.addEventListener("click", function () {
-    snapManualForm.style.display = "none";
-    clearManualForm();
-  });
-  manualFormSave.addEventListener("click", function () {
-    var title = manualTitleInput.value.trim();
-    var side = manualSideInput.value.trim();
-    var cote = parseFloat(String(manualCoteInput.value).trim().replace(",", "."));
-    if (!title) { alert("Titre manquant."); return; }
-    if (!side) { alert("Camp manquant."); return; }
-    if (!isFinite(cote) || cote <= 0 || cote > 100) { alert("Cote invalide — entre un nombre entre 0 et 100 (¢)."); return; }
-    var manualSnap = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-      isManual: true,
-      question: title,
-      leaderName: side,
-      leaderPriceAtSnapshot: cote / 100,
-      eventDate: manualDateInput.value || null,
-      confidence: manualConfSelect.value || null,
-      winningSide: null,
-      savedAt: new Date().toISOString()
-    };
-    enqueueOp(SNAPSHOTS_STORE, { type: "add", id: manualSnap.id, snapshot: manualSnap });
-    clearManualForm();
-    snapManualForm.style.display = "none";
-  });
+  wireManualForm(SNAPSHOTS_STORE, { add: "snapAddManualBtn", form: "snapManualForm", title: "manualTitleInput", side: "manualSideInput",
+    cote: "manualCoteInput", date: "manualDateInput", conf: "manualConfSelect", save: "manualFormSave", cancel: "manualFormCancel" });
+  wireManualForm(SANDBOX_STORE, { add: "sandboxAddManualBtn", form: "sandboxManualForm", title: "sandboxManualTitleInput", side: "sandboxManualSideInput",
+    cote: "sandboxManualCoteInput", date: "sandboxManualDateInput", conf: "sandboxManualConfSelect", save: "sandboxManualFormSave", cancel: "sandboxManualFormCancel" }, { sandbox: true });
   // Trash toggle / export / import are the same three behaviors for both
   // stores — wired generically here and called once per store below, rather
   // than duplicated (positions just skips the AWS sync bits, which stay
