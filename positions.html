@@ -16543,7 +16543,33 @@
   // the same thing and nothing needs storing. One row = one market × side.
   var SEB_ADDRESS = "0x062922dcc898a4935b2b87f5e9ea2360b31e0a16";
   var SEB_PROFILE_URL = "https://polymarket.com/profile/" + SEB_ADDRESS;
-  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40 };
+  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40, sortKey: null, sortDir: "desc" };
+  // "Tes paris" columns, sortable by a click on the header (on request,
+  // 2026-10-22) — again flips the order. No sort = the default view: bets
+  // still running first, then the most recently settled.
+  var SEB_COLS = [
+    { key: "date", label: "Réglé le", val: function (b) { return b.doneAt || null; } },
+    { key: "title", label: "Marché", text: true, val: function (b) { return (b.title || "").toLowerCase(); } },
+    { key: "outcome", label: "Camp", text: true, val: function (b) { return (b.outcome || "").toLowerCase(); } },
+    { key: "avg", label: "Prix moyen", val: function (b) { return b.avg; } },
+    { key: "stake", label: "Misé", val: function (b) { return b.stake; } },
+    { key: "result", label: "Résultat", val: function (b) { return b.status === "open" ? null : (b.pnl > 0 ? 1 : 0); } },
+    { key: "pnl", label: "PnL", val: function (b) { return b.status === "open" ? null : b.pnl; } }
+  ];
+  function sebSorted(list) {
+    var col = SEB_COLS.filter(function (c) { return c.key === sebState.sortKey; })[0];
+    if (!col) return null;
+    var dir = sebState.sortDir === "asc" ? 1 : -1;
+    return list.slice().sort(function (a, b) {
+      var va = col.val(a), vb = col.val(b);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1; // no value (a bet still running) always last
+      if (vb == null) return -1;
+      var d = col.text ? String(va).localeCompare(String(vb), "fr") : va - vb;
+      if (!d && col.key === "result") d = a.pnl - b.pnl; // wins by size, losses by size
+      return d * dir || ((b.doneAt || 0) - (a.doneAt || 0));
+    });
+  }
   var SEB_ODDS = [[0, 0.4, "< 40¢"], [0.4, 0.55, "40–55¢"], [0.55, 0.7, "55–70¢"], [0.7, 0.8, "70–80¢"], [0.8, 0.9, "80–90¢"], [0.9, 1.01, "90¢ +"]];
   // Direct, not throttledFetch: a handful of requests, and that shared queue
   // can be busy with the full refresh for a minute or more.
@@ -16680,8 +16706,10 @@
     var byMonth = Object.keys(months).sort().reverse().map(function (k) {
       return { label: new Date(k + "-15").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }), st: sebStats(months[k]) };
     });
-    var rowsList = done.slice().reverse();
-    var rows = open.concat(rowsList.slice(0, sebState.limit)).map(function (b) {
+    var sorted = sebSorted(open.concat(done));
+    var rowsList = sorted || done.slice().reverse();
+    var shownRows = sorted ? sorted.slice(0, sebState.limit) : open.concat(rowsList.slice(0, sebState.limit));
+    var rows = shownRows.map(function (b) {
       var url = b.slug ? "https://polymarket.com/event/" + encodeURIComponent(b.slug) : "";
       var res = b.status === "open" ? '<td class="seb-dim">En cours</td><td class="seb-dim">—</td>'
         : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td><td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
@@ -16697,7 +16725,10 @@
       '<div class="chart-box" id="sebChartBox">' + head + chart + '<div class="chart-hint" id="sebChartHint">Clique un point pour aller au pari correspondant — reclique pour revenir.</div></div>' +
       '<div class="seb-grid">' + sebBreakdownHtml("Par sport", bySport) + sebBreakdownHtml("Par cote d'entrée", byOdds) + sebBreakdownHtml("Par mois", byMonth) + '</div>' +
       '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (open.length ? ' · ' + open.length + ' en cours' : '') + '</div>' +
-        '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr><th>Réglé le</th><th>Marché</th><th>Camp</th><th>Prix moyen</th><th>Misé</th><th>Résultat</th><th>PnL</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr>' + SEB_COLS.map(function (c) {
+          var active = sebState.sortKey === c.key;
+          return '<th class="sortable' + (active ? ' sorted' : '') + '" data-seb-sort="' + c.key + '" title="Trier par ' + esc(c.label.toLowerCase()) + '">' + esc(c.label) + '<span class="sort-arrow">' + (active ? (sebState.sortDir === "asc" ? "▲" : "▼") : "↕") + '</span></th>';
+        }).join("") + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
         (rowsList.length > sebState.limit ? '<button type="button" class="seb-btn seb-more" data-seb-more="1">Voir 40 de plus (' + (rowsList.length - sebState.limit) + ' restants)</button>' : '') +
       '</div>';
     var box = document.getElementById("sebChartBox");
@@ -16743,8 +16774,17 @@
   document.addEventListener("click", function (e) {
     var root = document.getElementById("sebContent");
     if (!root || !e.target.closest || !root.contains(e.target)) return;
-    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more]");
+    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort]");
     if (!el) return;
+    if (el.hasAttribute("data-seb-sort")) {
+      var sk = el.getAttribute("data-seb-sort");
+      var col = SEB_COLS.filter(function (c) { return c.key === sk; })[0];
+      if (sebState.sortKey === sk) sebState.sortDir = sebState.sortDir === "asc" ? "desc" : "asc";
+      else { sebState.sortKey = sk; sebState.sortDir = col && col.text ? "asc" : "desc"; }
+      sebState.limit = 40;
+      renderSeb();
+      return;
+    }
     if (el.hasAttribute("data-seb-reload")) { sebLoad(); return; }
     if (el.hasAttribute("data-seb-period")) sebState.period = el.getAttribute("data-seb-period");
     if (el.hasAttribute("data-seb-sport")) sebState.sport = el.getAttribute("data-seb-sport");
