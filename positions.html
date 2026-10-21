@@ -3015,11 +3015,12 @@
 
   <div class="tab-panel" id="tab-comparateur">
     <h2 class="section-title">⚖️ Comparateur Polymarket / Winamax <span class="count-pill" id="cmpCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que Winamax, sur 30 championnats (Ligue 1, Premier League, LaLiga, Serie A, Bundesliga, Ligue des champions, Europa League, Conference League, Liga Portugal, Eredivisie, Brasileirão, Primera División argentine, Championship, Süper Lig, MLS, Liga MX, Saudi Pro League, Ligue 2, 2. Bundesliga, LaLiga 2, Serie B, Jupiler Pro League, Scottish Premiership, Bundesliga autrichienne, Super League grecque, SuperLiga serbe, Primera División uruguayenne et paraguayenne, K League 1, Chinese Super League), sur les 7 prochains jours. <b>ROI Polymarket = ce que rapporterait vraiment une mise de 1 000 $</b> : achat simulé dans le carnet d'ordres réel (prix après prix) et frais Polymarket inclus — une ligne que le carnet ne peut pas remplir pour 1 000 $ est exclue. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 100 % des deux côtés, delta de ROI &gt; 30 % (écart relatif : 12 % contre 6 % = +100 %), sans corners ni paris mi-temps. Calculé sur le serveur (AWS) toutes les 15 min environ. 📧 Email d'alerte dès qu'une ligne dépasse +100 % de delta. 📌 ajoute le pari à Saison 26/27, ✋ à Choix comparateur. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que Winamax — en football sur 30 championnats (Ligue 1, Premier League, LaLiga, Serie A, Bundesliga, Ligue des champions, Europa League, Conference League, Liga Portugal, Eredivisie, Brasileirão, Primera División argentine, Championship, Süper Lig, MLS, Liga MX, Saudi Pro League, Ligue 2, 2. Bundesliga, LaLiga 2, Serie B, Jupiler Pro League, Scottish Premiership, Bundesliga autrichienne, Super League grecque, SuperLiga serbe, Primera División uruguayenne et paraguayenne, K League 1, Chinese Super League), ainsi qu'en 🏀 NBA, 🏈 NFL et football universitaire américain (vainqueur, handicaps, total de points) et 🎾 tennis ATP/WTA/Challenger (vainqueur, handicaps en sets et en jeux, total de jeux et de sets), sur les 7 prochains jours. <b>ROI Polymarket = ce que rapporterait vraiment une mise de 1 000 $</b> : achat simulé dans le carnet d'ordres réel (prix après prix) et frais Polymarket inclus — une ligne que le carnet ne peut pas remplir pour 1 000 $ est exclue. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 100 % des deux côtés, delta de ROI &gt; 30 % (écart relatif : 12 % contre 6 % = +100 %), sans corners ni paris mi-temps. Calculé sur le serveur (AWS) toutes les 15 min environ. 📧 Email d'alerte dès qu'une ligne dépasse +100 % de delta. 📌 ajoute le pari à Saison 26/27, ✋ à Choix comparateur. Aucun vrai ordre n'est jamais passé.</div>
     <div class="cmp-status">
       <span id="cmpUpdated">Chargement…</span>
       <button type="button" id="cmpRefreshBtn" class="snap-sync-link" title="Relancer le calcul sur le serveur (~1 min)">🔄 Actualiser</button>
     </div>
+    <div class="vt-filters" id="cmpSportFilters"></div>
     <div class="vt-filters" id="cmpDayFilters"></div>
     <div class="vt-filters" id="cmpCompFilters"></div>
     <div id="cmpAlerts"></div>
@@ -14629,10 +14630,11 @@
   // frozen `cmp` block, rendered by manualCardHtml in Saison 26/27, Mes
   // Positions and All Time alike (a position's deep clone keeps it).
   var AWS_COMPARATOR_URL = "https://n6ulxf7yidnnwgxi6fexcuzdj40ptxgt.lambda-url.eu-north-1.on.aws/";
-  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpComp = "all", cmpAlertsOpen = false, cmpLoading = false, cmpRetryTimer = null, cmpError = null;
+  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpComp = "all", cmpSport = "all", cmpAlertsOpen = false, cmpLoading = false, cmpRetryTimer = null, cmpError = null;
   var cmpContentEl = document.getElementById("cmpContent");
   var cmpDayFiltersEl = document.getElementById("cmpDayFilters");
   var cmpCompFiltersEl = document.getElementById("cmpCompFilters");
+  var cmpSportFiltersEl = document.getElementById("cmpSportFilters");
   var cmpAlertsEl = document.getElementById("cmpAlerts");
   var cmpUpdatedEl = document.getElementById("cmpUpdated");
   var cmpCountEl = document.getElementById("cmpCount");
@@ -14740,20 +14742,35 @@
       if (cmpError) status += " · erreur au dernier rechargement (" + cmpError + ")";
     }
     cmpUpdatedEl.textContent = (cmpLoading && cmpData ? "Rechargement… " : "") + status;
-    // Two filters that combine: match day and competition — each one's
-    // counts reflect the other's current choice.
+    // Three filters that combine: sport, match day and competition — each
+    // one's counts reflect the other two's current choice.
+    var sportOf = function (r) { return r.sport || "Football"; };
+    var inSport = function (r) { return cmpSport === "all" || sportOf(r) === cmpSport; };
     var inComp = function (r) { return cmpComp === "all" || r.comp === cmpComp; };
     var inDay = function (r) { return cmpDay === "all" || cmpDayKey(r.start) === cmpDay; };
+    var bySport = {};
+    rows.forEach(function (r) { if (inDay(r) && inComp(r)) bySport[sportOf(r)] = (bySport[sportOf(r)] || 0) + 1; });
+    if (cmpSport !== "all" && !bySport[cmpSport]) cmpSport = "all";
     var byDay = {}, byComp = {};
     rows.forEach(function (r) {
+      if (!inSport(r)) return;
       if (inComp(r)) { var k = cmpDayKey(r.start); byDay[k] = (byDay[k] || 0) + 1; }
       if (inDay(r)) byComp[r.comp] = (byComp[r.comp] || 0) + 1;
     });
     if (cmpDay !== "all" && !byDay[cmpDay]) cmpDay = "all";
     if (cmpComp !== "all" && !byComp[cmpComp]) cmpComp = "all";
+    var SPORT_ICONS = { "Football": "⚽", "Football américain": "🏈", "Basket": "🏀", "Tennis": "🎾" };
+    var sports = Object.keys(bySport).sort(function (a, b) { return bySport[b] - bySport[a]; });
+    var sportTotal = rows.filter(function (r) { return inDay(r) && inComp(r); }).length;
+    cmpSportFiltersEl.innerHTML = !rows.length ? "" :
+      '<span class="vt-sort-label">Sport</span>' +
+      '<button type="button" data-cmp-sport="all" class="' + (cmpSport === "all" ? "active" : "") + '">Tous<span class="vt-filter-count"> · ' + sportTotal + '</span></button>' +
+      sports.map(function (sp) {
+        return '<button type="button" data-cmp-sport="' + esc(sp) + '" class="' + (cmpSport === sp ? "active" : "") + '">' + (SPORT_ICONS[sp] ? SPORT_ICONS[sp] + ' ' : '') + esc(sp) + '<span class="vt-filter-count"> · ' + bySport[sp] + '</span></button>';
+      }).join("");
     var days = Object.keys(byDay).sort();
     var comps = Object.keys(byComp).sort(function (a, b) { return byComp[b] - byComp[a] || a.localeCompare(b, "fr"); });
-    var dayTotal = rows.filter(inComp).length, compTotal = rows.filter(inDay).length;
+    var dayTotal = rows.filter(function (r) { return inSport(r) && inComp(r); }).length, compTotal = rows.filter(function (r) { return inSport(r) && inDay(r); }).length;
     cmpDayFiltersEl.innerHTML = !rows.length ? "" :
       '<span class="vt-sort-label">Jour</span>' +
       '<button type="button" data-cmp-day="all" class="' + (cmpDay === "all" ? "active" : "") + '">Tous<span class="vt-filter-count"> · ' + dayTotal + '</span></button>' +
@@ -14768,7 +14785,7 @@
       }).join("");
     renderCmpAlerts(rows);
     if (!cmpData) { cmpContentEl.innerHTML = '<div class="loading-state">Chargement des propositions…</div>'; return; }
-    var shown = rows.filter(function (r) { return inDay(r) && inComp(r); });
+    var shown = rows.filter(function (r) { return inSport(r) && inDay(r) && inComp(r); });
     if (!shown.length) { cmpContentEl.innerHTML = '<div class="empty-note">Aucune proposition pour l\'instant.</div>'; return; }
     shown = cmpSortRows(shown);
     var pinned = cmpPinnedIds(), picked = cmpPickedIds();
@@ -14824,6 +14841,12 @@
     enqueueOp(CMP_PICK_STORE, { type: "add", id: rec.id, snapshot: rec });
   }
   if (cmpContentEl) {
+    cmpSportFiltersEl.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("[data-cmp-sport]") : null;
+      if (!b) return;
+      cmpSport = b.getAttribute("data-cmp-sport");
+      renderCmp();
+    });
     cmpCompFiltersEl.addEventListener("click", function (e) {
       var b = e.target.closest ? e.target.closest("[data-cmp-comp]") : null;
       if (!b) return;
