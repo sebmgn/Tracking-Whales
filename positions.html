@@ -11039,7 +11039,7 @@
         '<span>Winamax <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')</span>' +
         (cmp.comp ? '<span>' + esc(cmp.comp) + '</span>' : '') + '</div>' : '');
     var eventDateHtml = snap.eventDate
-      ? '<div class="vt-bottom-row"><span class="vt-bottom-meta"></span><span class="vt-exact-time">' + esc(new Date(snap.eventDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" })) + '</span></div>'
+      ? '<div class="vt-bottom-row"><span class="vt-bottom-meta"></span><span class="vt-exact-time">' + esc(snapEventLabel(snap)) + '</span></div>'
       : '';
     var toolbarHtml;
     if (isTrash) {
@@ -16665,6 +16665,7 @@
         var end = p.endDate ? Date.parse(String(p.endDate).length === 10 ? p.endDate + "T23:00:00Z" : p.endDate) : Date.now();
         bets.push(sebBet(p, stake, (Number(p.cashPnl) || 0) + (Number(p.realizedPnl) || 0), settled ? "done" : "open", settled ? end : null));
       });
+      await sebFillKickoffs(bets);
       sebState.bets = bets;
       sebState.at = Date.now();
     } catch (e) {
@@ -16677,17 +16678,81 @@
   function sebBet(p, stake, pnl, status, doneAt) {
     var title = p.title || "—";
     return {
-      key: p.conditionId + "|" + p.outcomeIndex, title: title, outcome: p.outcome || "—", slug: p.eventSlug || p.slug || "",
+      key: p.conditionId + "|" + p.outcomeIndex, cid: p.conditionId, title: title, outcome: p.outcome || "—", slug: p.eventSlug || p.slug || "",
+      evSlug: p.eventSlug || "", endDate: p.endDate ? String(p.endDate).slice(0, 10) : "",
       stake: stake, avg: Number(p.avgPrice) || 0, pnl: pnl, status: status, doneAt: doneAt,
       sport: sportEmojiFor(title, p.slug || ""), win: status === "done" ? pnl > 0 : null
     };
   }
-  // Was this bet one of the site's own snapshots (Saison 26/27 or Auto >10k)?
-  function sebFromSite(b) {
-    var set = {};
-    cachedStoredList(SNAPSHOTS_KEY).forEach(function (s) { if (!s.deletedAt && s.question && !isCmpSideList(s)) set[String(s.question).toLowerCase()] = true; });
-    return !!set[b.title.toLowerCase()];
+  // Each bet's real kickoff (gamma gameStartTime, by condition id, 20 per
+  // request) — orders the cards by when the match was played. Kept in
+  // memory across reloads of the tab; a bet without one falls back to its
+  // market's end date.
+  var sebKickoffs = {};
+  async function sebFillKickoffs(bets) {
+    async function pass(cids, closed) {
+      for (var i = 0; i < cids.length; i += 20) {
+        var q = cids.slice(i, i + 20).map(function (c) { return "condition_ids=" + c; }).join("&");
+        try {
+          var list = await sebFetchJson("https://gamma-api.polymarket.com/markets?" + q + (closed ? "&closed=true" : ""));
+          (list || []).forEach(function (m) {
+            var raw = m.gameStartTime || m.eventStartTime;
+            var d = raw ? Date.parse(String(raw).replace(" ", "T").replace(/\+00(:00)?$/, "Z")) : NaN;
+            sebKickoffs[m.conditionId] = isNaN(d) ? null : d;
+          });
+        } catch (e) { /* best effort — falls back to the end date */ }
+      }
+    }
+    var need = { done: {}, open: {} };
+    bets.forEach(function (b) { if (b.cid && !(b.cid in sebKickoffs)) need[b.status === "open" ? "open" : "done"][b.cid] = true; });
+    await pass(Object.keys(need.done), true);
+    await pass(Object.keys(need.open), false);
+    bets.forEach(function (b) { b.kickoff = sebKickoffs[b.cid] || null; });
   }
+  // Same bet on the site = same market title AND same match: the event slug
+  // when both have one ("-more-markets" is the same match), else the same
+  // day. A title alone isn't enough ("Spread: Brighton (-1.5)" exists for
+  // every Brighton match — that wrongly matched another game, 2026-10-22).
+  function sebNormSlug(x) { return String(x || "").toLowerCase().replace(/-more-markets$/, ""); }
+  function sebSnapSlug(s) {
+    if (s.eventSlug) return sebNormSlug(s.eventSlug);
+    var m = (s.cardHtml || "").match(/polymarket\.com\/(?:[a-z]{2}\/)?event\/([a-z0-9-]+)/i);
+    return m ? sebNormSlug(m[1]) : "";
+  }
+  function sebBetDay(b) {
+    var t = b.kickoff || (b.endDate ? Date.parse(b.endDate + "T12:00:00Z") : null);
+    return t ? new Date(t).toISOString().slice(0, 10) : "";
+  }
+  var sebCopyCache = { at: 0, idx: null };
+  function sebSiteCopies() {
+    if (sebCopyCache.idx && Date.now() - sebCopyCache.at < 1500) return sebCopyCache.idx;
+    var idx = {};
+    function put(k, s, score) {
+      var cur = idx[k];
+      if (!cur || score > cur.score || (score === cur.score && new Date(s.savedAt) > new Date(cur.s.savedAt))) idx[k] = { s: s, score: score };
+    }
+    function add(s, rank) {
+      if (!s || !s.question || isCmpSideList(s) || s.lowConfidence) return;
+      var q = String(s.question).toLowerCase();
+      var score = (s.deletedAt ? 0 : 10) + rank; // not trashed, then Saison over Positions, then newest
+      var slug = sebSnapSlug(s);
+      if (slug) put(q + "|s:" + slug, s, score);
+      var day = s.eventDate ? String(s.eventDate).slice(0, 10) : "";
+      if (day) put(q + "|d:" + day, s, score);
+    }
+    loadSnapshotsRaw().forEach(function (s) { add(s, 2); }); // not the cached raw list: card markup is rebuilt on read
+    loadPositionsRaw().forEach(function (s) { add(s, 1); });
+    sebCopyCache = { at: Date.now(), idx: idx };
+    return idx;
+  }
+  function sebSiteCopyFor(b, idx) {
+    idx = idx || sebSiteCopies();
+    var q = b.title.toLowerCase();
+    var hit = (b.evSlug && idx[q + "|s:" + sebNormSlug(b.evSlug)]) || idx[q + "|d:" + sebBetDay(b)];
+    return hit ? hit.s : null;
+  }
+  // Was this bet one of the site's own snapshots (Saison 26/27, Auto >10k, Mes Positions)?
+  function sebFromSite(b) { return !!sebSiteCopyFor(b); }
   function sebFiltered() {
     var from = sebState.period === "all" ? 0 : Date.now() - Number(sebState.period) * 86400000;
     return (sebState.bets || []).filter(function (b) {
@@ -16734,20 +16799,6 @@
     for (var i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
     return "sebmeta-" + h.toString(36) + "-" + key.length.toString(36);
   }
-  function sebSiteCopies() {
-    var idx = {};
-    function add(s, rank) {
-      if (!s || !s.question || isCmpSideList(s) || s.lowConfidence) return;
-      var k = String(s.question).toLowerCase();
-      var cur = idx[k];
-      // Prefer: not trashed, then Saison over Positions, then the newest.
-      var score = (s.deletedAt ? 0 : 10) + rank;
-      if (!cur || score > cur.score || (score === cur.score && new Date(s.savedAt) > new Date(cur.s.savedAt))) idx[k] = { s: s, score: score };
-    }
-    loadSnapshotsRaw().forEach(function (s) { add(s, 2); }); // not the cached raw list: card markup is rebuilt on read
-    loadPositionsRaw().forEach(function (s) { add(s, 1); });
-    return idx;
-  }
   function sebRecords(bets) {
     var meta = {};
     cachedStoredList(SNAPSHOTS_KEY).forEach(function (s) { if (s.sebMeta) meta[s.id] = s; });
@@ -16755,8 +16806,7 @@
     return (bets || []).map(function (b) {
       var id = sebMetaId(b.key);
       var m = meta[id];
-      var hit = copies[b.title.toLowerCase()];
-      var src = hit ? hit.s : null;
+      var src = sebSiteCopyFor(b, copies);
       var done = b.status === "done";
       var rich = !!(src && !src.isManual && src.cardHtml && src.leaderName === b.outcome);
       var rec = {
@@ -16765,7 +16815,9 @@
         realPnl: done ? b.pnl : null,
         winningSide: done ? (b.pnl > 0 ? b.outcome : OTHER_SIDE_SENTINEL) : null,
         savedAt: new Date(done ? b.doneAt : (src && Date.parse(src.savedAt)) || Date.now()).toISOString(),
-        eventDate: (src && src.eventDate) || (done ? new Date(b.doneAt).toISOString() : null),
+        // When the match was played: its real kickoff, else the copy's
+        // date, else the market's end day — never the settlement time.
+        eventDate: b.kickoff ? new Date(b.kickoff).toISOString() : (src && src.eventDate) || b.endDate || (done ? new Date(b.doneAt).toISOString() : null),
         confidence: m ? m.confidence || null : (src && src.confidence) || null,
         magnitude: m ? m.magnitude || null : (src && src.magnitude) || null,
         comment: m ? m.comment || null : (src && src.comment) || null,
