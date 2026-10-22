@@ -3009,8 +3009,28 @@
   </div>
 
   <div class="tab-panel" id="tab-seb">
-    <h2 class="section-title">👤 Seb — mes paris Polymarket</h2>
-    <div id="sebContent"></div>
+    <h2 class="section-title">👤 Seb — mes paris Polymarket <span class="count-pill" id="sebCount">—</span></h2>
+    <div id="sebMain"></div>
+    <div class="snap-sync-bar"><button id="sebTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les paris que tu as mis à la corbeille (ils ne comptent plus dans les stats)">🗑 Corbeille</button></div>
+    <div id="sebPnlChartContent"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="sebTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="seb">▸ Le winrate par conviction</button>
+      <button type="button" id="sebNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="seb">▸ L'analyse winrate × note</button>
+      <button type="button" id="sebDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="seb">▸ L'analyse cote × confiance</button>
+      <button type="button" id="sebManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="seb">▸ Manuel vs suivi auto</button>
+      <button type="button" id="sebWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="seb">▸ Paris par semaine</button>
+      <button type="button" id="sebOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="seb">▸ Autres stats</button>
+      <button type="button" id="sebTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="seb">▸ Le tableau des traders</button>
+    </div>
+    <div id="sebTierWinrateContent"></div>
+    <div id="sebNoteWinrateContent"></div>
+    <div id="sebDistContent"></div>
+    <div id="sebManualVsAutoContent"></div>
+    <div id="sebWeeklyPnlContent"></div>
+    <div id="sebOtherStatsContent"></div>
+    <div id="sebTraderTableContent"></div>
+    <div id="sebExtra"></div>
+    <div id="sebContent" class="value-trades-box"></div>
   </div>
 
   <div class="tab-panel" id="tab-comparateur">
@@ -7141,7 +7161,7 @@
       renderStoreView(store);
       // Views filtered out of this same list (📝 Test, Comparateur ones)
       // redraw too when they're the open tab, so another device's adds show.
-      if (store === SNAPSHOTS_STORE) [["tab-sandbox", SANDBOX_STORE], ["tab-cmp-auto", CMP_AUTO_STORE], ["tab-cmp-pick", CMP_PICK_STORE]].forEach(function (v) {
+      if (store === SNAPSHOTS_STORE) [["tab-sandbox", SANDBOX_STORE], ["tab-cmp-auto", CMP_AUTO_STORE], ["tab-cmp-pick", CMP_PICK_STORE], ["tab-seb", SEB_STORE]].forEach(function (v) {
         var tab = document.getElementById(v[0]);
         if (tab && tab.classList.contains("active")) renderStoreView(v[1]);
       });
@@ -7168,6 +7188,7 @@
   // Shared by both stores — replaces the old snapshots-only
   // enqueueSnapshotOp / positions-only local-write applyPositionOp.
   function enqueueOp(store, op) {
+    if (store.enqueue) { store.enqueue(op); return; } // a computed view with its own write path (SEB_STORE)
     store.save(applyOpToList(store.loadRaw(), op));
     // A store with no remotePath (local-only, nothing to
     // reconcile against) has nothing to queue or sync either: skip both
@@ -7475,6 +7496,9 @@
     if (!snap.winningSide || !snap.leaderName) return null;
     var avgPrice = snapLeaderPrice(snap);
     if (!avgPrice || avgPrice <= 0) return null;
+    // Seb's real Polymarket bets carry their actual PnL (sold early, fees…)
+    // — used as is, scaled if a different stake is asked for.
+    if (snap.realPnl != null && snap.stakeUsd > 0) return snap.realPnl * flatStake / snap.stakeUsd;
     return snap.leaderName === snap.winningSide ? flatStake * (1 / avgPrice - 1) : -flatStake;
   }
   // Everything that differs between "Mes Snapshots" and "Mes Positions" —
@@ -7969,7 +7993,7 @@
   // and get their result straight from the Polymarket market
   // (checkCmpResolutions). LOCAL TRACKING ONLY: no order is ever placed.
   var CMP_AUTO_MIN_DELTA = 75;
-  function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true || s.sandbox === true); }
+  function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true || s.sandbox === true || s.sebMeta === true); }
   function cmpViewStore(name, opts) {
     function loadRaw() { return loadSnapshotsRaw().filter(function (s) { return s[name] === true; }); }
     function load() { return loadRaw().filter(function (s) { return !s.deletedAt; }); }
@@ -11065,7 +11089,7 @@
         : '';
       toolbarHtml = '<div class="snap-toolbar">' +
         (store.allowReorder ? '<span class="snap-reorder-btns"><button type="button" class="snap-reorder-btn snap-reorder-up" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Monter">▲</button><button type="button" class="snap-reorder-btn snap-reorder-down" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Descendre">▼</button></span>' : '') +
-        '<span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + '</span>' +
+        '<span class="dim">' + (snap.sebOpen ? 'Pari en cours' : esc(store.dateLabelPrefix) + ' ' + esc(dateLabel)) + '</span>' +
         '<span class="snap-side-label">Camp gagnant :</span>' +
         sideButtonsHtml +
         '<span class="snap-side-label">Confiance :</span>' +
@@ -11210,7 +11234,7 @@
         : '';
       toolbarHtml = '<div class="snap-toolbar">' +
         (store.allowReorder ? '<span class="snap-reorder-btns"><button type="button" class="snap-reorder-btn snap-reorder-up" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Monter">▲</button><button type="button" class="snap-reorder-btn snap-reorder-down" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Descendre">▼</button></span>' : '') +
-        '<span class="dim">' + esc(store.dateLabelPrefix) + ' ' + esc(dateLabel) + '</span>' +
+        '<span class="dim">' + (snap.sebOpen ? 'Pari en cours' : esc(store.dateLabelPrefix) + ' ' + esc(dateLabel)) + '</span>' +
         '<span class="snap-side-label">Camp gagnant :</span>' +
         sideButtonsHtml +
         '<span class="snap-side-label">Confiance :</span>' +
@@ -13404,6 +13428,7 @@
     if (name === "cmpAuto") return CMP_AUTO_STORE;
     if (name === "cmpPick") return CMP_PICK_STORE;
     if (name === "sandbox") return SANDBOX_STORE;
+    if (name === "seb") return SEB_STORE;
     return SNAPSHOTS_STORE;
   }
   // All Time is a merged VIEW (snapshots + positions, see loadTestRaw) with
@@ -16660,7 +16685,7 @@
   // Was this bet one of the site's own snapshots (Saison 26/27 or Auto >10k)?
   function sebFromSite(b) {
     var set = {};
-    cachedStoredList(SNAPSHOTS_KEY).forEach(function (s) { if (!s.deletedAt && s.question) set[String(s.question).toLowerCase()] = true; });
+    cachedStoredList(SNAPSHOTS_KEY).forEach(function (s) { if (!s.deletedAt && s.question && !isCmpSideList(s)) set[String(s.question).toLowerCase()] = true; });
     return !!set[b.title.toLowerCase()];
   }
   function sebFiltered() {
@@ -16697,36 +16722,141 @@
       return '<button type="button" ' + attr + '="' + esc(o[0]) + '"' + (String(o[0]) === String(cur) ? ' class="active"' : '') + '>' + esc(o[1]) + '</button>';
     }).join("") + '</div>';
   }
+  // Saison-style view of the same bets (on request, 2026-10-22): one
+  // record per bet, real stake and real PnL (realPnl, see
+  // hypotheticalFlatPnl), fed to renderStoreView like any store — same
+  // chart, filters, panels, weekly ROI/gain and cards. Confiance and
+  // ampleur (++/+/-/--) are stored in AWS as small sebMeta records in the
+  // snapshots table (one per bet, created on the first rating); until then
+  // they come from the bet's copy in Saison 26/27 (or Mes Positions), if any.
+  function sebMetaId(key) {
+    var h = 5381;
+    for (var i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
+    return "sebmeta-" + h.toString(36) + "-" + key.length.toString(36);
+  }
+  function sebSiteCopies() {
+    var idx = {};
+    function add(s, rank) {
+      if (!s || !s.question || isCmpSideList(s) || s.lowConfidence) return;
+      var k = String(s.question).toLowerCase();
+      var cur = idx[k];
+      // Prefer: not trashed, then Saison over Positions, then the newest.
+      var score = (s.deletedAt ? 0 : 10) + rank;
+      if (!cur || score > cur.score || (score === cur.score && new Date(s.savedAt) > new Date(cur.s.savedAt))) idx[k] = { s: s, score: score };
+    }
+    loadSnapshotsRaw().forEach(function (s) { add(s, 2); }); // not the cached raw list: card markup is rebuilt on read
+    loadPositionsRaw().forEach(function (s) { add(s, 1); });
+    return idx;
+  }
+  function sebRecords(bets) {
+    var meta = {};
+    cachedStoredList(SNAPSHOTS_KEY).forEach(function (s) { if (s.sebMeta) meta[s.id] = s; });
+    var copies = sebSiteCopies();
+    return (bets || []).map(function (b) {
+      var id = sebMetaId(b.key);
+      var m = meta[id];
+      var hit = copies[b.title.toLowerCase()];
+      var src = hit ? hit.s : null;
+      var done = b.status === "done";
+      var rich = !!(src && !src.isManual && src.cardHtml && src.leaderName === b.outcome);
+      var rec = {
+        id: id, sebKey: b.key, question: b.title, leaderName: b.outcome,
+        leaderPriceAtSnapshot: b.avg, stakeUsd: b.stake,
+        realPnl: done ? b.pnl : null,
+        winningSide: done ? (b.pnl > 0 ? b.outcome : OTHER_SIDE_SENTINEL) : null,
+        savedAt: new Date(done ? b.doneAt : (src && Date.parse(src.savedAt)) || Date.now()).toISOString(),
+        eventDate: (src && src.eventDate) || (done ? new Date(b.doneAt).toISOString() : null),
+        confidence: m ? m.confidence || null : (src && src.confidence) || null,
+        magnitude: m ? m.magnitude || null : (src && src.magnitude) || null,
+        comment: m ? m.comment || null : (src && src.comment) || null,
+        deletedAt: m && m.deletedAt ? m.deletedAt : null,
+        eventSlug: b.slug, isManual: !rich, sebSport: b.sport, sebOpen: !done
+      };
+      if (rich) {
+        rec.cardHtml = src.cardHtml; rec.sides = src.sides; rec.traderNames = src.traderNames;
+        rec.noteAtSnapshot = src.noteAtSnapshot; rec.traderCount = src.traderCount; rec.totalStake = src.totalStake;
+      }
+      return rec;
+    });
+  }
+  // A rating clicked on a Seb card: the first one creates the bet's sebMeta
+  // record (seeded with what the card showed, so values copied from Saison
+  // 26/27 stick), then the op itself — same queue/sync as Saison 26/27.
+  function sebEnqueue(op) {
+    if (op.type === "setSide") { alert("Le résultat d'un pari Seb est lu directement sur Polymarket."); return; }
+    if (op.type === "add" || op.type === "setSavedAt") return;
+    var raw = loadSnapshotsRaw();
+    var ops = [];
+    if (!raw.some(function (s) { return s.id === op.id; })) {
+      var view = sebRecords(sebState.bets).filter(function (r) { return r.id === op.id; })[0];
+      if (!view) return;
+      ops.push({ type: "add", id: view.id, snapshot: {
+        id: view.id, sebMeta: true, sebKey: view.sebKey, question: view.question,
+        savedAt: new Date().toISOString(), confidence: view.confidence, magnitude: view.magnitude, comment: view.comment
+      } });
+    }
+    ops.push(op);
+    ops.forEach(function (o) { raw = applyOpToList(raw, o); });
+    saveSnapshotsToStorage(raw);
+    saveSyncQueue(SNAPSHOTS_STORE, loadSyncQueue(SNAPSHOTS_STORE).concat(ops));
+    renderSeb();
+    syncNow(SNAPSHOTS_STORE);
+  }
+  var SEB_STORE = {
+    name: "seb",
+    loadRaw: function () { return sebRecords(sebFiltered()); },
+    load: function () { return SEB_STORE.loadRaw().filter(function (s) { return !s.deletedAt; }); },
+    save: function () {}, // computed from Polymarket — writes go through sebEnqueue
+    enqueue: sebEnqueue,
+    stakeFor: function (snap) { return snap.stakeUsd; },
+    allowTakePosition: false, allowEditPosition: false, allowSimStakeSlider: false, allowReorder: false,
+    itemNoun: "pari",
+    emptyHint: "Aucun pari sur cette sélection.",
+    dateLabelPrefix: "Réglé le",
+    simSubtitle: function () { return "PnL réel de tes paris Polymarket — ta vraie mise, ton vrai gain ou ta vraie perte"; },
+    cardHypLabel: function (stake) { return "Ton pari (" + fmtUSD(stake) + ") : "; },
+    els: { count: document.getElementById("sebCount"), pnlChart: document.getElementById("sebPnlChartContent"),
+      tierWinrate: document.getElementById("sebTierWinrateContent"), noteWinrate: document.getElementById("sebNoteWinrateContent"),
+      dist: document.getElementById("sebDistContent"), list: document.getElementById("sebContent"),
+      manualVsAuto: document.getElementById("sebManualVsAutoContent"), weeklyPnl: document.getElementById("sebWeeklyPnlContent"),
+      otherStats: document.getElementById("sebOtherStatsContent"), traderTable: document.getElementById("sebTraderTableContent") },
+    ids: { distToggle: "sebDistToggleBtn", tierToggle: "sebTierWinrateToggleBtn", noteToggle: "sebNoteWinrateToggleBtn",
+      manualVsAutoToggle: "sebManualVsAutoToggleBtn", weeklyPnlToggle: "sebWeeklyPnlToggleBtn",
+      otherStatsToggle: "sebOtherStatsToggleBtn", traderTableToggle: "sebTraderTableToggleBtn" },
+    state: freshStoreState()
+  };
+  wireTrashToggle(SEB_STORE, "sebTrashToggleBtn", function () { renderSeb(); });
   function renderSeb() {
-    var el = document.getElementById("sebContent");
+    var el = document.getElementById("sebMain");
+    var extra = document.getElementById("sebExtra");
     if (!el) return;
+    var head = '<div class="seb-head"><a href="' + SEB_PROFILE_URL + '" target="_blank" rel="noopener">Ton profil Polymarket ↗</a>' +
+      '<span class="seb-dim">Lu en direct sur Polymarket' + (sebState.at ? ' à ' + new Date(sebState.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : '') + '</span>' +
+      '<button type="button" class="seb-btn" data-seb-reload="1"' + (sebState.loading ? ' disabled' : '') + '>' + (sebState.loading ? 'Mise à jour…' : '↻ Mettre à jour') + '</button></div>';
+    var viewEls = ["sebPnlChartContent", "sebContent"].map(function (id) { return document.getElementById(id); });
+    var toggleBar = document.querySelector("#tab-seb .snap-toggle-bar");
     if (!sebState.bets) {
-      el.innerHTML = '<div class="loading-state">' + (sebState.error ? '⚠️ Polymarket n\'a pas répondu (' + esc(sebState.error) + '). <button type="button" class="seb-btn" data-seb-reload="1">Réessayer</button>' : 'Chargement de ton historique Polymarket…') + '</div>';
+      el.innerHTML = head + '<div class="loading-state">' + (sebState.error ? '⚠️ Polymarket n\'a pas répondu (' + esc(sebState.error) + '). <button type="button" class="seb-btn" data-seb-reload="1">Réessayer</button>' : 'Chargement de ton historique Polymarket…') + '</div>';
+      if (extra) extra.innerHTML = "";
+      viewEls.forEach(function (x) { if (x) x.innerHTML = ""; });
+      if (toggleBar) toggleBar.hidden = true;
       return;
     }
+    if (toggleBar) toggleBar.hidden = false;
     var all = sebState.bets;
     var sports = {};
     all.forEach(function (b) { sports[b.sport] = (sports[b.sport] || 0) + 1; });
     var list = sebFiltered();
-    var st = sebStats(list);
     var done = list.filter(function (b) { return b.status === "done"; }).sort(function (a, b) { return a.doneAt - b.doneAt; });
     var open = list.filter(function (b) { return b.status === "open"; });
-    var cum = 0;
-    var series = done.map(function (b) { cum += b.pnl; return { id: b.key, date: new Date(b.doneAt), value: cum, delta: b.pnl, win: b.pnl > 0, pointColor: b.pnl > 0 ? "#00e676" : "#ff1744" }; });
-    var head = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution de ton PnL réel</div><div class="pnl-chart-stats">' +
-      sebStatTile("Paris", st.n || "—") +
-      sebStatTile("PnL réalisé", st.n ? esc(fmtUSDSigned(st.pnl)) : "—", st.pnl >= 0 ? "pnl-pos" : "pnl-neg") +
-      sebStatTile("ROI", sebPct(st.roi), st.roi == null ? "" : (st.roi >= 0 ? "pnl-pos" : "pnl-neg")) +
-      sebStatTile("Gagnés", st.win == null ? "—" : Math.round(st.win) + "%") +
-      sebStatTile("Mise moy.", st.avgStake == null ? "—" : esc(fmtUSD(st.avgStake))) +
-      sebStatTile("Cote moy.", st.avgPrice == null ? "—" : Math.round(st.avgPrice * 100) + "¢") +
-    '</div></div>';
     var controls = '<div class="seb-controls">' +
       sebSeg("Période", "data-seb-period", [["7", "7 j"], ["30", "30 j"], ["90", "90 j"], ["all", "Tout"]], sebState.period) +
       sebSeg("Sport", "data-seb-sport", [["all", "Tous"]].concat(Object.keys(sports).sort(function (a, b) { return sports[b] - sports[a]; }).map(function (k) { return [k, k + " " + (AN_SPORT_LABELS[k] || "") + " · " + sports[k]]; })), sebState.sport) +
       sebSeg("Origine", "data-seb-origin", [["all", "Tous"], ["site", "📌 Snapshot du site"], ["other", "Hors site"]], sebState.origin) +
     '</div>';
-    var chart = series.length >= 2 ? buildHistoryChartSvg(series, { noPolicyMarker: true }) + drawdownHtml(series) : '<div class="empty-note" style="padding:14px 0;">Pas assez de paris terminés sur cette sélection pour tracer une courbe.</div>';
+    el.innerHTML = head + controls +
+      '<div class="empty-note" style="padding:0 4px 10px;">Même affichage que Saison 26/27, en argent réel : ta vraie mise et ton vrai gain ou ta vraie perte sur chaque pari. Note la confiance (S/A/B) et l\'ampleur (++ + - --) sur chaque carte en bas ; un pari aussi présent dans Saison 26/27 reprend ses notes tant que tu ne les changes pas ici.</div>';
+    renderStoreView(SEB_STORE);
     var byOdds = SEB_ODDS.map(function (o) { return { label: o[2], st: sebStats(list.filter(function (b) { return b.avg >= o[0] && b.avg < o[1]; })) }; });
     var bySport = Object.keys(sports).map(function (k) { return { label: k + " " + (AN_SPORT_LABELS[k] || ""), st: sebStats(list.filter(function (b) { return b.sport === k; })) }; })
       .sort(function (a, b) { return b.st.n - a.st.n; });
@@ -16742,16 +16872,11 @@
       var url = b.slug ? "https://polymarket.com/event/" + encodeURIComponent(b.slug) : "";
       var res = b.status === "open" ? '<td class="seb-dim">En cours</td><td class="seb-dim">—</td>'
         : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td><td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
-      return '<tr data-seb-key="' + esc(b.key) + '" class="' + (b.status === "open" ? 'seb-open' : '') + (sebState.focus === b.key ? ' seb-focus' : '') + '"><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
+      return '<tr data-seb-key="' + esc(b.key) + '" class="' + (b.status === "open" ? 'seb-open' : '') + '"><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
         '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + (sebFromSite(b) ? ' <span class="seb-tag" title="Ce pari est aussi dans Saison 26/27 ou Auto >10k">📌</span>' : '') + '</td>' +
         '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
     }).join("");
-    el.innerHTML =
-      '<div class="seb-head"><a href="' + SEB_PROFILE_URL + '" target="_blank" rel="noopener">Ton profil Polymarket ↗</a>' +
-        '<span class="seb-dim">Lu en direct sur Polymarket' + (sebState.at ? ' à ' + new Date(sebState.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : '') + '</span>' +
-        '<button type="button" class="seb-btn" data-seb-reload="1"' + (sebState.loading ? ' disabled' : '') + '>' + (sebState.loading ? 'Mise à jour…' : '↻ Mettre à jour') + '</button></div>' +
-      controls +
-      '<div class="chart-box" id="sebChartBox">' + head + chart + '<div class="chart-hint" id="sebChartHint">Clique un point pour aller au pari correspondant — reclique pour revenir.</div></div>' +
+    if (extra) extra.innerHTML =
       '<div class="seb-grid">' + sebBreakdownHtml("Par sport", bySport) + sebBreakdownHtml("Par cote d'entrée", byOdds) + sebBreakdownHtml("Par mois", byMonth) + '</div>' +
       '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (open.length ? ' · ' + open.length + ' en cours' : '') + '</div>' +
         '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr>' + SEB_COLS.map(function (c) {
@@ -16760,48 +16885,12 @@
         }).join("") + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
         (rowsList.length > sebState.limit ? '<button type="button" class="seb-btn seb-more" data-seb-more="1">Voir 40 de plus (' + (rowsList.length - sebState.limit) + ' restants)</button>' : '') +
       '</div>';
-    var box = document.getElementById("sebChartBox");
-    if (box && series.length >= 2) {
-      wireHistoryChartTooltip(box);
-      // Click a point → its bet in the list below (highlighted); click the
-      // same point again → back to where you were (same as Saison 26/27).
-      box.querySelectorAll(".chart-pt[data-id]").forEach(function (pt) {
-        pt.style.cursor = "pointer";
-        pt.addEventListener("click", function () { sebJumpTo(pt.getAttribute("data-id"), rowsList); });
-      });
-    }
-    var hint = document.getElementById("sebChartHint");
-    if (hint) hint.hidden = series.length < 2;
-  }
-  function sebJumpTo(key, rowsList) {
-    if (sebState.focus === key && sebState.backY != null) {
-      var y = sebState.backY;
-      sebState.focus = null;
-      sebState.backY = null;
-      renderSeb();
-      window.scrollTo({ top: y, behavior: "smooth" });
-      setTimeout(function () { if (Math.abs(window.scrollY - y) > 40) window.scrollTo(0, y); }, 700); // smooth scroll skipped (background tab)
-      return;
-    }
-    var idx = rowsList.map(function (b) { return b.key; }).indexOf(key);
-    if (idx >= sebState.limit) sebState.limit = Math.ceil((idx + 1) / 40) * 40;
-    sebState.focus = key;
-    sebState.backY = window.scrollY;
-    renderSeb();
-    var row = document.querySelector('#sebContent tr[data-seb-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
-    if (row) {
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(function () {
-        var r = row.getBoundingClientRect();
-        if (r.bottom < 0 || r.top > window.innerHeight) row.scrollIntoView({ block: "center" });
-      }, 700);
-    }
   }
   function sebOpen() {
     if (!sebState.bets || Date.now() - sebState.at > 5 * 60000) sebLoad(); else renderSeb();
   }
   document.addEventListener("click", function (e) {
-    var root = document.getElementById("sebContent");
+    var root = document.getElementById("tab-seb");
     if (!root || !e.target.closest || !root.contains(e.target)) return;
     var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort]");
     if (!el) return;
