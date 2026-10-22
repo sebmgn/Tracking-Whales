@@ -2389,6 +2389,20 @@
   .seb-seg button.active { background: var(--text); border-color: var(--text); color: var(--panel); }
   .seb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px; margin: 14px 0; }
   .seb-box { margin-bottom: 0; }
+  /* Catégories × confiance (Seb) — one tinted tile per cell, the tint
+     following the ROI (green up, red down, stronger = further from 0). */
+  .seb-mx { overflow-x: auto; }
+  .seb-mx-tbl { width: 100%; min-width: 560px; border-collapse: separate; border-spacing: 6px; font-variant-numeric: tabular-nums; }
+  .seb-mx-tbl th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-weight: 700; padding: 0 4px 2px; text-align: left; }
+  .seb-mx-tbl thead th .seb-mx-pill { display: inline-block; min-width: 22px; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; text-align: center; font-size: 11px; }
+  .seb-mx-tbl tbody th { white-space: nowrap; font-size: 12.5px; text-transform: none; letter-spacing: 0; color: var(--text); padding-right: 8px; }
+  .seb-mx-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+  .seb-mx-cell { border-radius: 10px; padding: 9px 11px; min-width: 92px; vertical-align: top; border: 1px solid color-mix(in srgb, var(--panel-border) 70%, transparent); }
+  .seb-mx-cell.empty { background: transparent; border-style: dashed; color: var(--text-dim); }
+  .seb-mx-roi { font-size: 19px; font-weight: 800; line-height: 1.1; }
+  .seb-mx-sub { font-size: 11px; color: var(--text-dim); margin-top: 3px; white-space: nowrap; }
+  .seb-mx-sub b { color: var(--text); font-weight: 700; }
+  .seb-mx-tbl .seb-mx-total { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 22%, transparent); }
   .seb-scroll { overflow-x: auto; }
   .seb-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .seb-tbl th, .seb-tbl td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent); }
@@ -3017,6 +3031,7 @@
     <div id="sebMain"></div>
     <div class="snap-sync-bar"><button id="sebTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les paris que tu as mis à la corbeille (ils ne comptent plus dans les stats)">🗑 Corbeille</button></div>
     <div id="sebPnlChartContent"></div>
+    <div id="sebMatrix"></div>
     <div class="snap-toggle-bar">
       <button type="button" id="sebTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="seb">▸ Le winrate par conviction</button>
       <button type="button" id="sebNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="seb">▸ L'analyse winrate × note</button>
@@ -11417,6 +11432,7 @@
     renderManualVsAuto(list, store);
     renderWeeklyPnl(list, store);
     renderOtherStats(list, store, cardsList, activeFilterLabels);
+    if (store.afterRender) store.afterRender(list);
     if (!cardsList.length) {
       store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
         ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
@@ -16937,8 +16953,44 @@
     renderSeb();
     syncNow(SNAPSHOTS_STORE);
   }
+  // Catégories × confiance (on request, 2026-10-22): ROI, number of bets
+  // and real gain for each Manuel/Auto/Comparaison × S/A/B/sans note cell,
+  // finished bets only, on the chart's current filters.
+  function sebMatrixHtml(list) {
+    list = pnlChartFilterList(list, SEB_STORE).filter(function (x) { return !!x.winningSide; });
+    if (!list.length) return "";
+    var cols = CONFIDENCE_TIERS.concat(["none", "all"]);
+    var rows = ORIGIN_KEYS.concat(["all"]);
+    function cell(origin, tier) {
+      var items = list.filter(function (x) {
+        return (origin === "all" || snapOrigin(x) === origin) && (tier === "all" || (tier === "none" ? !x.confidence : x.confidence === tier));
+      });
+      var total = origin === "all" || tier === "all";
+      var agg = aggregateFlatPnl(items, SEB_STORE);
+      if (!agg.count) return '<td class="seb-mx-cell empty' + (total ? ' seb-mx-total' : '') + '">—</td>';
+      var roi = agg.roi;
+      var tint = Math.round(4 + Math.min(Math.abs(roi), 25) / 25 * 22);
+      var col = roi >= 0 ? "var(--green)" : "var(--red)";
+      return '<td class="seb-mx-cell' + (total ? ' seb-mx-total' : '') + '" style="background:color-mix(in srgb, ' + col + ' ' + tint + '%, var(--panel))">' +
+        '<div class="seb-mx-roi ' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (roi >= 0 ? "+" : "") + roi.toFixed(1).replace(".", ",") + ' %</div>' +
+        '<div class="seb-mx-sub"><b>' + agg.count + '</b> pari' + (agg.count > 1 ? 's' : '') + ' · <span class="' + (agg.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(agg.pnl)) + '</span></div></td>';
+    }
+    var head = '<tr><th></th>' + cols.map(function (t) {
+      if (t === "none") return '<th>Sans note</th>';
+      if (t === "all") return '<th>Total</th>';
+      return '<th><span class="seb-mx-pill" style="color:' + CONFIDENCE_COLORS[t] + '">' + t + '</span></th>';
+    }).join("") + '</tr>';
+    var body = rows.map(function (o) {
+      var label = o === "all" ? 'Toutes' : '<span class="seb-mx-dot" style="background:' + ORIGIN_COLORS[o] + '"></span>' + ORIGIN_ICONS[o] + ' ' + ORIGIN_LABELS[o];
+      return '<tr><th>' + label + '</th>' + cols.map(function (t) { return cell(o, t); }).join("") + '</tr>';
+    }).join("");
+    return '<div class="chart-box seb-box" style="margin-top:14px;"><div class="tier-wr-title">Catégories × confiance</div>' +
+      '<div class="empty-note" style="padding:2px 0 8px;">ROI moyen, nombre de paris et gain réel — paris terminés, sur les filtres du graphique.</div>' +
+      '<div class="seb-mx"><table class="seb-mx-tbl"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div></div>';
+  }
   var SEB_STORE = {
     name: "seb",
+    afterRender: function (list) { var el = document.getElementById("sebMatrix"); if (el) el.innerHTML = sebMatrixHtml(list); },
     loadRaw: function () { return sebRecords(sebFiltered()); },
     load: function () { return SEB_STORE.loadRaw().filter(function (s) { return !s.deletedAt; }); },
     save: function () {}, // computed from Polymarket — writes go through sebEnqueue
@@ -16969,7 +17021,7 @@
     var head = '<div class="seb-head"><a href="' + SEB_PROFILE_URL + '" target="_blank" rel="noopener">Ton profil Polymarket ↗</a>' +
       '<span class="seb-dim">Lu en direct sur Polymarket' + (sebState.at ? ' à ' + new Date(sebState.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : '') + '</span>' +
       '<button type="button" class="seb-btn" data-seb-reload="1"' + (sebState.loading ? ' disabled' : '') + '>' + (sebState.loading ? 'Mise à jour…' : '↻ Mettre à jour') + '</button></div>';
-    var viewEls = ["sebPnlChartContent", "sebContent"].map(function (id) { return document.getElementById(id); });
+    var viewEls = ["sebPnlChartContent", "sebMatrix", "sebContent"].map(function (id) { return document.getElementById(id); });
     var toggleBar = document.querySelector("#tab-seb .snap-toggle-bar");
     if (!sebState.bets) {
       el.innerHTML = head + '<div class="loading-state">' + (sebState.error ? '⚠️ Polymarket n\'a pas répondu (' + esc(sebState.error) + '). <button type="button" class="seb-btn" data-seb-reload="1">Réessayer</button>' : 'Chargement de ton historique Polymarket…') + '</div>';
