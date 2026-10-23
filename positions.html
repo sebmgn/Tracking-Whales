@@ -3078,10 +3078,14 @@
 
   <div class="tab-panel" id="tab-cmp-auto">
     <h2 class="section-title">🧪 Test comparatif <span class="count-pill" id="cmpAutoCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement chaque proposition du Comparateur dont le delta de ROI atteint <b>+100 %</b> ou plus (les captures plus anciennes sous 100 % restent enregistrées mais ne sont plus affichées ni comptées), au prix Polymarket du moment, avant le coup d'envoi — pas besoin de cliquer. Le résultat (camp gagnant) se remplit tout seul quand le marché Polymarket est résolu. Enregistré sur le serveur (AWS) comme Saison 26/27 : visible sur tous tes navigateurs. La capture se fait quand le site est ouvert sur au moins un appareil. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement chaque proposition du Comparateur dont le delta de ROI dépasse <b>+75 %</b>, au prix Polymarket du moment, avant le coup d'envoi — pas besoin de cliquer. Le résultat (camp gagnant) se remplit tout seul quand le marché Polymarket est résolu. Enregistré sur le serveur (AWS) comme Saison 26/27 : visible sur tous tes navigateurs. La capture se fait quand le site est ouvert sur au moins un appareil. Aucun vrai ordre n'est jamais passé.</div>
     <div class="snap-sync-bar">
       <button type="button" id="cmpAutoExportBtn" class="snap-sync-link" title="Télécharger cette liste (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button id="cmpAutoTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
+    </div>
+    <div class="pnl-chart-filters cmp-auto-filters">
+      <label>Delta ≥ <select id="cmpAutoMinDelta"><option value="">Tous</option><option value="100">100 %</option><option value="125">125 %</option><option value="150">150 %</option><option value="200">200 %</option></select></label>
+      <label>ROI Polymarket ≥ <select id="cmpAutoMinRoi"><option value="">Tous</option><option value="5">5 %</option><option value="7">7 %</option><option value="10">10 %</option><option value="15">15 %</option><option value="20">20 %</option></select></label>
     </div>
     <div id="cmpAutoPnlChartContent"></div>
     <div class="snap-toggle-bar">
@@ -8024,7 +8028,7 @@
   // frozen `cmp` block, see cmpRecordFromRow) — no traders behind them —
   // and get their result straight from the Polymarket market
   // (checkCmpResolutions). LOCAL TRACKING ONLY: no order is ever placed.
-  var CMP_AUTO_MIN_DELTA = 100; // was 75 — only Δ ≥ 100 % from 2026-10-23 on request
+  var CMP_AUTO_MIN_DELTA = 75;
   function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true || s.sandbox === true || s.sebMeta === true); }
   function cmpViewStore(name, opts) {
     function loadRaw() { return loadSnapshotsRaw().filter(function (s) { return s[name] === true; }); }
@@ -8059,10 +8063,25 @@
     };
   }
   var CMP_AUTO_STORE = cmpViewStore("cmpAuto", {
-    emptyHint: "Rien capturé pour l'instant — dès qu'une proposition du Comparateur atteint +" + CMP_AUTO_MIN_DELTA + " % de delta, elle atterrit ici toute seule.",
+    emptyHint: "Rien capturé pour l'instant — dès qu'une proposition du Comparateur dépasse +" + CMP_AUTO_MIN_DELTA + " % de delta, elle atterrit ici toute seule.",
     dateLabelPrefix: "Capturé le", priceMoment: "au moment de la capture"
   });
-  CMP_AUTO_STORE.viewFilter = function (s) { return !!(s.cmp && s.cmp.delta >= CMP_AUTO_MIN_DELTA); };
+  // Delta ≥ / ROI Polymarket ≥ filters on Test comparatif (on request,
+  // 2026-10-23): display-only, everything is still captured and kept.
+  CMP_AUTO_STORE.state.cmpMinDelta = null;
+  CMP_AUTO_STORE.state.cmpMinRoi = null;
+  CMP_AUTO_STORE.viewFilter = function (s) {
+    var st = CMP_AUTO_STORE.state, c = s.cmp || {};
+    if (st.cmpMinDelta != null && !(c.delta >= st.cmpMinDelta)) return false;
+    if (st.cmpMinRoi != null && !(c.roiPoly >= st.cmpMinRoi)) return false;
+    return true;
+  };
+  CMP_AUTO_STORE.viewFilterLabels = function () {
+    var st = CMP_AUTO_STORE.state, out = [];
+    if (st.cmpMinDelta != null) out.push("delta ≥ " + st.cmpMinDelta + " %");
+    if (st.cmpMinRoi != null) out.push("ROI ≥ " + st.cmpMinRoi + " %");
+    return out;
+  };
   var CMP_PICK_STORE = cmpViewStore("cmpPick", {
     emptyHint: "Aucun trade choisi pour l'instant — clique ✋ sur une ligne du Comparateur.",
     dateLabelPrefix: "Choisi le", priceMoment: "au moment du clic"
@@ -8113,7 +8132,7 @@
     loadSnapshotsRaw().forEach(function (s) { have[s.id] = true; }); // trashed ones too — a trashed capture stays trashed
     var now = Date.now() / 1000;
     rows.forEach(function (row) {
-      if (!(row.delta >= CMP_AUTO_MIN_DELTA) || !(row.start > now) || !row.cid) return;
+      if (!(row.delta > CMP_AUTO_MIN_DELTA) || !(row.start > now) || !row.cid) return;
       var rec = cmpRecordFromRow(row, generatedAt);
       rec.id = cmpRecordId("cmpauto", row.id);
       if (have[rec.id]) return;
@@ -11472,7 +11491,11 @@
     if (store.excludeAutoPre) fullList = fullList.filter(function (s) { return !s.autoPre && !isCmpSideList(s); });
     // A display-only narrowing (Test comparatif: Δ ≥ 100 %) — never in
     // loadRaw, whose list save() writes back whole.
-    if (store.viewFilter) fullList = fullList.filter(store.viewFilter);
+    var preViewCount = null;
+    if (store.viewFilter) {
+      preViewCount = fullList.filter(function (s) { return !s.deletedAt; }).length;
+      fullList = fullList.filter(store.viewFilter);
+    }
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
     // All Time uses its OWN independent trash field (allTimeDeletedAt) —
     // see the store definition and the delete/restore handlers — so
@@ -11527,8 +11550,9 @@
     var chartCardsList = cardsList;
     cardsList = pnlChartFilterList(cardsList, store);
     activeFilterLabels = activeFilterLabels.concat(pnlChartFilterLabels(store));
+    if (store.viewFilterLabels) activeFilterLabels = activeFilterLabels.concat(store.viewFilterLabels());
     store.els.count.textContent = activeFilterLabels.length
-      ? cardsList.length + ' / ' + list.length + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
+      ? cardsList.length + ' / ' + (preViewCount != null ? preViewCount : list.length) + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
     st.panelArgs = { list: list, cardsList: cardsList, labels: activeFilterLabels };
     renderTierWinrate(list, store);
@@ -14370,6 +14394,13 @@
   wireExport(AUTO_BIGTRADE_STORE, "autoBigTradeExportBtn");
   wireTrashToggle(AUTO_BIGTRADE_STORE, "autoBigTradeTrashToggleBtn", renderAutoBigTrade);
   wireExport(CMP_AUTO_STORE, "cmpAutoExportBtn");
+  [["cmpAutoMinDelta", "cmpMinDelta"], ["cmpAutoMinRoi", "cmpMinRoi"]].forEach(function (f) {
+    var sel = document.getElementById(f[0]);
+    if (sel) sel.addEventListener("change", function () {
+      CMP_AUTO_STORE.state[f[1]] = sel.value === "" ? null : Number(sel.value);
+      renderStoreView(CMP_AUTO_STORE);
+    });
+  });
   wireTrashToggle(CMP_AUTO_STORE, "cmpAutoTrashToggleBtn", function () { renderStoreView(CMP_AUTO_STORE); });
   wireExport(CMP_PICK_STORE, "cmpPickExportBtn");
   wireTrashToggle(CMP_PICK_STORE, "cmpPickTrashToggleBtn", function () { renderStoreView(CMP_PICK_STORE); });
