@@ -10049,6 +10049,13 @@
   // compare mode) — every field is multi-select, OR within itself, ANDed
   // together across fields, same convention as every other filter on this
   // page (tierCardFilter, pnlChartTraderFilter, etc.).
+  // pnlChartOriginFilter: "" / one key (the Type select), or an array of
+  // keys (the multi-select chips on stores with originChips — Seb).
+  function originFilterPasses(st, s) {
+    var f = st.pnlChartOriginFilter;
+    if (!f || (Array.isArray(f) && !f.length)) return true;
+    return Array.isArray(f) ? f.indexOf(snapOrigin(s)) !== -1 : snapOrigin(s) === f;
+  }
   function compareCfgFor(st, s) { return st.pnlChartCompareFilters[snapOrigin(s)] || st.pnlChartCompareFilters.manual; }
   // "Type : ✍️ 🎯 ⚖️" on a card, where the category can be corrected by
   // hand (store.allowOriginEdit — Seb, whose bets are classified by guess).
@@ -10146,7 +10153,7 @@
     var cutoff = st.pnlChartDays != null ? Date.now() - st.pnlChartDays * 86400000 : null;
     return list.filter(function (s) {
       if (st.pnlChartTierFilter && st.pnlChartTierFilter.length && st.pnlChartTierFilter.indexOf(s.confidence) === -1) return false;
-      if (st.pnlChartOriginFilter && snapOrigin(s) !== st.pnlChartOriginFilter) return false;
+      if (!originFilterPasses(st, s)) return false;
       if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
       if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
       if (cutoff != null && snapSortTime(s) < cutoff) return false;
@@ -10170,7 +10177,8 @@
     if (!st) return out;
     if (st.pnlChartConsoleOpen) return ["console avancée"];
     if (st.pnlChartTierFilter && st.pnlChartTierFilter.length) out.push("confiance " + st.pnlChartTierFilter.join("+"));
-    if (st.pnlChartOriginFilter) out.push({ manual: "manuels", auto: "auto", cmp: "comparaison" }[st.pnlChartOriginFilter]);
+    var of = [].concat(st.pnlChartOriginFilter || []);
+    if (of.length) out.push(of.map(function (k) { return { manual: "manuels", auto: "auto", cmp: "comparaison" }[k]; }).join(" + "));
     if (st.pnlChartOddsFilter) out.push("cote " + st.pnlChartOddsFilter[0] + "–" + st.pnlChartOddsFilter[1] + "¢");
     if (st.pnlChartNoteFilter != null) out.push("note " + st.pnlChartNoteFilter + "-" + (st.pnlChartNoteFilter + 1));
     if (st.pnlChartDays != null) out.push(st.pnlChartDays + " derniers jours");
@@ -10190,7 +10198,7 @@
     var activeNoteBinIsLast = st.pnlChartNoteFilter != null && NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === st.pnlChartNoteFilter;
     var decidedFiltered = decidedAll.filter(function (s) {
       if (st.pnlChartTierFilter.length && st.pnlChartTierFilter.indexOf(s.confidence) === -1) return false;
-      if (st.pnlChartOriginFilter && snapOrigin(s) !== st.pnlChartOriginFilter) return false;
+      if (!originFilterPasses(st, s)) return false;
       if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
       if (activeNoteBin && (s.noteAtSnapshot == null || !noteInBin(s.noteAtSnapshot, activeNoteBin, activeNoteBinIsLast))) return false;
       if (st.pnlChartDays != null) {
@@ -10393,10 +10401,11 @@
     var controlsHtml = '<div class="pnl-chart-filters">' +
       // "Cote" select removed and "Manuel / Auto" added here (on request,
       // 2026-10-10) — the same split the console avancée makes, as a plain filter.
+      (store.originChips ? originChipsHtml(st) :
       '<label>Type <select id="' + idp + 'pnlChartOriginSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' +
         [["", "Tout"], ["manual", "✍️ Manuel"], ["auto", "🎯 Auto"], ["cmp", "⚖️ Comparaison"]].map(function (o) {
           return '<option value="' + o[0] + '"' + (st.pnlChartOriginFilter === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
-        }).join("") + '</select></label>' +
+        }).join("") + '</select></label>') +
       tierChipsHtml +
       '<label>Note <select id="' + idp + 'pnlChartNoteSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + timeOptionsHtml + '</select></label>' +
@@ -10480,6 +10489,21 @@
       wireSnapPnlChartClicks(box, store);
     }
   }
+  // Type as toggle chips (Seb, on request 2026-10-23): Tout + one chip per
+  // category, several can be on at once — same look as the Confiance chips.
+  function originChipsHtml(st) {
+    var cur = [].concat(st.pnlChartOriginFilter || []);
+    var dis = st.pnlChartConsoleOpen ? ' disabled' : '';
+    return '<div class="pnl-chart-tier-chips" title="Filtre la courbe sur une ou plusieurs catégories — clique pour cocher/décocher">' +
+      '<span class="pnl-chart-tier-chips-label">Type</span>' +
+      '<button type="button" class="pnl-chart-tier-chip' + (!cur.length ? ' active' : '') + '" data-origin-chip=""' + dis + '>Tout</button>' +
+      ORIGIN_KEYS.map(function (k) {
+        var on = cur.indexOf(k) !== -1, c = ORIGIN_COLORS[k];
+        return '<button type="button" class="pnl-chart-tier-chip' + (on ? ' active' : '') + '" data-origin-chip="' + k + '"' + dis +
+          ' style="' + (on ? 'background:' + c + ';border-color:' + c + ';color:#fff;' : 'color:' + c + ';border-color:' + c + ';') + '">' + ORIGIN_ICONS[k] + ' ' + ORIGIN_LABELS[k] + '</button>';
+      }).join("") +
+    '</div>';
+  }
   // Re-attached on every render (the selects are rebuilt from scratch each
   // time, same as everything else in this box) — plain `change` listeners,
   // no delegation needed since there's only ever one of each on the page.
@@ -10506,7 +10530,16 @@
     // in the DOM at once, hidden but not removed, so an unscoped query here
     // would also wire the other store's chips.
     var tierChipsBox = document.getElementById(idp + "snapPnlChartBox");
-    if (tierChipsBox) tierChipsBox.querySelectorAll(".pnl-chart-tier-chip").forEach(function (btn) {
+    if (tierChipsBox) tierChipsBox.querySelectorAll("[data-origin-chip]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var k = btn.getAttribute("data-origin-chip");
+        var cur = [].concat(store.state.pnlChartOriginFilter || []);
+        var next = !k ? [] : (cur.indexOf(k) !== -1 ? cur.filter(function (x) { return x !== k; }) : cur.concat([k]));
+        store.state.pnlChartOriginFilter = ORIGIN_KEYS.filter(function (x) { return next.indexOf(x) !== -1; });
+        renderSnapPnlChart(cardsList, store);
+      });
+    });
+    if (tierChipsBox) tierChipsBox.querySelectorAll(".pnl-chart-tier-chip:not([data-origin-chip])").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var tier = btn.getAttribute("data-tier");
         var cur = store.state.pnlChartTierFilter;
@@ -17012,6 +17045,7 @@
     stakeFor: function (snap) { return snap.stakeUsd; },
     allowTakePosition: false, allowEditPosition: false, allowSimStakeSlider: false, allowReorder: false,
     allowOriginEdit: true,
+    originChips: true,
     itemNoun: "pari",
     emptyHint: "Aucun pari sur cette sélection.",
     dateLabelPrefix: "Réglé le",
