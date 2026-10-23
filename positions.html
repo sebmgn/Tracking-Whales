@@ -3078,7 +3078,7 @@
 
   <div class="tab-panel" id="tab-cmp-auto">
     <h2 class="section-title">🧪 Test comparatif <span class="count-pill" id="cmpAutoCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement chaque proposition du Comparateur dont le delta de ROI dépasse <b>+75 %</b>, au prix Polymarket du moment, avant le coup d'envoi — pas besoin de cliquer. Le résultat (camp gagnant) se remplit tout seul quand le marché Polymarket est résolu. Enregistré sur le serveur (AWS) comme Saison 26/27 : visible sur tous tes navigateurs. La capture se fait quand le site est ouvert sur au moins un appareil. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement chaque proposition du Comparateur dont le delta de ROI atteint <b>+100 %</b> ou plus (les captures plus anciennes sous 100 % restent enregistrées mais ne sont plus affichées ni comptées), au prix Polymarket du moment, avant le coup d'envoi — pas besoin de cliquer. Le résultat (camp gagnant) se remplit tout seul quand le marché Polymarket est résolu. Enregistré sur le serveur (AWS) comme Saison 26/27 : visible sur tous tes navigateurs. La capture se fait quand le site est ouvert sur au moins un appareil. Aucun vrai ordre n'est jamais passé.</div>
     <div class="snap-sync-bar">
       <button type="button" id="cmpAutoExportBtn" class="snap-sync-link" title="Télécharger cette liste (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button id="cmpAutoTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
@@ -8024,7 +8024,7 @@
   // frozen `cmp` block, see cmpRecordFromRow) — no traders behind them —
   // and get their result straight from the Polymarket market
   // (checkCmpResolutions). LOCAL TRACKING ONLY: no order is ever placed.
-  var CMP_AUTO_MIN_DELTA = 75;
+  var CMP_AUTO_MIN_DELTA = 100; // was 75 — only Δ ≥ 100 % from 2026-10-23 on request
   function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true || s.sandbox === true || s.sebMeta === true); }
   function cmpViewStore(name, opts) {
     function loadRaw() { return loadSnapshotsRaw().filter(function (s) { return s[name] === true; }); }
@@ -8059,9 +8059,10 @@
     };
   }
   var CMP_AUTO_STORE = cmpViewStore("cmpAuto", {
-    emptyHint: "Rien capturé pour l'instant — dès qu'une proposition du Comparateur dépasse +" + CMP_AUTO_MIN_DELTA + " % de delta, elle atterrit ici toute seule.",
+    emptyHint: "Rien capturé pour l'instant — dès qu'une proposition du Comparateur atteint +" + CMP_AUTO_MIN_DELTA + " % de delta, elle atterrit ici toute seule.",
     dateLabelPrefix: "Capturé le", priceMoment: "au moment de la capture"
   });
+  CMP_AUTO_STORE.viewFilter = function (s) { return !!(s.cmp && s.cmp.delta >= CMP_AUTO_MIN_DELTA); };
   var CMP_PICK_STORE = cmpViewStore("cmpPick", {
     emptyHint: "Aucun trade choisi pour l'instant — clique ✋ sur une ligne du Comparateur.",
     dateLabelPrefix: "Choisi le", priceMoment: "au moment du clic"
@@ -8112,7 +8113,7 @@
     loadSnapshotsRaw().forEach(function (s) { have[s.id] = true; }); // trashed ones too — a trashed capture stays trashed
     var now = Date.now() / 1000;
     rows.forEach(function (row) {
-      if (!(row.delta > CMP_AUTO_MIN_DELTA) || !(row.start > now) || !row.cid) return;
+      if (!(row.delta >= CMP_AUTO_MIN_DELTA) || !(row.start > now) || !row.cid) return;
       var rec = cmpRecordFromRow(row, generatedAt);
       rec.id = cmpRecordId("cmpauto", row.id);
       if (have[rec.id]) return;
@@ -11469,6 +11470,9 @@
     // instead of loadRaw/save filtering them out.
     if (store.excludeArchived) fullList = fullList.filter(function (s) { return !s.archivedBatchId; });
     if (store.excludeAutoPre) fullList = fullList.filter(function (s) { return !s.autoPre && !isCmpSideList(s); });
+    // A display-only narrowing (Test comparatif: Δ ≥ 100 %) — never in
+    // loadRaw, whose list save() writes back whole.
+    if (store.viewFilter) fullList = fullList.filter(store.viewFilter);
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
     // All Time uses its OWN independent trash field (allTimeDeletedAt) —
     // see the store definition and the delete/restore handlers — so
