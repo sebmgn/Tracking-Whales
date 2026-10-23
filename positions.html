@@ -2032,6 +2032,7 @@
     margin-bottom: 2px;
   }
   .pnl-chart-weekly-svg { display: block; width: 100%; height: auto; margin-bottom: 8px; }
+  .pnl-chart-stake-svg { display: block; width: 100%; height: auto; margin: -2px 0 4px; }
   /* Streaks — current run + records. */
   .pnl-streaks { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--panel-border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .pnl-streaks-badges { display: flex; gap: 18px; }
@@ -9803,6 +9804,63 @@
   // spans from its week's first dot to its last (+14px so a lone dot still
   // gets a visible bar), so a week with dots spread wide reads wide and a
   // tight cluster reads narrow, exactly like the dots above it.
+  // Thin strip right under the PnL curve (on request, 2026-10-23): one bar
+  // per bet at the exact x of its dot (same W/padL/padR as
+  // buildHistoryChartSvg), height = the stake. Only drawn when stakes
+  // actually vary (Seb, Mes Positions) — a flat 1 000 $ sim would be a
+  // row of identical bars.
+  function buildStakeStripSvg(weeklySeries) {
+    var n = weeklySeries.length;
+    if (n < 2) return "";
+    var stakes = weeklySeries.map(function (p) { return p.stake || 0; });
+    var max = Math.max.apply(null, stakes), min = Math.min.apply(null, stakes);
+    if (!(max > 0) || max - min < 0.01) return "";
+    var W = 1000, padL = 54, padR = 14, H = 46, padT = 4, padB = 2;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    function x(i) { return padL + (i / (n - 1)) * innerW; }
+    var barW = Math.max(1.5, Math.min(8, innerW / n * 0.62));
+    var hitW = Math.max(barW, Math.min(30, innerW / (n - 1)));
+    var bars = weeklySeries.map(function (p, i) {
+      var h = Math.max(1, (p.stake || 0) / max * innerH);
+      // Visible bar + an invisible full-height hit zone as wide as the gap
+      // to its neighbours, so hovering anywhere near it shows the stake
+      // (wireStakeStripTooltip).
+      return '<rect class="stake-bar" id="stakeBar' + i + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + (H - padB - h).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1" fill="var(--text-dim)" fill-opacity="0.55"></rect>' +
+        '<rect class="stake-hit" data-bar="' + i + '" data-tip="' + esc(fmtDateShort(p.date) + " — mise " + fmtUSD(p.stake || 0)) + '" x="' + (x(i) - hitW / 2).toFixed(2) + '" y="0" width="' + hitW.toFixed(2) + '" height="' + H + '" fill="transparent"></rect>';
+    }).join("");
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-stake-svg" role="img" aria-label="Mise de chaque pari">' +
+      '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + (H - padB) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
+      '<text x="' + (padL - 6) + '" y="' + (padT + 8) + '" text-anchor="end" font-size="10" fill="var(--text-dim)">' + esc(fmtUSD(max).replace(/,00\s*\$/, " $")) + '</text>' +
+      '<text x="' + (padL - 6) + '" y="' + (H - padB) + '" text-anchor="end" font-size="10" fill="var(--text-dim)">Mise</text>' +
+      bars + '</svg>';
+  }
+  function wireStakeStripTooltip(box) {
+    var svg = box.querySelector(".pnl-chart-stake-svg");
+    if (!svg) return;
+    var tip = document.createElement("div");
+    tip.className = "chart-tooltip";
+    box.appendChild(tip);
+    var lit = null;
+    svg.querySelectorAll(".stake-hit").forEach(function (hit) {
+      var bar = svg.querySelector("#stakeBar" + hit.getAttribute("data-bar"));
+      hit.addEventListener("mouseenter", function () {
+        if (lit) lit.setAttribute("fill-opacity", "0.55");
+        lit = bar;
+        if (bar) bar.setAttribute("fill-opacity", "1");
+        tip.textContent = hit.getAttribute("data-tip");
+        tip.classList.add("show");
+      });
+      hit.addEventListener("mousemove", function (ev) {
+        var r = box.getBoundingClientRect();
+        tip.style.left = (ev.clientX - r.left) + "px";
+        tip.style.top = (ev.clientY - r.top - 10) + "px";
+      });
+      hit.addEventListener("mouseleave", function () {
+        tip.classList.remove("show");
+        if (bar) bar.setAttribute("fill-opacity", "0.55");
+      });
+    });
+  }
   function buildWeeklyAlignedBarSvg(weeklySeries, weeks) {
     var W = 1000, padL = 54, padR = 14, H = 124, padT = 22, padB = 4;
     var innerW = W - padL - padR, innerH = H - padT - padB;
@@ -10470,7 +10528,7 @@
       wireCompareConsole(el, cardsList, store);
       return;
     }
-    var chartHtml = buildHistoryChartSvg(series);
+    var chartHtml = buildHistoryChartSvg(series) + buildStakeStripSvg(weeklySeries);
     var hintHtml = '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div>';
     var weeks = computeWeeklyPnlAligned(weeklySeries);
     var weeklyHtml = '<div class="pnl-chart-weekly">' +
@@ -10485,6 +10543,7 @@
     var box = document.getElementById(boxId);
     if (box) {
       wireHistoryChartTooltip(box);
+      wireStakeStripTooltip(box);
       wireDrawdownTooltip(box);
       wireSnapPnlChartClicks(box, store);
     }
