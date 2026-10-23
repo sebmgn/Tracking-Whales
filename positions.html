@@ -9825,7 +9825,7 @@
       // Green = that bet won (pnl > 0), red = lost. Visible bar + an invisible full-height hit zone as wide as the gap
       // to its neighbours, so hovering anywhere near it shows the stake
       // (wireStakeStripTooltip).
-      return '<rect class="stake-bar" id="stakeBar' + i + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + (H - padB - h).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1" fill="' + ((p.pnl || 0) > 0 ? "var(--green)" : "var(--red)") + '" fill-opacity="0.6"></rect>' +
+      return '<rect class="stake-bar" id="stakeBar' + i + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + (H - padB - h).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1" fill="' + ((p.pnl || 0) > 0 ? "#00c853" : "#ff1744") + '" fill-opacity="0.9"></rect>' +
         '<rect class="stake-hit" data-bar="' + i + '" data-tip="' + esc(fmtDateShort(p.date) + " — mise " + fmtUSD(p.stake || 0) + " · " + ((p.pnl || 0) > 0 ? "gagné " : "perdu ") + fmtUSDSigned(p.pnl || 0)) + '" x="' + (x(i) - hitW / 2).toFixed(2) + '" y="0" width="' + hitW.toFixed(2) + '" height="' + H + '" fill="transparent"></rect>';
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-stake-svg" role="img" aria-label="Mise de chaque pari">' +
@@ -9844,9 +9844,9 @@
     svg.querySelectorAll(".stake-hit").forEach(function (hit) {
       var bar = svg.querySelector("#stakeBar" + hit.getAttribute("data-bar"));
       hit.addEventListener("mouseenter", function () {
-        if (lit) lit.setAttribute("fill-opacity", "0.6");
+        if (lit) { lit.setAttribute("fill-opacity", "0.9"); lit.removeAttribute("stroke"); }
         lit = bar;
-        if (bar) bar.setAttribute("fill-opacity", "1");
+        if (bar) { bar.setAttribute("fill-opacity", "1"); bar.setAttribute("stroke", "var(--text)"); }
         tip.textContent = hit.getAttribute("data-tip");
         tip.classList.add("show");
       });
@@ -9857,7 +9857,7 @@
       });
       hit.addEventListener("mouseleave", function () {
         tip.classList.remove("show");
-        if (bar) bar.setAttribute("fill-opacity", "0.6");
+        if (bar) { bar.setAttribute("fill-opacity", "0.9"); bar.removeAttribute("stroke"); }
       });
     });
   }
@@ -12924,7 +12924,10 @@
         '<path d="' + areaD + '" fill="url(#' + gradId + ')" stroke="none"/>' +
         zeroLine +
         trendLine +
-        '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="2" stroke-linecap="round"/>' +
+        // Smoothed mode keeps the real curve as a faint line underneath, so
+        // the gap between the trend and the actual totals stays visible.
+        (smooth ? '<path d="' + smoothPathD(series.map(function (p, i) { return { x: x(i), y: y(p.value) }; })) + '" fill="none" stroke="' + lineColor + '" stroke-width="1" stroke-opacity="0.35"/>' : '') +
+        '<path d="' + pathD + '" fill="none" stroke="' + lineColor + '" stroke-width="' + (smooth ? 2.6 : 2) + '" stroke-linecap="round"/>' +
         // Soft halo behind the final point — the running total as of right
         // now — so the eye lands there first regardless of how the curve
         // wanders before it.
