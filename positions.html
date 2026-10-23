@@ -3083,10 +3083,6 @@
       <button type="button" id="cmpAutoExportBtn" class="snap-sync-link" title="Télécharger cette liste (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button id="cmpAutoTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
     </div>
-    <div class="pnl-chart-filters cmp-auto-filters">
-      <label>Delta ≥ <select id="cmpAutoMinDelta"><option value="">Tous</option><option value="100">100 %</option><option value="125">125 %</option><option value="150">150 %</option><option value="200">200 %</option></select></label>
-      <label>ROI Polymarket ≥ <select id="cmpAutoMinRoi"><option value="">Tous</option><option value="5">5 %</option><option value="7">7 %</option><option value="10">10 %</option><option value="15">15 %</option><option value="20">20 %</option></select></label>
-    </div>
     <div id="cmpAutoPnlChartContent"></div>
     <div class="snap-toggle-bar">
       <button type="button" id="cmpAutoTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="cmpAuto">▸ Le winrate par conviction</button>
@@ -8068,6 +8064,7 @@
   });
   // Delta ≥ / ROI Polymarket ≥ filters on Test comparatif (on request,
   // 2026-10-23): display-only, everything is still captured and kept.
+  CMP_AUTO_STORE.cmpChartFilters = true;
   CMP_AUTO_STORE.state.cmpMinDelta = null;
   CMP_AUTO_STORE.state.cmpMinRoi = null;
   CMP_AUTO_STORE.viewFilter = function (s) {
@@ -10476,7 +10473,20 @@
           '</div>'
         : '') +
     '</div>';
+    // Test comparatif (store.cmpChartFilters, on request 2026-10-23): its
+    // captures are all Comparaison bets with no note and no trader, so the
+    // bar swaps Type / Note / Traders (and the console) for Delta ≥ and
+    // ROI Polymarket ≥ — applied through the store's viewFilter, so cards,
+    // chart and stats all follow.
+    function cmpSelect(key, label, opts) {
+      return '<label>' + label + ' <select id="' + idp + key + '">' + [["", "Tous"]].concat(opts.map(function (v) { return [String(v), v + " %"]; })).map(function (o) {
+        return '<option value="' + o[0] + '"' + (String(st[key] == null ? "" : st[key]) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join("") + '</select></label>';
+    }
+    var cmpMode = !!store.cmpChartFilters;
     var controlsHtml = '<div class="pnl-chart-filters">' +
+      (cmpMode ? cmpSelect("cmpMinDelta", "Delta ≥", [100, 125, 150, 200]) + cmpSelect("cmpMinRoi", "ROI Polymarket ≥", [5, 7, 10, 15, 20]) + tierChipsHtml +
+        '<label>Période <select id="' + idp + 'pnlChartTimeSelect">' + timeOptionsHtml + '</select></label>' :
       // "Cote" select removed and "Manuel / Auto" added here (on request,
       // 2026-10-10) — the same split the console avancée makes, as a plain filter.
       (store.originChips ? originChipsHtml(st) :
@@ -10487,7 +10497,7 @@
       tierChipsHtml +
       '<label>Note <select id="' + idp + 'pnlChartNoteSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + timeOptionsHtml + '</select></label>' +
-      traderFilterHtml +
+      traderFilterHtml) +
       '<button type="button" id="' + idp + 'pnlChartSmoothBtn" class="pnl-chart-tier-chip pnl-chart-smooth-btn' + (st.pnlChartSmooth ? ' active' : '') + '" title="' + (st.pnlChartSmooth ? 'Revenir à la courbe avec un point par pari' : 'Lisser la courbe (moyenne glissante, sans les points)') + '">' + (st.pnlChartSmooth ? '• Afficher les points' : '〰 Courbe lissée') + '</button>' +
       (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
@@ -10558,7 +10568,7 @@
       weeklyTableHtml(weeks, store) +
     '</div>';
     var drawdownBlockHtml = drawdownHtml(series);
-    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + consoleToggleHtml + controlsHtml + consolePanelHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + '</div>';
+    el.innerHTML = '<div class="chart-box" id="' + boxId + '">' + headerHtml + (cmpMode ? '' : consoleToggleHtml) + controlsHtml + consolePanelHtml + chartHtml + hintHtml + drawdownBlockHtml + weeklyHtml + '</div>';
     wirePnlChartFilterControls(cardsList, store);
     wireCompareConsole(el, cardsList, store);
     var box = document.getElementById(boxId);
@@ -10637,6 +10647,13 @@
     if (timeSelect) timeSelect.addEventListener("change", function () {
       store.state.pnlChartDays = timeSelect.value ? Number(timeSelect.value) : null;
       renderSnapPnlChart(cardsList, store);
+    });
+    ["cmpMinDelta", "cmpMinRoi"].forEach(function (key) {
+      var sel = document.getElementById(idp + key);
+      if (sel) sel.addEventListener("change", function () {
+        store.state[key] = sel.value === "" ? null : Number(sel.value);
+        renderSnapPnlChart(cardsList, store);
+      });
     });
     var smoothBtn = document.getElementById(idp + "pnlChartSmoothBtn");
     if (smoothBtn) smoothBtn.addEventListener("click", function () {
@@ -14394,13 +14411,7 @@
   wireExport(AUTO_BIGTRADE_STORE, "autoBigTradeExportBtn");
   wireTrashToggle(AUTO_BIGTRADE_STORE, "autoBigTradeTrashToggleBtn", renderAutoBigTrade);
   wireExport(CMP_AUTO_STORE, "cmpAutoExportBtn");
-  [["cmpAutoMinDelta", "cmpMinDelta"], ["cmpAutoMinRoi", "cmpMinRoi"]].forEach(function (f) {
-    var sel = document.getElementById(f[0]);
-    if (sel) sel.addEventListener("change", function () {
-      CMP_AUTO_STORE.state[f[1]] = sel.value === "" ? null : Number(sel.value);
-      renderStoreView(CMP_AUTO_STORE);
-    });
-  });
+
   wireTrashToggle(CMP_AUTO_STORE, "cmpAutoTrashToggleBtn", function () { renderStoreView(CMP_AUTO_STORE); });
   wireExport(CMP_PICK_STORE, "cmpPickExportBtn");
   wireTrashToggle(CMP_PICK_STORE, "cmpPickTrashToggleBtn", function () { renderStoreView(CMP_PICK_STORE); });
