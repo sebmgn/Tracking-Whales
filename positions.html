@@ -16774,7 +16774,12 @@
   // the same thing and nothing needs storing. One row = one market × side.
   var SEB_ADDRESS = "0x062922dcc898a4935b2b87f5e9ea2360b31e0a16";
   var SEB_PROFILE_URL = "https://polymarket.com/profile/" + SEB_ADDRESS;
-  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40, sortKey: null, sortDir: "desc" };
+  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40, sortKey: null, sortDir: "desc", stakeMode: "real" };
+  // Mise (on request, 2026-10-23): "real" = your actual stake and PnL;
+  // "flat" = 1 000 $ on every bet, keeping what you really did (sold early
+  // included — your real PnL scaled to 1 000 $); "hold" = 1 000 $ held to
+  // the end, no cashout: won or lost on the market's final result.
+  var SEB_FLAT_STAKE = 1000;
   // "Tes paris" columns, sortable by a click on the header (on request,
   // 2026-10-22) — again flips the order. No sort = the default view: bets
   // still running first, then the most recently settled.
@@ -16857,6 +16862,9 @@
     return {
       key: p.conditionId + "|" + p.outcomeIndex, cid: p.conditionId, title: title, outcome: p.outcome || "—", slug: p.eventSlug || p.slug || "",
       evSlug: p.eventSlug || "", endDate: p.endDate ? String(p.endDate).slice(0, 10) : "",
+      // Settles at 1 (won) or 0 (lost) once the market resolves — what a
+      // bet held to the end would have paid, whatever you actually did.
+      finalPrice: p.curPrice != null && p.curPrice !== "" ? Number(p.curPrice) : null,
       stake: stake, avg: Number(p.avgPrice) || 0, pnl: pnl, status: status, doneAt: doneAt,
       sport: sportEmojiFor(title, p.slug || ""), win: status === "done" ? pnl > 0 : null
     };
@@ -17019,6 +17027,13 @@
       // Category: your own correction first (Type buttons), else Comparaison
       // when the bet matches a Comparateur line or its site copy came from
       // there, Auto when it's a whale card, Manuel otherwise.
+      // "Sans cashout": won/lost on the market's final result at your
+      // entry price (hypotheticalFlatPnl's own formula, no realPnl) — a
+      // market not resolved yet keeps what really happened.
+      if (sebState.stakeMode === "hold" && done && (b.finalPrice === 1 || b.finalPrice === 0)) {
+        rec.realPnl = null;
+        rec.winningSide = b.finalPrice === 1 ? b.outcome : OTHER_SIDE_SENTINEL;
+      }
       var guess = (cmpHit || (src && snapOrigin(src) === "cmp")) ? "cmp" : (rich ? "auto" : "manual");
       rec.origin = (m && m.origin) || guess;
       if (cmpHit && !rich) rec.cmp = cmpHit.cmp;
@@ -17091,7 +17106,7 @@
       return '<tr' + (o === "all" ? ' class="seb-mx-all"' : '') + '><th>' + label + '</th>' + cols.map(function (t) { return cellHtml(o, t); }).join("") + '</tr>';
     }).join("");
     return '<div class="chart-box seb-box" style="margin-top:14px;"><div class="tier-wr-title">Catégories × confiance</div>' +
-      '<div class="empty-note" style="padding:2px 0 8px;">Hauteur de la barre = ROI (vers le haut s\'il est positif, vers le bas s\'il est négatif), puis le nombre de paris ; gain réel sur les totaux. Paris terminés, sur les filtres du graphique.</div>' +
+      '<div class="empty-note" style="padding:2px 0 8px;">Hauteur de la barre = ROI (vers le haut s\'il est positif, vers le bas s\'il est négatif), puis le nombre de paris ; gain sur les totaux' + (sebState.stakeMode === "real" ? ' (mises réelles)' : sebState.stakeMode === "hold" ? ' (1 000 $ par pari, sans cashout)' : ' (1 000 $ par pari, avec cashout)') + '. Paris terminés, sur les filtres du graphique.</div>' +
       '<div class="seb-mx"><table class="seb-mx-tbl"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div></div>';
   }
   var SEB_STORE = {
@@ -17101,15 +17116,19 @@
     load: function () { return SEB_STORE.loadRaw().filter(function (s) { return !s.deletedAt; }); },
     save: function () {}, // computed from Polymarket — writes go through sebEnqueue
     enqueue: sebEnqueue,
-    stakeFor: function (snap) { return snap.stakeUsd; },
+    stakeFor: function (snap) { return sebState.stakeMode === "real" ? snap.stakeUsd : SEB_FLAT_STAKE; },
     allowTakePosition: false, allowEditPosition: false, allowSimStakeSlider: false, allowReorder: false,
     allowOriginEdit: true,
     originChips: true,
     itemNoun: "pari",
     emptyHint: "Aucun pari sur cette sélection.",
     dateLabelPrefix: "Réglé le",
-    simSubtitle: function () { return "PnL réel de tes paris Polymarket — ta vraie mise, ton vrai gain ou ta vraie perte"; },
-    cardHypLabel: function (stake) { return "Ton pari (" + fmtUSD(stake) + ") : "; },
+    simSubtitle: function () {
+      if (sebState.stakeMode === "flat") return "Tes paris à 1 000 $ chacun, avec tes cashouts : ton vrai résultat ramené à 1 000 $ de mise";
+      if (sebState.stakeMode === "hold") return "Tes paris à 1 000 $ chacun, gardés jusqu'à la fin (sans cashout) : gagné ou perdu selon le résultat final du marché";
+      return "PnL réel de tes paris Polymarket — ta vraie mise, ton vrai gain ou ta vraie perte";
+    },
+    cardHypLabel: function (stake) { return sebState.stakeMode === "real" ? "Ton pari (" + fmtUSD(stake) + ") : " : (sebState.stakeMode === "hold" ? "1 000 $ sans cashout : " : "1 000 $ avec cashout : "); },
     els: { count: document.getElementById("sebCount"), pnlChart: document.getElementById("sebPnlChartContent"),
       tierWinrate: document.getElementById("sebTierWinrateContent"), noteWinrate: document.getElementById("sebNoteWinrateContent"),
       dist: document.getElementById("sebDistContent"), list: document.getElementById("sebContent"),
@@ -17148,6 +17167,7 @@
       sebSeg("Période", "data-seb-period", [["7", "7 j"], ["30", "30 j"], ["90", "90 j"], ["all", "Tout"]], sebState.period) +
       sebSeg("Sport", "data-seb-sport", [["all", "Tous"]].concat(Object.keys(sports).sort(function (a, b) { return sports[b] - sports[a]; }).map(function (k) { return [k, k + " " + (AN_SPORT_LABELS[k] || "") + " · " + sports[k]]; })), sebState.sport) +
       sebSeg("Origine", "data-seb-origin", [["all", "Tous"], ["site", "📌 Snapshot du site"], ["other", "Hors site"]], sebState.origin) +
+      sebSeg("Mise", "data-seb-stake", [["real", "Réelle"], ["flat", "1 000 $ avec cashout"], ["hold", "1 000 $ sans cashout"]], sebState.stakeMode) +
     '</div>';
     el.innerHTML = head + controls +
       '<div class="empty-note" style="padding:0 4px 10px;">Même affichage que Saison 26/27, en argent réel : ta vraie mise et ton vrai gain ou ta vraie perte sur chaque pari. Note la confiance (S/A/B) et l\'ampleur (++ + - --) sur chaque carte en bas ; un pari aussi présent dans Saison 26/27 reprend ses notes tant que tu ne les changes pas ici.</div>';
@@ -17187,8 +17207,9 @@
   document.addEventListener("click", function (e) {
     var root = document.getElementById("tab-seb");
     if (!root || !e.target.closest || !root.contains(e.target)) return;
-    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort]");
+    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort], [data-seb-stake]");
     if (!el) return;
+    if (el.hasAttribute("data-seb-stake")) { sebState.stakeMode = el.getAttribute("data-seb-stake"); renderSeb(); return; }
     if (el.hasAttribute("data-seb-sort")) {
       var sk = el.getAttribute("data-seb-sort");
       var col = SEB_COLS.filter(function (c) { return c.key === sk; })[0];
