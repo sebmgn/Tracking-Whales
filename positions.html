@@ -9822,11 +9822,11 @@
     var hitW = Math.max(barW, Math.min(30, innerW / (n - 1)));
     var bars = weeklySeries.map(function (p, i) {
       var h = Math.max(1, (p.stake || 0) / max * innerH);
-      // Visible bar + an invisible full-height hit zone as wide as the gap
+      // Green = that bet won (pnl > 0), red = lost. Visible bar + an invisible full-height hit zone as wide as the gap
       // to its neighbours, so hovering anywhere near it shows the stake
       // (wireStakeStripTooltip).
-      return '<rect class="stake-bar" id="stakeBar' + i + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + (H - padB - h).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1" fill="var(--text-dim)" fill-opacity="0.55"></rect>' +
-        '<rect class="stake-hit" data-bar="' + i + '" data-tip="' + esc(fmtDateShort(p.date) + " — mise " + fmtUSD(p.stake || 0)) + '" x="' + (x(i) - hitW / 2).toFixed(2) + '" y="0" width="' + hitW.toFixed(2) + '" height="' + H + '" fill="transparent"></rect>';
+      return '<rect class="stake-bar" id="stakeBar' + i + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + (H - padB - h).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1" fill="' + ((p.pnl || 0) > 0 ? "var(--green)" : "var(--red)") + '" fill-opacity="0.6"></rect>' +
+        '<rect class="stake-hit" data-bar="' + i + '" data-tip="' + esc(fmtDateShort(p.date) + " — mise " + fmtUSD(p.stake || 0) + " · " + ((p.pnl || 0) > 0 ? "gagné " : "perdu ") + fmtUSDSigned(p.pnl || 0)) + '" x="' + (x(i) - hitW / 2).toFixed(2) + '" y="0" width="' + hitW.toFixed(2) + '" height="' + H + '" fill="transparent"></rect>';
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-stake-svg" role="img" aria-label="Mise de chaque pari">' +
       '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + (H - padB) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
@@ -9844,7 +9844,7 @@
     svg.querySelectorAll(".stake-hit").forEach(function (hit) {
       var bar = svg.querySelector("#stakeBar" + hit.getAttribute("data-bar"));
       hit.addEventListener("mouseenter", function () {
-        if (lit) lit.setAttribute("fill-opacity", "0.55");
+        if (lit) lit.setAttribute("fill-opacity", "0.6");
         lit = bar;
         if (bar) bar.setAttribute("fill-opacity", "1");
         tip.textContent = hit.getAttribute("data-tip");
@@ -9857,7 +9857,7 @@
       });
       hit.addEventListener("mouseleave", function () {
         tip.classList.remove("show");
-        if (bar) bar.setAttribute("fill-opacity", "0.55");
+        if (bar) bar.setAttribute("fill-opacity", "0.6");
       });
     });
   }
@@ -10468,6 +10468,7 @@
       '<label>Note <select id="' + idp + 'pnlChartNoteSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + noteOptionsHtml + '</select></label>' +
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + timeOptionsHtml + '</select></label>' +
       traderFilterHtml +
+      '<button type="button" id="' + idp + 'pnlChartSmoothBtn" class="pnl-chart-tier-chip pnl-chart-smooth-btn' + (st.pnlChartSmooth ? ' active' : '') + '" title="' + (st.pnlChartSmooth ? 'Revenir à la courbe avec un point par pari' : 'Lisser la courbe (moyenne glissante, sans les points)') + '">' + (st.pnlChartSmooth ? '• Afficher les points' : '〰 Courbe lissée') + '</button>' +
       (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
     // Console avancée (on request): big button above everything else —
@@ -10528,7 +10529,7 @@
       wireCompareConsole(el, cardsList, store);
       return;
     }
-    var chartHtml = buildHistoryChartSvg(series) + buildStakeStripSvg(weeklySeries);
+    var chartHtml = buildHistoryChartSvg(series, { smooth: !!st.pnlChartSmooth }) + buildStakeStripSvg(weeklySeries);
     var hintHtml = '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div>';
     var weeks = computeWeeklyPnlAligned(weeklySeries);
     var weeklyHtml = '<div class="pnl-chart-weekly">' +
@@ -10616,6 +10617,11 @@
     if (timeSelect) timeSelect.addEventListener("change", function () {
       store.state.pnlChartDays = timeSelect.value ? Number(timeSelect.value) : null;
       renderSnapPnlChart(cardsList, store);
+    });
+    var smoothBtn = document.getElementById(idp + "pnlChartSmoothBtn");
+    if (smoothBtn) smoothBtn.addEventListener("click", function () {
+      store.state.pnlChartSmooth = !store.state.pnlChartSmooth;
+      renderSnapPnlChartOnly(cardsList, store); // only the curve changes
     });
     var traderBtn = document.getElementById(idp + "pnlChartTraderBtn");
     if (traderBtn) traderBtn.addEventListener("click", function () {
@@ -12772,7 +12778,23 @@
     var finalPos = series[n - 1].value >= 0;
     var lineColor = finalPos ? "#15803d" : "#b91c1c";
 
-    var linePts = series.map(function (p, i) { return { x: x(i), y: y(p.value) }; });
+    // opts.smooth (the "〰 Courbe lissée" toggle): the line follows a
+    // centered moving average (window ≈ n/10, ends pinned to the real first
+    // and last totals) and the dots go invisible — still hoverable/clickable
+    // at the same spot on the smoothed line.
+    var smooth = !!(opts && opts.smooth) && n > 4;
+    var lineVals = values;
+    if (smooth) {
+      var half = Math.max(1, Math.round(n / 20));
+      lineVals = values.map(function (v, i) {
+        var a = Math.max(0, i - half), b = Math.min(n - 1, i + half), sum = 0;
+        for (var k = a; k <= b; k++) sum += values[k];
+        return sum / (b - a + 1);
+      });
+      lineVals[0] = values[0];
+      lineVals[n - 1] = values[n - 1];
+    }
+    var linePts = series.map(function (p, i) { return { x: x(i), y: y(lineVals[i]) }; });
     var pathD = smoothPathD(linePts);
     var areaD = pathD + " L" + x(n - 1).toFixed(2) + "," + y(0).toFixed(2) + " L" + x(0).toFixed(2) + "," + y(0).toFixed(2) + " Z";
 
@@ -12807,8 +12829,8 @@
     // the round bulb, not the tapering tail.
     var DOT_R = 5.5;
     var points = series.map(function (p, i) {
-      var hasTier = !!p.confidence;
-      var cx = x(i), cy = y(p.value);
+      var hasTier = !!p.confidence && !smooth;
+      var cx = x(i), cy = y(lineVals[i]);
       var strokeColor = p.origin ? ORIGIN_COLORS[p.origin] : p.isManual != null ? (p.isManual ? "#f472b6" : "#38bdf8") : (p.pointColor ? "var(--panel)" : null);
       var strokeAttr = strokeColor ? ' stroke="' + strokeColor + '" stroke-width="1.5"' : '';
       var letterY = p.isManual && p.origin !== "cmp" ? cy - 3 : cy;
@@ -12828,6 +12850,7 @@
         : p.isManual
         ? '<path d="' + pinD + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></path>'
         : '<circle cx="' + cx.toFixed(2) + '" cy="' + cy.toFixed(2) + '" r="' + DOT_R + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></circle>';
+      if (smooth) return '<circle cx="' + cx.toFixed(2) + '" cy="' + cy.toFixed(2) + '" r="7" class="' + cls + '" fill="transparent" ' + dataAttrs + '></circle>';
       return shapeHtml + letterHtml;
     }).join("");
 
@@ -12851,7 +12874,7 @@
       return '<text x="' + px.toFixed(2) + '" y="' + ly.toFixed(2) + '" font-size="9.5" font-weight="700" fill="' + color + '" text-anchor="middle">' + esc(fmtUSDSigned(values[idx])) + '</text>';
     }
     var extremaLabels = "";
-    if (n > 2) {
+    if (n > 2 && !smooth) {
       if (maxIdx !== 0 && maxIdx !== n - 1) extremaLabels += extremumLabel(maxIdx, "var(--green)");
       if (minIdx !== 0 && minIdx !== n - 1 && minIdx !== maxIdx) extremaLabels += extremumLabel(minIdx, "var(--red)");
     }
