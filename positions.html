@@ -369,6 +369,11 @@
   .tab-gold-2 { color: var(--tab-gold-2); }
   .tab-gold-3 { color: var(--tab-gold-3); }
   .tab-btn-primary { font-weight: 800; font-size: 14.5px; }
+  /* Seb — the biggest tab, right after Test (on request, 2026-10-25).
+     Non confiants and Mes Positions are no longer in the bar (their data
+     and panels are kept, just not reachable from here). */
+  .tab-bar .tab-btn.tab-btn-seb { font-size: 19px; font-weight: 900; letter-spacing: .01em; color: var(--accent); }
+  .tab-bar .tab-btn.tab-btn-seb .tab-btn-icon { font-size: 18px; }
   .tab-bar .tab-btn.tab-btn-quiet { color: var(--tier-b-gray); font-weight: 500; font-size: 12.5px; }
   .tab-btn-group-start { margin-left: auto; }
   .tab-bar .tab-btn:hover { color: var(--text); }
@@ -2800,11 +2805,10 @@
   <div class="tab-bar">
     <button class="tab-btn tab-btn-primary tab-gold-1 active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary tab-gold-2" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Saison 26/27</button>
-    <button class="tab-btn tab-btn-primary" data-tab="unconfident" type="button"><span class="tab-btn-icon">✕</span>Non confiants</button>
-    <button class="tab-btn tab-btn-primary" data-tab="positions" type="button"><span class="tab-btn-icon">🎯</span>Mes Positions</button>
     <button class="tab-btn tab-btn-primary tab-gold-3" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Matchs</button>
     <button class="tab-btn tab-btn-primary" data-tab="analyse" type="button"><span class="tab-btn-icon">🔬</span>Analyse</button>
     <button class="tab-btn tab-btn-primary" data-tab="sandbox" type="button"><span class="tab-btn-icon">📝</span>Test</button>
+    <button class="tab-btn tab-btn-primary tab-btn-seb" data-tab="seb" type="button"><span class="tab-btn-icon">👤</span>Seb</button>
     <span class="tab-break" aria-hidden="true"></span>
     <button class="tab-btn tab-btn-quiet tab-btn-group-start" data-tab="trades-profiles" type="button">Trades par profils</button>
     <button class="tab-btn tab-btn-quiet" data-tab="recent-trades" type="button">Trades récents</button>
@@ -2813,7 +2817,6 @@
     <button class="tab-btn tab-btn-quiet" data-tab="cmp-pick" type="button"><span class="tab-btn-icon">✋</span>Choix comparateur</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
-    <button class="tab-btn tab-btn-quiet" data-tab="seb" type="button"><span class="tab-btn-icon">👤</span>Seb</button>
   </div>
 
   <div class="tab-panel" id="tab-home">
