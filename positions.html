@@ -1986,7 +1986,7 @@
   .pnl-chart-console-btn:hover { border-color: var(--accent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent); }
   .pnl-chart-console-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
   .compare-console {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;
     margin: 0 0 14px; padding: 16px; background: var(--row-hover);
     border: 1px solid var(--panel-border); border-radius: var(--radius-md);
   }
@@ -2892,6 +2892,7 @@
       <select id="manualOriginSelect" title="Catégorie du pari">
         <option value="manual">✍️ Manuel</option>
         <option value="cmp">⚖️ Comparaison</option>
+        <option value="props">⏳ Props (long terme)</option>
       </select>
       <select id="manualConfSelect">
         <option value="">Confiance (optionnel)</option>
@@ -2908,7 +2909,7 @@
       <button type="button" id="tierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="snapshots">▸ Le winrate par conviction</button>
       <button type="button" id="noteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="snapshots">▸ L'analyse winrate × note</button>
       <button type="button" id="snapDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="snapshots">▸ L'analyse cote × confiance</button>
-      <button type="button" id="manualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="snapshots">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="manualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="snapshots">▸ Les types de paris</button>
       <button type="button" id="weeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="snapshots">▸ Paris par semaine</button>
       <button type="button" id="snapOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="snapshots">▸ Autres stats</button>
       <button type="button" id="snapTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="snapshots">▸ Le tableau des traders</button>
@@ -2938,7 +2939,7 @@
       <button type="button" id="unconfTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="unconfident">▸ Le winrate par conviction</button>
       <button type="button" id="unconfNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="unconfident">▸ L'analyse winrate × note</button>
       <button type="button" id="unconfDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="unconfident">▸ L'analyse cote × confiance</button>
-      <button type="button" id="unconfManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="unconfident">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="unconfManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="unconfident">▸ Les types de paris</button>
       <button type="button" id="unconfWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="unconfident">▸ Paris par semaine</button>
       <button type="button" id="unconfOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="unconfident">▸ Autres stats</button>
       <button type="button" id="unconfTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="unconfident">▸ Le tableau des traders</button>
@@ -2977,7 +2978,7 @@
       <button type="button" id="posTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="positions">▸ Le winrate par conviction</button>
       <button type="button" id="posNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="positions">▸ L'analyse winrate × note</button>
       <button type="button" id="posDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="positions">▸ L'analyse cote × confiance</button>
-      <button type="button" id="posManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="positions">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="posManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="positions">▸ Les types de paris</button>
       <button type="button" id="posWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="positions">▸ Paris par semaine</button>
       <button type="button" id="posOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="positions">▸ Autres stats</button>
       <button type="button" id="posTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="positions">▸ Le tableau des traders</button>
@@ -3017,7 +3018,7 @@
       <button type="button" id="testTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="test">▸ Le winrate par conviction</button>
       <button type="button" id="testNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="test">▸ L'analyse winrate × note</button>
       <button type="button" id="testDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="test">▸ L'analyse cote × confiance</button>
-      <button type="button" id="testManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="test">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="testManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="test">▸ Les types de paris</button>
       <button type="button" id="testWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="test">▸ Paris par semaine</button>
       <button type="button" id="testOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="test">▸ Autres stats</button>
       <button type="button" id="testTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="test">▸ Le tableau des traders</button>
@@ -3044,7 +3045,7 @@
       <button type="button" id="sebTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="seb">▸ Le winrate par conviction</button>
       <button type="button" id="sebNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="seb">▸ L'analyse winrate × note</button>
       <button type="button" id="sebDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="seb">▸ L'analyse cote × confiance</button>
-      <button type="button" id="sebManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="seb">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="sebManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="seb">▸ Les types de paris</button>
       <button type="button" id="sebWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="seb">▸ Paris par semaine</button>
       <button type="button" id="sebOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="seb">▸ Autres stats</button>
       <button type="button" id="sebTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="seb">▸ Le tableau des traders</button>
@@ -3088,7 +3089,7 @@
       <button type="button" id="cmpAutoTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="cmpAuto">▸ Le winrate par conviction</button>
       <button type="button" id="cmpAutoNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="cmpAuto">▸ L'analyse winrate × note</button>
       <button type="button" id="cmpAutoDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="cmpAuto">▸ L'analyse cote × confiance</button>
-      <button type="button" id="cmpAutoManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="cmpAuto">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="cmpAutoManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="cmpAuto">▸ Les types de paris</button>
       <button type="button" id="cmpAutoWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="cmpAuto">▸ Paris par semaine</button>
       <button type="button" id="cmpAutoOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="cmpAuto">▸ Autres stats</button>
       <button type="button" id="cmpAutoTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="cmpAuto">▸ Le tableau des traders</button>
@@ -3117,7 +3118,7 @@
       <button type="button" id="cmpPickTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="cmpPick">▸ Le winrate par conviction</button>
       <button type="button" id="cmpPickNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="cmpPick">▸ L'analyse winrate × note</button>
       <button type="button" id="cmpPickDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="cmpPick">▸ L'analyse cote × confiance</button>
-      <button type="button" id="cmpPickManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="cmpPick">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="cmpPickManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="cmpPick">▸ Les types de paris</button>
       <button type="button" id="cmpPickWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="cmpPick">▸ Paris par semaine</button>
       <button type="button" id="cmpPickOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="cmpPick">▸ Autres stats</button>
       <button type="button" id="cmpPickTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="cmpPick">▸ Le tableau des traders</button>
@@ -3150,6 +3151,7 @@
       <select id="sandboxManualOriginSelect" title="Catégorie du pari">
         <option value="manual">✍️ Manuel</option>
         <option value="cmp">⚖️ Comparaison</option>
+        <option value="props">⏳ Props (long terme)</option>
       </select>
       <select id="sandboxManualConfSelect">
         <option value="">Confiance (optionnel)</option>
@@ -3166,7 +3168,7 @@
       <button type="button" id="sandboxTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="sandbox">▸ Le winrate par conviction</button>
       <button type="button" id="sandboxNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="sandbox">▸ L'analyse winrate × note</button>
       <button type="button" id="sandboxDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="sandbox">▸ L'analyse cote × confiance</button>
-      <button type="button" id="sandboxManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="sandbox">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="sandboxManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="sandbox">▸ Les types de paris</button>
       <button type="button" id="sandboxWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="sandbox">▸ Paris par semaine</button>
       <button type="button" id="sandboxOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="sandbox">▸ Autres stats</button>
       <button type="button" id="sandboxTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="sandbox">▸ Le tableau des traders</button>
@@ -3195,7 +3197,7 @@
       <button type="button" id="autoBigTradeTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="autoBigTrade">▸ Le winrate par conviction</button>
       <button type="button" id="autoBigTradeNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="autoBigTrade">▸ L'analyse winrate × note</button>
       <button type="button" id="autoBigTradeDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="autoBigTrade">▸ L'analyse cote × confiance</button>
-      <button type="button" id="autoBigTradeManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="autoBigTrade">▸ Manuel / Auto / Comparaison</button>
+      <button type="button" id="autoBigTradeManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="autoBigTrade">▸ Les types de paris</button>
       <button type="button" id="autoBigTradeWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="autoBigTrade">▸ Paris par semaine</button>
       <button type="button" id="autoBigTradeOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="autoBigTrade">▸ Autres stats</button>
       <button type="button" id="autoBigTradeTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="autoBigTrade">▸ Le tableau des traders</button>
@@ -3942,7 +3944,8 @@
       pnlChartCompareFilters: {
         manual: { tiers: [], noteBins: [], sinceWeek: null },
         auto: { tiers: [], noteBins: [], traderWeightBrackets: [], traders: [], sinceWeek: null },
-        cmp: { tiers: [], noteBins: [], sinceWeek: null }
+        cmp: { tiers: [], noteBins: [], sinceWeek: null },
+        props: { tiers: [], noteBins: [], sinceWeek: null }
       },
       chartSelectedId: null, chartPrevScrollY: null, expandedItems: {},
       traderTableSort: { key: "total", dir: "desc" }, traderCardFilter: null, traderTableCollapsed: true, traderTableWeightBrackets: [],
@@ -8365,20 +8368,38 @@
   // or one tagged origin:"cmp" (Seb bets matched to a Comparateur line,
   // manual entries saved as Comparaison). isManual still drives how the
   // CARD renders; this drives every stat split.
-  var ORIGIN_KEYS = ["manual", "auto", "cmp"];
-  var ORIGIN_COLORS = { manual: "#f472b6", auto: "#38bdf8", cmp: "#f59e0b" };
-  var ORIGIN_ICONS = { manual: "✍️", auto: "🎯", cmp: "⚖️" };
-  var ORIGIN_LABELS = { manual: "Manuel", auto: "Auto", cmp: "Comparaison" };
+  // Fourth one since 2026-10-24: "props" = long-term bets (a season or an
+  // election — top 4, most clean sheets, relegation, présidentielle…),
+  // i.e. a Polymarket event whose slug carries no match date.
+  var ORIGIN_KEYS = ["manual", "auto", "cmp", "props"];
+  var ORIGIN_COLORS = { manual: "#f472b6", auto: "#38bdf8", cmp: "#f59e0b", props: "#14b8a6" };
+  var ORIGIN_ICONS = { manual: "✍️", auto: "🎯", cmp: "⚖️", props: "⏳" };
+  var ORIGIN_LABELS = { manual: "Manuel", auto: "Auto", cmp: "Comparaison", props: "Props" };
+  var ORIGIN_FILTER_LABELS = { manual: "manuels", auto: "auto", cmp: "comparaison", props: "props" };
+  // Long-term market: its Polymarket event slug is known and has no
+  // YYYY-MM-DD in it (every single-match event slug does).
+  function isLongTermSlug(slug) { return !!slug && !/\d{4}-\d{2}-\d{2}/.test(slug); }
+  var snapPropsCache = typeof WeakMap === "function" ? new WeakMap() : null;
+  function snapIsProps(s) {
+    if (snapPropsCache && snapPropsCache.has(s)) return snapPropsCache.get(s);
+    var slug = s.eventSlug || "";
+    if (!slug) { var m = (s.cardHtml || "").match(/polymarket\.com\/(?:[a-z]{2}\/)?event\/([a-z0-9-]+)/i); slug = m ? m[1] : ""; }
+    var v = isLongTermSlug(slug);
+    if (snapPropsCache) snapPropsCache.set(s, v);
+    return v;
+  }
   function snapOrigin(s) {
     if (!s) return "auto";
-    if (s.origin === "manual" || s.origin === "auto" || s.origin === "cmp") return s.origin;
+    if (ORIGIN_LABELS[s.origin]) return s.origin;
     if (s.cmp) return "cmp";
+    if (snapIsProps(s)) return "props";
     return s.isManual ? "manual" : "auto";
   }
   var MANUAL_VS_AUTO_GROUPS = [
     { key: "manual", label: "✍️ Paris manuels", color: ORIGIN_COLORS.manual, match: function (s) { return snapOrigin(s) === "manual"; } },
     { key: "auto", label: "🎯 Suivi des whales", color: ORIGIN_COLORS.auto, match: function (s) { return snapOrigin(s) === "auto"; } },
-    { key: "cmp", label: "⚖️ Comparaison", color: ORIGIN_COLORS.cmp, match: function (s) { return snapOrigin(s) === "cmp"; } }
+    { key: "cmp", label: "⚖️ Comparaison", color: ORIGIN_COLORS.cmp, match: function (s) { return snapOrigin(s) === "cmp"; } },
+    { key: "props", label: "⏳ Props", color: ORIGIN_COLORS.props, match: function (s) { return snapOrigin(s) === "props"; } }
   ];
   function renderManualVsAuto(list, store) {
     list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
@@ -8433,8 +8454,8 @@
     var filterNoteHtml = store.state.manualVsAutoFilter
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(MANUAL_VS_AUTO_GROUPS.filter(function (g) { return g.key === store.state.manualVsAutoFilter; })[0].label) + '</b> — reclique la ligne active pour l\'enlever.</div>'
       : '';
-    syncSnapToggleLabel(store.ids.manualVsAutoToggle, store.state.manualVsAutoCollapsed, "manuel / auto / comparaison");
-    el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.manualVsAutoCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Paris manuels, suivi des whales, comparaison</div>' +
+    syncSnapToggleLabel(store.ids.manualVsAutoToggle, store.state.manualVsAutoCollapsed, "les types de paris");
+    el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.manualVsAutoCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Par type : manuel, suivi des whales, comparaison, props</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — clique une ligne pour filtrer, une pastille de confiance pour affiner.</div>' +
       rows + filterNoteHtml + '</div></div>';
   }
@@ -8497,6 +8518,12 @@
     w.cmpPnl = cmpAgg.pnl;
     w.cmpStake = cmpAgg.stakeSum;
     w.cmpRoi = cmpItems.length ? cmpAgg.roi : null;
+    var propsItems = items.filter(function (s) { return snapOrigin(s) === "props"; });
+    var propsAgg = aggregateFlatPnl(propsItems, store);
+    w.propsCount = propsItems.length;
+    w.propsPnl = propsAgg.pnl;
+    w.propsStake = propsAgg.stakeSum;
+    w.propsRoi = propsItems.length ? propsAgg.roi : null;
     w.manualCount = manual.length;
     w.autoCount = auto.length;
     w.manualPnl = manualAgg.pnl;
@@ -8582,12 +8609,14 @@
     var mRoiTxt = w.manualRoi == null ? '' : ' · ROI ' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + '%';
     var aRoiTxt = w.autoRoi == null ? '' : ' · ROI ' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%';
     var cRoiTxt = w.cmpRoi == null ? '' : ' · ROI ' + (w.cmpRoi >= 0 ? '+' : '') + w.cmpRoi.toFixed(0) + '%';
+    var pRoiTxt = w.propsRoi == null ? '' : ' · ROI ' + (w.propsRoi >= 0 ? '+' : '') + w.propsRoi.toFixed(0) + '%';
     // #f472b6/#38bdf8 — same manuel/auto color convention as the console
     // avancée and Manuel vs suivi auto (MANUAL_VS_AUTO_GROUPS) above.
     return labeledBarsHtml([
       { label: '✍️', count: w.manualCount || 0, color: '#f472b6', title: '✍️ Manuel ' + (w.manualCount || 0) + mRoiTxt },
       { label: '🎯', count: w.autoCount || 0, color: '#38bdf8', title: '🎯 Suivi whales ' + (w.autoCount || 0) + aRoiTxt },
-      { label: '⚖️', count: w.cmpCount || 0, color: ORIGIN_COLORS.cmp, title: '⚖️ Comparaison ' + (w.cmpCount || 0) + cRoiTxt }
+      { label: '⚖️', count: w.cmpCount || 0, color: ORIGIN_COLORS.cmp, title: '⚖️ Comparaison ' + (w.cmpCount || 0) + cRoiTxt },
+      { label: '⏳', count: w.propsCount || 0, color: ORIGIN_COLORS.props, title: '⏳ Props ' + (w.propsCount || 0) + pRoiTxt }
     ]);
   }
   // Cells shared by both a normal week row and the bold totals row below —
@@ -8609,6 +8638,7 @@
       manualCount: 0, manualPnl: 0, manualStake: 0,
       autoCount: 0, autoPnl: 0, autoStake: 0,
       cmpCount: 0, cmpPnl: 0, cmpStake: 0,
+      propsCount: 0, propsPnl: 0, propsStake: 0,
       tierCounts: {}
     };
     weeks.forEach(function (w) {
@@ -8626,6 +8656,9 @@
       t.cmpCount += w.cmpCount || 0;
       t.cmpPnl += w.cmpPnl || 0;
       t.cmpStake += w.cmpStake || 0;
+      t.propsCount += w.propsCount || 0;
+      t.propsPnl += w.propsPnl || 0;
+      t.propsStake += w.propsStake || 0;
       CONFIDENCE_TIERS.forEach(function (tier) { if (w.tierCounts && w.tierCounts[tier]) t.tierCounts[tier] = (t.tierCounts[tier] || 0) + w.tierCounts[tier]; });
     });
     t.roi = t.stakeSum > 0 ? (t.pnl / t.stakeSum * 100) : null;
@@ -8634,6 +8667,7 @@
     t.manualRoi = t.manualStake > 0 ? (t.manualPnl / t.manualStake * 100) : null;
     t.autoRoi = t.autoStake > 0 ? (t.autoPnl / t.autoStake * 100) : null;
     t.cmpRoi = t.cmpStake > 0 ? (t.cmpPnl / t.cmpStake * 100) : null;
+    t.propsRoi = t.propsStake > 0 ? (t.propsPnl / t.propsStake * 100) : null;
     return t;
   }
   // Collapsed by default to just the Total row — the per-week breakdown is
@@ -8652,7 +8686,7 @@
         : '';
       return '<tr' + rowAttrs + '><td>' + esc(fmtDateShort(w.start)) + '</td>' + weeklyRowCellsHtml(w) + '</tr>';
     }).join("");
-    var theadHtml = '<thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Note moy.</th><th class="num">Gain</th><th>Manuel / Auto / Comp.</th><th>Confiance</th></tr></thead>';
+    var theadHtml = '<thead><tr><th>Semaine</th><th class="num">Paris</th><th class="num">ROI</th><th class="num">Note moy.</th><th class="num">Gain</th><th>Type</th><th>Confiance</th></tr></thead>';
     if (weeks.length <= 1) {
       return '<div class="table-scroll"><table class="weekly-data-table">' + theadHtml + '<tbody>' + rows + '</tbody></table></div>';
     }
@@ -9085,7 +9119,7 @@
       return '<div class="magnitude-group-row"><span class="tier-wr-badge tier-wr-badge-wide" style="color:' + g.color + ';border-color:' + g.color + ';background:color-mix(in srgb, ' + g.color + ' 14%, transparent)">' + esc(g.label) + '</span>' + bars + '</div>';
     }).join("");
     if (!rowsHtml) return "";
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Ampleur des résultats — manuel, suivi des whales, comparaison</div>' +
+    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Ampleur des résultats — par type de pari</div>' +
       '<div class="empty-note" style="padding:0 0 8px;">Les paris manuels vont-ils plus souvent aux extrêmes (++ / --) que le suivi automatique, ou l\'inverse ?</div>' +
       rowsHtml + '</div>';
   }
@@ -9346,6 +9380,7 @@
     groups.push({ label: "Paris manuels", items: items.filter(function (s) { return snapOrigin(s) === "manual"; }) });
     groups.push({ label: "Suivi auto", items: items.filter(function (s) { return snapOrigin(s) === "auto"; }) });
     groups.push({ label: "Comparaison", items: items.filter(function (s) { return snapOrigin(s) === "cmp"; }) });
+    groups.push({ label: "Props", items: items.filter(function (s) { return snapOrigin(s) === "props"; }) });
     NOTE_BANDS.forEach(function (b, i) { groups.push({ label: b.label, items: items.filter(function (s) { return typeof s.noteAtSnapshot === "number" && bucketIndex(NOTE_BANDS, s.noteAtSnapshot) === i; }) }); });
     function pos(v) { return (Math.max(20, Math.min(100, v)) - 20) / 80 * 100; }
     var body = groups.map(function (g) {
@@ -9787,6 +9822,7 @@
           manualCount: 0, manualPnl: 0, manualStake: 0,
           autoCount: 0, autoPnl: 0, autoStake: 0,
           cmpCount: 0, cmpPnl: 0, cmpStake: 0,
+          propsCount: 0, propsPnl: 0, propsStake: 0,
           tierCounts: {}
         };
         weeks.push(current);
@@ -9811,6 +9847,7 @@
       w.manualRoi = w.manualStake > 0 ? (w.manualPnl / w.manualStake * 100) : null;
       w.autoRoi = w.autoStake > 0 ? (w.autoPnl / w.autoStake * 100) : null;
       w.cmpRoi = w.cmpStake > 0 ? (w.cmpPnl / w.cmpStake * 100) : null;
+      w.propsRoi = w.propsStake > 0 ? (w.propsPnl / w.propsStake * 100) : null;
     });
     return weeks;
   }
@@ -10253,7 +10290,7 @@
     if (st.pnlChartConsoleOpen) return ["console avancée"];
     if (st.pnlChartTierFilter && st.pnlChartTierFilter.length) out.push("confiance " + st.pnlChartTierFilter.join("+"));
     var of = [].concat(st.pnlChartOriginFilter || []);
-    if (of.length) out.push(of.map(function (k) { return { manual: "manuels", auto: "auto", cmp: "comparaison" }[k]; }).join(" + "));
+    if (of.length) out.push(of.map(function (k) { return ORIGIN_FILTER_LABELS[k]; }).join(" + "));
     if (st.pnlChartOddsFilter) out.push("cote " + st.pnlChartOddsFilter[0] + "–" + st.pnlChartOddsFilter[1] + "¢");
     if (st.pnlChartNoteFilter != null) out.push("note " + st.pnlChartNoteFilter + "-" + (st.pnlChartNoteFilter + 1));
     if (st.pnlChartDays != null) out.push(st.pnlChartDays + " derniers jours");
@@ -10367,7 +10404,7 @@
     // lands in. Only populated in console mode (the only place isManual is
     // a first-class filter dimension); cheap enough to leave the branch in
     // rather than duplicate the loop.
-    var subStats = { manual: { count: 0, pnl: 0, stakeSum: 0 }, auto: { count: 0, pnl: 0, stakeSum: 0 }, cmp: { count: 0, pnl: 0, stakeSum: 0 } };
+    var subStats = { manual: { count: 0, pnl: 0, stakeSum: 0 }, auto: { count: 0, pnl: 0, stakeSum: 0 }, cmp: { count: 0, pnl: 0, stakeSum: 0 }, props: { count: 0, pnl: 0, stakeSum: 0 } };
     decidedForLoop.forEach(function (snap) {
       var stake = chartStakeFor(snap);
       var pnl = pricingFn(snap, stake);
@@ -10491,7 +10528,7 @@
       // 2026-10-10) — the same split the console avancée makes, as a plain filter.
       (store.originChips ? originChipsHtml(st) :
       '<label>Type <select id="' + idp + 'pnlChartOriginSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' +
-        [["", "Tout"], ["manual", "✍️ Manuel"], ["auto", "🎯 Auto"], ["cmp", "⚖️ Comparaison"]].map(function (o) {
+        [["", "Tout"], ["manual", "✍️ Manuel"], ["auto", "🎯 Auto"], ["cmp", "⚖️ Comparaison"], ["props", "⏳ Props"]].map(function (o) {
           return '<option value="' + o[0] + '"' + (st.pnlChartOriginFilter === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join("") + '</select></label>') +
       tierChipsHtml +
@@ -10507,13 +10544,14 @@
     // rather
     // than hiding them, since the console's own per-ligne filters take
     // over computing the curve while it's open.
-    var consoleToggleHtml = '<button type="button" id="' + idp + 'pnlChartConsoleBtn" class="pnl-chart-console-btn' + (st.pnlChartConsoleOpen ? ' active' : '') + '">⚙ Console avancée — Manuel, Auto, Comparaison, filtres détaillés' + (st.pnlChartConsoleOpen ? ' · fermer ▴' : ' ▾') + '</button>';
+    var consoleToggleHtml = '<button type="button" id="' + idp + 'pnlChartConsoleBtn" class="pnl-chart-console-btn' + (st.pnlChartConsoleOpen ? ' active' : '') + '">⚙ Console avancée — Manuel, Auto, Comparaison, Props, filtres détaillés' + (st.pnlChartConsoleOpen ? ' · fermer ▴' : ' ▾') + '</button>';
     var consolePanelHtml = "";
     if (st.pnlChartConsoleOpen) {
       consolePanelHtml = '<div class="compare-console">' +
         compareLineFiltersHtml("manual", "✍️ Manuel", st.pnlChartCompareFilters.manual, false, weekOptions, compareColStatsHtml("#f472b6", subStats.manual), "#f472b6") +
         compareLineFiltersHtml("auto", "🎯 Auto", st.pnlChartCompareFilters.auto, true, weekOptions, compareColStatsHtml("#38bdf8", subStats.auto), "#38bdf8") +
         compareLineFiltersHtml("cmp", "⚖️ Comparaison", st.pnlChartCompareFilters.cmp, false, weekOptions, compareColStatsHtml(ORIGIN_COLORS.cmp, subStats.cmp), ORIGIN_COLORS.cmp) +
+        compareLineFiltersHtml("props", "⏳ Props", st.pnlChartCompareFilters.props, false, weekOptions, compareColStatsHtml(ORIGIN_COLORS.props, subStats.props), ORIGIN_COLORS.props) +
       '</div>';
     }
     // Realized PnL / avg ROI for the exact subset of filters above —
@@ -11558,7 +11596,7 @@
     var activeFilterLabels = st.tierCardFilter.slice();
     if (st.snapDistCellFilter) activeFilterLabels.push((st.snapDistCellFilter.tier || "Tous") + " " + st.snapDistCellFilter.bracket[0] + "–" + st.snapDistCellFilter.bracket[1] + "¢");
     if (st.noteCardFilter != null) activeFilterLabels.push("note " + st.noteCardFilter + "-" + (st.noteCardFilter + 1));
-    if (st.manualVsAutoFilter != null) activeFilterLabels.push({ manual: "paris manuels", auto: "suivi auto", cmp: "comparaison" }[st.manualVsAutoFilter] || st.manualVsAutoFilter);
+    if (st.manualVsAutoFilter != null) activeFilterLabels.push({ manual: "paris manuels", auto: "suivi auto", cmp: "comparaison", props: "props" }[st.manualVsAutoFilter] || st.manualVsAutoFilter);
     if (st.traderCardFilter != null) activeFilterLabels.push("trader " + st.traderCardFilter);
     // The chart's own filters (Type, Confiance, Note, Période, Traders,
     // console) narrow the cards too, on request (2026-10-12). The chart
@@ -12878,7 +12916,7 @@
       var cx = x(i), cy = y(lineVals[i]);
       var strokeColor = p.origin ? ORIGIN_COLORS[p.origin] : p.isManual != null ? (p.isManual ? "#f472b6" : "#38bdf8") : (p.pointColor ? "var(--panel)" : null);
       var strokeAttr = strokeColor ? ' stroke="' + strokeColor + '" stroke-width="1.5"' : '';
-      var letterY = p.isManual && p.origin !== "cmp" ? cy - 3 : cy;
+      var letterY = p.isManual && p.origin !== "cmp" && p.origin !== "props" ? cy - 3 : cy;
       var letterHtml = hasTier
         ? '<text x="' + cx.toFixed(2) + '" y="' + letterY.toFixed(2) + '" font-size="6" font-weight="800" fill="#fff" text-anchor="middle" dominant-baseline="central" pointer-events="none">' + esc(p.confidence) + '</text>'
         : '';
@@ -12890,7 +12928,8 @@
         ' C' + (cx + 6).toFixed(2) + ',' + (cy - 6).toFixed(2) + ' ' + (cx + 7).toFixed(2) + ',' + (cy + 2).toFixed(2) + ' ' + cx.toFixed(2) + ',' + (cy + 11).toFixed(2) + ' Z';
       // Comparaison = losange, so the three categories read apart by shape too.
       var diamondD = 'M' + cx.toFixed(2) + ',' + (cy - 7).toFixed(2) + ' L' + (cx + 7).toFixed(2) + ',' + cy.toFixed(2) + ' L' + cx.toFixed(2) + ',' + (cy + 7).toFixed(2) + ' L' + (cx - 7).toFixed(2) + ',' + cy.toFixed(2) + ' Z';
-      var shapeHtml = p.origin === "cmp"
+      var squareHtml = '<rect x="' + (cx - 5.5).toFixed(2) + '" y="' + (cy - 5.5).toFixed(2) + '" width="11" height="11" rx="1.5" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></rect>';
+      var shapeHtml = p.origin === "props" ? squareHtml : p.origin === "cmp"
         ? '<path d="' + diamondD + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></path>'
         : p.isManual
         ? '<path d="' + pinD + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></path>'
@@ -14312,7 +14351,7 @@
         winningSide: null,
         savedAt: new Date().toISOString()
       };
-      if (originSel && originSel.value === "cmp") manualSnap.origin = "cmp";
+      if (originSel && originSel.value !== "manual") manualSnap.origin = originSel.value;
       Object.keys(flags || {}).forEach(function (k) { manualSnap[k] = flags[k]; });
       enqueueOp(store, { type: "add", id: manualSnap.id, snapshot: manualSnap });
       clear();
@@ -17106,7 +17145,7 @@
         rec.realPnl = null;
         rec.winningSide = b.finalPrice === 1 ? b.outcome : OTHER_SIDE_SENTINEL;
       }
-      var guess = (cmpHit || (src && snapOrigin(src) === "cmp")) ? "cmp" : (rich ? "auto" : "manual");
+      var guess = isLongTermSlug(b.evSlug || b.slug) ? "props" : (cmpHit || (src && snapOrigin(src) === "cmp")) ? "cmp" : (rich ? "auto" : "manual");
       rec.origin = (m && m.origin) || guess;
       if (cmpHit && !rich) rec.cmp = cmpHit.cmp;
       if (rich) {
