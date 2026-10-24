@@ -2415,7 +2415,9 @@
   .seb-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .seb-tbl th, .seb-tbl td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent); }
   .seb-tbl thead th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); }
-  .seb-tbl tbody th, .seb-tbl td.seb-q, .seb-list td:nth-child(3) { text-align: left; }
+  .seb-tbl tbody th, .seb-tbl td.seb-q, .seb-list td:nth-child(3), .seb-list td:nth-child(4), .seb-list thead th:nth-child(3), .seb-list thead th:nth-child(4) { text-align: left; }
+  .seb-type { font-weight: 700; font-size: 12px; }
+  .seb-more-row { display: flex; gap: 10px; flex-wrap: wrap; }
   .seb-tbl td.seb-q { white-space: normal; min-width: 220px; }
   .seb-tbl a { color: var(--text); text-decoration: none; }
   .seb-tbl a:hover { color: var(--accent); text-decoration: underline; }
@@ -16885,7 +16887,7 @@
   // the same thing and nothing needs storing. One row = one market × side.
   var SEB_ADDRESS = "0x062922dcc898a4935b2b87f5e9ea2360b31e0a16";
   var SEB_PROFILE_URL = "https://polymarket.com/profile/" + SEB_ADDRESS;
-  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40, sortKey: null, sortDir: "desc", stakeMode: "real" };
+  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40, sortKey: null, sortDir: "desc", stakeMode: "real", showDone: false };
   // Mise (on request, 2026-10-23): "real" = your actual stake and PnL;
   // "flat" = 1 000 $ on every bet, keeping what you really did (sold early
   // included — your real PnL scaled to 1 000 $); "hold" = 1 000 $ held to
@@ -16897,6 +16899,7 @@
   var SEB_COLS = [
     { key: "date", label: "Réglé le", val: function (b) { return b.doneAt || null; } },
     { key: "title", label: "Marché", text: true, val: function (b) { return (b.title || "").toLowerCase(); } },
+    { key: "type", label: "Type", text: true, val: function (b) { return ORIGIN_LABELS[b._origin] || ""; } },
     { key: "outcome", label: "Camp", text: true, val: function (b) { return (b.outcome || "").toLowerCase(); } },
     { key: "avg", label: "Prix moyen", val: function (b) { return b.avg; } },
     { key: "stake", label: "Misé", val: function (b) { return b.stake; } },
@@ -17291,15 +17294,24 @@
     var byMonth = Object.keys(months).sort().reverse().map(function (k) {
       return { label: new Date(k + "-15").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }), st: sebStats(months[k]) };
     });
+    // Each bet's category, from the same records the cards use (your Type
+    // correction, else the automatic guess) — for the Type column.
+    var recByKey = {};
+    sebRecords(list).forEach(function (rec) { recByKey[rec.sebKey] = rec; });
+    list.forEach(function (b) { b._origin = recByKey[b.key] ? snapOrigin(recByKey[b.key]) : "manual"; });
+    // Bets still running are always listed; finished ones only once
+    // "Voir les paris terminés" is clicked (on request, 2026-10-24).
     var sorted = sebSorted(open.concat(done));
-    var rowsList = sorted || done.slice().reverse();
-    var shownRows = sorted ? sorted.slice(0, sebState.limit) : open.concat(rowsList.slice(0, sebState.limit));
+    var openRows = sorted ? sorted.filter(function (b) { return b.status === "open"; }) : open;
+    var rowsList = sorted ? sorted.filter(function (b) { return b.status !== "open"; }) : done.slice().reverse();
+    var shownRows = openRows.concat(sebState.showDone ? rowsList.slice(0, sebState.limit) : []);
     var rows = shownRows.map(function (b) {
       var url = b.slug ? "https://polymarket.com/event/" + encodeURIComponent(b.slug) : "";
       var res = b.status === "open" ? '<td class="seb-dim">En cours</td><td class="seb-dim">—</td>'
         : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td><td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
       return '<tr data-seb-key="' + esc(b.key) + '" class="' + (b.status === "open" ? 'seb-open' : '') + '"><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
         '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + (sebFromSite(b) ? ' <span class="seb-tag" title="Ce pari est aussi dans Saison 26/27 ou Auto >10k">📌</span>' : '') + '</td>' +
+        '<td class="seb-nowrap"><span class="seb-type" style="color:' + ORIGIN_COLORS[b._origin] + '">' + ORIGIN_ICONS[b._origin] + ' ' + ORIGIN_LABELS[b._origin] + '</span></td>' +
         '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
     }).join("");
     if (extra) extra.innerHTML =
@@ -17309,7 +17321,10 @@
           var active = sebState.sortKey === c.key;
           return '<th class="sortable' + (active ? ' sorted' : '') + '" data-seb-sort="' + c.key + '" title="Trier par ' + esc(c.label.toLowerCase()) + '">' + esc(c.label) + '<span class="sort-arrow">' + (active ? (sebState.sortDir === "asc" ? "▲" : "▼") : "↕") + '</span></th>';
         }).join("") + '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
-        (rowsList.length > sebState.limit ? '<button type="button" class="seb-btn seb-more" data-seb-more="1">Voir 40 de plus (' + (rowsList.length - sebState.limit) + ' restants)</button>' : '') +
+        '<div class="seb-more-row">' +
+          (rowsList.length ? '<button type="button" class="seb-btn seb-more" data-seb-showdone="1">' + (sebState.showDone ? '▴ Masquer les paris terminés' : '▸ Voir les ' + rowsList.length + ' paris terminés') + '</button>' : '') +
+          (sebState.showDone && rowsList.length > sebState.limit ? '<button type="button" class="seb-btn seb-more" data-seb-more="1">Voir 40 de plus (' + (rowsList.length - sebState.limit) + ' restants)</button>' : '') +
+        '</div>' +
       '</div>';
   }
   function sebOpen() {
@@ -17318,8 +17333,9 @@
   document.addEventListener("click", function (e) {
     var root = document.getElementById("tab-seb");
     if (!root || !e.target.closest || !root.contains(e.target)) return;
-    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort], [data-seb-stake]");
+    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort], [data-seb-stake], [data-seb-showdone]");
     if (!el) return;
+    if (el.hasAttribute("data-seb-showdone")) { sebState.showDone = !sebState.showDone; sebState.limit = 40; renderSeb(); return; }
     if (el.hasAttribute("data-seb-stake")) { sebState.stakeMode = el.getAttribute("data-seb-stake"); renderSeb(); return; }
     if (el.hasAttribute("data-seb-sort")) {
       var sk = el.getAttribute("data-seb-sort");
