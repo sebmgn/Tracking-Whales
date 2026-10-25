@@ -2402,8 +2402,10 @@
   .seb-seg button { font: inherit; font-size: 12px; font-weight: 700; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text-dim); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
   .seb-seg button.active { background: var(--text); border-color: var(--text); color: var(--panel); }
   .cmp-filters-bar { margin: 0 0 10px; }
-  .cmp-wm-cell { cursor: help; }
-  .cmp-wm-cell a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+  .cmp-wm-link { display: block; color: inherit; text-decoration: none; border-radius: 6px; margin: -4px -6px; padding: 4px 6px; }
+  .cmp-wm-link:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .cmp-wm-link:hover .market-sub { text-decoration: underline; }
+  a.cmp-wm-inline { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
   .seb-list tbody tr[data-seb-key] { cursor: pointer; }
   .seb-list tbody tr[data-seb-key]:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
   .seb-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 9999; background: var(--panel); color: var(--text); border: 1px solid var(--panel-border); border-radius: 8px; padding: 8px 14px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
@@ -11341,7 +11343,7 @@
       statsHtml + '<span class="vt-badge-group">' + originBadgeHtml(snap) + '</span></div>' +
       (cmp ? '<div class="snap-cmp-line"><span class="snap-cmp-delta">Δ ROI +' + esc(String(cmp.delta)) + ' %</span>' +
         '<span>Polymarket <b>+' + esc(Number(cmp.roiPoly).toFixed(1)) + ' %</b> (' + esc(fmtCents(cmp.polyPrice)) + ')</span>' +
-        '<span' + (cmp.wmSrc ? ' title="' + esc("Source : " + (cmp.wmSrc.site || "winamax.es") + (cmp.wmSrc.match ? "\nMatch : " + cmp.wmSrc.match : "") + (cmp.wmSrc.bet ? "\nPari : " + cmp.wmSrc.bet : "")) + '"' : '') + '>Winamax' + (cmp.wmSrc ? ' .es' : '') + ' <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')</span>' +
+        (cmp.wmSrc && cmp.wmSrc.url ? '<a class="cmp-wm-inline" href="' + esc(cmp.wmSrc.url) + '" target="_blank" rel="noopener"' : '<span') + (cmp.wmSrc ? ' title="' + esc("Source : " + (cmp.wmSrc.site || "winamax.es") + (cmp.wmSrc.match ? "\nMatch : " + cmp.wmSrc.match : "") + (cmp.wmSrc.bet ? "\nPari : " + cmp.wmSrc.bet : "")) + '"' : '') + '>Winamax' + (cmp.wmSrc ? ' .es' : '') + ' <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')' + (cmp.wmSrc && cmp.wmSrc.url ? '</a>' : '</span>') +
         (cmp.comp ? '<span>' + esc(cmp.comp) + '</span>' : '') + '</div>' : '');
     var eventDateHtml = snap.eventDate
       ? '<div class="vt-bottom-row"><span class="vt-bottom-meta"></span><span class="vt-exact-time">' + esc(snapEventLabel(snap)) + '</span></div>'
@@ -15157,7 +15159,7 @@
       (w.match ? "\nMatch sur Winamax : " + w.match : "") +
       (w.bet ? "\nPari Winamax : " + w.bet : "") +
       "\nCote " + Number(r.winamaxOdd).toFixed(2) + (r._checkedAt ? " (revérifiée à " + new Date(r._checkedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + ")" : "") +
-      "\nClic sur la cote : ouvre ce match sur winamax.es";
+      "\nClic : ouvre ce match sur " + (w.site || "winamax.es");
   }
   function cmpRowHtml(r, pinned, picked) {
     var url = "https://polymarket.com/fr/event/" + encodeURIComponent(r.slug);
@@ -15166,7 +15168,7 @@
       '<td class="cmp-date-cell">' + esc(cmpKickoffLabel(r.start)) + cmpCheckStatusHtml(r) + '</td>' +
       '<td class="cmp-market-cell">' + esc(r.market) + '</td>' +
       '<td class="num cmp-poly-cell" title="' + esc(cmpPriceTitle(r)) + '"><b>+' + r.roiPoly.toFixed(1) + ' %</b><div class="market-sub">' + esc(fmtCents(r.polyPrice)) + ' frais incl.</div></td>' +
-      '<td class="num cmp-wm-cell" title="' + esc(cmpWmTitle(r)) + '"><b>+' + r.roiWinamax.toFixed(1) + ' %</b><div class="market-sub"><a href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener">cote ' + r.winamaxOdd.toFixed(2) + ' ↗</a></div></td>' +
+      '<td class="num cmp-wm-cell"><a class="cmp-wm-link" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(r)) + '"><b>+' + r.roiWinamax.toFixed(1) + ' %</b><div class="market-sub">cote ' + r.winamaxOdd.toFixed(2) + ' ↗</div></a></td>' +
       '<td class="num"><span class="cmp-delta" title="Écart relatif entre les deux ROI">+' + r.delta + ' %</span></td>' +
       '<td class="num">' + cmpNoteHtml(r) + '</td>' +
       '<td class="cmp-actions-cell"><button type="button" class="cmp-pin-btn cmp-check-btn" data-cmp-id="' + esc(r.id) + '" title="Revérifier en direct la cote Winamax et le prix Polymarket (≈ 3 s)">🔄</button>' +
@@ -15278,14 +15280,14 @@
           var r = a.row || {};
           var cur = nowById[a.id];
           var nowCell;
-          if (cur) nowCell = '<span class="cmp-delta">+' + cur.delta + ' %</span><div class="market-sub">Poly +' + cur.roiPoly.toFixed(1) + ' % · Wina +' + cur.roiWinamax.toFixed(1) + ' %</div>';
+          if (cur) nowCell = '<span class="cmp-delta">+' + cur.delta + ' %</span><div class="market-sub">Poly +' + cur.roiPoly.toFixed(1) + ' % · <a class="cmp-wm-inline" href="' + esc(cmpWmUrl(cur)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(cur)) + '">Wina +' + cur.roiWinamax.toFixed(1) + ' %</a></div>';
           else if (r.start && r.start <= nowSec) nowCell = '<span class="cmp-alert-now-gone">match commencé</span>';
           else nowCell = '<span class="cmp-alert-now-gone">plus dans la liste (delta ≤ 30 % ou cotes changées)</span>';
           var d = new Date(a.sentAt);
           return '<tr><td class="cmp-date-cell">' + esc(d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) + '</td>' +
             '<td class="cmp-match-cell">' + esc(r.match || "—") + (r.comp ? '<div class="market-sub">' + esc(r.comp) + '</div>' : '') + '</td>' +
             '<td class="cmp-market-cell">' + esc(r.market || "—") + '</td>' +
-            '<td class="num"><b>+' + esc(String(r.delta)) + ' %</b>' + (r.roiPoly != null ? '<div class="market-sub">Poly +' + Number(r.roiPoly).toFixed(1) + ' % · Wina +' + Number(r.roiWinamax).toFixed(1) + ' %</div>' : '') + '</td>' +
+            '<td class="num"><b>+' + esc(String(r.delta)) + ' %</b>' + (r.roiPoly != null ? '<div class="market-sub">Poly +' + Number(r.roiPoly).toFixed(1) + ' % · ' + (r.wmId || r.wmSrc ? '<a class="cmp-wm-inline" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener">Wina +' + Number(r.roiWinamax).toFixed(1) + ' %</a>' : 'Wina +' + Number(r.roiWinamax).toFixed(1) + ' %') + '</div>' : '') + '</td>' +
             '<td class="num">' + nowCell + '</td></tr>';
         }).join("") + '</tbody></table></div>';
     }
