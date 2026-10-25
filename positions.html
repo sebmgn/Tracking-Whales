@@ -2430,9 +2430,11 @@
   .seb-tl-axis { stroke: var(--panel-border); stroke-width: 2; }
   .seb-tl-tick { stroke: var(--panel-border); stroke-width: 1.5; }
   .seb-tl-lbl { font-size: 11px; fill: var(--text-dim); text-anchor: middle; }
-  .seb-tl-dot { fill-opacity: .8; stroke: var(--panel); stroke-width: 1.5; }
-  .seb-tl-dot.up { fill: #14b8a6; }
-  .seb-tl-dot.down { fill: var(--red); }
+  .seb-tl-dot { fill: #14b8a6; fill-opacity: .75; stroke: var(--panel); stroke-width: 1.5; cursor: help; }
+  .seb-tl-dot:hover { fill-opacity: 1; }
+  .seb-props-win b { font-size: 15px; }
+  .seb-props-win div { font-size: 11px; font-weight: 600; opacity: .8; }
+  .seb-props-q a { font-weight: 700; }
   .seb-props-tbl td, .seb-props-tbl th { vertical-align: middle; }
   .seb-props-tbl td .seb-dim { font-size: 11px; }
   .seb-props-side { color: var(--text-dim); font-weight: 700; white-space: nowrap; }
@@ -17474,6 +17476,26 @@
     if (d < 60) return "dans " + d + " j";
     return "dans " + Math.round(d / 30.4) + " mois";
   }
+  // Short French label for a long-term bet (on request, 2026-10-25):
+  // "Will Tottenham finish in the top 4 of … ? → No" → "Tottenham pas top 4".
+  // Unknown phrasings fall back to the title + side.
+  function sebPropLabel(b) {
+    var t = String(b.title || "").replace(/\?$/, "").trim(), o = String(b.outcome || "");
+    var yes = /^yes$/i.test(o), no = /^no$/i.test(o), m;
+    if (!yes && !no) return t + " → " + o;
+    var neg = function (pos, negTxt) { return yes ? pos : negTxt; };
+    if ((m = t.match(/^Will (.+?) finish in the top (\d+) of/i))) return m[1] + neg(" top " + m[2], " pas top " + m[2]);
+    if ((m = t.match(/^Will (.+?) (?:be relegated|get relegated)/i))) return m[1] + neg(" relégué", " pas relégué");
+    if ((m = t.match(/^Will (.+?) qualify for the .*?(Champions League|Europa League|Conference League)/i))) {
+      var c = { "champions league": "LdC", "europa league": "Europa League", "conference league": "Conference League" }[m[2].toLowerCase()];
+      return m[1] + neg(" qualifié " + c, " pas qualifié " + c);
+    }
+    if ((m = t.match(/^Will (.+?) record the most clean sheets/i))) return m[1].replace(/\s*\(.*?\)/, "") + neg(" n°1 des clean sheets", " pas n°1 des clean sheets");
+    if ((m = t.match(/^Will (.+?) win the (\d{4}) French presidential election/i))) return m[1] + neg(" élu président " + m[2], " pas élu président " + m[2]);
+    if ((m = t.match(/^Will (.+?) win the (.+)$/i))) return m[1] + neg(" gagne ", " ne gagne pas ") + m[2].replace(/^\d{4}(-\d{2})?\s+/, "");
+    if ((m = t.match(/^Will (.+)$/i))) return (yes ? "" : "Pas : ") + m[1];
+    return t + " → " + o;
+  }
   function sebPropsHtml(props) {
     var open = props.filter(function (b) { return b.status === "open"; }).sort(function (a, b) { return (sebDueMs(a) || 9e15) - (sebDueMs(b) || 9e15); });
     var done = props.filter(function (b) { return b.status !== "open"; }).sort(function (a, b) { return (b.doneAt || 0) - (a.doneAt || 0); });
@@ -17505,8 +17527,7 @@
       var dots = open.map(function (b) {
         var due = sebDueMs(b); if (!due) return "";
         var r = 4 + 7 * Math.sqrt(b.stake / maxStake);
-        var cls = b.pnl >= 0 ? "seb-tl-dot up" : "seb-tl-dot down";
-        return '<circle cx="' + x(due).toFixed(1) + '" cy="20" r="' + r.toFixed(1) + '" class="' + cls + '"><title>' + esc(b.title + " — " + b.outcome + "\n" + new Date(due).toLocaleDateString("fr-FR") + " · misé " + sebEur(b.stake) + " · si gagné " + sebEur(b.stake * (1 / b.avg - 1), true)) + '</title></circle>';
+        return '<circle cx="' + x(due).toFixed(1) + '" cy="20" r="' + r.toFixed(1) + '" class="seb-tl-dot"><title>' + esc(sebPropLabel(b) + " — ROI si gagné " + sebPct((1 / b.avg - 1) * 100) + "\n" + new Date(due).toLocaleDateString("fr-FR") + " · misé " + sebEur(b.stake) + " · gain si gagné " + sebEur(b.stake * (1 / b.avg - 1), true)) + '</title></circle>';
       }).join("");
       tl = '<svg class="seb-tl" viewBox="0 0 ' + W + ' 56" role="img" aria-label="Dates de résolution"><line x1="20" x2="' + (W - 20) + '" y1="33" y2="33" class="seb-tl-axis"/>' + ticks +
         '<text x="20" y="50" class="seb-tl-lbl" text-anchor="start">auj.</text>' + dots + '</svg>';
@@ -17516,20 +17537,19 @@
       var due = sebDueMs(b);
       var winGain = b.avg > 0 ? b.stake * (1 / b.avg - 1) : 0;
       var winRoi = b.avg > 0 ? (1 / b.avg - 1) * 100 : 0;
-      var cur = b.finalPrice;
       var dueCell = due ? '<b>' + esc(new Date(due).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })) + '</b><div class="seb-dim">' + (b.status === "open" ? esc(sebInLabel(due)) : "réglé") + '</div>' : '<span class="seb-dim">—</span>';
       var tail = b.status === "open"
-        ? '<td class="pnl-pos" title="' + esc(fmtUSDSigned(winGain)) + '"><b>' + sebEur(winGain, true) + '</b><div class="seb-dim">' + sebPct(winRoi) + '</div></td>' +
+        ? '<td class="pnl-pos seb-props-win" title="' + esc(fmtUSDSigned(winGain)) + '"><b>' + sebPct(winRoi) + '</b><div>' + sebEur(winGain, true) + '</div></td>' +
           '<td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '" title="' + esc(fmtUSDSigned(b.pnl)) + '">' + sebEur(b.pnl, true) + '<div class="seb-dim">' + sebPct(b.stake ? b.pnl / b.stake * 100 : 0) + '</div></td>'
         : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '" colspan="2" title="' + esc(fmtUSDSigned(b.pnl)) + '"><b>' + (b.pnl > 0 ? "Gagné " : "Perdu ") + sebEur(b.pnl, true) + '</b> <span class="seb-dim">' + sebPct(b.stake ? b.pnl / b.stake * 100 : 0) + '</span></td>';
       return '<tr' + (b.status === "open" ? '' : ' class="seb-props-done"') + '>' +
         '<td class="seb-nowrap">' + dueCell + '</td>' +
-        '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + ' <span class="seb-props-side">→ ' + esc(b.outcome) + '</span></td>' +
+        '<td class="seb-q seb-props-q" title="' + esc(b.title + " → " + b.outcome) + '">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(sebPropLabel(b)) + '</a>' : esc(sebPropLabel(b))) + '</td>' +
         '<td title="' + esc(fmtUSD(b.stake)) + '">' + sebEur(b.stake) + '</td>' +
-        '<td class="seb-nowrap">' + Math.round(b.avg * 1000) / 10 + '¢' + (b.status === "open" && cur != null ? ' → <b class="' + (cur >= b.avg ? "pnl-pos" : "pnl-neg") + '">' + Math.round(cur * 1000) / 10 + '¢</b>' : '') + '</td>' +
+        '<td class="seb-nowrap">' + Math.round(b.avg * 1000) / 10 + '¢</td>' +
         tail + '</tr>';
     };
-    var head = '<tr><th>Résolution</th><th>Pari</th><th>Misé</th><th>Prix entrée → actuel</th><th>Si gagné</th><th>Valeur latente</th></tr>';
+    var head = '<tr><th>Résolution</th><th>Pari</th><th>Misé</th><th>Prix d\'entrée</th><th>Si gagné</th><th>Valeur latente</th></tr>';
     return '<div class="chart-box seb-box seb-props">' +
       '<div class="tier-wr-title">⏳ Props — paris long terme</div>' + tiles + tl +
       (open.length ? '<div class="seb-scroll"><table class="seb-tbl seb-props-tbl"><thead>' + head + '</thead><tbody>' + open.map(row).join("") + '</tbody></table></div>' : '<div class="empty-note">Aucun prop en cours.</div>') +
