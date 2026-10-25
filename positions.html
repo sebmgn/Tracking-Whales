@@ -3117,8 +3117,8 @@
   </div>
 
   <div class="tab-panel" id="tab-comparateur">
-    <h2 class="section-title">⚖️ Comparateur Polymarket / Winamax <span class="count-pill" id="cmpCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que Winamax (cotes lues sur <b>winamax.es</b>, le site espagnol — survole une cote Winamax pour voir le match et le pari exacts, clique-la pour l'ouvrir) — en football sur 30 championnats (Ligue 1, Premier League, LaLiga, Serie A, Bundesliga, Ligue des champions, Europa League, Conference League, Liga Portugal, Eredivisie, Brasileirão, Primera División argentine, Championship, Süper Lig, MLS, Liga MX, Saudi Pro League, Ligue 2, 2. Bundesliga, LaLiga 2, Serie B, Jupiler Pro League, Scottish Premiership, Bundesliga autrichienne, Super League grecque, SuperLiga serbe, Primera División uruguayenne et paraguayenne, K League 1, Chinese Super League), ainsi qu'en 🏀 NBA, 🏈 NFL et football universitaire américain (vainqueur, handicaps, total de points) et 🎾 tennis ATP/WTA/Challenger (vainqueur, handicaps en sets et en jeux, total de jeux et de sets), sur les 7 prochains jours. <b>ROI Polymarket = ce que rapporterait vraiment une mise de 1 000 $</b> : achat simulé dans le carnet d'ordres réel (prix après prix) et frais Polymarket inclus — une ligne que le carnet ne peut pas remplir pour 1 000 $ est exclue. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 100 % des deux côtés, delta de ROI &gt; 30 % (écart relatif : 12 % contre 6 % = +100 %), sans corners ni paris mi-temps. Calculé sur le serveur (AWS) toutes les 15 min, et toutes les 5 min environ tant que cette page est ouverte — les cotes peuvent bouger entre deux calculs : 🔄 sur une ligne la revérifie en direct (quelques secondes), et 📌 / ✋ la revérifient avant d'enregistrer. Si Winamax propose le même pari sous deux formes (handicap asiatique / « gagne par au moins 2 buts », « garde sa cage inviolée »), la meilleure cote est retenue. 📧 Email d'alerte dès qu'une ligne dépasse +100 % de delta. 📌 ajoute le pari à Saison 26/27, ✋ à Choix comparateur. Aucun vrai ordre n'est jamais passé.</div>
+    <h2 class="section-title">⚖️ Comparateur Polymarket / bookmakers <span class="count-pill" id="cmpCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Paris où Polymarket paie nettement mieux que les bookmakers — <b>ROI bookmaker = la meilleure cote trouvée</b> entre Winamax (<b>winamax.es</b>, le site espagnol) et Unibet (<b>unibet.co.uk</b>, le site international — unibet.fr n'est pas lisible) ; survole-la pour voir les cotes de chacun, le match et le pari exacts, clique-la pour ouvrir le match chez ce bookmaker — en football sur 30 championnats (Ligue 1, Premier League, LaLiga, Serie A, Bundesliga, Ligue des champions, Europa League, Conference League, Liga Portugal, Eredivisie, Brasileirão, Primera División argentine, Championship, Süper Lig, MLS, Liga MX, Saudi Pro League, Ligue 2, 2. Bundesliga, LaLiga 2, Serie B, Jupiler Pro League, Scottish Premiership, Bundesliga autrichienne, Super League grecque, SuperLiga serbe, Primera División uruguayenne et paraguayenne, K League 1, Chinese Super League), ainsi qu'en 🏀 NBA, 🏈 NFL et football universitaire américain (vainqueur, handicaps, total de points) et 🎾 tennis ATP/WTA/Challenger (vainqueur, handicaps en sets et en jeux, total de jeux et de sets), sur les 7 prochains jours. <b>ROI Polymarket = ce que rapporterait vraiment une mise de 1 000 $</b> : achat simulé dans le carnet d'ordres réel (prix après prix) et frais Polymarket inclus — une ligne que le carnet ne peut pas remplir pour 1 000 $ est exclue. Règles : ROI Polymarket ≥ 5 %, ROI ≤ 100 % des deux côtés, delta de ROI &gt; 30 % (écart relatif : 12 % contre 6 % = +100 %), sans corners ni paris mi-temps. Calculé sur le serveur (AWS) toutes les 15 min, et toutes les 5 min environ tant que cette page est ouverte — les cotes peuvent bouger entre deux calculs : 🔄 sur une ligne la revérifie en direct (quelques secondes), et 📌 / ✋ la revérifient avant d'enregistrer. Si Winamax propose le même pari sous deux formes (handicap asiatique / « gagne par au moins 2 buts », « garde sa cage inviolée »), la meilleure cote est retenue. 📧 Email d'alerte dès qu'une ligne dépasse +100 % de delta. 📌 ajoute le pari à Saison 26/27, ✋ à Choix comparateur. Aucun vrai ordre n'est jamais passé.</div>
     <div class="cmp-status">
       <span id="cmpUpdated">Chargement…</span>
       <button type="button" id="cmpRefreshBtn" class="snap-sync-link" title="Relancer le calcul sur le serveur (~1 min)">🔄 Actualiser</button>
@@ -8181,6 +8181,7 @@
         id: row.id, delta: row.delta, roiPoly: row.roiPoly, roiWinamax: row.roiWinamax,
         polyPrice: row.polyPrice, winamaxOdd: row.winamaxOdd, comp: row.comp, key: row.key,
         slug: row.slug, polyQuestion: row.question, cid: row.cid, oi: row.oi, marketSlug: row.marketSlug,
+        book: row.book || "Winamax", odds: row.odds || null,
         wmSrc: row.wmSrc || (row.wmId ? { site: "winamax.es", url: "https://www.winamax.es/apuestas-deportivas/match/" + row.wmId } : null),
         computedAt: generatedAt || null
       }
@@ -11343,7 +11344,7 @@
       statsHtml + '<span class="vt-badge-group">' + originBadgeHtml(snap) + '</span></div>' +
       (cmp ? '<div class="snap-cmp-line"><span class="snap-cmp-delta">Δ ROI +' + esc(String(cmp.delta)) + ' %</span>' +
         '<span>Polymarket <b>+' + esc(Number(cmp.roiPoly).toFixed(1)) + ' %</b> (' + esc(fmtCents(cmp.polyPrice)) + ')</span>' +
-        (cmp.wmSrc && cmp.wmSrc.url ? '<a class="cmp-wm-inline" href="' + esc(cmp.wmSrc.url) + '" target="_blank" rel="noopener"' : '<span') + (cmp.wmSrc ? ' title="' + esc("Source : " + (cmp.wmSrc.site || "winamax.es") + (cmp.wmSrc.match ? "\nMatch : " + cmp.wmSrc.match : "") + (cmp.wmSrc.bet ? "\nPari : " + cmp.wmSrc.bet : "")) + '"' : '') + '>Winamax' + (cmp.wmSrc ? ' .es' : '') + ' <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')' + (cmp.wmSrc && cmp.wmSrc.url ? '</a>' : '</span>') +
+        (cmp.wmSrc && cmp.wmSrc.url ? '<a class="cmp-wm-inline" href="' + esc(cmp.wmSrc.url) + '" target="_blank" rel="noopener"' : '<span') + (cmp.wmSrc ? ' title="' + esc("Source : " + (cmp.wmSrc.site || "winamax.es") + (cmp.odds ? "\nCotes trouvées : " + Object.keys(cmp.odds).map(function (b) { return b + " " + Number(cmp.odds[b]).toFixed(2); }).join(" · ") : "") + (cmp.wmSrc.match ? "\nMatch : " + cmp.wmSrc.match : "") + (cmp.wmSrc.bet ? "\nPari : " + cmp.wmSrc.bet : "")) + '"' : '') + '>' + esc(cmp.book || "Winamax") + (cmp.wmSrc && cmp.wmSrc.site ? ' (' + esc(cmp.wmSrc.site.replace(/^[a-z]+/, "")) + ')' : '') + ' <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')' + (cmp.wmSrc && cmp.wmSrc.url ? '</a>' : '</span>') +
         (cmp.comp ? '<span>' + esc(cmp.comp) + '</span>' : '') + '</div>' : '');
     var eventDateHtml = snap.eventDate
       ? '<div class="vt-bottom-row"><span class="vt-bottom-meta"></span><span class="vt-exact-time">' + esc(snapEventLabel(snap)) + '</span></div>'
@@ -15067,7 +15068,7 @@
     { key: "start", label: "Date", get: function (r) { return r.start; } },
     { key: "market", label: "Pari", get: function (r) { return r.market; } },
     { key: "roiPoly", label: "ROI Polymarket (1 000 $)", num: true, get: function (r) { return r.roiPoly; } },
-    { key: "roiWinamax", label: "ROI Winamax (.es)", num: true, get: function (r) { return r.roiWinamax; } },
+    { key: "roiWinamax", label: "ROI bookmaker (meilleure cote)", num: true, get: function (r) { return r.roiWinamax; } },
     { key: "delta", label: "Delta", num: true, get: function (r) { return r.delta; } },
     { key: "note", label: "Note", num: true, get: function (r) { return cmpNote(r); } }
   ];
@@ -15126,7 +15127,7 @@
       if (!res.ok) throw new Error(j && j.error || ("HTTP " + res.status));
       if (j.gone) { row._gone = j.reason || "plus disponible"; }
       else {
-        ["winamaxOdd", "roiWinamax", "polyPrice", "avgPrice", "roiPoly", "delta", "wmSrc"].forEach(function (k) { if (j[k] != null) row[k] = j[k]; });
+        ["winamaxOdd", "roiWinamax", "polyPrice", "avgPrice", "roiPoly", "delta", "wmSrc", "book", "odds"].forEach(function (k) { if (j[k] != null) row[k] = j[k]; });
         row._gone = null;
       }
       row._checkedAt = j.checkedAt || new Date().toISOString();
@@ -15142,23 +15143,28 @@
     if (!row) return null;
     if (row._gone) return confirm("Attention : " + row._gone + ".\nEnregistrer quand même avec les dernières valeurs connues ?") ? row : null;
     if (!(row.delta > 30 && row.roiPoly >= 5)) {
-      return confirm("Les cotes ont bougé : maintenant Polymarket +" + row.roiPoly.toFixed(1) + " % contre Winamax +" + row.roiWinamax.toFixed(1) + " % (delta +" + row.delta + " %).\nEnregistrer quand même ?") ? row : null;
+      return confirm("Les cotes ont bougé : maintenant Polymarket +" + row.roiPoly.toFixed(1) + " % contre " + (row.book || "Winamax") + " +" + row.roiWinamax.toFixed(1) + " % (delta +" + row.delta + " %).\nEnregistrer quand même ?") ? row : null;
     }
     return row;
   }
-  // Where the Winamax odd was read (on request, 2026-10-25): always
-  // winamax.es; the comparator sends the match as Winamax names it and the
-  // exact bet → outcome (rows from before that only have the match id).
+  // Where the bookmaker odd was read (on request, 2026-10-25): the best of
+  // Winamax (winamax.es) and Unibet (unibet.co.uk) — r.book, r.odds per
+  // bookmaker, r.wmSrc = the winner's site / match page / exact bet → outcome
+  // (rows from before that only have the Winamax match id).
   function cmpWmUrl(r) {
     if (r.wmSrc && r.wmSrc.url) return r.wmSrc.url;
     return r.wmId ? "https://www.winamax.es/apuestas-deportivas/match/" + r.wmId : "https://www.winamax.es/apuestas-deportivas";
   }
+  var CMP_BOOK_SITES = { Winamax: "winamax.es", Unibet: "unibet.co.uk" };
+  function cmpBookName(r) { return r.book || "Winamax"; }
   function cmpWmTitle(r) {
-    var w = r.wmSrc || {};
-    return "Source : " + (w.site || "winamax.es") + " (Espagne)" +
-      (w.match ? "\nMatch sur Winamax : " + w.match : "") +
-      (w.bet ? "\nPari Winamax : " + w.bet : "") +
-      "\nCote " + Number(r.winamaxOdd).toFixed(2) + (r._checkedAt ? " (revérifiée à " + new Date(r._checkedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + ")" : "") +
+    var w = r.wmSrc || {}, book = cmpBookName(r);
+    var all = r.odds ? Object.keys(r.odds).sort(function (a, b) { return r.odds[b] - r.odds[a]; }).map(function (b) { return b + " " + Number(r.odds[b]).toFixed(2); }).join(" · ") : "";
+    return "Meilleure cote : " + book + " (" + (w.site || CMP_BOOK_SITES[book] || "") + ")" +
+      (all ? "\nCotes trouvées : " + all : "") +
+      (w.match ? "\nMatch chez " + book + " : " + w.match : "") +
+      (w.bet ? "\nPari " + book + " : " + w.bet : "") +
+      "\nCote retenue " + Number(r.winamaxOdd).toFixed(2) + (r._checkedAt ? " (revérifiée à " + new Date(r._checkedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + ")" : "") +
       "\nClic : ouvre ce match sur " + (w.site || "winamax.es");
   }
   function cmpRowHtml(r, pinned, picked) {
@@ -15168,10 +15174,10 @@
       '<td class="cmp-date-cell">' + esc(cmpKickoffLabel(r.start)) + cmpCheckStatusHtml(r) + '</td>' +
       '<td class="cmp-market-cell">' + esc(r.market) + '</td>' +
       '<td class="num cmp-poly-cell" title="' + esc(cmpPriceTitle(r)) + '"><b>+' + r.roiPoly.toFixed(1) + ' %</b><div class="market-sub">' + esc(fmtCents(r.polyPrice)) + ' frais incl.</div></td>' +
-      '<td class="num cmp-wm-cell"><a class="cmp-wm-link" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(r)) + '"><b>+' + r.roiWinamax.toFixed(1) + ' %</b><div class="market-sub">cote ' + r.winamaxOdd.toFixed(2) + ' ↗</div></a></td>' +
+      '<td class="num cmp-wm-cell"><a class="cmp-wm-link" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(r)) + '"><b>+' + r.roiWinamax.toFixed(1) + ' %</b><div class="market-sub">cote ' + r.winamaxOdd.toFixed(2) + ' · ' + esc(cmpBookName(r)) + ' ↗</div></a></td>' +
       '<td class="num"><span class="cmp-delta" title="Écart relatif entre les deux ROI">+' + r.delta + ' %</span></td>' +
       '<td class="num">' + cmpNoteHtml(r) + '</td>' +
-      '<td class="cmp-actions-cell"><button type="button" class="cmp-pin-btn cmp-check-btn" data-cmp-id="' + esc(r.id) + '" title="Revérifier en direct la cote Winamax et le prix Polymarket (≈ 3 s)">🔄</button>' +
+      '<td class="cmp-actions-cell"><button type="button" class="cmp-pin-btn cmp-check-btn" data-cmp-id="' + esc(r.id) + '" title="Revérifier en direct les cotes des bookmakers et le prix Polymarket (≈ 3 s)">🔄</button>' +
         '<button type="button" class="cmp-pin-btn' + (pinned ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '">' + (pinned ? '✅ Dans Saison 26/27' : '📌 Saison 26/27') + '</button>' +
         '<button type="button" class="cmp-pin-btn cmp-pick-btn' + (picked ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '" title="Compter ce trade dans Choix comparateur">' + (picked ? '✅ Choisi' : '✋ Choisir') + '</button></td>' +
     '</tr>';
@@ -15280,14 +15286,14 @@
           var r = a.row || {};
           var cur = nowById[a.id];
           var nowCell;
-          if (cur) nowCell = '<span class="cmp-delta">+' + cur.delta + ' %</span><div class="market-sub">Poly +' + cur.roiPoly.toFixed(1) + ' % · <a class="cmp-wm-inline" href="' + esc(cmpWmUrl(cur)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(cur)) + '">Wina +' + cur.roiWinamax.toFixed(1) + ' %</a></div>';
+          if (cur) nowCell = '<span class="cmp-delta">+' + cur.delta + ' %</span><div class="market-sub">Poly +' + cur.roiPoly.toFixed(1) + ' % · <a class="cmp-wm-inline" href="' + esc(cmpWmUrl(cur)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(cur)) + '">' + esc(cmpBookName(cur)) + ' +' + cur.roiWinamax.toFixed(1) + ' %</a></div>';
           else if (r.start && r.start <= nowSec) nowCell = '<span class="cmp-alert-now-gone">match commencé</span>';
           else nowCell = '<span class="cmp-alert-now-gone">plus dans la liste (delta ≤ 30 % ou cotes changées)</span>';
           var d = new Date(a.sentAt);
           return '<tr><td class="cmp-date-cell">' + esc(d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) + '</td>' +
             '<td class="cmp-match-cell">' + esc(r.match || "—") + (r.comp ? '<div class="market-sub">' + esc(r.comp) + '</div>' : '') + '</td>' +
             '<td class="cmp-market-cell">' + esc(r.market || "—") + '</td>' +
-            '<td class="num"><b>+' + esc(String(r.delta)) + ' %</b>' + (r.roiPoly != null ? '<div class="market-sub">Poly +' + Number(r.roiPoly).toFixed(1) + ' % · ' + (r.wmId || r.wmSrc ? '<a class="cmp-wm-inline" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener">Wina +' + Number(r.roiWinamax).toFixed(1) + ' %</a>' : 'Wina +' + Number(r.roiWinamax).toFixed(1) + ' %') + '</div>' : '') + '</td>' +
+            '<td class="num"><b>+' + esc(String(r.delta)) + ' %</b>' + (r.roiPoly != null ? '<div class="market-sub">Poly +' + Number(r.roiPoly).toFixed(1) + ' % · ' + (r.wmId || r.wmSrc ? '<a class="cmp-wm-inline" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener">' + esc(cmpBookName(r)) + ' +' + Number(r.roiWinamax).toFixed(1) + ' %</a>' : 'Winamax +' + Number(r.roiWinamax).toFixed(1) + ' %') + '</div>' : '') + '</td>' +
             '<td class="num">' + nowCell + '</td></tr>';
         }).join("") + '</tbody></table></div>';
     }
