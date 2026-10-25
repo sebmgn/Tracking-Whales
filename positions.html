@@ -1379,22 +1379,11 @@
     border-color: color-mix(in srgb, var(--red) 55%, var(--panel-border));
   }
   /* Card type at a glance (✍️ manuel / 🎯 auto / ⚖️ comparaison / ⏳ props):
-     thick left bar + a wash fading out from the left in ORIGIN_COLORS
-     (--oc, set inline by originCardAttrs), layered over the cream / win /
-     lose background, and a filled type badge pinned far right. */
-  .snap-item[data-origin] {
-    --origin-wash: linear-gradient(90deg, color-mix(in srgb, var(--oc) 26%, transparent) 0%, color-mix(in srgb, var(--oc) 8%, transparent) 32%, transparent 60%);
-    background-image: var(--origin-wash), linear-gradient(180deg, var(--cream-grad-1), var(--cream-grad-2));
-    border-left: 7px solid var(--oc);
-  }
-  .snap-item.snap-win[data-origin] {
-    background: var(--origin-wash), linear-gradient(180deg, color-mix(in srgb, var(--green) 24%, var(--cream-grad-1)), color-mix(in srgb, var(--green) 32%, var(--cream-grad-2)));
-    border-left-color: var(--oc);
-  }
-  .snap-item.snap-lose[data-origin] {
-    background: var(--origin-wash), linear-gradient(180deg, color-mix(in srgb, var(--red) 24%, var(--cream-grad-1)), color-mix(in srgb, var(--red) 32%, var(--cream-grad-2)));
-    border-left-color: var(--oc);
-  }
+     thick left bar in ORIGIN_COLORS (--oc, set inline by originCardAttrs)
+     and a filled type badge pinned far right. (A wash fading from the left
+     was tried and dropped, 2026-10-25.) */
+  .snap-item[data-origin] { border-left: 7px solid var(--oc); }
+  .snap-item.snap-win[data-origin], .snap-item.snap-lose[data-origin] { border-left-color: var(--oc); }
   .snap-origin-badge { order: 99; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: var(--oc); color: #fff; white-space: nowrap; }
   .snap-origin-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -2412,6 +2401,10 @@
   .seb-seg-label { font-size: 12px; font-weight: 700; color: var(--text-dim); min-width: 64px; }
   .seb-seg button { font: inherit; font-size: 12px; font-weight: 700; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text-dim); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
   .seb-seg button.active { background: var(--text); border-color: var(--text); color: var(--panel); }
+  .cmp-filters-bar { margin: 0 0 10px; }
+  .seb-list tbody tr[data-seb-key] { cursor: pointer; }
+  .seb-list tbody tr[data-seb-key]:hover td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .seb-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 9999; background: var(--panel); color: var(--text); border: 1px solid var(--panel-border); border-radius: 8px; padding: 8px 14px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
   .seb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 14px; margin: 14px 0; }
   .seb-box { margin-bottom: 0; }
   /* Catégories × confiance (Seb) — "grille à barres" picked from 5
@@ -3126,9 +3119,12 @@
       <span id="cmpUpdated">Chargement…</span>
       <button type="button" id="cmpRefreshBtn" class="snap-sync-link" title="Relancer le calcul sur le serveur (~1 min)">🔄 Actualiser</button>
     </div>
-    <div class="vt-filters" id="cmpSportFilters"></div>
-    <div class="vt-filters" id="cmpDayFilters"></div>
-    <div class="vt-filters" id="cmpCompFilters"></div>
+    <div class="cmp-filters-bar"><button type="button" class="collapse-btn" id="cmpFiltersToggle" hidden>▸ Filtres</button></div>
+    <div id="cmpFiltersWrap" hidden>
+      <div class="vt-filters" id="cmpSportFilters"></div>
+      <div class="vt-filters" id="cmpDayFilters"></div>
+      <div class="vt-filters" id="cmpCompFilters"></div>
+    </div>
     <div id="cmpAlerts"></div>
     <div id="cmpContent">
       <div class="loading-state">Chargement des propositions…</div>
@@ -9853,6 +9849,7 @@
     var dashboardHtml = buildSnapDashboardHtml(dashboardList || list, store, dashboardFilterLabels);
     el.innerHTML = dashboardHtml +
       '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
+      (store.otherStatsTopHtml ? store.otherStatsTopHtml(list) : "") +
       (blocks || '<div class="empty-note">Pas assez de paris décidés pour ces stats.</div>') +
       '</div>';
     // A store can add its own blocks inside Autres stats (Seb: Catégories × confiance).
@@ -15003,7 +15000,7 @@
   // frozen `cmp` block, rendered by manualCardHtml in Saison 26/27, Mes
   // Positions and All Time alike (a position's deep clone keeps it).
   var AWS_COMPARATOR_URL = "https://n6ulxf7yidnnwgxi6fexcuzdj40ptxgt.lambda-url.eu-north-1.on.aws/";
-  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpComp = "all", cmpSport = "all", cmpAlertsOpen = false, cmpLoading = false, cmpRetryTimer = null, cmpError = null;
+  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpComp = "all", cmpSport = "all", cmpAlertsOpen = false, cmpFiltersOpen = false, cmpLoading = false, cmpRetryTimer = null, cmpError = null;
   var cmpContentEl = document.getElementById("cmpContent");
   var cmpDayFiltersEl = document.getElementById("cmpDayFilters");
   var cmpCompFiltersEl = document.getElementById("cmpCompFilters");
@@ -15216,6 +15213,15 @@
       comps.map(function (c) {
         return '<button type="button" data-cmp-comp="' + esc(c) + '" class="' + (cmpComp === c ? "active" : "") + '">' + esc(c) + '<span class="vt-filter-count"> · ' + byComp[c] + '</span></button>';
       }).join("");
+    // Sport / Jour / Championnat folded by default (on request, 2026-10-25);
+    // the button says which filters are on while folded.
+    var cmpFiltersBtn = document.getElementById("cmpFiltersToggle"), cmpFiltersWrap = document.getElementById("cmpFiltersWrap");
+    if (cmpFiltersBtn && cmpFiltersWrap) {
+      var activeF = [cmpSport !== "all" ? cmpSport : null, cmpDay !== "all" ? cmpDayLabel(cmpDay) : null, cmpComp !== "all" ? cmpComp : null].filter(Boolean);
+      cmpFiltersBtn.hidden = !rows.length;
+      cmpFiltersWrap.hidden = !cmpFiltersOpen;
+      cmpFiltersBtn.textContent = (cmpFiltersOpen ? "▾ Masquer les filtres" : "▸ Filtres (sport, jour, championnat)") + (activeF.length ? " · " + activeF.join(" · ") : "");
+    }
     renderCmpAlerts(rows);
     if (!cmpData) { cmpContentEl.innerHTML = '<div class="loading-state">Chargement des propositions…</div>'; return; }
     var shown = rows.filter(function (r) { return inSport(r) && inDay(r) && inComp(r); });
@@ -15294,6 +15300,8 @@
       cmpComp = b.getAttribute("data-cmp-comp");
       renderCmp();
     });
+    var cmpFiltersToggleEl = document.getElementById("cmpFiltersToggle");
+    if (cmpFiltersToggleEl) cmpFiltersToggleEl.addEventListener("click", function () { cmpFiltersOpen = !cmpFiltersOpen; renderCmp(); });
     cmpAlertsEl.addEventListener("click", function (e) {
       if (!(e.target.closest && e.target.closest("#cmpAlertsToggle"))) return;
       cmpAlertsOpen = !cmpAlertsOpen;
@@ -17355,8 +17363,27 @@
       '<div class="empty-note" style="padding:2px 0 8px;">Hauteur de la barre = ROI (vers le haut s\'il est positif, vers le bas s\'il est négatif), puis le nombre de paris ; gain sur les totaux' + (sebState.stakeMode === "real" ? ' (mises réelles)' : sebState.stakeMode === "hold" ? ' (1 000 $ par pari, sans cashout)' : ' (1 000 $ par pari, avec cashout)') + '. Paris terminés, sur les filtres du graphique.</div>' +
       '<div class="seb-mx"><table class="seb-mx-tbl"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div></div>';
   }
+  // Par sport / Par cote d'entrée / Par mois — at the top of Autres stats
+  // (on request, 2026-10-25; they used to sit above "Tes paris").
+  function sebBreakdownsHtml() {
+    if (!sebState.bets) return "";
+    var sports = {};
+    sebState.bets.forEach(function (b) { sports[b.sport] = (sports[b.sport] || 0) + 1; });
+    var list = sebFiltered();
+    var done = list.filter(function (b) { return b.status === "done"; });
+    var byOdds = SEB_ODDS.map(function (o) { return { label: o[2], st: sebStats(list.filter(function (b) { return b.avg >= o[0] && b.avg < o[1]; })) }; });
+    var bySport = Object.keys(sports).map(function (k) { return { label: k + " " + (AN_SPORT_LABELS[k] || ""), st: sebStats(list.filter(function (b) { return b.sport === k; })) }; })
+      .sort(function (a, b) { return b.st.n - a.st.n; });
+    var months = {};
+    done.forEach(function (b) { var d = new Date(b.doneAt); var k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); (months[k] = months[k] || []).push(b); });
+    var byMonth = Object.keys(months).sort().reverse().map(function (k) {
+      return { label: new Date(k + "-15").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }), st: sebStats(months[k]) };
+    });
+    return '<div class="seb-grid" style="margin-top:4px;">' + sebBreakdownHtml("Par sport", bySport) + sebBreakdownHtml("Par cote d'entrée", byOdds) + sebBreakdownHtml("Par mois", byMonth) + '</div>';
+  }
   var SEB_STORE = {
     name: "seb",
+    otherStatsTopHtml: sebBreakdownsHtml,
     // Catégories × confiance lives inside Autres stats, folded until its own
     // button is clicked (on request, 2026-10-25 — it used to sit open above
     // the panels).
@@ -17434,14 +17461,6 @@
     el.innerHTML = head + controls + (sebState.propsOpen ? sebPropsHtml(propsList) : '') +
       '<div class="empty-note" style="padding:0 4px 10px;">Même affichage que Saison 26/27, en argent réel : ta vraie mise et ton vrai gain ou ta vraie perte sur chaque pari. Note la confiance (S/A/B) et l\'ampleur (++ + - --) sur chaque carte en bas ; un pari aussi présent dans Saison 26/27 reprend ses notes tant que tu ne les changes pas ici.</div>';
     renderStoreView(SEB_STORE);
-    var byOdds = SEB_ODDS.map(function (o) { return { label: o[2], st: sebStats(list.filter(function (b) { return b.avg >= o[0] && b.avg < o[1]; })) }; });
-    var bySport = Object.keys(sports).map(function (k) { return { label: k + " " + (AN_SPORT_LABELS[k] || ""), st: sebStats(list.filter(function (b) { return b.sport === k; })) }; })
-      .sort(function (a, b) { return b.st.n - a.st.n; });
-    var months = {};
-    done.forEach(function (b) { var d = new Date(b.doneAt); var k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); (months[k] = months[k] || []).push(b); });
-    var byMonth = Object.keys(months).sort().reverse().map(function (k) {
-      return { label: new Date(k + "-15").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }), st: sebStats(months[k]) };
-    });
     // Bets still running are always listed; finished ones only once
     // "Voir les paris terminés" is clicked (on request, 2026-10-24). Props
     // are left out — very long term, they have their own ⏳ panel (2026-10-25).
@@ -17460,7 +17479,6 @@
         '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
     }).join("");
     if (extra) extra.innerHTML =
-      '<div class="seb-grid">' + sebBreakdownHtml("Par sport", bySport) + sebBreakdownHtml("Par cote d'entrée", byOdds) + sebBreakdownHtml("Par mois", byMonth) + '</div>' +
       '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (openT.length ? ' · ' + openT.length + ' en cours' : '') + (propsList.length ? ' <span class="seb-dim" style="font-weight:500;font-size:12px;">(hors props — voir ⏳ Props en haut)</span>' : '') + '</div>' +
         '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr>' + SEB_COLS.map(function (c) {
           var active = sebState.sortKey === c.key;
@@ -17577,12 +17595,34 @@
       '<div class="seb-dim" style="font-size:11px;margin-top:6px;">« Si gagné » = gain net si le pari est gagné à la résolution, au prix d\'entrée ; « valeur latente » = gain ou perte si tu revendais au prix actuel. Montants en euros, ' + esc(rateNote) + ' — le montant en $ au survol.</div>' +
     '</div>';
   }
+  // "Tes paris" row click → scroll to that bet's card below and flash it
+  // (on request, 2026-10-25). The Polymarket link in the row still opens.
+  function sebJumpToCard(key) {
+    var id = sebMetaId(key);
+    var box = SEB_STORE.els.list;
+    var card = box ? [].filter.call(box.querySelectorAll(".snap-item[data-key]"), function (c) { return c.getAttribute("data-key") === id; })[0] : null;
+    if (!card) {
+      var t = document.createElement("div");
+      t.className = "seb-toast";
+      t.textContent = "Carte masquée par un filtre (ou à la corbeille) — retire les filtres des cartes pour la voir.";
+      document.body.appendChild(t);
+      setTimeout(function () { t.remove(); }, 3500);
+      return;
+    }
+    box.querySelectorAll(".snap-item-highlight").forEach(function (c) { c.classList.remove("snap-item-highlight"); });
+    card.classList.add("snap-item-highlight");
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    clearTimeout(sebJumpToCard.timer);
+    sebJumpToCard.timer = setTimeout(function () { card.classList.remove("snap-item-highlight"); }, 6000);
+  }
   function sebOpen() {
     if (!sebState.bets || Date.now() - sebState.at > 5 * 60000) sebLoad(); else renderSeb();
   }
   document.addEventListener("click", function (e) {
     var root = document.getElementById("tab-seb");
     if (!root || !e.target.closest || !root.contains(e.target)) return;
+    var betRow = e.target.closest(".seb-list tr[data-seb-key]");
+    if (betRow && !e.target.closest("a")) { sebJumpToCard(betRow.getAttribute("data-seb-key")); return; }
     var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort], [data-seb-stake], [data-seb-showdone], [data-seb-props], [data-seb-props-done], [data-seb-matrix]");
     if (!el) return;
     if (el.hasAttribute("data-seb-props")) { sebState.propsOpen = !sebState.propsOpen; renderSeb(); return; }
