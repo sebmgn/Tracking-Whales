@@ -15147,14 +15147,15 @@
     return row;
   }
   // Where the bookmaker odd was read (on request, 2026-10-25): the best of
-  // Winamax (winamax.es) and Unibet (unibet.co.uk) — r.book, r.odds per
+  // Winamax (winamax.es), Unibet (unibet.co.uk) and Pinnacle (pinnacle.com),
+  // Winamax having to offer the bet — r.book, r.odds per
   // bookmaker, r.wmSrc = the winner's site / match page / exact bet → outcome
   // (rows from before that only have the Winamax match id).
   function cmpWmUrl(r) {
     if (r.wmSrc && r.wmSrc.url) return r.wmSrc.url;
     return r.wmId ? "https://www.winamax.es/apuestas-deportivas/match/" + r.wmId : "https://www.winamax.es/apuestas-deportivas";
   }
-  var CMP_BOOK_SITES = { Winamax: "winamax.es", Unibet: "unibet.co.uk" };
+  var CMP_BOOK_SITES = { Winamax: "winamax.es", Unibet: "unibet.co.uk", Pinnacle: "pinnacle.com" };
   function cmpBookName(r) { return r.book || "Winamax"; }
   function cmpWmTitle(r) {
     var w = r.wmSrc || {}, book = cmpBookName(r);
