@@ -1378,6 +1378,25 @@
     background: linear-gradient(180deg, color-mix(in srgb, var(--red) 24%, var(--cream-grad-1)), color-mix(in srgb, var(--red) 32%, var(--cream-grad-2)));
     border-color: color-mix(in srgb, var(--red) 55%, var(--panel-border));
   }
+  /* Card type at a glance (✍️ manuel / 🎯 auto / ⚖️ comparaison / ⏳ props):
+     thick left bar + a wash fading out from the left in ORIGIN_COLORS
+     (--oc, set inline by originCardAttrs), layered over the cream / win /
+     lose background, and a filled type badge pinned far right. */
+  .snap-item[data-origin] {
+    --origin-wash: linear-gradient(90deg, color-mix(in srgb, var(--oc) 26%, transparent) 0%, color-mix(in srgb, var(--oc) 8%, transparent) 32%, transparent 60%);
+    background-image: var(--origin-wash), linear-gradient(180deg, var(--cream-grad-1), var(--cream-grad-2));
+    border-left: 7px solid var(--oc);
+  }
+  .snap-item.snap-win[data-origin] {
+    background: var(--origin-wash), linear-gradient(180deg, color-mix(in srgb, var(--green) 24%, var(--cream-grad-1)), color-mix(in srgb, var(--green) 32%, var(--cream-grad-2)));
+    border-left-color: var(--oc);
+  }
+  .snap-item.snap-lose[data-origin] {
+    background: var(--origin-wash), linear-gradient(180deg, color-mix(in srgb, var(--red) 24%, var(--cream-grad-1)), color-mix(in srgb, var(--red) 32%, var(--cream-grad-2)));
+    border-left-color: var(--oc);
+  }
+  .snap-origin-badge { order: 99; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: var(--oc); color: #fff; white-space: nowrap; }
+  .snap-origin-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
@@ -8434,6 +8453,8 @@
     if (snapIsProps(s)) return "props";
     return s.isManual ? "manual" : "auto";
   }
+  function originCardAttrs(s) { var o = snapOrigin(s); return ' data-origin="' + o + '" style="--oc:' + ORIGIN_COLORS[o] + '"'; }
+  function originBadgeHtml(s) { var o = snapOrigin(s); return '<span class="snap-origin-badge">' + ORIGIN_ICONS[o] + ' ' + ORIGIN_LABELS[o] + '</span>'; }
   var MANUAL_VS_AUTO_GROUPS = [
     { key: "manual", label: "✍️ Paris manuels", color: ORIGIN_COLORS.manual, match: function (s) { return snapOrigin(s) === "manual"; } },
     { key: "auto", label: "🎯 Suivi des whales", color: ORIGIN_COLORS.auto, match: function (s) { return snapOrigin(s) === "auto"; } },
@@ -11292,7 +11313,6 @@
   function manualCardHtml(snap, isTrash, store) {
     var d = new Date(snap.savedAt);
     var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    var borderColor = (store.name === "positions" && positionOpposedColors[snap.id]) || (snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)");
     var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
     var stake = store.stakeFor(snap);
     var hyp = stake ? hypotheticalFlatPnl(snap, stake) : null;
@@ -11318,7 +11338,7 @@
     // comparison that made it worth taking, frozen at pin time.
     var cmp = snap.cmp;
     var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">' + (cmp ? '⚖️' : '✍️') + '</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
-      statsHtml + '<span class="vt-badge-group">' + (cmp ? '<span class="snap-cmp-badge">⚖️ Comparateur</span>' : '<span class="snap-manual-badge">✍️ Pari manuel</span>') + '</span></div>' +
+      statsHtml + '<span class="vt-badge-group">' + originBadgeHtml(snap) + '</span></div>' +
       (cmp ? '<div class="snap-cmp-line"><span class="snap-cmp-delta">Δ ROI +' + esc(String(cmp.delta)) + ' %</span>' +
         '<span>Polymarket <b>+' + esc(Number(cmp.roiPoly).toFixed(1)) + ' %</b> (' + esc(fmtCents(cmp.polyPrice)) + ')</span>' +
         '<span>Winamax <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')</span>' +
@@ -11387,7 +11407,7 @@
       '</div>';
     }
     return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (store.state.expandedItems[snap.id] ? " open" : "") +
-      ' style="border-left-color:' + borderColor + '">' +
+      originCardAttrs(snap) + '>' +
       '<summary class="vt-summary">' +
         toolbarHtml +
         snapCommentDisplayHtml(snap) +
@@ -11404,13 +11424,7 @@
     if (snap.isManual) return manualCardHtml(snap, isTrash, store);
     var d = new Date(snap.savedAt);
     var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    // Border stays tied to which side was leading when saved (not to the
-    // later result) — a snapshot can hold traders on both sides, so there
-    // is no single win/loss color for the card as a whole anymore.
-    // positionOpposedColors overrides this (Mes Positions only) when another
-    // position of yours is on the exact same market with a different
-    // leaderName — see computePositionOpposedColors.
-    var borderColor = (store.name === "positions" && positionOpposedColors[snap.id]) || (snap.leaderName ? sideColorFor(snap.leaderName) : "var(--gold)");
+    // Left bar + wash carry the card type (originCardAttrs), not the side.
     // Whole-card background instead just reads the bet-level verdict —
     // leaderName (the side the group was leaning towards when saved) vs.
     // winningSide, the same "one win/loss per snapshot" call the global
@@ -11458,6 +11472,11 @@
     cardHeadHtml = cardHeadHtml
       .replace(/<button[^>]*class="vt-trash-btn[^"]*"[\s\S]*?<\/button>/, "")
       .replace(/<button[^>]*class="vt-follow-btn[^"]*"[\s\S]*?<\/button>/, "");
+    // Type badge far right: into the frozen header's badge group (flex
+    // order puts it last), or its own right-aligned row on old layouts.
+    cardHeadHtml = cardHeadHtml.indexOf('<span class="vt-badge-group">') !== -1
+      ? cardHeadHtml.replace('<span class="vt-badge-group">', '<span class="vt-badge-group">' + originBadgeHtml(snap))
+      : '<div class="snap-origin-row">' + originBadgeHtml(snap) + '</div>' + cardHeadHtml;
     if (snap.autoPre) cardHeadHtml = autoPreBannerHtml(snap) + cardHeadHtml;
     var toolbarHtml;
     if (isTrash) {
@@ -11533,7 +11552,7 @@
       '</div>';
     }
     return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (store.state.expandedItems[snap.id] ? " open" : "") +
-      ' style="border-left-color:' + borderColor + '">' +
+      originCardAttrs(snap) + '>' +
       '<summary class="vt-summary">' +
         toolbarHtml +
         snapCommentDisplayHtml(snap) +
