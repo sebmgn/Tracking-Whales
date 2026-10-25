@@ -2416,6 +2416,27 @@
   .seb-mx-n b { color: var(--text); }
   .seb-mx-gain { font-size: 11px; font-weight: 700; }
   .seb-mx-empty { color: var(--text-dim); font-size: 12px; }
+  .seb-mx-toggle { margin: 12px 0 4px; }
+  /* ⏳ Props (Seb) — long-term bets, condensed: tiles, timeline, table. */
+  .seb-props-btn { font-weight: 800; border-color: color-mix(in srgb, #14b8a6 55%, var(--panel-border)); color: #0f766e; }
+  .seb-props-btn.active { background: #14b8a6; border-color: #14b8a6; color: #fff; }
+  .seb-props { margin: 4px 0 16px; border-color: color-mix(in srgb, #14b8a6 40%, var(--panel-border)); }
+  .seb-props-tiles { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 2px 0 6px; }
+  .seb-props-tiles div { display: flex; flex-direction: column; }
+  .seb-props-tiles span { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-weight: 700; }
+  .seb-props-tiles b { font-size: 16px; font-variant-numeric: tabular-nums; }
+  .seb-props-tiles small { font-size: 11.5px; font-weight: 700; }
+  .seb-tl { display: block; width: 100%; height: auto; max-height: 70px; margin: 4px 0 8px; overflow: visible; }
+  .seb-tl-axis { stroke: var(--panel-border); stroke-width: 2; }
+  .seb-tl-tick { stroke: var(--panel-border); stroke-width: 1.5; }
+  .seb-tl-lbl { font-size: 11px; fill: var(--text-dim); text-anchor: middle; }
+  .seb-tl-dot { fill-opacity: .8; stroke: var(--panel); stroke-width: 1.5; }
+  .seb-tl-dot.up { fill: #14b8a6; }
+  .seb-tl-dot.down { fill: var(--red); }
+  .seb-props-tbl td, .seb-props-tbl th { vertical-align: middle; }
+  .seb-props-tbl td .seb-dim { font-size: 11px; }
+  .seb-props-side { color: var(--text-dim); font-weight: 700; white-space: nowrap; }
+  .seb-props-done td { opacity: .75; }
   .seb-scroll { overflow-x: auto; }
   .seb-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .seb-tbl th, .seb-tbl td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent); }
@@ -9811,6 +9832,8 @@
       '<div class="chart-box tier-wr-box"><div class="tier-wr-title">Autres stats</div>' +
       (blocks || '<div class="empty-note">Pas assez de paris décidés pour ces stats.</div>') +
       '</div>';
+    // A store can add its own blocks inside Autres stats (Seb: Catégories × confiance).
+    if (store.otherStatsExtraHtml) el.insertAdjacentHTML("beforeend", store.otherStatsExtraHtml(list));
     // Delegated on `el` itself (stable across re-renders, only innerHTML
     // changes above) — bound once per store rather than once per render.
     if (!el.dataset.noteRoiWired) { wireTraderNoteRoiHover(el); el.dataset.noteRoiWired = "1"; }
@@ -16971,7 +16994,8 @@
   // the same thing and nothing needs storing. One row = one market × side.
   var SEB_ADDRESS = "0x062922dcc898a4935b2b87f5e9ea2360b31e0a16";
   var SEB_PROFILE_URL = "https://polymarket.com/profile/" + SEB_ADDRESS;
-  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40, sortKey: null, sortDir: "desc", stakeMode: "real", showDone: false };
+  var sebState = { bets: null, loading: false, error: null, at: 0, period: "all", sport: "all", origin: "all", limit: 40, sortKey: null, sortDir: "desc", stakeMode: "real", showDone: false,
+    propsOpen: false, propsShowDone: false, matrixOpen: false, eurRate: null, eurDate: null };
   // Mise (on request, 2026-10-23): "real" = your actual stake and PnL;
   // "flat" = 1 000 $ on every bet, keeping what you really did (sold early
   // included — your real PnL scaled to 1 000 $); "hold" = 1 000 $ held to
@@ -17046,6 +17070,9 @@
         bets.push(sebBet(p, stake, (Number(p.cashPnl) || 0) + (Number(p.realizedPnl) || 0), settled ? "done" : "open", settled ? end : null));
       });
       await sebFillKickoffs(bets);
+      if (!sebState.eurRate) {
+        try { var fx = await sebFetchJson("https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR"); if (fx && fx.rates && fx.rates.EUR) { sebState.eurRate = Number(fx.rates.EUR); sebState.eurDate = fx.date || null; } } catch (e) { /* fallback rate below */ }
+      }
       sebState.bets = bets;
       sebState.at = Date.now();
     } catch (e) {
@@ -17309,7 +17336,13 @@
   }
   var SEB_STORE = {
     name: "seb",
-    afterRender: function (list) { var el = document.getElementById("sebMatrix"); if (el) el.innerHTML = sebMatrixHtml(list); },
+    // Catégories × confiance lives inside Autres stats, folded until its own
+    // button is clicked (on request, 2026-10-25 — it used to sit open above
+    // the panels).
+    otherStatsExtraHtml: function (list) {
+      return '<button type="button" class="collapse-btn snap-stats-toggle-btn seb-mx-toggle" data-seb-matrix="1">' + (sebState.matrixOpen ? "▾ Replier" : "▸ Déplier") + ' Catégories × confiance</button>' +
+        (sebState.matrixOpen ? sebMatrixHtml(list) : "");
+    },
     loadRaw: function () { return sebRecords(sebFiltered()); },
     load: function () { return SEB_STORE.loadRaw().filter(function (s) { return !s.deletedAt; }); },
     save: function () {}, // computed from Polymarket — writes go through sebEnqueue
@@ -17361,13 +17394,23 @@
     var list = sebFiltered();
     var done = list.filter(function (b) { return b.status === "done"; }).sort(function (a, b) { return a.doneAt - b.doneAt; });
     var open = list.filter(function (b) { return b.status === "open"; });
+    // Each bet's category, from the same records the cards use (your Type
+    // correction, else the automatic guess) — Type column, and the Props
+    // panel (long-term bets live there, not in "Tes paris").
+    var recByKey = {};
+    sebRecords(list).forEach(function (rec) { recByKey[rec.sebKey] = rec; });
+    list.forEach(function (b) { b._origin = recByKey[b.key] ? snapOrigin(recByKey[b.key]) : "manual"; });
+    var isProps = function (b) { return b._origin === "props"; };
+    var propsList = list.filter(isProps);
+    var propsOpenN = propsList.filter(function (b) { return b.status === "open"; }).length;
     var controls = '<div class="seb-controls">' +
       sebSeg("Période", "data-seb-period", [["7", "7 j"], ["30", "30 j"], ["90", "90 j"], ["all", "Tout"]], sebState.period) +
       sebSeg("Sport", "data-seb-sport", [["all", "Tous"]].concat(Object.keys(sports).sort(function (a, b) { return sports[b] - sports[a]; }).map(function (k) { return [k, k + " " + (AN_SPORT_LABELS[k] || "") + " · " + sports[k]]; })), sebState.sport) +
       sebSeg("Origine", "data-seb-origin", [["all", "Tous"], ["site", "📌 Snapshot du site"], ["other", "Hors site"]], sebState.origin) +
       sebSeg("Mise", "data-seb-stake", [["real", "Réelle"], ["flat", "1 000 $ avec cashout"], ["hold", "1 000 $ sans cashout"]], sebState.stakeMode) +
+      (propsList.length ? '<button type="button" class="seb-btn seb-props-btn' + (sebState.propsOpen ? ' active' : '') + '" data-seb-props="1" title="Tes paris long terme (saison, classement, relégation…)">⏳ Props · ' + propsOpenN + ' en cours' + (sebState.propsOpen ? ' ▴' : ' ▾') + '</button>' : '') +
     '</div>';
-    el.innerHTML = head + controls +
+    el.innerHTML = head + controls + (sebState.propsOpen ? sebPropsHtml(propsList) : '') +
       '<div class="empty-note" style="padding:0 4px 10px;">Même affichage que Saison 26/27, en argent réel : ta vraie mise et ton vrai gain ou ta vraie perte sur chaque pari. Note la confiance (S/A/B) et l\'ampleur (++ + - --) sur chaque carte en bas ; un pari aussi présent dans Saison 26/27 reprend ses notes tant que tu ne les changes pas ici.</div>';
     renderStoreView(SEB_STORE);
     var byOdds = SEB_ODDS.map(function (o) { return { label: o[2], st: sebStats(list.filter(function (b) { return b.avg >= o[0] && b.avg < o[1]; })) }; });
@@ -17378,16 +17421,13 @@
     var byMonth = Object.keys(months).sort().reverse().map(function (k) {
       return { label: new Date(k + "-15").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }), st: sebStats(months[k]) };
     });
-    // Each bet's category, from the same records the cards use (your Type
-    // correction, else the automatic guess) — for the Type column.
-    var recByKey = {};
-    sebRecords(list).forEach(function (rec) { recByKey[rec.sebKey] = rec; });
-    list.forEach(function (b) { b._origin = recByKey[b.key] ? snapOrigin(recByKey[b.key]) : "manual"; });
     // Bets still running are always listed; finished ones only once
-    // "Voir les paris terminés" is clicked (on request, 2026-10-24).
-    var sorted = sebSorted(open.concat(done));
-    var openRows = sorted ? sorted.filter(function (b) { return b.status === "open"; }) : open;
-    var rowsList = sorted ? sorted.filter(function (b) { return b.status !== "open"; }) : done.slice().reverse();
+    // "Voir les paris terminés" is clicked (on request, 2026-10-24). Props
+    // are left out — very long term, they have their own ⏳ panel (2026-10-25).
+    var openT = open.filter(function (b) { return !isProps(b); }), doneT = done.filter(function (b) { return !isProps(b); });
+    var sorted = sebSorted(openT.concat(doneT));
+    var openRows = sorted ? sorted.filter(function (b) { return b.status === "open"; }) : openT;
+    var rowsList = sorted ? sorted.filter(function (b) { return b.status !== "open"; }) : doneT.slice().reverse();
     var shownRows = openRows.concat(sebState.showDone ? rowsList.slice(0, sebState.limit) : []);
     var rows = shownRows.map(function (b) {
       var url = b.slug ? "https://polymarket.com/event/" + encodeURIComponent(b.slug) : "";
@@ -17400,7 +17440,7 @@
     }).join("");
     if (extra) extra.innerHTML =
       '<div class="seb-grid">' + sebBreakdownHtml("Par sport", bySport) + sebBreakdownHtml("Par cote d'entrée", byOdds) + sebBreakdownHtml("Par mois", byMonth) + '</div>' +
-      '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (open.length ? ' · ' + open.length + ' en cours' : '') + '</div>' +
+      '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (openT.length ? ' · ' + openT.length + ' en cours' : '') + (propsList.length ? ' <span class="seb-dim" style="font-weight:500;font-size:12px;">(hors props — voir ⏳ Props en haut)</span>' : '') + '</div>' +
         '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr>' + SEB_COLS.map(function (c) {
           var active = sebState.sortKey === c.key;
           return '<th class="sortable' + (active ? ' sorted' : '') + '" data-seb-sort="' + c.key + '" title="Trier par ' + esc(c.label.toLowerCase()) + '">' + esc(c.label) + '<span class="sort-arrow">' + (active ? (sebState.sortDir === "asc" ? "▲" : "▼") : "↕") + '</span></th>';
@@ -17411,14 +17451,104 @@
         '</div>' +
       '</div>';
   }
+  // ⏳ Props panel (on request, 2026-10-25): long-term bets only, condensed —
+  // a timeline of when each one gets decided, then one line per bet with the
+  // stake, entry → current price, what it pays if it wins (€ and ROI) and
+  // what it's worth right now. Polymarket amounts are USDC: shown in euros at
+  // the day's ECB rate (frankfurter.dev), the $ amount in each tooltip.
+  var SEB_EUR_FALLBACK = 0.92;
+  function sebEur(usd, signed) {
+    var rate = sebState.eurRate || SEB_EUR_FALLBACK;
+    var v = usd * rate;
+    var txt = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: Math.abs(v) < 100 ? 2 : 0, minimumFractionDigits: 0 }).format(Math.abs(v)) + " €";
+    return (signed ? (v > 0 ? "+" : v < 0 ? "−" : "") : (v < 0 ? "−" : "")) + txt;
+  }
+  function sebDueMs(b) {
+    if (b.status !== "open") return b.doneAt || null;
+    return b.endDate ? Date.parse(b.endDate + "T12:00:00Z") : null;
+  }
+  function sebInLabel(ms) {
+    var d = Math.round((ms - Date.now()) / 86400000);
+    if (d < 0) return "en attente de résolution";
+    if (d === 0) return "aujourd'hui";
+    if (d < 60) return "dans " + d + " j";
+    return "dans " + Math.round(d / 30.4) + " mois";
+  }
+  function sebPropsHtml(props) {
+    var open = props.filter(function (b) { return b.status === "open"; }).sort(function (a, b) { return (sebDueMs(a) || 9e15) - (sebDueMs(b) || 9e15); });
+    var done = props.filter(function (b) { return b.status !== "open"; }).sort(function (a, b) { return (b.doneAt || 0) - (a.doneAt || 0); });
+    var rateNote = sebState.eurRate ? "1 $ = " + sebState.eurRate.toFixed(3).replace(".", ",") + " € (BCE" + (sebState.eurDate ? ", " + new Date(sebState.eurDate).toLocaleDateString("fr-FR") : "") + ")" : "taux indicatif 1 $ = " + String(SEB_EUR_FALLBACK).replace(".", ",") + " €";
+    // totals (bets still running)
+    var stake = 0, ifWin = 0, latent = 0;
+    open.forEach(function (b) { stake += b.stake; ifWin += b.avg > 0 ? b.stake * (1 / b.avg - 1) : 0; latent += b.pnl; });
+    var ifWinRoi = stake ? ifWin / stake * 100 : 0;
+    var doneSt = sebStats(done);
+    var tiles = '<div class="seb-props-tiles">' +
+      '<div><span>En cours</span><b>' + open.length + '</b></div>' +
+      '<div><span>Misé</span><b>' + sebEur(stake) + '</b></div>' +
+      '<div><span>Si tout gagne</span><b class="pnl-pos">' + sebEur(ifWin, true) + ' <small>(' + sebPct(ifWinRoi) + ')</small></b></div>' +
+      '<div><span>Valeur latente</span><b class="' + (latent >= 0 ? "pnl-pos" : "pnl-neg") + '">' + sebEur(latent, true) + '</b></div>' +
+      (done.length ? '<div><span>Props terminés</span><b class="' + (doneSt.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + done.length + ' · ' + sebEur(doneSt.pnl, true) + '</b></div>' : '') +
+    '</div>';
+    // timeline: today → furthest resolution, one dot per bet (size = stake)
+    var dues = open.map(sebDueMs).filter(function (x) { return x; });
+    var tl = "";
+    if (dues.length) {
+      var t0 = Date.now(), t1 = Math.max.apply(null, dues.concat([t0 + 30 * 86400000]));
+      var maxStake = Math.max.apply(null, open.map(function (b) { return b.stake; }));
+      var W = 1000, x = function (t) { return 20 + (Math.max(t0, Math.min(t1, t)) - t0) / (t1 - t0) * (W - 40); };
+      var ticks = "", d = new Date(t0); d.setDate(1); d.setMonth(d.getMonth() + 1);
+      for (; d.getTime() <= t1; d.setMonth(d.getMonth() + 1)) {
+        var tx = x(d.getTime());
+        ticks += '<line x1="' + tx + '" x2="' + tx + '" y1="30" y2="36" class="seb-tl-tick"/>' + (tx > 75 && (d.getMonth() % 2 === 0 || (t1 - t0) < 200 * 86400000) ? '<text x="' + tx + '" y="50" class="seb-tl-lbl">' + esc(d.toLocaleDateString("fr-FR", { month: "short", year: d.getMonth() === 0 ? "2-digit" : undefined })) + '</text>' : '');
+      }
+      var dots = open.map(function (b) {
+        var due = sebDueMs(b); if (!due) return "";
+        var r = 4 + 7 * Math.sqrt(b.stake / maxStake);
+        var cls = b.pnl >= 0 ? "seb-tl-dot up" : "seb-tl-dot down";
+        return '<circle cx="' + x(due).toFixed(1) + '" cy="20" r="' + r.toFixed(1) + '" class="' + cls + '"><title>' + esc(b.title + " — " + b.outcome + "\n" + new Date(due).toLocaleDateString("fr-FR") + " · misé " + sebEur(b.stake) + " · si gagné " + sebEur(b.stake * (1 / b.avg - 1), true)) + '</title></circle>';
+      }).join("");
+      tl = '<svg class="seb-tl" viewBox="0 0 ' + W + ' 56" role="img" aria-label="Dates de résolution"><line x1="20" x2="' + (W - 20) + '" y1="33" y2="33" class="seb-tl-axis"/>' + ticks +
+        '<text x="20" y="50" class="seb-tl-lbl" text-anchor="start">auj.</text>' + dots + '</svg>';
+    }
+    var row = function (b) {
+      var url = b.slug ? "https://polymarket.com/event/" + encodeURIComponent(b.slug) : "";
+      var due = sebDueMs(b);
+      var winGain = b.avg > 0 ? b.stake * (1 / b.avg - 1) : 0;
+      var winRoi = b.avg > 0 ? (1 / b.avg - 1) * 100 : 0;
+      var cur = b.finalPrice;
+      var dueCell = due ? '<b>' + esc(new Date(due).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })) + '</b><div class="seb-dim">' + (b.status === "open" ? esc(sebInLabel(due)) : "réglé") + '</div>' : '<span class="seb-dim">—</span>';
+      var tail = b.status === "open"
+        ? '<td class="pnl-pos" title="' + esc(fmtUSDSigned(winGain)) + '"><b>' + sebEur(winGain, true) + '</b><div class="seb-dim">' + sebPct(winRoi) + '</div></td>' +
+          '<td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '" title="' + esc(fmtUSDSigned(b.pnl)) + '">' + sebEur(b.pnl, true) + '<div class="seb-dim">' + sebPct(b.stake ? b.pnl / b.stake * 100 : 0) + '</div></td>'
+        : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '" colspan="2" title="' + esc(fmtUSDSigned(b.pnl)) + '"><b>' + (b.pnl > 0 ? "Gagné " : "Perdu ") + sebEur(b.pnl, true) + '</b> <span class="seb-dim">' + sebPct(b.stake ? b.pnl / b.stake * 100 : 0) + '</span></td>';
+      return '<tr' + (b.status === "open" ? '' : ' class="seb-props-done"') + '>' +
+        '<td class="seb-nowrap">' + dueCell + '</td>' +
+        '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + ' <span class="seb-props-side">→ ' + esc(b.outcome) + '</span></td>' +
+        '<td title="' + esc(fmtUSD(b.stake)) + '">' + sebEur(b.stake) + '</td>' +
+        '<td class="seb-nowrap">' + Math.round(b.avg * 1000) / 10 + '¢' + (b.status === "open" && cur != null ? ' → <b class="' + (cur >= b.avg ? "pnl-pos" : "pnl-neg") + '">' + Math.round(cur * 1000) / 10 + '¢</b>' : '') + '</td>' +
+        tail + '</tr>';
+    };
+    var head = '<tr><th>Résolution</th><th>Pari</th><th>Misé</th><th>Prix entrée → actuel</th><th>Si gagné</th><th>Valeur latente</th></tr>';
+    return '<div class="chart-box seb-box seb-props">' +
+      '<div class="tier-wr-title">⏳ Props — paris long terme</div>' + tiles + tl +
+      (open.length ? '<div class="seb-scroll"><table class="seb-tbl seb-props-tbl"><thead>' + head + '</thead><tbody>' + open.map(row).join("") + '</tbody></table></div>' : '<div class="empty-note">Aucun prop en cours.</div>') +
+      (done.length ? '<div class="seb-more-row"><button type="button" class="seb-btn seb-more" data-seb-props-done="1">' + (sebState.propsShowDone ? '▴ Masquer les props terminés' : '▸ Voir les ' + done.length + ' props terminés') + '</button></div>' +
+        (sebState.propsShowDone ? '<div class="seb-scroll"><table class="seb-tbl seb-props-tbl"><tbody>' + done.map(row).join("") + '</tbody></table></div>' : '') : '') +
+      '<div class="seb-dim" style="font-size:11px;margin-top:6px;">« Si gagné » = gain net si le pari est gagné à la résolution, au prix d\'entrée ; « valeur latente » = gain ou perte si tu revendais au prix actuel. Montants en euros, ' + esc(rateNote) + ' — le montant en $ au survol.</div>' +
+    '</div>';
+  }
   function sebOpen() {
     if (!sebState.bets || Date.now() - sebState.at > 5 * 60000) sebLoad(); else renderSeb();
   }
   document.addEventListener("click", function (e) {
     var root = document.getElementById("tab-seb");
     if (!root || !e.target.closest || !root.contains(e.target)) return;
-    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort], [data-seb-stake], [data-seb-showdone]");
+    var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort], [data-seb-stake], [data-seb-showdone], [data-seb-props], [data-seb-props-done], [data-seb-matrix]");
     if (!el) return;
+    if (el.hasAttribute("data-seb-props")) { sebState.propsOpen = !sebState.propsOpen; renderSeb(); return; }
+    if (el.hasAttribute("data-seb-props-done")) { sebState.propsShowDone = !sebState.propsShowDone; renderSeb(); return; }
+    if (el.hasAttribute("data-seb-matrix")) { sebState.matrixOpen = !sebState.matrixOpen; renderOtherStats(SEB_STORE.load(), SEB_STORE); return; }
     if (el.hasAttribute("data-seb-showdone")) { sebState.showDone = !sebState.showDone; sebState.limit = 40; renderSeb(); return; }
     if (el.hasAttribute("data-seb-stake")) { sebState.stakeMode = el.getAttribute("data-seb-stake"); renderSeb(); return; }
     if (el.hasAttribute("data-seb-sort")) {
