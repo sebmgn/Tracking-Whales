@@ -17236,7 +17236,10 @@
     function add(s, rank) {
       if (!s || !s.question || isCmpSideList(s) || s.lowConfidence) return;
       var q = String(s.question).toLowerCase();
-      var score = (s.deletedAt ? 0 : 10) + rank; // not trashed, then Saison over Positions, then newest
+      // rated first (Seb only takes the ratings from it — an unrated or
+      // trashed duplicate used to win over the rated copy), then not
+      // trashed, then Saison over Positions, then newest
+      var score = (s.confidence ? 40 : 0) + (s.magnitude ? 20 : 0) + (s.deletedAt ? 0 : 10) + rank;
       var slug = sebSnapSlug(s);
       if (slug) put(q + "|s:" + slug, s, score);
       var day = s.eventDate ? String(s.eventDate).slice(0, 10) : "";
@@ -17262,8 +17265,101 @@
   function sebSiteCopyFor(b, idx) {
     idx = idx || sebSiteCopies();
     var q = b.title.toLowerCase();
-    var hit = (b.evSlug && idx[q + "|s:" + sebNormSlug(b.evSlug)]) || idx[q + "|d:" + sebBetDay(b)];
-    return hit ? hit.s : null;
+    var hs = b.evSlug && idx[q + "|s:" + sebNormSlug(b.evSlug)], hd = idx[q + "|d:" + sebBetDay(b)];
+    var hit = hs && hd ? (hd.score > hs.score ? hd : hs) : hs || hd;
+    if (hit) return hit.s;
+    return sebFuzzyCopies().copy[b.key] || null;
+  }
+  // Saison 26/27 copies typed by hand under another name (on request,
+  // 2026-10-27: « Brest - PSG » → « PSG (live) » for Polymarket's « Will
+  // Paris Saint-Germain FC win on 2026-09-13? »). For bets whose exact /
+  // Comparateur copy is missing or lacks the confiance or the ampleur
+  // (sebRecords fills field by field): same day ±1, at least one team in
+  // common (French names / short names through SEB_TEAM_ALIAS) and the
+  // same entry price ±0.03 — the price is what tells two bets on one match
+  // apart. One-to-one, closest price first, so a Saison entry is never
+  // shared by two bets.
+  var SEB_TEAM_ALIAS = {
+    psg: "paris", om: "marseille", ol: "lyonnais", rcsa: "strasbourg", rcl: "lens", losc: "lille", asse: "etienne", ogcn: "nice",
+    barcelone: "barcelona", barca: "barcelona", inter: "internazionale", milan: "milan", bayern: "bayern", dortmund: "dortmund", bvb: "dortmund",
+    allemagne: "germany", angleterre: "england", espagne: "spain", ecosse: "scotland", suisse: "switzerland", galles: "wales", irlande: "ireland",
+    "pays-bas": "netherlands", hollande: "netherlands", autriche: "austria", grece: "greece", norvege: "norway", suede: "sweden", danemark: "denmark",
+    pologne: "poland", hongrie: "hungary", tchequie: "czechia", turquie: "turkey", bresil: "brazil", argentine: "argentina", colombie: "colombia",
+    mexique: "mexico", japon: "japan", coree: "korea", maroc: "morocco", algerie: "algeria", egypte: "egypt", islande: "iceland", finlande: "finland",
+    roumanie: "romania", bulgarie: "bulgaria", slovaquie: "slovakia", slovenie: "slovenia", lituanie: "lithuania", lettonie: "latvia", estonie: "estonia",
+    biélorussie: "belarus", bielorussie: "belarus", chypre: "cyprus", malte: "malta", "etats-unis": "usa", usa: "united states", "man": "manchester",
+    spurs: "tottenham", villareal: "villarreal", athletico: "atletico", atleti: "atletico", naples: "napoli", juve: "juventus", rome: "roma", lisbonne: "lisbon"
+  };
+  var SEB_STOP = /^(will|win|draw|over|under|spread|end|with|live|buts?|but|gagne|that|team|qualify|season|league|marques?|ou|nul|the|and|match|total|games?|sets?|handicap|leading|halftime|club|real|united|city|sporting|athletic|olympique|deportivo)$/;
+  function sebTeamToks(text) {
+    var out = {};
+    String(text || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 -]/g, " ").split(/[\s]+/).forEach(function (w) {
+      w = w.replace(/^-+|-+$/g, "");
+      if (!w) return;
+      var al = SEB_TEAM_ALIAS[w];
+      if (al) al.split(" ").forEach(function (x) { if (x.length >= 4) out[x.slice(0, 4)] = 1; });
+      w.split("-").forEach(function (x) { if (x.length >= 4 && !SEB_STOP.test(x) && !/^\d/.test(x)) out[x.slice(0, 4)] = 1; });
+    });
+    return out;
+  }
+  var sebFuzzyCache = { at: 0, bets: null, idx: null };
+  function sebFuzzyCopies() {
+    var bets = sebState.bets || [];
+    if (sebFuzzyCache.idx && sebFuzzyCache.bets === bets && Date.now() - sebFuzzyCache.at < 1500) return sebFuzzyCache.idx;
+    // rate: bet key → hand-typed copy to take ratings from; copy: the same,
+    // only for bets with no exact / Comparateur copy at all (sebSiteCopyFor).
+    var idx = { rate: {}, copy: {} }, noCopy = {};
+    sebFuzzyCache = { at: Date.now(), bets: bets, idx: idx };
+    var copies = sebSiteCopies(), cmpIdx = sebCmpIndex();
+    // Rated Saison / Mes Positions entries, one per distinct bet (the two
+    // lists hold copies of each other): not trashed, Saison, rated first.
+    var pool = {}, owner = {};
+    function poolKey(s) { return String(s.question).toLowerCase() + "|" + String(s.leaderName).toLowerCase() + "|" + Number(s.leaderPriceAtSnapshot).toFixed(3); }
+    function addPool(s, rank) {
+      if (!s || s.sebMeta || isCmpSideList(s) || s.lowConfidence || !(s.confidence || s.magnitude)) return;
+      var price = Number(s.leaderPriceAtSnapshot);
+      var day = String(s.eventDate || s.savedAt || "").slice(0, 10);
+      if (!(price > 0) || !day) return;
+      var k = poolKey(s);
+      var score = (s.deletedAt ? 0 : 10) + rank + (s.confidence ? 1 : 0) + (s.magnitude ? 1 : 0);
+      if (!pool[k] || score > pool[k].score) pool[k] = { s: s, score: score, price: price, day: Date.parse(day + "T12:00:00Z"), toks: sebTeamToks(s.question + " " + s.leaderName) };
+    }
+    loadSnapshotsRaw().forEach(function (s) { addPool(s, 2); });
+    loadPositionsRaw().forEach(function (s) { addPool(s, 0); });
+    var exact = {};
+    bets.forEach(function (b) {
+      var q = b.title.toLowerCase();
+      var ex = (b.evSlug && copies[q + "|s:" + sebNormSlug(b.evSlug)]) || copies[q + "|d:" + sebBetDay(b)];
+      ex = ex ? ex.s : (cmpIdx[b.key] && !isCmpSideList(cmpIdx[b.key].s) ? cmpIdx[b.key].s : null);
+      exact[b.key] = ex;
+      if (!ex) noCopy[b.key] = 1;
+      else owner[poolKey(ex)] = b.key; // another bet's exact copy is never borrowed
+    });
+    var pairs = [];
+    bets.forEach(function (b) {
+      var ex = exact[b.key];
+      if (ex && ex.confidence && (ex.magnitude || b.status !== "done")) return; // nothing left to fill (no ampleur before the result)
+      var day = sebBetDay(b);
+      if (!day || !(b.avg > 0)) return;
+      var bd = Date.parse(day + "T12:00:00Z"), bt = sebTeamToks(b.title + " " + b.outcome);
+      Object.keys(pool).forEach(function (k) {
+        var e = pool[k];
+        if (owner[k] && owner[k] !== b.key) return;
+        var dp = Math.abs(e.price - b.avg);
+        if (dp > 0.03 || Math.abs(e.day - bd) > 1.01 * 86400000) return;
+        var ov = 0;
+        for (var t in bt) if (e.toks[t]) ov++;
+        if (ov) pairs.push({ b: b.key, k: k, dp: dp, ov: ov, sc: e.score });
+      });
+    });
+    pairs.sort(function (a, c) { return a.dp - c.dp || c.ov - a.ov || c.sc - a.sc; });
+    var usedK = {};
+    pairs.forEach(function (pr) {
+      if (idx.rate[pr.b] || usedK[pr.k]) return;
+      idx.rate[pr.b] = pool[pr.k].s; usedK[pr.k] = 1;
+      if (noCopy[pr.b]) idx.copy[pr.b] = pool[pr.k].s;
+    });
+    return idx;
   }
   // Was this bet one of the site's own snapshots (Saison 26/27, Auto >10k, Mes Positions)?
   function sebFromSite(b) { return !!sebSiteCopyFor(b); }
@@ -17318,12 +17414,14 @@
     cachedStoredList(SNAPSHOTS_KEY).forEach(function (s) { if (s.sebMeta) meta[s.id] = s; });
     var copies = sebSiteCopies();
     var cmpIdx = sebCmpIndex();
+    var fuzzy = sebFuzzyCopies().rate;
     return (bets || []).map(function (b) {
       var id = sebMetaId(b.key);
       var m = meta[id];
       var src = sebSiteCopyFor(b, copies);
       var cmpHit = cmpIdx[b.key] ? cmpIdx[b.key].s : null;
       if (!src && cmpHit && !isCmpSideList(cmpHit)) src = cmpHit; // its Saison copy: notes come along
+      var fz = fuzzy[b.key] || null; // hand-typed Saison copy: fills what src lacks
       var done = b.status === "done";
       var rich = !!(src && !src.isManual && src.cardHtml && src.leaderName === b.outcome);
       var rec = {
@@ -17335,9 +17433,9 @@
         // When the match was played: its real kickoff, else the copy's
         // date, else the market's end day — never the settlement time.
         eventDate: b.kickoff ? new Date(b.kickoff).toISOString() : (src && src.eventDate) || b.endDate || (done ? new Date(b.doneAt).toISOString() : null),
-        confidence: m ? m.confidence || null : (src && src.confidence) || null,
-        magnitude: m ? m.magnitude || null : (src && src.magnitude) || null,
-        comment: m ? m.comment || null : (src && src.comment) || null,
+        confidence: m ? m.confidence || null : (src && src.confidence) || (fz && fz.confidence) || null,
+        magnitude: m ? m.magnitude || null : (src && src.magnitude) || (fz && fz.magnitude) || null,
+        comment: m ? m.comment || null : (src && src.comment) || (fz && fz.comment) || null,
         deletedAt: m && m.deletedAt ? m.deletedAt : null,
         eventSlug: b.slug, isManual: !rich, sebSport: b.sport, sebOpen: !done
       };
