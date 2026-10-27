@@ -10661,7 +10661,7 @@
       wireCompareConsole(el, cardsList, store);
       return;
     }
-    var chartHtml = buildHistoryChartSvg(series, { smooth: !!st.pnlChartSmooth }) + buildStakeStripSvg(weeklySeries);
+    var chartHtml = buildHistoryChartSvg(series, { smooth: !!st.pnlChartSmooth, markers: cmpPolicyMarkers(cardsList, store) }) + buildStakeStripSvg(weeklySeries);
     var hintHtml = '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div>';
     var weeks = computeWeeklyPnlAligned(weeklySeries);
     var weeklyHtml = '<div class="pnl-chart-weekly">' +
@@ -12906,6 +12906,22 @@
       '</div>' +
       '</div>';
   }
+  // Saison 26/27 and Seb only (on request, 2026-10-27): a line just before
+  // the first Comparaison bet, and one at the moment the rule changed to
+  // « Comparaison : que du A » (no more B-tier Comparaison bets).
+  var CMP_ONLY_A_DATE = new Date(2026, 9, 27, 7, 55);
+  function cmpPolicyMarkers(cardsList, store) {
+    if (store.name !== "snapshots" && store.name !== "seb") return [];
+    var first = null;
+    cardsList.forEach(function (s) { if (snapOrigin(s) !== "cmp") return; var t = snapSortTime(s); if (t && (first == null || t < first)) first = t; });
+    var out = [];
+    if (first != null) {
+      var d = new Date(first);
+      out.push({ date: d, between: true, color: ORIGIN_COLORS.cmp, lines: ["début", "comparaison"], title: "Premier pari Comparaison : " + d.toLocaleDateString("fr-FR") + "." });
+    }
+    out.push({ date: CMP_ONLY_A_DATE, color: ORIGIN_COLORS.cmp, lines: ["27/10 — fin du", "comparaison B, que du A"], title: "À partir du 27/10/2026 : plus de pari Comparaison en tier B, uniquement en A." });
+    return out;
+  }
   // opts.noPolicyMarker: leave out the site's own 21/09 policy marker (it's
   // about the site's snapshots, not e.g. the Seb tab's real bets).
   function buildHistoryChartSvg(series, opts) {
@@ -13041,26 +13057,47 @@
     // way, rather than just picking the nearest point's x.
     var POLICY_MARKER_DATE = new Date(2026, 8, 21);
     var POLICY_MARKER_LABEL = ["21/09 — fin du", "manuel B, que du A"];
-    var policyX = null;
-    if (!(opts && opts.noPolicyMarker) && POLICY_MARKER_DATE >= series[0].date) {
-      if (POLICY_MARKER_DATE >= series[n - 1].date) {
-        policyX = x(n - 1);
-      } else {
-        for (var pmi = 0; pmi < n - 1; pmi++) {
-          if (series[pmi].date <= POLICY_MARKER_DATE && POLICY_MARKER_DATE < series[pmi + 1].date) {
-            var pmSpan = series[pmi + 1].date - series[pmi].date;
-            var pmT = pmSpan > 0 ? (POLICY_MARKER_DATE - series[pmi].date) / pmSpan : 0;
-            policyX = x(pmi) + pmT * (x(pmi + 1) - x(pmi));
-            break;
-          }
+    // x of a date on this index-based axis: interpolated between the two
+    // straddling points (last point's x when it's later than every point,
+    // null when it's before the first one). opts.between: right between the
+    // last point before the date and the first one at/after it, so a marker
+    // set at a bet's own time sits just before that bet's point.
+    function markerX(date, between) {
+      if (between) {
+        for (var k = 0; k < n; k++) if (series[k].date >= date) return k === 0 ? x(0) : (x(k - 1) + x(k)) / 2;
+        return x(n - 1);
+      }
+      if (date < series[0].date) return null;
+      if (date >= series[n - 1].date) return x(n - 1);
+      for (var pmi = 0; pmi < n - 1; pmi++) {
+        if (series[pmi].date <= date && date < series[pmi + 1].date) {
+          var pmSpan = series[pmi + 1].date - series[pmi].date;
+          var pmT = pmSpan > 0 ? (date - series[pmi].date) / pmSpan : 0;
+          return x(pmi) + pmT * (x(pmi + 1) - x(pmi));
         }
       }
+      return null;
     }
-    var policyMarker = policyX == null ? "" :
-      '<line x1="' + policyX.toFixed(2) + '" y1="' + padT + '" x2="' + policyX.toFixed(2) + '" y2="' + (H - padB) + '" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round"><title>À partir du 21/09/2026 : plus de position manuelle en tier B, uniquement en A.</title></line>' +
-      POLICY_MARKER_LABEL.map(function (line, pmli) {
-        return '<text x="' + (policyX - 6).toFixed(2) + '" y="' + (padT + 10 + pmli * 10) + '" font-size="9" font-weight="700" fill="#7c3aed" text-anchor="end">' + esc(line) + '</text>';
-      }).join("");
+    // Vertical dated line + its label (row = which label line slot, so two
+    // close markers don't print over each other; a negative row counts up
+    // from the bottom of the plot). Label sits left of the line, or right
+    // of it when the line is too close to the y axis.
+    function markerSvg(mx, color, lines, title, row) {
+      if (mx == null) return "";
+      var right = mx - padL < 120;
+      return '<line x1="' + mx.toFixed(2) + '" y1="' + padT + '" x2="' + mx.toFixed(2) + '" y2="' + (H - padB) + '" stroke="' + color + '" stroke-width="2.5" stroke-linecap="round"><title>' + esc(title) + '</title></line>' +
+        lines.map(function (line, li) {
+          return '<text x="' + (mx + (right ? 6 : -6)).toFixed(2) + '" y="' + (row >= 0 ? padT + 10 + (row * 2 + li) * 10 : H - padB - 6 - (lines.length - 1 - li) * 10 + (row + 1) * 22) + '" font-size="9" font-weight="700" fill="' + color + '" stroke="var(--panel)" stroke-width="3" stroke-linejoin="round" paint-order="stroke" text-anchor="' + (right ? "start" : "end") + '">' + esc(line) + '</text>';
+        }).join("");
+    }
+    var policyMarker = (opts && opts.noPolicyMarker) ? "" :
+      markerSvg(markerX(POLICY_MARKER_DATE), "#7c3aed", POLICY_MARKER_LABEL, "À partir du 21/09/2026 : plus de position manuelle en tier B, uniquement en A.", 0);
+    // opts.markers: extra dated lines ({ date, color, lines, title, between }),
+    // labelled at the bottom — the curve usually climbs on the right, where
+    // these recent markers sit.
+    ((opts && opts.markers) || []).forEach(function (mk, mki) {
+      policyMarker += markerSvg(markerX(mk.date, mk.between), mk.color, mk.lines, mk.title, -1 - mki);
+    });
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
