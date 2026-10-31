@@ -2436,6 +2436,9 @@
   /* ⏳ Props (Seb) — long-term bets, condensed: tiles, timeline, table. */
   .seb-props-btn { font-weight: 800; border-color: color-mix(in srgb, #14b8a6 55%, var(--panel-border)); color: #0f766e; }
   .seb-props-btn.active { background: #14b8a6; border-color: #14b8a6; color: #fff; }
+  .seb-noletter-btn { font-weight: 800; }
+  .seb-noletter-btn:disabled { opacity: .5; cursor: default; }
+  .seb-noletter-btn.active { background: var(--accent); border-color: var(--accent); color: var(--panel); }
   .seb-props { margin: 4px 0 16px; border-color: color-mix(in srgb, #14b8a6 40%, var(--panel-border)); }
   .seb-props-tiles { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 2px 0 6px; }
   .seb-props-tiles div { display: flex; flex-direction: column; }
@@ -17819,9 +17822,14 @@
     }
     // Was this bet one of the site's own snapshots (Saison 26/27, Auto >10k, Mes Positions)?
     function sebFromSite(b) { return !!sebSiteCopyFor(b); }
-    function sebFiltered() {
+    // "🔤 Sans lettre" (on request, 2026-10-31): keeps only the bets that had
+    // no confiance letter when the button was clicked (sebState.noLetter =
+    // their keys), so a card stays on screen once lettered — to add its
+    // ampleur too — until the button is clicked again.
+    function sebFiltered(ignoreNoLetter) {
       var from = sebState.period === "all" ? 0 : Date.now() - Number(sebState.period) * 86400000;
       return (sebState.bets || []).filter(function (b) {
+        if (!ignoreNoLetter && sebState.noLetter && !sebState.noLetter[b.key]) return false;
         if (sebState.sport !== "all" && b.sport !== sebState.sport) return false;
         if (sebState.origin !== "all" && (sebState.origin === "site") !== sebFromSite(b)) return false;
         if (b.status === "done" && from && b.doneAt < from) return false;
@@ -18110,13 +18118,20 @@
       var isProps = function (b) { return b._origin === "props"; };
       var propsList = list.filter(isProps);
       var propsOpenN = propsList.filter(function (b) { return b.status === "open"; }).length;
+      var noLetterN = list.filter(function (b) { var r = recByKey[b.key]; return r && !r.confidence && !r.deletedAt; }).length;
+      var noLetterAll = sebState.noLetter ? Object.keys(sebState.noLetter).length : 0;
+      var noLetterBtn = sebState.noLetter
+        ? '<button type="button" class="seb-btn seb-noletter-btn active" data-seb-noletter="1" title="Revenir à tous les paris">🔤 Sans lettre · ' + noLetterN + ' restant' + (noLetterN > 1 ? 's' : '') + ' sur ' + noLetterAll + ' ✕</button>'
+        : '<button type="button" class="seb-btn seb-noletter-btn" data-seb-noletter="1"' + (noLetterN ? ' title="Afficher seulement les paris sans lettre de confiance (S, A, B)"' : ' disabled title="Tous tes paris ont une lettre"') + '>🔤 Sans lettre · ' + noLetterN + '</button>';
       var controls = '<div class="seb-controls">' +
         sebSeg("Période", "data-seb-period", [["7", "7 j"], ["30", "30 j"], ["90", "90 j"], ["all", "Tout"]], sebState.period) +
         sebSeg("Sport", "data-seb-sport", [["all", "Tous"]].concat(Object.keys(sports).sort(function (a, b) { return sports[b] - sports[a]; }).map(function (k) { return [k, k + " " + (AN_SPORT_LABELS[k] || "") + " · " + sports[k]]; })), sebState.sport) +
         sebSeg("Origine", "data-seb-origin", [["all", "Tous"], ["site", "📌 Snapshot du site"], ["other", "Hors site"]], sebState.origin) +
         sebSeg("Mise", "data-seb-stake", [["real", "Réelle"], ["flat", "1 000 $ avec cashout"], ["hold", "1 000 $ sans cashout"]], sebState.stakeMode) +
         (propsList.length ? '<button type="button" class="seb-btn seb-props-btn' + (sebState.propsOpen ? ' active' : '') + '" data-seb-props="1" title="Tes paris long terme (saison, classement, relégation…)">⏳ Props · ' + propsOpenN + ' en cours' + (sebState.propsOpen ? ' ▴' : ' ▾') + '</button>' : '') +
-      '</div>';
+        noLetterBtn +
+      '</div>' +
+      (sebState.noLetter ? '<div class="empty-note" style="padding:0 4px 8px;">Seulement les ' + noLetterAll + ' paris qui n\'avaient pas de lettre au clic (graphiques et cartes compris). Une carte notée reste affichée pour que tu puisses mettre l\'ampleur ; reclique sur le bouton pour tout revoir.</div>' : '');
       el.innerHTML = head + controls + (sebState.propsOpen ? sebPropsHtml(propsList) : '') +
         '<div class="empty-note" style="padding:0 4px 10px;">' + esc(cfg.intro) + '</div>';
       renderStoreView(SEB_STORE);
@@ -18283,8 +18298,19 @@
       if (!root || !e.target.closest || !root.contains(e.target)) return;
       var betRow = e.target.closest(".seb-list tr[data-seb-key]");
       if (betRow && !e.target.closest("a")) { sebJumpToCard(betRow.getAttribute("data-seb-key")); return; }
-      var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort], [data-seb-stake], [data-seb-showdone], [data-seb-props], [data-seb-props-done], [data-seb-matrix]");
+      var el = e.target.closest("[data-seb-reload], [data-seb-period], [data-seb-sport], [data-seb-origin], [data-seb-more], [data-seb-sort], [data-seb-stake], [data-seb-showdone], [data-seb-props], [data-seb-props-done], [data-seb-matrix], [data-seb-noletter]");
       if (!el) return;
+      if (el.hasAttribute("data-seb-noletter")) {
+        if (sebState.noLetter) { sebState.noLetter = null; sebState.showDone = !!sebState.prevShowDone; }
+        else {
+          var nl = {};
+          sebRecords(sebFiltered(true)).forEach(function (r) { if (!r.confidence && !r.deletedAt) nl[r.sebKey] = 1; });
+          sebState.noLetter = nl; sebState.prevShowDone = sebState.showDone; sebState.showDone = true;
+        }
+        sebState.limit = 40;
+        renderSeb();
+        return;
+      }
       if (el.hasAttribute("data-seb-props")) { sebState.propsOpen = !sebState.propsOpen; renderSeb(); return; }
       if (el.hasAttribute("data-seb-props-done")) { sebState.propsShowDone = !sebState.propsShowDone; renderSeb(); return; }
       if (el.hasAttribute("data-seb-matrix")) { sebState.matrixOpen = !sebState.matrixOpen; renderOtherStats(SEB_STORE.load(), SEB_STORE); return; }
