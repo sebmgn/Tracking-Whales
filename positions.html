@@ -7221,7 +7221,7 @@
   // session, with a write key and nothing left to push — what Seb's copy
   // into Saison waits for, so a device with a stale or empty local list
   // never adds bets that are already there.
-  var snapshotsFreshFromServer = false;
+  var snapshotsFreshFromServer = false, snapshotsFreshHooks = [];
   async function syncNow(store) {
     if (syncInFlight[store.name]) return;
     syncInFlight[store.name] = true;
@@ -7281,7 +7281,10 @@
       if (pendingOps.length) remote = pendingOps.reduce(function (l, op) { return applyOpToList(l, op); }, remote);
       store.save(remote);
       markEverSynced(store);
-      if (store === SNAPSHOTS_STORE && hasSecret && !loadSyncQueue(store).length) snapshotsFreshFromServer = true;
+      if (store === SNAPSHOTS_STORE && hasSecret && !loadSyncQueue(store).length && !snapshotsFreshFromServer) {
+        snapshotsFreshFromServer = true;
+        snapshotsFreshHooks.forEach(function (f) { setTimeout(f, 0); });
+      }
       updateSyncStatus(store, hasSecret ? "synced" : "readonly");
       renderStoreView(store);
       // Views filtered out of this same list (📝 Test, Comparateur ones)
@@ -17433,16 +17436,22 @@
       var linked = {}, owner = {}, left = [];
       function poolKey(s) { return String(s.question).toLowerCase() + "|" + String(s.leaderName).toLowerCase() + "|" + Number(s.leaderPriceAtSnapshot).toFixed(3); }
       raw.forEach(function (s) { if (s.sebKey && !s.sebMeta) linked[s.sebKey] = s; });
+      // One entry per bet: the same market bet on both accounts (Nice not
+      // relegated, 2026-10-28) is two bets, so a copy made for one bet, or
+      // an exact / Comparateur copy another bet already took, doesn't count.
+      var claimed = {};
+      bets.forEach(function (b) { if (linked[b.key]) claimed[linked[b.key].id] = 1; });
       bets.forEach(function (b) {
         var q = b.title.toLowerCase();
         var ex = (b.evSlug && copies[q + "|s:" + sebNormSlug(b.evSlug)]) || copies[q + "|d:" + sebBetDay(b)];
         ex = ex ? ex.s : (cmpIdx[b.mk] && !isCmpSideList(cmpIdx[b.mk].s) ? cmpIdx[b.mk].s : null);
-        if (ex) owner[poolKey(ex)] = 1;
-        if (!ex && !linked[b.key]) left.push(b);
+        if (ex && ((ex.sebKey && ex.sebKey !== b.key) || claimed[ex.id])) ex = null;
+        if (ex) { claimed[ex.id] = 1; owner[poolKey(ex)] = 1; }
+        else if (!linked[b.key]) left.push(b);
       });
       var pool = {};
       raw.forEach(function (s) {
-        if (!s || s.sebMeta || isCmpSideList(s) || s.lowConfidence || owner[poolKey(s)]) return;
+        if (!s || s.sebMeta || s.sebKey || isCmpSideList(s) || s.lowConfidence || owner[poolKey(s)]) return;
         var price = Number(s.leaderPriceAtSnapshot), day = String(s.eventDate || s.savedAt || "").slice(0, 10);
         if (price > 0 && day) pool[poolKey(s)] = { price: price, day: Date.parse(day + "T12:00:00Z"), toks: sebTeamToks(s.question + " " + s.leaderName) };
       });
@@ -17470,9 +17479,11 @@
       if (b.finalPrice === 1 || b.finalPrice === 0) return b.finalPrice === 1 ? b.outcome : OTHER_SIDE_SENTINEL;
       return null;
     }
+    if (cfg.toSaison) snapshotsFreshHooks.push(function () { if (sebState.bets) sebSyncToSaison(); });
     function sebSyncToSaison(attempt) {
       if (!cfg.toSaison || !sebState.bets) return;
-      if (!snapshotsFreshFromServer || syncInFlight[SNAPSHOTS_STORE.name]) {
+      if (!snapshotsFreshFromServer) return; // runs from snapshotsFreshHooks once it is
+      if (syncInFlight[SNAPSHOTS_STORE.name]) {
         if ((attempt || 0) < 12) setTimeout(function () { sebSyncToSaison((attempt || 0) + 1); }, 10000);
         return;
       }
