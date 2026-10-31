@@ -1412,7 +1412,7 @@
   @media (max-width: 760px) { details.value-trade-item > .vt-summary.snap-grid { grid-template-columns: 1fr; } .snap-side { justify-items: start; } }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
-  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-origin-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn, .snap-take-position-btn, .snap-to-saison-btn, .snap-comment-btn {
+  .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-live-btn, .snap-origin-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn, .snap-take-position-btn, .snap-to-saison-btn, .snap-comment-btn {
     background: var(--panel);
     border: 1px solid var(--panel-border);
     padding: 5px 12px;
@@ -1422,8 +1422,11 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover, .snap-take-position-btn:hover, .snap-to-saison-btn:hover, .snap-comment-btn:hover { border-color: var(--accent); }
+  .snap-side-btn:hover, .snap-delete-btn:hover, .snap-confidence-btn:hover, .snap-magnitude-btn:hover, .snap-live-btn:hover, .snap-restore-btn:hover, .snap-purge-btn:hover, .snap-edit-btn:hover, .snap-take-position-btn:hover, .snap-to-saison-btn:hover, .snap-comment-btn:hover { border-color: var(--accent); }
   .snap-comment-btn { color: var(--text-dim); }
+  .snap-live-btn { color: var(--text-dim); margin-left: 6px; }
+  .snap-live-btn.active { background: #e5484d; border-color: #e5484d; color: #fff; }
+  .snap-live-btn.active:hover { border-color: #b4232a; }
   .snap-comment-btn.active { color: var(--accent); border-color: var(--accent); }
   .snap-comment { margin: 0 0 10px; font-size: 12.5px; color: var(--text); background: var(--row-hover); border-radius: var(--radius-sm); padding: 6px 10px; white-space: pre-wrap; word-break: break-word; }
   .snap-edit-btn { color: var(--accent); }
@@ -7049,7 +7052,7 @@
   // written before that (2026-10-03: 1 comment, 27 tags): a position with no
   // value of its own shows its snapshot's. Read-time only, nothing is sent
   // to the server.
-  var INHERITED_FROM_SNAPSHOT = ["comment", "magnitude"];
+  var INHERITED_FROM_SNAPSHOT = ["comment", "magnitude", "live", "liveMin"];
   function inheritFromSourceSnapshots(positions) {
     var snapById = null;
     positions.forEach(function (p) {
@@ -11564,7 +11567,7 @@
     var key = store.name + "|" + snap.id, open = !!SNAP_MORE_OPEN[key];
     return '<div class="snap-toolbar snap-toolbar-compact">' +
       '<span class="snap-ctrl-row"><span class="snap-side-label">Gagnant :</span>' + p.sides + '</span>' +
-      '<span class="snap-ctrl-row"><span class="snap-side-label">Confiance :</span>' + p.conf + p.mag +
+      '<span class="snap-ctrl-row"><span class="snap-side-label">Confiance :</span>' + p.conf + p.mag + snapLiveBtnHtml(snap, store) +
         '<button type="button" class="snap-more-btn' + (open ? ' active' : '') + '" data-more-key="' + esc(key) + '" aria-expanded="' + open + '" title="Type, commentaire, position, corbeille…">⋯</button></span>' +
       '<span class="snap-more"' + (open ? '' : ' hidden') + '>' + p.date + p.reorder + p.more + '</span>' +
     '</div>';
@@ -14417,6 +14420,23 @@
       enqueueOp(resolveWritableStoreFromEl(originBtn), { type: "editPosition", id: originBtn.getAttribute("data-snap-id"), patch: { origin: originBtn.getAttribute("data-origin") } });
       return;
     }
+    // 📡 Live: the tick turns what the card shows (detected or not) the
+    // other way round, kept as your own choice; mirrored like ++/+/-/--.
+    var liveBtn = e.target.closest ? e.target.closest(".snap-live-btn") : null;
+    if (liveBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var fromTestLive = liveBtn.getAttribute("data-store") === "test";
+      var lStore = resolveWritableStoreFromEl(liveBtn);
+      var lid = liveBtn.getAttribute("data-snap-id");
+      var curLiveSnap = lStore.loadRaw().filter(function (s) { return s.id === lid; })[0];
+      var newLive = !snapLiveInfo(curLiveSnap).on;
+      tradeFamilyTargets(lStore, lid).forEach(function (t) {
+        enqueueOp(t.store, { type: "editPosition", id: t.id, patch: { live: newLive } });
+      });
+      if (fromTestLive) renderTest();
+      return;
+    }
     var magBtn = e.target.closest ? e.target.closest(".snap-magnitude-btn") : null;
     if (magBtn) {
       e.preventDefault();
@@ -15017,6 +15037,36 @@
     var d = new Date(t);
     var day = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
     return String(snap.eventDate).length > 10 ? day + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : day;
+  }
+  // 📡 Live (on request, 2026-10-31): was the bet taken during the match?
+  // Not live by default. Your own tick (live: true/false) wins; else
+  // liveMin, minutes from kickoff to your first buy on Polymarket (set from
+  // Seb's trades, negative = before kickoff); else, for a pinned card with a
+  // real kickoff time, the pin made during the match (2 to 150 min after).
+  var LIVE_MIN_AFTER = 2, LIVE_PIN_MAX = 150;
+  var LIVE_STORES = { snapshots: 1, unconfident: 1, positions: 1, test: 1, seb: 1, seb2: 1 };
+  function snapLiveInfo(snap) {
+    if (!snap) return { on: false, how: "none" };
+    if (snap.live === true || snap.live === false) return { on: snap.live, how: "hand", min: snap.liveMin != null ? snap.liveMin : null };
+    if (snap.liveMin != null) return { on: snap.liveMin >= LIVE_MIN_AFTER, how: "trade", min: snap.liveMin };
+    var k = snapEventTime(snap), t = Date.parse(snap.savedAt);
+    if (!snap.sebKey && !snap.sebSport && k != null && String(snap.eventDate).length > 10 && !isNaN(t)) {
+      var m = Math.round((t - k) / 60000);
+      if (m >= LIVE_MIN_AFTER && m <= LIVE_PIN_MAX) return { on: true, how: "pin", min: m };
+    }
+    return { on: false, how: "none" };
+  }
+  function snapLiveBtnHtml(snap, store) {
+    if (!LIVE_STORES[store.name]) return "";
+    var li = snapLiveInfo(snap), m = li.min;
+    function dur(x) { return x < 120 ? x + " min" : x < 2880 ? Math.round(x / 60) + " h" : Math.round(x / 1440) + " jours"; }
+    var when = m == null ? "" : m >= 0 ? dur(m) + " après le coup d'envoi" : dur(-m) + " avant le coup d'envoi";
+    var title = li.how === "hand" ? (li.on ? "Live, coché à la main" : "Pas en live, décoché à la main") + (when ? " (ton 1er achat : " + when + ")" : "")
+      : li.how === "trade" ? "Détecté automatiquement : ton 1er achat sur Polymarket, " + when
+      : li.how === "pin" ? "Détecté automatiquement : épinglé " + when
+      : "Pas en live (par défaut) : clique si tu as pris ce pari pendant le match";
+    return '<button type="button" class="snap-live-btn' + (li.on ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" aria-pressed="' + li.on + '" title="' + esc(title + (li.how === "none" ? "." : ". Clique pour changer.")) + '">' +
+      (li.on ? '✓ Live' + (m != null && m >= 0 && m < 200 ? ' ' + m + '\'' : '') : 'Live') + '</button>';
   }
   // Cards are ordered by when the event takes place (latest first), the
   // save time breaking ties (so ▲▼ still reorders bets of the same day).
@@ -17633,12 +17683,13 @@
             if (pg.length < 50) break;
           }
           var open = await sebFetchJson("https://data-api.polymarket.com/positions?user=" + acct.address + "&limit=500&sizeThreshold=0.01");
+          var firstBuys = await sebFirstBuys(acct);
           var seen = {};
           closed.forEach(function (p) {
             var stake = (Number(p.totalBought) || 0) * (Number(p.avgPrice) || 0);
             if (stake < 1) return;
             seen[p.conditionId + "|" + p.outcomeIndex] = true;
-            bets.push(sebBet(p, stake, Number(p.realizedPnl) || 0, "done", (Number(p.timestamp) || 0) * 1000, acct));
+            bets.push(sebBet(p, stake, Number(p.realizedPnl) || 0, "done", (Number(p.timestamp) || 0) * 1000, acct, firstBuys));
           });
           (Array.isArray(open) ? open : []).forEach(function (p) {
             if (seen[p.conditionId + "|" + p.outcomeIndex]) return; // already counted from closed-positions
@@ -17647,7 +17698,7 @@
             var cur = Number(p.curPrice);
             var settled = p.redeemable === true || cur === 0 || cur === 1;
             var end = p.endDate ? Date.parse(String(p.endDate).length === 10 ? p.endDate + "T23:00:00Z" : p.endDate) : Date.now();
-            bets.push(sebBet(p, stake, (Number(p.cashPnl) || 0) + (Number(p.realizedPnl) || 0), settled ? "done" : "open", settled ? end : null, acct));
+            bets.push(sebBet(p, stake, (Number(p.cashPnl) || 0) + (Number(p.realizedPnl) || 0), settled ? "done" : "open", settled ? end : null, acct, firstBuys));
           });
         }
         // Long-term props sold before the end at a loss or about even are
@@ -17657,6 +17708,7 @@
           return !(b.status === "done" && b.pnl <= 0.01 * b.stake && b.pnl > -0.5 * b.stake && isLongTermSlug(b.evSlug || b.slug));
         });
         await sebFillKickoffs(bets);
+        bets.forEach(function (b) { b.liveMin = b.kickoff && b.firstBuy ? Math.round((b.firstBuy - b.kickoff) / 60000) : null; });
         if (!sebState.eurRate) {
           try { var fx = await sebFetchJson("https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR"); if (fx && fx.rates && fx.rates.EUR) { sebState.eurRate = Number(fx.rates.EUR); sebState.eurDate = fx.date || null; } } catch (e) { /* fallback rate below */ }
         }
@@ -17676,7 +17728,7 @@
     // first one (the same bet on both accounts stays two bets, and the first
     // account's keys — hence its sebMeta ids — never change); mk = market ×
     // side alone, for the Comparateur lookup.
-    function sebBet(p, stake, pnl, status, doneAt, acct) {
+    function sebBet(p, stake, pnl, status, doneAt, acct, firstBuys) {
       var title = p.title || "—";
       var mk = p.conditionId + "|" + p.outcomeIndex;
       return {
@@ -17686,8 +17738,30 @@
         // bet held to the end would have paid, whatever you actually did.
         finalPrice: p.curPrice != null && p.curPrice !== "" ? Number(p.curPrice) : null,
         stake: stake, avg: Number(p.avgPrice) || 0, pnl: pnl, status: status, doneAt: doneAt,
-        sport: sportEmojiFor(title, p.slug || ""), win: status === "done" ? pnl > 0 : null
+        sport: sportEmojiFor(title, p.slug || ""), win: status === "done" ? pnl > 0 : null,
+        firstBuy: (firstBuys && firstBuys[mk]) || null
       };
+    }
+    // 📡 When each bet was taken: the account's first buy on that market ×
+    // side (activity feed, 500 fills a page), compared with the kickoff for
+    // the Live tick (snapLiveInfo). Kept from the last load if the feed fails.
+    var sebBuyCache = {};
+    async function sebFirstBuys(acct) {
+      try {
+        var first = {};
+        for (var off = 0; off < 10000; off += 500) {
+          var pg = await sebFetchJson("https://data-api.polymarket.com/activity?user=" + acct.address + "&type=TRADE&limit=500&offset=" + off);
+          if (!Array.isArray(pg)) break;
+          pg.forEach(function (t) {
+            if (t.side !== "BUY") return;
+            var k = t.conditionId + "|" + t.outcomeIndex, ts = (Number(t.timestamp) || 0) * 1000;
+            if (ts && (!first[k] || ts < first[k])) first[k] = ts;
+          });
+          if (pg.length < 500) break;
+        }
+        sebBuyCache[acct.address] = first;
+      } catch (e) { /* best effort: no Live detection for new bets this time */ }
+      return sebBuyCache[acct.address] || {};
     }
     // Each bet's real kickoff (gamma gameStartTime, by condition id, 20 per
     // request) — orders the cards by when the match was played. Kept in
@@ -17877,7 +17951,7 @@
     function sebSaisonCopyId(key) { return "sebsaison-" + sebMetaId(key).replace(/^[a-z0-9]+meta-/, ""); }
     function sebSaisonMissing(bets) {
       var copies = sebSiteCopies(), cmpIdx = sebCmpIndex(), raw = loadSnapshotsRaw();
-      var linked = {}, owner = {}, left = [];
+      var linked = {}, owner = {}, left = [], tied = {};
       function poolKey(s) { return String(s.question).toLowerCase() + "|" + String(s.leaderName).toLowerCase() + "|" + Number(s.leaderPriceAtSnapshot).toFixed(3); }
       raw.forEach(function (s) { if (s.sebKey && !s.sebMeta) linked[s.sebKey] = s; });
       // One entry per bet: the same market bet on both accounts (Nice not
@@ -17892,14 +17966,14 @@
         // Auto >10k captures (autoPre) aren't in Saison 26/27: they don't count
         // (Bayern 28/10 was matched to one, on the other side, 2026-10-31)
         if (ex && (ex.autoPre || (ex.sebKey && ex.sebKey !== b.key) || claimed[ex.id])) ex = null;
-        if (ex) { claimed[ex.id] = 1; owner[poolKey(ex)] = 1; }
+        if (ex) { claimed[ex.id] = 1; owner[poolKey(ex)] = 1; tied[b.key] = ex; }
         else if (!linked[b.key]) left.push(b);
       });
       var pool = {};
       raw.forEach(function (s) {
         if (!s || s.sebMeta || s.sebKey || s.autoPre || isCmpSideList(s) || s.lowConfidence || owner[poolKey(s)]) return;
         var price = Number(s.leaderPriceAtSnapshot), day = String(s.eventDate || s.savedAt || "").slice(0, 10);
-        if (price > 0 && day) pool[poolKey(s)] = { price: price, day: Date.parse(day + "T12:00:00Z"), toks: sebTeamToks(s.question + " " + s.leaderName) };
+        if (price > 0 && day) pool[poolKey(s)] = { s: s, price: price, day: Date.parse(day + "T12:00:00Z"), toks: sebTeamToks(s.question + " " + s.leaderName) };
       });
       var pairs = [];
       left.forEach(function (b) {
@@ -17916,8 +17990,11 @@
       });
       pairs.sort(function (a, c) { return a.dp - c.dp || c.ov - a.ov; });
       var hit = {}, usedK = {};
-      pairs.forEach(function (pr) { if (hit[pr.b] || usedK[pr.k]) return; hit[pr.b] = 1; usedK[pr.k] = 1; });
-      return { missing: left.filter(function (b) { return !hit[b.key]; }), linked: linked };
+      pairs.forEach(function (pr) { if (hit[pr.b] || usedK[pr.k]) return; hit[pr.b] = 1; usedK[pr.k] = 1; tied[pr.b] = pool[pr.k].s; });
+      Object.keys(linked).forEach(function (k) { tied[k] = linked[k]; });
+      // tied: every Saison 26/27 entry standing for a bet (its copy, an exact
+      // or Comparateur copy, or a hand-typed match) — they get its Live minute
+      return { missing: left.filter(function (b) { return !hit[b.key]; }), linked: linked, tied: tied };
     }
     // The market's result (Saison 26/27 simulates 1 000 $ held to the end):
     // a bet cashed out before it stays pending until the market resolves.
@@ -17953,6 +18030,8 @@
           winningSide: sebResultSide(b)
         };
         if (r.cmp) snap.cmp = r.cmp;
+        if (b.liveMin != null) snap.liveMin = b.liveMin;
+        if (r.live != null) snap.live = r.live;
         ops.push({ type: "add", id: id, snapshot: snap });
       });
       // copies made here: their result once known, and the ratings given
@@ -17966,7 +18045,17 @@
         ["confidence", "magnitude", "comment"].concat(r.sebOriginSet ? ["origin"] : []).forEach(function (f) {
           if ((r[f] || null) !== (s[f] || null)) { patch[f] = r[f] || null; n++; }
         });
+        if (r.live != null && r.live !== s.live) { patch.live = r.live; n++; }
         if (n) ops.push({ type: "editPosition", id: s.id, patch: patch });
+      });
+      // 📡 the minute of your first buy, onto every Saison entry of that bet
+      var have2 = {};
+      ops.forEach(function (o) { if (o.type === "editPosition") have2[o.id] = o; });
+      bets.forEach(function (b) {
+        var s = found.tied[b.key];
+        if (!s || !have[s.id] || b.liveMin == null || s.liveMin === b.liveMin) return;
+        if (have2[s.id]) have2[s.id].patch.liveMin = b.liveMin;
+        else { have2[s.id] = { type: "editPosition", id: s.id, patch: { liveMin: b.liveMin } }; ops.push(have2[s.id]); }
       });
       sebState.saisonSync = { state: "ok", at: Date.now(), added: ops.filter(function (o) { return o.type === "add"; }).length, edited: ops.filter(function (o) { return o.type === "editPosition"; }).length };
       healthRender();
@@ -18064,6 +18153,8 @@
           confidence: m ? m.confidence || null : (inh && ((src && src.confidence) || (fz && fz.confidence))) || null,
           magnitude: m ? m.magnitude || null : (inh && ((src && src.magnitude) || (fz && fz.magnitude))) || null,
           comment: m ? m.comment || null : (inh && ((src && src.comment) || (fz && fz.comment))) || null,
+          live: m && m.live != null ? m.live : (inh && src && src.live != null ? src.live : null),
+          liveMin: b.liveMin != null ? b.liveMin : null,
           deletedAt: m && m.deletedAt ? m.deletedAt : null,
           eventSlug: b.slug, isManual: !rich, sebSport: b.sport, sebOpen: !done,
           sebRated: !!m, sebOriginSet: !!(m && m.origin)
@@ -18101,7 +18192,7 @@
         if (!view) return;
         ops.push({ type: "add", id: view.id, snapshot: {
           id: view.id, sebMeta: true, sebKey: view.sebKey, question: view.question,
-          savedAt: new Date().toISOString(), confidence: view.confidence, magnitude: view.magnitude, comment: view.comment
+          savedAt: new Date().toISOString(), confidence: view.confidence, magnitude: view.magnitude, comment: view.comment, live: view.live
         } }); // origin left out: stays a guess until a Type button sets it
       }
       ops.push(op);
@@ -18161,7 +18252,8 @@
     // avec cashout: average of each bet's ROI; sans cashout: held to the
     // market's result (bets whose market isn't settled yet left out).
     var SEB_CONF_ORDER = ["S", "A+", "A", "B", "—"];
-    function sebConfHtml(list, recByKey) {
+    // finished bets grouped by keyOf(bet, record): n, ROI sum, gain, stake
+    function sebRoiAcc(list, recByKey, keyOf) {
       var acc = {};
       list.forEach(function (b) {
         if (b.status !== "done") return;
@@ -18172,20 +18264,36 @@
           if (b.finalPrice !== 1 && b.finalPrice !== 0) return;
           roi = b.finalPrice === 1 ? 1 / b.avg - 1 : -1;
         } else roi = b.stake ? b.pnl / b.stake : 0;
-        var c = (rec && rec.confidence) || "—";
+        var c = keyOf(b, rec);
         var a = acc[c] = acc[c] || { n: 0, roiSum: 0, pnl: 0, stake: 0 };
         a.n++; a.roiSum += roi; a.pnl += b.pnl; a.stake += b.stake;
       });
-      var rows = SEB_CONF_ORDER.filter(function (k) { return acc[k]; }).map(function (k) {
+      return acc;
+    }
+    function sebRoiBoxHtml(title, acc, order, labels) {
+      var rows = order.filter(function (k) { return acc[k]; }).map(function (k) {
         var a = acc[k];
-        return [k === "—" ? "Sans lettre" : k, sebState.stakeMode === "real" ? (a.stake ? a.pnl / a.stake * 100 : 0) : a.roiSum / a.n * 100, a.n];
+        return [labels[k] || k, sebState.stakeMode === "real" ? (a.stake ? a.pnl / a.stake * 100 : 0) : a.roiSum / a.n * 100, a.n];
       });
       if (!rows.length) return "";
       var mode = sebState.stakeMode === "real" ? "mises réelles" : sebState.stakeMode === "hold" ? "1 000 $ par pari, gardé jusqu'au bout" : "1 000 $ par pari, avec tes cashouts";
-      return '<div class="chart-box seb-box"><div class="tier-wr-title">🎯 Rendement par lettre de confiance</div>' +
+      return '<div class="chart-box seb-box"><div class="tier-wr-title">' + esc(title) + '</div>' +
         '<div class="empty-note" style="padding:2px 0 8px;">Paris terminés, sur les filtres ci-dessus (' + mode + '). Le petit chiffre gris = nombre de paris.</div>' +
         '<div class="cr-stats" style="grid-template-columns:1fr;">' + crBarsHtml([{ title: "", rows: rows }]) + '</div>' +
         '<div class="cr-legend" style="margin-top:6px;"><span><i class="cr-sw"></i>30 paris ou plus</span><span><i class="cr-sw thin"></i>moins de 30 : trop peu pour conclure</span></div></div>';
+    }
+    function sebConfHtml(list, recByKey) {
+      var acc = sebRoiAcc(list, recByKey, function (b, rec) { return (rec && rec.confidence) || "—"; });
+      return sebRoiBoxHtml("🎯 Rendement par lettre de confiance", acc, SEB_CONF_ORDER, { "—": "Sans lettre" });
+    }
+    // 📡 Live or before the match (2026-10-31), from each card's Live tick;
+    // a bet with no kickoff time (props, futures) stands apart.
+    function sebLiveHtml(list, recByKey) {
+      var acc = sebRoiAcc(list, recByKey, function (b, rec) {
+        var li = snapLiveInfo(rec);
+        return li.on ? "live" : (li.how === "none" && !b.kickoff) ? "unknown" : "pre";
+      });
+      return sebRoiBoxHtml("📡 Live ou avant-match", acc, ["live", "pre", "unknown"], { live: "📡 Live", pre: "Avant-match", unknown: "Sans heure de match" });
     }
     // Par sport / Par cote d'entrée / Par mois — at the top of Autres stats
     // (on request, 2026-10-25; they used to sit above "Tes paris").
@@ -18305,11 +18413,11 @@
         var res = b.status === "open" ? '<td class="seb-dim">En cours</td><td class="seb-dim">—</td>'
           : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td><td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
         return '<tr data-seb-key="' + esc(b.key) + '" class="' + (b.status === "open" ? 'seb-open' : '') + '"><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
-          '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + (sebFromSite(b) ? ' <span class="seb-tag" title="Ce pari est aussi dans Saison 26/27 ou Auto >10k">📌</span>' : '') + (b.acct && b.acct.tag ? ' <span class="seb-tag" title="Compte ' + esc(b.acct.label) + '">' + esc(b.acct.tag) + '</span>' : '') + '</td>' +
+          '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + (sebFromSite(b) ? ' <span class="seb-tag" title="Ce pari est aussi dans Saison 26/27 ou Auto >10k">📌</span>' : '') + (snapLiveInfo(recByKey[b.key]).on ? ' <span class="seb-tag" title="Pris en live">📡</span>' : '') + (b.acct && b.acct.tag ? ' <span class="seb-tag" title="Compte ' + esc(b.acct.label) + '">' + esc(b.acct.tag) + '</span>' : '') + '</td>' +
           '<td class="seb-nowrap"><span class="seb-type" style="color:' + ORIGIN_COLORS[b._origin] + '">' + ORIGIN_ICONS[b._origin] + ' ' + ORIGIN_LABELS[b._origin] + '</span></td>' +
           '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
       }).join("");
-      if (extra) extra.innerHTML = sebConfHtml(list, recByKey) +
+      if (extra) extra.innerHTML = sebConfHtml(list, recByKey) + sebLiveHtml(list, recByKey) +
         '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (openT.length ? ' · ' + openT.length + ' en cours' : '') + (propsList.length ? ' <span class="seb-dim" style="font-weight:500;font-size:12px;">(hors props — voir ⏳ Props en haut)</span>' : '') + '</div>' +
           '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr>' + SEB_COLS.map(function (c) {
             var active = sebState.sortKey === c.key;
