@@ -2797,6 +2797,63 @@
   .cmp-pin-btn.pinned { border-color: var(--green); color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); }
   .cmp-actions-cell { white-space: nowrap; }
   .cmp-alerts-toggle { margin: 0 0 10px; }
+  /* 🩺 Voyants de santé (2026-10-31) */
+  .health-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; padding: 0; border: 0; background: none; font: inherit; font-size: 12px; cursor: pointer; text-align: left; }
+  .health-strip[hidden] { display: none; }
+  .health-chip { display: inline-flex; gap: 5px; align-items: center; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text-dim); white-space: nowrap; font-weight: 600; }
+  .health-chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); flex: none; }
+  .health-chip.ok::before { background: var(--green); }
+  .health-chip.warn { color: var(--tier-b); border-color: color-mix(in srgb, var(--tier-b) 45%, var(--panel-border)); }
+  .health-chip.warn::before { background: var(--tier-b); }
+  .health-chip.bad { color: var(--red); border-color: color-mix(in srgb, var(--red) 50%, var(--panel-border)); }
+  .health-chip.bad::before { background: var(--red); }
+  .health-detail { border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel); padding: 10px 14px; margin: 0 0 10px; display: grid; gap: 6px; font-size: 13px; }
+  .health-detail[hidden] { display: none; }
+  .health-detail .health-chip { justify-self: start; }
+  .health-detail p { margin: 0 0 4px 2px; color: var(--text-dim); }
+  /* 🎚️ Règle d'alerte + rendement par tranche (2026-10-31) */
+  .cr-box { border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel); padding: 14px; margin: 0 0 14px; display: grid; gap: 14px; }
+  .cr-intro { font-size: 13px; color: var(--text-dim); margin: 0; }
+  .cr-rules { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cr-rule { border: 1px solid var(--panel-border); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; background: var(--bg); }
+  .cr-rule.off { opacity: .55; }
+  .cr-rule-top { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 13.5px; cursor: pointer; }
+  .cr-rule-top input { width: 17px; height: 17px; accent-color: var(--accent); }
+  .cr-slid { display: grid; grid-template-columns: 112px 1fr 58px; gap: 8px; align-items: center; font-size: 13px; }
+  .cr-slid input[type=range] { width: 100%; min-width: 0; accent-color: var(--accent); }
+  .cr-slid output { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .cr-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .cr-msg { font-size: 13px; color: var(--text-dim); }
+  .cr-msg.bad { color: var(--red); font-weight: 600; }
+  .cr-msg.ok { color: var(--green); font-weight: 600; }
+  .cr-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .cr-tile { border: 1px solid var(--panel-border); border-radius: 8px; padding: 8px 10px; display: grid; gap: 1px; min-width: 0; }
+  .cr-tile .k { font-size: 12px; color: var(--text-dim); }
+  .cr-tile .v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .cr-tile .s { font-size: 11.5px; color: var(--text-dim); }
+  .cr-note { font-size: 13px; color: var(--text-dim); }
+  .cr-note.warn { color: var(--tier-b); font-weight: 600; }
+  .cr-stats-title { font-weight: 800; font-size: 14px; }
+  .cr-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 26px; }
+  .cr-group-title { font-size: 12.5px; font-weight: 800; color: var(--text-dim); margin-bottom: 4px; }
+  .cr-bar-row { display: grid; grid-template-columns: minmax(84px, 140px) 1fr 96px; gap: 8px; align-items: center; font-size: 12.5px; margin: 3px 0; }
+  .cr-bar-track { position: relative; height: 14px; }
+  .cr-bar { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+  .cr-bar.pos { background: var(--green); }
+  .cr-bar.neg { background: var(--red); }
+  .cr-bar.thin { background-image: repeating-linear-gradient(45deg, transparent 0 3px, color-mix(in srgb, var(--panel) 60%, transparent) 3px 6px); }
+  .cr-zero { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--text-dim); }
+  .cr-val { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .cr-val small { font-weight: 500; color: var(--text-dim); }
+  .cr-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-dim); }
+  .cr-sw { display: inline-block; width: 16px; height: 9px; border-radius: 2px; background: var(--text-dim); vertical-align: middle; margin-right: 5px; }
+  .cr-sw.thin { background-image: repeating-linear-gradient(45deg, transparent 0 3px, var(--panel) 3px 6px); }
+  @media (max-width: 700px) {
+    .cr-rules, .cr-stats { grid-template-columns: 1fr; }
+    .cr-tiles { grid-template-columns: repeat(2, 1fr); }
+    .cr-slid { grid-template-columns: 90px 1fr 54px; }
+    .cr-bar-row { grid-template-columns: 84px 1fr 88px; }
+  }
   .cmp-alerts-box { margin: 0 0 14px; }
   .cmp-alerts-box td { font-size: 12.5px; }
   .cmp-alert-now-gone { color: var(--text-dim); font-style: italic; }
@@ -2840,6 +2897,9 @@
     </div>
     <span class="error-msg" id="errorMsg"></span>
   </div>
+
+  <button type="button" id="healthStrip" class="health-strip" aria-expanded="false" aria-controls="healthDetail" title="Voyants de santé — cliquer pour le détail" hidden></button>
+  <div id="healthDetail" class="health-detail" hidden></div>
 
   <div class="tab-bar">
     <button class="tab-btn tab-btn-primary tab-gold-1 active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
@@ -3155,6 +3215,7 @@
       <div class="vt-filters" id="cmpDayFilters"></div>
       <div class="vt-filters" id="cmpCompFilters"></div>
     </div>
+    <div id="cmpRule"></div>
     <div id="cmpAlerts"></div>
     <div id="cmpContent">
       <div class="loading-state">Chargement des propositions…</div>
@@ -7103,11 +7164,22 @@
   // list instead of an empty one; it just can't push edits until connected.
   // store.remotePath picks the route (and therefore the DynamoDB table on
   // the Lambda side) — "snapshots" or "positions".
+  // Read side of the 🩺 Saison voyant (see healthRender): when the list last
+  // came back, how big it was, and since when it's been failing.
+  var HEALTH = { saison: { okAt: 0, err: null, errSince: 0, chars: 0 }, cmp: null, cmpErr: null, cmpAt: 0, open: false };
   async function fetchRemoteList(store) {
-    var res = await awsFetch(AWS_LAMBDA_URL + "/" + store.remotePath);
-    if (!res.ok) throw new Error("AWS GET " + res.status);
-    var list = await res.json();
-    return Array.isArray(list) ? list : [];
+    var watch = store.remotePath === "snapshots";
+    try {
+      var res = await awsFetch(AWS_LAMBDA_URL + "/" + store.remotePath);
+      if (!res.ok) throw new Error("AWS GET " + res.status);
+      var text = await res.text();
+      var list = JSON.parse(text);
+      if (watch) { HEALTH.saison = { okAt: Date.now(), err: null, errSince: 0, chars: text.length }; healthRender(); }
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      if (watch) { HEALTH.saison.err = (e && e.message) || String(e); HEALTH.saison.errSince = HEALTH.saison.errSince || Date.now(); healthRender(); }
+      throw e;
+    }
   }
   async function pushOp(store, op) {
     var res = await awsFetch(AWS_LAMBDA_URL + "/" + store.remotePath + "/op", {
@@ -15323,6 +15395,7 @@
       cmpFiltersWrap.hidden = !cmpFiltersOpen;
       cmpFiltersBtn.textContent = (cmpFiltersOpen ? "▾ Masquer les filtres" : "▸ Filtres (sport, jour, championnat)") + (activeF.length ? " · " + activeF.join(" · ") : "");
     }
+    renderCmpRule(false);
     renderCmpAlerts(rows);
     if (!cmpData) { cmpContentEl.innerHTML = '<div class="loading-state">Chargement des propositions…</div>'; return; }
     var shown = rows.filter(function (r) { return inSport(r) && inDay(r) && inComp(r); });
@@ -15374,6 +15447,208 @@
     }
     cmpAlertsEl.innerHTML = html;
   }
+  // ---------- 🎚️ Règle d'alerte + rendement par tranche (on request, 2026-10-31) ----------
+  // The email alert rule is set here with sliders and saved on the server
+  // (POST with the write key) — the comparator reads it on each run. Its
+  // history (every line it ever showed, kept server-side with the match
+  // result) gives the tiles and the "rendement par tranche": 1 000 $ per line
+  // held to the end, at the price when the line was first seen. Replaying a
+  // rule, a line counts at its first sighting if that passes, else at its
+  // highest-Δ sighting (the history keeps those two moments).
+  var CR_COMPS = ["Ligue 1", "Premier League", "Coupe de France", "EFL Cup"];
+  var cr = { open: false, hist: null, histAt: 0, loading: false, error: null, draft: null, saved: null, saving: false, msg: "", msgCls: "" };
+  function crIsTop(e) { return (e.s || "Football") === "Football" && CR_COMPS.indexOf(e.c) !== -1; }
+  function crPass(m, g) { return !!g.on && m[0] > g.d && m[1] >= g.r; }
+  function crMoment(e, rule) {
+    var g = crIsTop(e) ? rule.a : rule.b;
+    if (crPass(e.f, g)) return e.f;
+    return e.x && crPass(e.x, g) ? e.x : null;
+  }
+  function crPnl(w, price) { return w === 1 ? 1000 * (1 / price - 1) : w === 0 ? -1000 : 0; }
+  function crCopy(r) { return { a: { on: r.a.on, d: r.a.d, r: r.a.r }, b: { on: r.b.on, d: r.b.d, r: r.b.r } }; }
+  function crSame(x, y) { return !!x && !!y && ["a", "b"].every(function (k) { return x[k].on === y[k].on && x[k].d === y[k].d && x[k].r === y[k].r; }); }
+  function crNum(x, d) { return Number(x).toLocaleString("fr-FR", { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function crSgn(x, d, u) { return (x > 0 ? "+" : x < 0 ? "−" : "") + crNum(Math.abs(x), d) + (u || ""); }
+  function crPct(r) { return crNum(r, r % 1 ? 1 : 0) + " %"; }
+  function crRuleText(r) {
+    function g(x, lbl) { return lbl + " : " + (x.on ? "Δ > " + x.d + " %, ROI ≥ " + crPct(x.r) : "coupé"); }
+    return g(r.a, "L1 · PL · CdF · EFL Cup") + " / " + g(r.b, "reste");
+  }
+  async function crLoadHist(force) {
+    if (cr.loading || (!force && cr.hist && Date.now() - cr.histAt < 10 * 60 * 1000)) return;
+    cr.loading = true; cr.error = null;
+    renderCmpRule(true);
+    try {
+      var res = await fetch(AWS_COMPARATOR_URL + "?history=1", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      cr.hist = (await res.json()).rows || [];
+      cr.histAt = Date.now();
+    } catch (e) { cr.error = e.message || String(e); }
+    cr.loading = false;
+    renderCmpRule(true);
+  }
+  function crSim(rule) {
+    var n = 0, w = 0, pnl = 0, pend = 0, first = Infinity, now = Date.now() / 1000;
+    (cr.hist || []).forEach(function (e) {
+      first = Math.min(first, e.f[5] || e.st);
+      var m = crMoment(e, rule);
+      if (!m) return;
+      if (e.w == null) { pend++; return; }
+      n++;
+      if (e.w === 1) w++;
+      pnl += crPnl(e.w, m[2]);
+    });
+    var days = first < Infinity ? Math.max(1, (now - first) / 86400) : 1;
+    return { n: n, w: w, pnl: pnl, pend: pend, days: days, perWeek: (n + pend) / days * 7 };
+  }
+  function crBarsHtml(groups) {
+    var vals = [];
+    groups.forEach(function (g) { g.rows.forEach(function (r) { vals.push(r[1]); }); });
+    var lo = Math.max(-40, Math.min.apply(null, vals.concat([0]))), hi = Math.min(40, Math.max.apply(null, vals.concat([0])));
+    if (hi - lo < 10) { hi = Math.max(hi, 5); lo = Math.min(lo, -5); }
+    var span = hi - lo, z = -lo / span * 100;
+    return groups.map(function (g) {
+      return '<div><div class="cr-group-title">' + esc(g.title) + '</div>' + g.rows.map(function (r) {
+        var v = Math.max(lo, Math.min(hi, r[1])), left = v >= 0 ? z : (v - lo) / span * 100, wd = Math.abs(v) / span * 100;
+        return '<div class="cr-bar-row"><span>' + esc(r[0]) + '</span><div class="cr-bar-track"><div class="cr-bar ' + (r[1] >= 0 ? "pos" : "neg") + (r[2] < 30 ? " thin" : "") + '" style="left:' + left.toFixed(2) + '%;width:' + Math.max(wd, 0.6).toFixed(2) + '%"></div><div class="cr-zero" style="left:' + z.toFixed(2) + '%"></div></div>' +
+          '<span class="cr-val">' + crSgn(r[1], 1, " %") + ' <small>' + r[2] + '</small></span></div>';
+      }).join("") + '</div>';
+    }).join("");
+  }
+  function crGroup(done, title, keyf, order) {
+    var acc = {};
+    done.forEach(function (e) { var k = keyf(e); if (k == null) return; (acc[k] = acc[k] || { n: 0, p: 0 }); acc[k].n++; acc[k].p += crPnl(e.w, e.f[2]); });
+    var keys = order ? order.filter(function (k) { return acc[k]; }) : Object.keys(acc).sort(function (a, b) { return acc[b].n - acc[a].n; });
+    return { title: title, rows: keys.map(function (k) { return [k, acc[k].p / acc[k].n / 10, acc[k].n]; }) };
+  }
+  function crMarketType(e) {
+    var k = String(e.k || "");
+    if (/handicap/i.test(k)) return "Handicap";
+    if (/buts|points|jeux|sets/i.test(k)) return "Total / nombre";
+    if (/double chance/i.test(k)) return "Double chance";
+    if (/1N2|vainqueur/i.test(k)) return "1N2 / vainqueur";
+    return "Autre";
+  }
+  function crStatsHtml() {
+    var done = (cr.hist || []).filter(function (e) { return e.w != null; });
+    if (!done.length) return '<div class="cr-note">Pas encore de ligne terminée.</div>';
+    var pend = (cr.hist || []).length - done.length, all = done.reduce(function (a, e) { return a + crPnl(e.w, e.f[2]); }, 0);
+    var wins = done.filter(function (e) { return e.w === 1; }).length;
+    var first = done.reduce(function (a, e) { return Math.min(a, e.st); }, Infinity);
+    var groups = [
+      crGroup(done, "Selon le ROI Polymarket", function (e) { var r = e.f[1]; return r < 6 ? "5–6 %" : r < 8 ? "6–8 %" : r < 10 ? "8–10 %" : r < 15 ? "10–15 %" : "15 % et +"; }, ["5–6 %", "6–8 %", "8–10 %", "10–15 %", "15 % et +"]),
+      crGroup(done, "Selon le delta", function (e) { var d = e.f[0]; return d <= 60 ? "Δ 30–60 %" : d <= 100 ? "Δ 60–100 %" : d <= 200 ? "Δ 100–200 %" : "Δ 200 % et +"; }, ["Δ 30–60 %", "Δ 60–100 %", "Δ 100–200 %", "Δ 200 % et +"]),
+      crGroup(done, "Selon le type de pari", crMarketType),
+      crGroup(done, "Selon le prix Polymarket", function (e) { var p = e.f[2]; return p < 0.85 ? "moins de 85¢" : p < 0.92 ? "85–92¢" : p < 0.96 ? "92–96¢" : "96¢ et +"; }, ["moins de 85¢", "85–92¢", "92–96¢", "96¢ et +"]),
+      crGroup(done, "Selon le sport", function (e) { return e.s || "Football"; }),
+      crGroup(done, "Selon la compétition", function (e) { return crIsTop(e) ? "L1 · PL · CdF · EFL Cup" : "Les autres"; }, ["L1 · PL · CdF · EFL Cup", "Les autres"])
+    ];
+    return '<div class="cr-stats-title">Rendement des lignes par tranche · ' + done.length + ' lignes terminées depuis le ' + esc(new Date(first * 1000).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) + '</div>' +
+      '<div class="cr-note">1 000 $ par ligne, gardée jusqu\'au bout, au prix où la ligne est apparue. Toutes lignes : ' + crNum(wins / done.length * 100, 1) + ' % gagnées, rendement ' + crSgn(all / done.length / 10, 1, " %") + (pend ? ' · ' + pend + ' lignes attendent leur résultat' : '') + '. Le petit chiffre gris = nombre de lignes.</div>' +
+      '<div class="cr-stats">' + crBarsHtml(groups) + '</div>' +
+      '<div class="cr-legend"><span><i class="cr-sw"></i>30 lignes ou plus</span><span><i class="cr-sw thin"></i>moins de 30 : trop peu pour conclure</span></div>';
+  }
+  function crSlider(id, label, min, max, step, val) {
+    return '<div class="cr-slid"><label for="' + id + '">' + label + '</label><input type="range" id="' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '"><output id="' + id + 'o" for="' + id + '"></output></div>';
+  }
+  function crRuleHtml(k, title, g) {
+    var K = k.toUpperCase();
+    return '<div class="cr-rule' + (g.on ? '' : ' off') + '" id="crRule' + K + '"><label class="cr-rule-top"><input type="checkbox" id="crOn' + K + '"' + (g.on ? ' checked' : '') + '> ' + esc(title) + '</label>' +
+      crSlider("crD" + K, "Delta plus de", 30, 400, 5, g.d) + crSlider("crR" + K, "ROI Poly au moins", 5, 25, 0.5, g.r) + '</div>';
+  }
+  function crSyncSaved() {
+    var srv = cmpData && cmpData.alertRule;
+    if (!srv || !srv.a || !srv.b) return;
+    var fresh = crCopy(srv);
+    if (!cr.saved || !crSame(cr.saved, fresh)) {
+      if (!cr.draft || (cr.saved && crSame(cr.draft, cr.saved))) cr.draft = crCopy(fresh); // follow the server unless being edited
+      cr.saved = fresh; cr.savedAt = srv.updatedAt || null;
+    }
+  }
+  function renderCmpRule(rebuild) {
+    var el = document.getElementById("cmpRule");
+    if (!el) return;
+    crSyncSaved();
+    if (!cr.saved) { el.innerHTML = ""; return; }
+    var head = '<button type="button" class="collapse-btn snap-stats-toggle-btn cmp-alerts-toggle" id="crToggle">' + (cr.open ? "▾" : "▸") + ' 🎚️ Règle des mails d\'alerte et rendement par tranche · ' + esc(crRuleText(cr.saved)) + '</button>';
+    if (!cr.open) { el.innerHTML = head; return; }
+    if (!rebuild && document.getElementById("crTiles")) { crUpdate(); return; }
+    var d = cr.draft;
+    el.innerHTML = head + '<div class="cr-box">' +
+      '<p class="cr-intro">Règle des mails d\'alerte. Les jauges rejouent la règle sur toutes les lignes que le Comparateur a montrées (résultat connu). « Enregistrer » l\'applique aux prochains mails.</p>' +
+      '<div class="cr-rules">' + crRuleHtml("a", "Ligue 1 · Premier League · Coupe de France · EFL Cup", d.a) + crRuleHtml("b", "Tout le reste (autres championnats, tennis, NFL…)", d.b) + '</div>' +
+      '<div class="cr-actions"><button type="button" class="seb-btn" id="crSave">💾 Enregistrer cette règle</button><button type="button" class="seb-btn" id="crReset">↺ Revenir à la règle enregistrée</button><span class="cr-msg" id="crMsg"></span></div>' +
+      '<div class="cr-tiles" id="crTiles"></div><div class="cr-note" id="crNote"></div>' +
+      '<div id="crStats">' + (cr.loading && !cr.hist ? '<div class="cr-note">Chargement de l\'historique…</div>' : cr.error && !cr.hist ? '<div class="cr-note warn">Historique indisponible (' + esc(cr.error) + ').</div>' : crStatsHtml()) + '</div>' +
+    '</div>';
+    crUpdate();
+  }
+  function crUpdate() {
+    var d = cr.draft;
+    if (!d || !document.getElementById("crTiles")) return;
+    ["a", "b"].forEach(function (k) {
+      var K = k.toUpperCase();
+      document.getElementById("crD" + K + "o").textContent = d[k].d + " %";
+      document.getElementById("crR" + K + "o").textContent = crPct(d[k].r);
+      document.getElementById("crRule" + K).classList.toggle("off", !d[k].on);
+    });
+    var dirty = !crSame(d, cr.saved), hasKey = !!getWriteSecret();
+    var save = document.getElementById("crSave"), reset = document.getElementById("crReset"), msg = document.getElementById("crMsg");
+    save.disabled = !dirty || cr.saving || !hasKey;
+    save.textContent = cr.saving ? "Enregistrement…" : "💾 Enregistrer cette règle";
+    reset.hidden = !dirty;
+    msg.className = "cr-msg " + cr.msgCls;
+    msg.textContent = cr.msg || (!hasKey ? "Clé d'écriture absente sur cet appareil : tu peux tester, pas enregistrer." : dirty ? "Pas encore enregistrée." : "Règle en service" + (cr.savedAt ? " depuis le " + new Date(cr.savedAt).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "") + ".");
+    var tiles = document.getElementById("crTiles"), note = document.getElementById("crNote");
+    if (!cr.hist) { tiles.innerHTML = ""; note.textContent = cr.loading ? "Chargement de l'historique…" : ""; return; }
+    var st = crSim(d), col = !st.n ? "" : st.pnl >= 0 ? "var(--green)" : "var(--red)";
+    tiles.innerHTML =
+      '<div class="cr-tile"><span class="k">Alertes</span><span class="v">' + crNum(st.n + st.pend) + '</span><span class="s">≈ ' + crNum(st.perWeek, st.perWeek < 10 ? 1 : 0) + ' par semaine</span></div>' +
+      '<div class="cr-tile"><span class="k">Gagnées</span><span class="v">' + (st.n ? crNum(st.w / st.n * 100, 1) + " %" : "—") + '</span><span class="s">' + (st.n ? st.w + " sur " + st.n + " terminées" : "aucune terminée") + '</span></div>' +
+      '<div class="cr-tile"><span class="k">Rendement moyen</span><span class="v" style="color:' + col + '">' + (st.n ? crSgn(st.pnl / st.n / 10, 1, " %") : "—") + '</span><span class="s">par alerte suivie</span></div>' +
+      '<div class="cr-tile"><span class="k">Bilan à 1 000 $</span><span class="v" style="color:' + col + '">' + (st.n ? crSgn(st.pnl, 0, " $") : "—") + '</span><span class="s">par alerte, gardée jusqu\'au bout</span></div>';
+    note.className = "cr-note" + (st.n < 30 ? " warn" : "");
+    note.textContent = !st.n && !st.pend ? "Aucune ligne n'aurait déclenché d'alerte depuis le début de l'historique." :
+      (st.n < 30 ? "Moins de 30 alertes terminées : le résultat dépend surtout du hasard, à prendre comme une tendance." : "Calculé sur " + st.n + " alertes terminées en " + Math.round(st.days) + " jours.") + (st.pend ? " " + st.pend + " autres attendent leur résultat." : "");
+  }
+  async function crSave() {
+    var key = getWriteSecret();
+    if (!key || !cr.draft) return;
+    cr.saving = true; cr.msg = ""; cr.msgCls = "";
+    crUpdate();
+    try {
+      var res = await fetch(AWS_COMPARATOR_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: key, rule: cr.draft }) });
+      var j = await res.json().catch(function () { return {}; });
+      if (!res.ok || !j.rule) throw new Error(j.error || "HTTP " + res.status);
+      if (cmpData) cmpData.alertRule = j.rule;
+      cr.saved = crCopy(j.rule); cr.draft = crCopy(j.rule); cr.savedAt = j.rule.updatedAt;
+      cr.msg = "Règle enregistrée : elle s'applique au prochain calcul (dans 15 min au plus)."; cr.msgCls = "ok";
+    } catch (e) {
+      cr.msg = "Pas enregistrée : " + (e.message || e); cr.msgCls = "bad";
+    }
+    cr.saving = false;
+    renderCmpRule(true);
+  }
+  (function () {
+    var el = document.getElementById("cmpRule");
+    if (!el) return;
+    el.addEventListener("click", function (e) {
+      var t = e.target;
+      if (t.closest && t.closest("#crToggle")) { cr.open = !cr.open; renderCmpRule(true); if (cr.open) crLoadHist(false); return; }
+      if (t.id === "crSave") { crSave(); return; }
+      if (t.id === "crReset" && cr.saved) { cr.draft = crCopy(cr.saved); cr.msg = ""; renderCmpRule(true); }
+    });
+    el.addEventListener("input", function (e) {
+      var m = /^cr(On|D|R)([AB])$/.exec(e.target.id || "");
+      if (!m || !cr.draft) return;
+      var g = cr.draft[m[2].toLowerCase()];
+      if (m[1] === "On") g.on = e.target.checked;
+      else if (m[1] === "D") g.d = Number(e.target.value);
+      else g.r = Number(e.target.value);
+      cr.msg = ""; cr.msgCls = "";
+      crUpdate();
+    });
+  })();
   function cmpPin(row) {
     var snap = cmpRecordFromRow(row, cmpData && cmpData.generatedAt);
     enqueueOp(SNAPSHOTS_STORE, { type: "add", id: snap.id, snapshot: snap });
@@ -17482,7 +17757,11 @@
     if (cfg.toSaison) snapshotsFreshHooks.push(function () { if (sebState.bets) sebSyncToSaison(); });
     function sebSyncToSaison(attempt) {
       if (!cfg.toSaison || !sebState.bets) return;
-      if (!snapshotsFreshFromServer) return; // runs from snapshotsFreshHooks once it is
+      if (!snapshotsFreshFromServer) { // runs from snapshotsFreshHooks once it is
+        if (!sebState.saisonSync || sebState.saisonSync.state !== "wait") sebState.saisonSync = { state: "wait", since: Date.now() };
+        healthRender();
+        return;
+      }
       if (syncInFlight[SNAPSHOTS_STORE.name]) {
         if ((attempt || 0) < 12) setTimeout(function () { sebSyncToSaison((attempt || 0) + 1); }, 10000);
         return;
@@ -17510,6 +17789,8 @@
         var s = found.linked[b.key], side = sebResultSide(b);
         if (s && !s.winningSide && side && !s.deletedAt) ops.push({ type: "setSide", id: s.id, winningSide: side });
       });
+      sebState.saisonSync = { state: "ok", at: Date.now(), added: ops.filter(function (o) { return o.type === "add"; }).length };
+      healthRender();
       if (!ops.length) return;
       ops.forEach(function (o) { raw = applyOpToList(raw, o); });
       saveSnapshotsToStorage(raw);
@@ -17681,6 +17962,38 @@
         '<div class="empty-note" style="padding:2px 0 8px;">Hauteur de la barre = ROI (vers le haut s\'il est positif, vers le bas s\'il est négatif), puis le nombre de paris ; gain sur les totaux' + (sebState.stakeMode === "real" ? ' (mises réelles)' : sebState.stakeMode === "hold" ? ' (1 000 $ par pari, sans cashout)' : ' (1 000 $ par pari, avec cashout)') + '. Paris terminés, sur les filtres du graphique.</div>' +
         '<div class="seb-mx"><table class="seb-mx-tbl"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div></div>';
     }
+    // 🎯 Rendement par lettre de confiance (on request, 2026-10-31 — the same
+    // chart as for Saison 26/27): finished bets on the current filters, ROI in
+    // the "Mise" mode chosen above — réelle: total gain / total stake; 1 000 $
+    // avec cashout: average of each bet's ROI; sans cashout: held to the
+    // market's result (bets whose market isn't settled yet left out).
+    var SEB_CONF_ORDER = ["S", "A+", "A", "B", "—"];
+    function sebConfHtml(list, recByKey) {
+      var acc = {};
+      list.forEach(function (b) {
+        if (b.status !== "done") return;
+        var rec = recByKey[b.key];
+        if (rec && rec.deletedAt) return;
+        var roi;
+        if (sebState.stakeMode === "hold") {
+          if (b.finalPrice !== 1 && b.finalPrice !== 0) return;
+          roi = b.finalPrice === 1 ? 1 / b.avg - 1 : -1;
+        } else roi = b.stake ? b.pnl / b.stake : 0;
+        var c = (rec && rec.confidence) || "—";
+        var a = acc[c] = acc[c] || { n: 0, roiSum: 0, pnl: 0, stake: 0 };
+        a.n++; a.roiSum += roi; a.pnl += b.pnl; a.stake += b.stake;
+      });
+      var rows = SEB_CONF_ORDER.filter(function (k) { return acc[k]; }).map(function (k) {
+        var a = acc[k];
+        return [k === "—" ? "Sans lettre" : k, sebState.stakeMode === "real" ? (a.stake ? a.pnl / a.stake * 100 : 0) : a.roiSum / a.n * 100, a.n];
+      });
+      if (!rows.length) return "";
+      var mode = sebState.stakeMode === "real" ? "mises réelles" : sebState.stakeMode === "hold" ? "1 000 $ par pari, gardé jusqu'au bout" : "1 000 $ par pari, avec tes cashouts";
+      return '<div class="chart-box seb-box"><div class="tier-wr-title">🎯 Rendement par lettre de confiance</div>' +
+        '<div class="empty-note" style="padding:2px 0 8px;">Paris terminés, sur les filtres ci-dessus (' + mode + '). Le petit chiffre gris = nombre de paris.</div>' +
+        '<div class="cr-stats" style="grid-template-columns:1fr;">' + crBarsHtml([{ title: "", rows: rows }]) + '</div>' +
+        '<div class="cr-legend" style="margin-top:6px;"><span><i class="cr-sw"></i>30 paris ou plus</span><span><i class="cr-sw thin"></i>moins de 30 : trop peu pour conclure</span></div></div>';
+    }
     // Par sport / Par cote d'entrée / Par mois — at the top of Autres stats
     // (on request, 2026-10-25; they used to sit above "Tes paris").
     function sebBreakdownsHtml() {
@@ -17796,7 +18109,7 @@
           '<td class="seb-nowrap"><span class="seb-type" style="color:' + ORIGIN_COLORS[b._origin] + '">' + ORIGIN_ICONS[b._origin] + ' ' + ORIGIN_LABELS[b._origin] + '</span></td>' +
           '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
       }).join("");
-      if (extra) extra.innerHTML =
+      if (extra) extra.innerHTML = sebConfHtml(list, recByKey) +
         '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (openT.length ? ' · ' + openT.length + ' en cours' : '') + (propsList.length ? ' <span class="seb-dim" style="font-weight:500;font-size:12px;">(hors props — voir ⏳ Props en haut)</span>' : '') + '</div>' +
           '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr>' + SEB_COLS.map(function (c) {
             var active = sebState.sortKey === c.key;
@@ -17965,7 +18278,8 @@
       renderSeb();
     });
 
-    return { store: SEB_STORE, open: sebOpen, load: sebLoad };
+    return { store: SEB_STORE, open: sebOpen, load: sebLoad,
+      health: function () { return { loaded: !!sebState.bets, loading: !!sebState.loading, error: sebState.error, sync: sebState.saisonSync || null }; } };
   }
   var SEB_MAIN_ACCOUNT = { handle: "seb", label: "Ton profil Polymarket", address: "0x062922dcc898a4935b2b87f5e9ea2360b31e0a16" };
   var SEB_PREDICT_ACCOUNT = { handle: "sebpredict", label: "Profil sebpredict", address: "0x6a8c15a1155096251b3917aee8ab7464ffd04bce" };
@@ -17984,6 +18298,74 @@
     intro: "Le même affichage que Seb, pour le compte sebpredict seul, en copie blanche : aucune note reprise de Saison 26/27 ni de Seb. Note la confiance (S/A/B) et l'ampleur (++ + - --) sur chaque carte en bas ; elles ne comptent qu'ici."
   });
   var SEB2_STORE = SEB2_TAB.store;
+
+  // ---------- 🩺 Voyants de santé (on request, 2026-10-31) ----------
+  // One line above the tabs: is the Saison list readable from the server,
+  // when did the Comparateur last compute, are Seb's bets copied into
+  // Saison 26/27, alerts sent today, how big the data is. Click → details.
+  // The notify Lambda checks the two server sides too, every 15 min, and
+  // emails when one stays down 30 min (runHealthWatch there).
+  function healthAgo(t) {
+    var m = Math.max(0, Math.round((Date.now() - t) / 60000));
+    return m < 1 ? "à l'instant" : m < 60 ? "il y a " + m + " min" : "il y a " + Math.floor(m / 60) + " h" + (m % 60 ? String(m % 60).padStart(2, "0") : "");
+  }
+  function healthMb(chars) { return (chars / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + " Mo"; }
+  function healthLocalChars() {
+    var n = 0;
+    try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || "").length; } } catch (e) { return null; }
+    return n;
+  }
+  function healthChecks() {
+    var out = [], sa = HEALTH.saison, hasKey = !!getWriteSecret();
+    // 1. Saison 26/27 list
+    var queue = loadSyncQueue(SNAPSHOTS_STORE).length;
+    if (sa.err && (!sa.okAt || sa.errSince > sa.okAt)) out.push({ cls: Date.now() - sa.errSince > 5 * 60000 || !sa.okAt ? "bad" : "warn", short: "Saison 26/27", label: "Saison 26/27 : le serveur ne répond pas (" + sa.err + ") depuis " + healthAgo(sa.errSince).replace("il y a ", ""), help: "Tes ajouts restent sur cet appareil et partiront dès que ça revient. Si ça dure 30 min, tu reçois un mail." });
+    else if (sa.okAt) out.push({ cls: queue && hasKey ? "warn" : "ok", short: "Saison 26/27", label: "Saison 26/27 : lue " + healthAgo(sa.okAt) + (queue ? " · " + queue + " modif" + (queue > 1 ? "s" : "") + " en attente d'envoi" : "") + (hasKey ? "" : " · lecture seule (pas de clé)"), help: "La liste est relue toutes les 2 minutes." });
+    else out.push({ cls: "", short: "Saison 26/27", label: "Saison 26/27 : chargement…", help: "" });
+    // 2. Comparateur
+    if (HEALTH.cmp && HEALTH.cmp.updatedAt) {
+      var age = (Date.now() - Date.parse(HEALTH.cmp.updatedAt)) / 60000;
+      out.push({ cls: age < 30 ? "ok" : age < 90 ? "warn" : "bad", short: "Comparateur " + Math.round(age) + " min", label: "Comparateur : calculé " + healthAgo(Date.parse(HEALTH.cmp.updatedAt)), help: "Il se recalcule tous les quarts d'heure. Au-delà d'une heure sans calcul, tu reçois un mail." });
+    } else if (HEALTH.cmpErr) out.push({ cls: "bad", short: "Comparateur", label: "Comparateur : pas de réponse (" + HEALTH.cmpErr + ")", help: "" });
+    else out.push({ cls: "", short: "Comparateur", label: "Comparateur : chargement…", help: "" });
+    // 3. Seb → Saison 26/27
+    var sb = SEB_TAB.health(), sync = sb.sync;
+    if (sb.error) out.push({ cls: "warn", short: "Seb", label: "Seb : Polymarket ne répond pas (" + sb.error + ")", help: "Nouvel essai à la prochaine ouverture de l'onglet Seb." });
+    else if (!sb.loaded) out.push({ cls: "", short: "Seb → Saison", label: "Seb : chargement de tes paris…", help: "" });
+    else if (!hasKey) out.push({ cls: "", short: "Seb → Saison", label: "Seb → Saison 26/27 : pas de clé d'écriture sur cet appareil, la copie se fait depuis ton appareil habituel", help: "" });
+    else if (sync && sync.state === "ok") out.push({ cls: "ok", short: "Seb → Saison", label: "Seb → Saison 26/27 : à jour " + healthAgo(sync.at) + (sync.added ? " · " + sync.added + " pari" + (sync.added > 1 ? "s" : "") + " copié" + (sync.added > 1 ? "s" : "") : ""), help: "Chaque pari Seb est recopié dans Saison 26/27, donc dans All Time." });
+    else out.push({ cls: sync && Date.now() - sync.since > 10 * 60000 ? "warn" : "", short: "Seb → Saison", label: "Seb → Saison 26/27 : en attente de la liste Saison" + (sync ? " depuis " + healthAgo(sync.since).replace("il y a ", "") : ""), help: "La copie attend que la liste Saison soit relue du serveur." });
+    // 4. Alertes
+    if (HEALTH.cmp) out.push({ cls: "ok", short: "Alertes " + (HEALTH.cmp.alertsToday || 0), label: "Alertes Comparateur : " + (HEALTH.cmp.alertsToday || 0) + " envoyée" + ((HEALTH.cmp.alertsToday || 0) > 1 ? "s" : "") + " aujourd'hui" + (HEALTH.cmp.lastAlertAt ? " · dernière " + healthAgo(Date.parse(HEALTH.cmp.lastAlertAt)) : ""), help: "Règle en service : à régler dans l'onglet Comparateur (🎚️)." });
+    // 5. Données
+    var loc = healthLocalChars(), mb = sa.chars / 1e6;
+    var dcls = mb > 35 || (loc != null && loc > 4.8e6) ? "bad" : mb > 25 || (loc != null && loc > 4.2e6) ? "warn" : sa.chars ? "ok" : "";
+    out.push({ cls: dcls, short: "Données " + (sa.chars ? healthMb(sa.chars) : "…"), label: "Données : liste Saison " + (sa.chars ? healthMb(sa.chars) : "…") + (loc != null ? " · stockage de cet appareil " + healthMb(loc) + " sur ~5 Mo" : ""), help: "La liste est envoyée compressée : la limite du serveur est vers 40 Mo. Le navigateur garde environ 5 Mo." });
+    return out;
+  }
+  function healthRender() {
+    var strip = document.getElementById("healthStrip"), det = document.getElementById("healthDetail");
+    if (!strip || !det || typeof SEB_TAB === "undefined") return;
+    var checks = healthChecks();
+    strip.hidden = false;
+    strip.innerHTML = checks.map(function (c) { return '<span class="health-chip ' + c.cls + '" title="' + esc(c.label) + '">' + esc(c.short) + '</span>'; }).join("");
+    strip.setAttribute("aria-expanded", HEALTH.open ? "true" : "false");
+    det.hidden = !HEALTH.open;
+    if (HEALTH.open) det.innerHTML = checks.map(function (c) { return '<span class="health-chip ' + c.cls + '">' + esc(c.label) + '</span>' + (c.help ? '<p>' + esc(c.help) + '</p>' : ''); }).join("");
+  }
+  async function healthFetchCmp() {
+    try {
+      var res = await fetch(AWS_COMPARATOR_URL + "?status=1", { cache: "no-store" });
+      if (!res.ok) throw new Error("erreur " + res.status);
+      HEALTH.cmp = await res.json(); HEALTH.cmpErr = null;
+    } catch (e) { HEALTH.cmpErr = (e && e.message) || String(e); }
+    healthRender();
+  }
+  document.getElementById("healthStrip").addEventListener("click", function () { HEALTH.open = !HEALTH.open; healthRender(); });
+  healthRender();
+  setTimeout(healthFetchCmp, 3000);
+  setInterval(healthFetchCmp, 5 * 60000);
+  setInterval(healthRender, 30000);
 
   // Reopen whichever tab was last used; a first visit lands on Value
   // Trades (Accueil and Auto >10k lost their tab buttons on request,
