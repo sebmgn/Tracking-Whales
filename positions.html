@@ -1387,6 +1387,29 @@
   .snap-origin-badge { order: 99; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: var(--oc); color: #fff; white-space: nowrap; }
   .snap-origin-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  /* compact card (2026-10-31) */
+  details.value-trade-item > .vt-summary.snap-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; align-items: center; padding: 9px 16px; }
+  details.value-trade-item[open] > .vt-summary.snap-grid { padding-bottom: 6px; }
+  .snap-main { min-width: 0; display: grid; gap: 4px; }
+  .snap-main > * { margin-left: 0 !important; margin-right: 0 !important; }
+  .snap-side { display: grid; justify-items: end; gap: 5px; }
+  .snap-side > .snap-toolbar { margin: 0; }
+  .snap-side .snap-hyp-pnl { margin: 0; padding: 2px 10px; font-size: 12px; }
+  .snap-toolbar-compact { display: grid; justify-items: end; gap: 4px; }
+  .snap-toolbar-compact .dim { flex: none; font-size: 11.5px; }
+  .snap-ctrl-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .snap-ctrl-row .snap-side-label { margin-left: 4px; }
+  .snap-toolbar-compact button { padding: 2px 9px; font-size: 11.5px; }
+  .snap-more-btn { border: 1px solid var(--panel-border); background: var(--panel); color: var(--text-dim); border-radius: 999px; font-weight: 900; cursor: pointer; letter-spacing: 1px; margin-left: 4px; }
+  .snap-more-btn:hover, .snap-more-btn.active { border-color: var(--accent); color: var(--accent); }
+  .snap-more { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; max-width: 480px; }
+  .snap-more[hidden] { display: none; }
+  .snap-main .vt-top { flex-wrap: wrap; row-gap: 5px; column-gap: 10px; }
+  .snap-main .vt-top-left { flex: 1 1 100%; flex-wrap: wrap; row-gap: 4px; }
+  .snap-main .vt-question { white-space: normal; overflow: visible; min-width: 0; flex: 1 1 260px; font-size: 14.5px; }
+  .snap-main .vt-sport-emoji { font-size: 20px; }
+  .snap-main .vt-bottom-row { margin-top: 0; }
+  @media (max-width: 760px) { details.value-trade-item > .vt-summary.snap-grid { grid-template-columns: 1fr; } .snap-side { justify-items: start; } }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
   .snap-side-btn, .snap-delete-btn, .snap-confidence-btn, .snap-magnitude-btn, .snap-origin-btn, .snap-restore-btn, .snap-purge-btn, .snap-edit-btn, .snap-take-position-btn, .snap-to-saison-btn, .snap-comment-btn {
@@ -2787,6 +2810,22 @@
   .cmp-table .market-sub { white-space: nowrap; }
   .cmp-delta, .snap-cmp-delta { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--green) 35%, var(--panel-border)); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
   .cmp-delta { font-size: 13px; }
+  .vt-filter-line { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+  .vt-filter-line > .vt-filters { margin: 0; }
+  .vt-more-filters-btn { margin: 0; }
+  #vtMoreFilters { padding: 6px 0 2px; }
+  .vt-empty-traders summary { cursor: pointer; color: var(--accent); font-weight: 700; margin-top: 6px; }
+  .vt-empty-traders div { margin-top: 6px; font-size: 12px; }
+  .cmp-delta-wrap { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+  .cmp-delta-bar { display: block; height: 8px; border-radius: 3px; background: color-mix(in srgb, var(--green) 70%, var(--panel)); }
+  .cmp-roi-hit b { color: var(--green); }
+  .cmp-rule-hit td { background: color-mix(in srgb, var(--green) 6%, var(--panel)); }
+  .cmp-known { font-size: 12px; }
+  .cmp-market-cell { font-weight: 700; }
+  @media (min-width: 1000px) {
+    .cmp-table-wrap { overflow: visible; }
+    .cmp-table thead th { position: sticky; top: 0; z-index: 2; background: var(--panel); box-shadow: 0 1px 0 var(--panel-border); }
+  }
   .cmp-note { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-dim); border: 1px solid var(--panel-border); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
   .cmp-note-good { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 50%, var(--panel-border)); background: color-mix(in srgb, var(--gold) 12%, var(--panel)); }
   .cmp-note-top { color: #fff; border-color: var(--green); background: var(--green); }
@@ -2800,6 +2839,79 @@
   .cmp-pin-btn.pinned { border-color: var(--green); color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--panel)); }
   .cmp-actions-cell { white-space: nowrap; }
   .cmp-alerts-toggle { margin: 0 0 10px; }
+  /* One-line header + rubriques (2026-10-31) */
+  .topbar { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; padding: 6px 0 10px; border-bottom: 1px solid var(--panel-border); margin-bottom: 4px; }
+  .topbar header { display: flex; flex-direction: row-reverse; align-items: center; gap: 12px; margin: 0; flex-wrap: nowrap; }
+  .topbar h1 { font-size: 24px; margin: 0; padding: 0; white-space: nowrap; }
+  .topbar h1::after { display: none; }
+  .topbar .artwork-frame { width: 46px; position: relative; }
+  .topbar .artwork-frame img { height: 34px; box-shadow: none; }
+  .topbar .artwork-caption { display: none; position: absolute; top: 40px; left: 0; z-index: 30; width: 230px; text-align: left; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 6px; padding: 6px 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+  .topbar .artwork-frame:hover .artwork-caption { display: block; }
+  .topbar .status-bar { flex: 1 1 auto; justify-content: flex-end; margin: 0; padding: 0; border: 0; gap: 6px 12px; }
+  .topbar .health-strip { margin: 0; }
+  .top-more-wrap { position: relative; }
+  #topMoreBtn { font-weight: 900; letter-spacing: 1px; }
+  .top-more { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; justify-items: start; min-width: 240px; box-shadow: 0 8px 22px rgba(0,0,0,.14); }
+  .top-more[hidden] { display: none; }
+  .tab-groups { display: flex; gap: 24px; flex-wrap: wrap; border-bottom: 1px solid var(--panel-border); }
+  .tab-groups:empty { display: none; }
+  .tab-group-btn { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 2px 10px; font: inherit; font-size: 15px; font-weight: 800; color: var(--text-dim); cursor: pointer; }
+  .tab-group-btn:hover { color: var(--text); }
+  .tab-group-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-bar.grouped { border-bottom: 0; gap: 6px; padding: 10px 0 2px; margin-bottom: 4px; }
+  .tab-bar.grouped .tab-btn { display: none; }
+  .tab-bar.grouped .tab-btn.in-group { display: inline-flex; font-size: 13px; font-weight: 600; color: var(--text); padding: 4px 13px; border: 1px solid var(--panel-border); border-radius: 999px; background: var(--panel); letter-spacing: 0; }
+  .tab-bar.grouped .tab-btn.in-group .tab-btn-icon { font-size: 13px; }
+  .tab-bar.grouped .tab-btn.in-group.active { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+  .tab-bar.grouped .tab-break { display: none; }
+  .tab-bar.grouped.single { display: none; }
+  /* 🔔 Alertes match (2026-10-31) */
+  .al-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .al-panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
+  .al-h { font-weight: 800; font-size: 15px; display: flex; gap: 8px; align-items: baseline; }
+  .al-h small { font-weight: 500; color: var(--text-dim); font-size: 12.5px; }
+  .al-step { display: grid; gap: 8px; }
+  .al-step-t { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); }
+  .al-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .al-tools input[type=search] { flex: 1 1 200px; min-width: 0; font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--bg); color: var(--text); }
+  .al-chip { font: inherit; font-size: 12.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text); cursor: pointer; }
+  .al-chip.on { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+  .al-list { max-height: 360px; overflow: auto; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--bg); }
+  .al-day { position: sticky; top: 0; background: var(--bg); font-size: 12px; font-weight: 800; color: var(--text-dim); padding: 6px 10px; border-bottom: 1px solid var(--panel-border); text-transform: capitalize; }
+  .al-match { display: grid; grid-template-columns: 52px 150px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; text-align: left; font: inherit; font-size: 13.5px; padding: 7px 10px; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 60%, transparent); background: none; color: var(--text); cursor: pointer; }
+  .al-match:hover { background: var(--row-hover); }
+  .al-match.sel { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); box-shadow: inset 3px 0 0 var(--accent); }
+  .al-time { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .al-comp { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .al-teams { font-weight: 600; min-width: 0; }
+  .al-live { font-size: 11.5px; font-weight: 800; color: var(--red); white-space: nowrap; }
+  .al-sides { display: flex; gap: 6px; flex-wrap: wrap; }
+  .al-scens { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .al-scen { display: flex; gap: 8px; align-items: center; padding: 7px 10px; border: 1px solid var(--panel-border); border-radius: 8px; cursor: pointer; font-size: 13.5px; background: var(--bg); }
+  .al-scen input { accent-color: var(--accent); }
+  .al-scen.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--panel)); font-weight: 700; }
+  .al-params { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 13.5px; }
+  .al-params input[type=number] { width: 64px; font: inherit; padding: 4px 6px; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--bg); color: var(--text); }
+  .al-params input[type=text] { font: inherit; padding: 5px 8px; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--bg); color: var(--text); }
+  .al-preview { border-left: 3px solid var(--gold); padding: 6px 0 6px 12px; font-size: 14px; }
+  .al-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .al-create { font: inherit; font-weight: 800; font-size: 14px; padding: 8px 16px; border-radius: 10px; border: 0; background: var(--accent); color: var(--panel); cursor: pointer; }
+  .al-create:disabled { opacity: .45; cursor: default; }
+  .al-msg { font-size: 13px; color: var(--text-dim); }
+  .al-msg.ok { color: var(--green); font-weight: 700; }
+  .al-msg.bad { color: var(--red); font-weight: 700; }
+  .al-watch { border: 1px solid var(--panel-border); border-left: 4px solid var(--st, var(--panel-border)); border-radius: 10px; padding: 9px 12px; display: grid; gap: 3px; background: var(--bg); }
+  .al-watch.wait { --st: var(--text-dim); } .al-watch.live { --st: var(--red); } .al-watch.fired { --st: var(--green); } .al-watch.done, .al-watch.expired { --st: var(--panel-border); opacity: .75; }
+  .al-watch-top { display: flex; gap: 8px; align-items: baseline; }
+  .al-watch-top b { font-size: 14px; }
+  .al-del { margin-left: auto; font: inherit; font-size: 12px; border: 0; background: none; color: var(--text-dim); cursor: pointer; }
+  .al-del:hover { color: var(--red); }
+  .al-sub { font-size: 12.5px; color: var(--text-dim); }
+  .al-status { font-size: 12.5px; font-weight: 700; }
+  .al-log { display: grid; gap: 6px; font-size: 13px; }
+  .al-log div { border-bottom: 1px dashed var(--panel-border); padding-bottom: 5px; }
+  @media (max-width: 900px) { .al-grid { grid-template-columns: 1fr; } .al-scens { grid-template-columns: 1fr; } }
   /* 🩺 Voyants de santé (2026-10-31) */
   .health-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 8px; padding: 0; border: 0; background: none; font: inherit; font-size: 12px; cursor: pointer; text-align: left; }
   .health-strip[hidden] { display: none; }
@@ -2875,6 +2987,7 @@
 <body>
 <div class="wrap">
 
+  <div class="topbar">
   <header>
     <h1>Analyse Whales Rentables 🐋</h1>
     <div class="artwork-frame">
@@ -2885,11 +2998,9 @@
 
   <div class="status-bar">
     <span><span class="dot" id="statusDot"></span><span id="statusText">Chargement…</span></span>
-    <span>Dernière mise à jour : <strong id="lastUpdate">—</strong></span>
-    <span id="countdownWrap">Prochain refresh dans <strong id="countdown">10</strong>s</span>
-    <button id="toggleBtn" type="button">Pause</button>
-    <button id="refreshBtn" type="button">Rafraîchir maintenant</button>
-    <button id="collapseAllBtn" type="button">Tout afficher</button>
+    <span class="status-last">Mise à jour : <strong id="lastUpdate">—</strong></span>
+    <button type="button" id="healthStrip" class="health-strip" aria-expanded="false" aria-controls="healthDetail" title="Voyants de santé — cliquer pour le détail" hidden></button>
+    <button id="refreshBtn" type="button" title="Rafraîchir maintenant">↻ Rafraîchir</button>
     <button id="themeToggleBtn" type="button" title="Thème clair / sombre">🌙</button>
     <div class="notif-bell-wrap">
       <button id="notifBellBtn" type="button" class="notif-bell-btn" title="Alertes email envoyées récemment">🔔<span id="notifBellCount" class="notif-bell-count"></span></button>
@@ -2898,12 +3009,20 @@
         <div id="notifBellList" class="notif-bell-list"></div>
       </div>
     </div>
+    <div class="top-more-wrap">
+      <button id="topMoreBtn" type="button" title="Pause, tout afficher, prochain rafraîchissement" aria-expanded="false" aria-controls="topMore">⋯</button>
+      <div id="topMore" class="top-more" hidden>
+        <span id="countdownWrap">Prochain rafraîchissement dans <strong id="countdown">10</strong> s</span>
+        <button id="toggleBtn" type="button">Pause</button>
+        <button id="collapseAllBtn" type="button">Tout afficher</button>
+      </div>
+    </div>
     <span class="error-msg" id="errorMsg"></span>
   </div>
-
-  <button type="button" id="healthStrip" class="health-strip" aria-expanded="false" aria-controls="healthDetail" title="Voyants de santé — cliquer pour le détail" hidden></button>
+  </div>
   <div id="healthDetail" class="health-detail" hidden></div>
 
+  <nav class="tab-groups" id="tabGroups" aria-label="Rubriques"></nav>
   <div class="tab-bar">
     <button class="tab-btn tab-btn-primary tab-gold-1 active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary tab-gold-2" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Saison 26/27</button>
@@ -2920,6 +3039,12 @@
     <button class="tab-btn tab-btn-quiet" data-tab="cmp-pick" type="button"><span class="tab-btn-icon">✋</span>Choix comparateur</button>
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="alertes" type="button"><span class="tab-btn-icon">🔔</span>Alertes match</button>
+  </div>
+
+  <div class="tab-panel" id="tab-alertes">
+    <h2 class="section-title">🔔 Alertes match</h2>
+    <div id="alertsRoot"><div class="loading-state">Chargement…</div></div>
   </div>
 
   <div class="tab-panel" id="tab-home">
@@ -2934,12 +3059,22 @@
           <button id="vtDenseToggleBtn" type="button" class="vt-dense-toggle-btn" title="Bascule vers une ligne par trade, sans les jauges">☰ Vue compacte</button>
           <button id="vtTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les trades mis à la corbeille">🗑 Corbeille</button>
         </div>
+        <div class="vt-filter-line">
         <div class="vt-filters" id="sportFilters">
           <button data-sport="all" type="button">Tous les sports<span class="vt-filter-count"></span></button>
           <button data-sport="football" class="active" type="button">⚽ Football<span class="vt-filter-count"></span></button>
           <button data-sport="other" type="button">Autres<span class="vt-filter-count"></span></button>
         </div>
+        <div class="vt-filters" id="vtSortFilters">
+          <span class="vt-sort-label">Trier par</span>
+          <button data-sort="note" class="active" type="button">Note</button>
+          <button data-sort="volume" type="button">Volume</button>
+          <button data-sort="traders" type="button">Traders</button>
+        </div>
+        <button type="button" class="collapse-btn vt-more-filters-btn" id="vtMoreFiltersBtn" aria-expanded="false" aria-controls="vtMoreFilters">▸ Filtres</button>
+        </div>
         <div class="vt-filters" id="vtLeagueFilters" style="display:none;"></div>
+        <div id="vtMoreFilters" hidden>
         <div class="vt-filters" id="timingFilters">
           <button data-timing="all" class="active" type="button">Tous<span class="vt-filter-count"></span></button>
           <button data-timing="live" type="button">🔴 En cours<span class="vt-filter-count"></span></button>
@@ -2958,17 +3093,12 @@
           <button data-mtype="h2h" type="button" title="« X vs. Y » — vainqueur du match (US, tennis…)">US / tennis<span class="vt-filter-count"></span></button>
           <button data-mtype="other" type="button" title="BTTS, score exact…">Autres<span class="vt-filter-count"></span></button>
         </div>
-        <div class="vt-filters" id="vtSortFilters">
-          <span class="vt-sort-label">Trier par</span>
-          <button data-sort="note" class="active" type="button">Note</button>
-          <button data-sort="volume" type="button">Volume</button>
-          <button data-sort="traders" type="button">Traders</button>
-        </div>
         <div class="vt-filters" id="vtTraderFilterWrap">
           <span class="vt-sort-label">Trader</span>
           <select id="vtTraderFilterSelect" class="vt-trader-select">
             <option value="">Tous les traders</option>
           </select>
+        </div>
         </div>
       </div>
       <div class="score-tier-box" id="vtTierChart"></div>
@@ -4210,14 +4340,15 @@
     var val = parseFloat(intPart + "." + fracPart);
     return neg ? -val : val;
   }
+  // French, everywhere (on request, 2026-10-31): no cents from 100 $ up.
   function fmtUSD(n) {
-    var sign = n < 0 ? "-" : "";
-    return sign + new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n)) + " $";
+    var sign = n < 0 ? "-" : "", a = Math.abs(n), d = Math.round(a * 100) / 100 >= 100 ? 0 : 2;
+    return sign + new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(a) + " $";
   }
   function fmtShares(n) {
     return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(n));
   }
-  function fmtCents(p) { return (p * 100).toFixed(1) + "¢"; }
+  function fmtCents(p) { return (p * 100).toFixed(1).replace(".", ",") + " ¢"; }
   // A price this close to 100¢ or 0¢ means the market has already resolved
   // (or is a formality away from it) — that position/trade is dead weight,
   // not a real signal, in any view that isn't specifically about history.
@@ -4228,7 +4359,7 @@
   function isPriceDecided(price) {
     return price != null && (price >= 0.9995 || price <= 0.0005);
   }
-  function fmtPct(n) { var sign = n > 0 ? "+" : ""; return sign + n.toFixed(2) + "%"; }
+  function fmtPct(n) { var sign = n > 0 ? "+" : ""; return sign + n.toFixed(2).replace(".", ",") + " %"; }
   function median(arr) {
     var vals = (arr || []).filter(function (v) { return typeof v === "number" && !isNaN(v); });
     if (!vals.length) return null;
@@ -5237,8 +5368,8 @@
   function sideTooltipLabel(s, g) {
     var traderPct = g.totalSideTraders > 0 ? (s.traderCount / g.totalSideTraders * 100) : 0;
     var stakePct = g.totalStake > 0 ? (s.totalStake / g.totalStake * 100) : 0;
-    return esc(s.name) + " — " + s.traderCount + "/" + g.totalSideTraders + " traders (" + traderPct.toFixed(0) + "%) · " +
-      "mise " + fmtUSD(s.totalStake) + " / " + fmtUSD(g.totalStake) + " (" + stakePct.toFixed(0) + "%)";
+    return esc(s.name) + " — " + s.traderCount + "/" + g.totalSideTraders + " traders (" + traderPct.toFixed(0) + " %) · " +
+      "mise " + fmtUSD(s.totalStake) + " / " + fmtUSD(g.totalStake) + " (" + stakePct.toFixed(0) + " %)";
   }
 
   function weightedAvgEntry(entries) {
@@ -6294,7 +6425,7 @@
     var dollarLeadPct = totalStakeAll > 0 ? (mergedSides[0].stake / totalStakeAll * 100) : 0;
     var dollarSegments = mergedSides.map(function (m, i) {
       var pct = totalStakeAll > 0 ? (m.stake / totalStakeAll * 100) : 0;
-      var label = esc(m.name) + " — mise " + fmtUSD(m.stake) + " / " + fmtUSD(totalStakeAll) + " (" + pct.toFixed(0) + "%)";
+      var label = esc(m.name) + " — mise " + fmtUSD(m.stake) + " / " + fmtUSD(totalStakeAll) + " (" + pct.toFixed(0) + " %)";
       return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeBackground(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
     }).join("") + gaugeTick(dollarLeadPct);
 
@@ -6470,7 +6601,7 @@
     var statsHtml = '<span class="vt-top-stats"' + statsWrapStyle + '>' +
       '<span class="vt-stat-odds"' + statsTextStyle + ' title="Prix actuel du marché, pas le prix d\'entrée des traders">' + (leaderPriceText ? esc(leaderPriceText) + priceArrowHtml : '') + '</span>' +
       '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
-      '<span class="vt-stat-roi"' + statsTextStyle + ' title="ROI si le camp majoritaire gagne, à la cote actuelle">' + (leaderRoi != null ? (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + '%' : '') + '</span>' +
+      '<span class="vt-stat-roi"' + statsTextStyle + ' title="ROI si le camp majoritaire gagne, à la cote actuelle">' + (leaderRoi != null ? (leaderRoi >= 0 ? '+' : '') + leaderRoi.toFixed(0) + ' %' : '') + '</span>' +
     '</span>';
     var headerHtml =
       '<div class="vt-top">' +
@@ -6709,7 +6840,7 @@
         '<span class="vt-dense-question">' + esc(primary.question) + '</span>' +
         '<span class="vt-dense-live"' + (isLive ? ' title="En cours"' : '') + '>' + (isLive ? '🔴' : '') + '</span>' +
         '<span class="vt-dense-odds">' + (parts.leaderPriceText ? esc(parts.leaderPriceText) : '') + '</span>' +
-        '<span class="vt-dense-roi">' + (parts.leaderRoi != null ? (parts.leaderRoi >= 0 ? '+' : '') + parts.leaderRoi.toFixed(0) + '%' : '') + '</span>' +
+        '<span class="vt-dense-roi">' + (parts.leaderRoi != null ? (parts.leaderRoi >= 0 ? '+' : '') + parts.leaderRoi.toFixed(0) + ' %' : '') + '</span>' +
         '<span class="vt-dense-traders">' + u.traderCount + ' tr</span>' +
         '<span class="vt-dense-stake">' + fmtUSD(u.totalStake) + '</span>' +
         '<span class="vt-dense-score" style="color:' + color + '">' + (u.score != null ? u.score.toFixed(1) : '—') + '</span>' +
@@ -7636,13 +7767,13 @@
       ? "Moyenne du ROI de chaque position, chacune à sa propre mise. Le gain cumulé réel est affiché sur le graphique ci-dessus."
       : "Moyenne du ROI de chaque pari pris isolément (mise à plat de " + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + " à chaque fois), pas un pourcentage d'un total misé cumulé. Le gain cumulé réel est affiché sur le graphique ci-dessus.";
     var globalTiles = [
-      { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + "%", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
-      { label: "Cote moyenne", value: avgCote == null ? "—" : avgCote.toFixed(1) + "¢", title: "Prix moyen du camp leader au moment du snapshot, sur les snapshots décidés." },
+      { label: "Taux de réussite global (snapshots)", value: betWinRate == null ? "—" : betWinRate.toFixed(0) + " %", cls: betWinRate == null ? "" : (betWinRate >= 50 ? "pos" : "neg") },
+      { label: "Cote moyenne", value: avgCote == null ? "—" : avgCote.toFixed(1).replace(".", ",") + " ¢", title: "Prix moyen du camp leader au moment du snapshot, sur les snapshots décidés." },
       // "ROI moyen par pari", not "ROI global" — this is the AVERAGE return
       // per bet, not a % of some pooled total stake. Reads as "20% of $1000
       // = $200" otherwise, which is wrong by an order of magnitude once
       // there are 19 bets, not 1.
-      { label: "ROI moyen par pari", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + "%", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg"), title: roiTitle }
+      { label: "ROI moyen par pari", value: globalRoi == null ? "—" : (globalRoi >= 0 ? "+" : "") + globalRoi.toFixed(0) + " %", cls: globalRoi == null ? "" : (globalRoi >= 0 ? "pos" : "neg"), title: roiTitle }
     ];
     function tilesHtml(tiles) {
       return '<div class="stat-grid">' + tiles.map(function (t) {
@@ -8590,13 +8721,13 @@
       var roi = agg.roi;
       var hypHtml = hyp == null ? "" :
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
-        ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
+        ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + ' % ROI)</span></span>';
       var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
       var isActive = store.state.manualVsAutoFilter === g.key;
       var rowHtml = '<div class="manual-auto-row' + resultClass + (isActive ? ' active' : '') + '" data-manual-auto="' + g.key + '" data-store="' + store.name + '" title="Filtrer sur ' + esc(g.label) + '">' +
         '<span class="tier-wr-badge tier-wr-badge-wide" style="color:' + g.color + ';border-color:' + g.color + ';background:color-mix(in srgb, ' + g.color + ' 14%, transparent)">' + esc(g.label) + '</span>' +
         '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + g.color + '"></div></div>' +
-        '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
+        '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + ' %') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + ' · ' + items.length + ' total</span>' +
         hypHtml +
       '</div>';
@@ -8728,13 +8859,13 @@
       var h = Math.max(2, Math.abs(w.pnl) * scale);
       var y = w.pnl >= 0 ? zeroY - h : zeroY;
       var color = w.pnl >= 0 ? "var(--green)" : "var(--red)";
-      var roiTxt = w.roi != null ? (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + "%" : "";
+      var roiTxt = w.roi != null ? (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + " %" : "";
       var countY = w.pnl >= 0 ? (y - 16) : (y + h + 14);
       var roiY = w.pnl >= 0 ? (y - 5) : (y + h + 27);
       var countLabel = slot > 20 ? '<text x="' + cx.toFixed(2) + '" y="' + countY.toFixed(2) + '" font-size="10" font-weight="700" fill="var(--text)" text-anchor="middle">' + w.count + '</text>' : '';
       var roiLabel = slot > 20 && roiTxt ? '<text x="' + cx.toFixed(2) + '" y="' + roiY.toFixed(2) + '" font-size="8.5" fill="' + color + '" text-anchor="middle">' + esc(roiTxt) + '</text>' : '';
       var xLabel = slot > 20 ? '<text x="' + cx.toFixed(2) + '" y="' + (H - 10) + '" font-size="9" fill="var(--text-dim)" text-anchor="middle">' + esc(fmtDateShort(w.start)) + '</text>' : '';
-      return '<rect x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.78"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + '% ROI)' : '') + '</title></rect>' + countLabel + roiLabel + xLabel;
+      return '<rect x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.78"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + ' % ROI)' : '') + '</title></rect>' + countLabel + roiLabel + xLabel;
     }).join("");
     // One faint vertical divider per week boundary (n-1 of them, evenly
     // spaced at each slot edge) — thin and low-opacity on purpose, just
@@ -8778,10 +8909,10 @@
   }
   function manualAutoGaugeHtml(w) {
     if (w.manualPct == null) return '—';
-    var mRoiTxt = w.manualRoi == null ? '' : ' · ROI ' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + '%';
-    var aRoiTxt = w.autoRoi == null ? '' : ' · ROI ' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + '%';
-    var cRoiTxt = w.cmpRoi == null ? '' : ' · ROI ' + (w.cmpRoi >= 0 ? '+' : '') + w.cmpRoi.toFixed(0) + '%';
-    var pRoiTxt = w.propsRoi == null ? '' : ' · ROI ' + (w.propsRoi >= 0 ? '+' : '') + w.propsRoi.toFixed(0) + '%';
+    var mRoiTxt = w.manualRoi == null ? '' : ' · ROI ' + (w.manualRoi >= 0 ? '+' : '') + w.manualRoi.toFixed(0) + ' %';
+    var aRoiTxt = w.autoRoi == null ? '' : ' · ROI ' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + ' %';
+    var cRoiTxt = w.cmpRoi == null ? '' : ' · ROI ' + (w.cmpRoi >= 0 ? '+' : '') + w.cmpRoi.toFixed(0) + ' %';
+    var pRoiTxt = w.propsRoi == null ? '' : ' · ROI ' + (w.propsRoi >= 0 ? '+' : '') + w.propsRoi.toFixed(0) + ' %';
     // #f472b6/#38bdf8 — same manuel/auto color convention as the console
     // avancée and Manuel vs suivi auto (MANUAL_VS_AUTO_GROUPS) above.
     return labeledBarsHtml([
@@ -8795,7 +8926,7 @@
   // same shape (count/pnl/roi/avgNote/manualPct/manualRoi/autoRoi/tierCounts)
   // so both go through the exact same bar/gauge rendering.
   function weeklyRowCellsHtml(w) {
-    var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + '%</span>';
+    var roiHtml = w.roi == null ? '—' : '<span class="' + (w.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + ' %</span>';
     var gainHtml = '<span class="' + (w.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(w.pnl)) + '</span>';
     var noteHtml = w.avgNote == null ? '—' : w.avgNote.toFixed(1);
     return '<td class="num">' + w.count + '</td><td class="num">' + roiHtml + '</td><td class="num">' + noteHtml + '</td><td class="num">' + gainHtml + '</td><td>' + manualAutoGaugeHtml(w) + '</td><td>' + tierBarsHtml(w) + '</td>';
@@ -8942,8 +9073,8 @@
       var roiColor = b.avgRoi >= 0 ? "pnl-pos" : "pnl-neg";
       return '<tr><td>' + esc(b.label) + '<div class="market-sub">' + esc(fmtUSD(b.minVol)) + ' – ' + esc(fmtUSD(b.maxVol)) + '</div></td>' +
         '<td class="num">' + b.count + '</td>' +
-        '<td class="num">' + b.winrate.toFixed(0) + '%</td>' +
-        '<td class="num ' + roiColor + '">' + (b.avgRoi >= 0 ? "+" : "") + b.avgRoi.toFixed(0) + '%</td></tr>';
+        '<td class="num">' + b.winrate.toFixed(0) + ' %</td>' +
+        '<td class="num ' + roiColor + '">' + (b.avgRoi >= 0 ? "+" : "") + b.avgRoi.toFixed(0) + ' %</td></tr>';
     }).join("");
     return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Volume tradé vs ROI (par quartile de volume)</div>' +
       (r != null ? '<div class="empty-note" style="padding:0 0 8px;">Corrélation (volume × ROI) : <b>' + (r >= 0 ? "+" : "") + r.toFixed(2) + '</b> — ' + verdict + '.</div>' : '') +
@@ -8982,7 +9113,7 @@
       var wr = b.total ? (b.win / b.total * 100) : null;
       var h = wr == null ? 3 : Math.max(4, Math.round(wr / 100 * 44));
       var color = wr == null ? "var(--text-dim)" : (wr >= 50 ? "var(--green)" : "var(--red)");
-      return '<div class="stat-consensus-col"><div class="stat-consensus-track"><span class="stat-consensus-val">' + (wr == null ? "—" : wr.toFixed(0) + "%") + '</span><div class="stat-consensus-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl" title="' + b.total + ' pari(s)">' + b.label + '</span></div>';
+      return '<div class="stat-consensus-col"><div class="stat-consensus-track"><span class="stat-consensus-val">' + (wr == null ? "—" : wr.toFixed(0) + " %") + '</span><div class="stat-consensus-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl" title="' + b.total + ' pari(s)">' + b.label + '</span></div>';
     }).join("");
     return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Traders d\'accord sur le camp suivi, vs winrate</div>' +
       '<div class="empty-note" style="padding:0 0 8px;">Nombre de traders suivis présents sur le CAMP effectivement suivi (pas le marché entier) — est-ce qu\'être suivi par plus de monde à la fois prédit mieux la victoire ?</div>' +
@@ -9051,7 +9182,7 @@
         }
         var rowPct = data.matrix[i][i] > 0 ? (v / data.matrix[i][i]) : 0;
         var intensity = v / maxOffDiag;
-        var title = rowName + " × " + data.names[j] + " : " + v + " pari(s) en commun (" + (rowPct * 100).toFixed(0) + "% des paris de " + rowName + ")";
+        var title = rowName + " × " + data.names[j] + " : " + v + " pari(s) en commun (" + (rowPct * 100).toFixed(0) + " % des paris de " + rowName + ")";
         var textColor = intensity > 0.55 ? "#fff" : "var(--text)";
         cells += '<div class="co-signal-cell" style="background:color-mix(in srgb, var(--accent) ' + (intensity * 100).toFixed(0) + '%, var(--panel));color:' + textColor + '" title="' + esc(title) + '">' + v + '</div>';
       }
@@ -9087,8 +9218,8 @@
       var roi = d.count ? (d.pnl / d.stake * 100) : null;
       var h = roi == null ? 5 : Math.max(8, Math.round(Math.abs(roi) / maxAbsRoi * 84));
       var color = roi == null ? "var(--text-dim)" : (roi >= 0 ? "var(--green)" : "var(--red)");
-      var title = DAYHOUR_DAY_LABELS[i] + (roi == null ? " — aucun pari" : " — " + d.count + " pari(s), " + (roi >= 0 ? "+" : "") + roi.toFixed(0) + "% ROI");
-      return '<div class="stat-consensus-col stat-dow-col" title="' + esc(title) + '"><div class="stat-consensus-track stat-dow-track"><span class="stat-consensus-val stat-dow-val">' + (roi == null ? "—" : (roi >= 0 ? "+" : "") + roi.toFixed(0) + "%") + '</span><div class="stat-consensus-bar stat-dow-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl stat-dow-lbl">' + DAYHOUR_DAY_LABELS[i] + '</span><span class="stat-consensus-count stat-dow-count">' + d.count + ' pari' + (d.count > 1 ? "s" : "") + '</span></div>';
+      var title = DAYHOUR_DAY_LABELS[i] + (roi == null ? " — aucun pari" : " — " + d.count + " pari(s), " + (roi >= 0 ? "+" : "") + roi.toFixed(0) + " % ROI");
+      return '<div class="stat-consensus-col stat-dow-col" title="' + esc(title) + '"><div class="stat-consensus-track stat-dow-track"><span class="stat-consensus-val stat-dow-val">' + (roi == null ? "—" : (roi >= 0 ? "+" : "") + roi.toFixed(0) + " %") + '</span><div class="stat-consensus-bar stat-dow-bar" style="height:' + h + 'px;background:' + color + '"></div></div><span class="stat-consensus-lbl stat-dow-lbl">' + DAYHOUR_DAY_LABELS[i] + '</span><span class="stat-consensus-count stat-dow-count">' + d.count + ' pari' + (d.count > 1 ? "s" : "") + '</span></div>';
     }).join("");
     return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">ROI par jour de la semaine</div><div class="stat-consensus-row stat-dow-row">' + cols + '</div></div>';
   }
@@ -9120,7 +9251,7 @@
       var cls = m.roi == null ? "" : (m.roi >= 0 ? "pnl-pos" : "pnl-neg");
       var label = m.date.toLocaleDateString("fr-FR", { month: "short" });
       var title = m.date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) + " — " + m.count + " pari(s)";
-      return '<div class="month-mini-chip" title="' + esc(title) + '"><span class="month-mini-m">' + esc(label) + '</span><span class="month-mini-v ' + cls + '">' + (m.roi == null ? "—" : (m.roi >= 0 ? "+" : "") + m.roi.toFixed(0) + "%") + '</span></div>';
+      return '<div class="month-mini-chip" title="' + esc(title) + '"><span class="month-mini-m">' + esc(label) + '</span><span class="month-mini-v ' + cls + '">' + (m.roi == null ? "—" : (m.roi >= 0 ? "+" : "") + m.roi.toFixed(0) + " %") + '</span></div>';
     }).join("");
     return '<div class="pnl-chart-stat pnl-chart-stat-monthly"><span class="pnl-chart-stat-label">Bilan mensuel</span><div class="month-mini-row">' + chips + '</div></div>';
   }
@@ -9214,8 +9345,8 @@
       var decided = pt.getAttribute("data-decided");
       tip.style.borderColor = pt.getAttribute("stroke");
       tip.innerHTML = '<span class="chart-tooltip-result-total"><b>' + esc(name) + '</b> — note ' + esc(weight) + '</span>' +
-        '<span class="chart-tooltip-result-row"><span class="chart-tooltip-result-value ' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">ROI/1000€ ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span>' +
-        '<span class="chart-tooltip-result-value ' + (realRoi == null ? "" : (realRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">ROI réel ' + (realRoi == null ? "—" : (realRoi >= 0 ? "+" : "") + realRoi.toFixed(0) + '%') + '</span></span>' +
+        '<span class="chart-tooltip-result-row"><span class="chart-tooltip-result-value ' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">ROI/1000€ ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + ' %</span>' +
+        '<span class="chart-tooltip-result-value ' + (realRoi == null ? "" : (realRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">ROI réel ' + (realRoi == null ? "—" : (realRoi >= 0 ? "+" : "") + realRoi.toFixed(0) + ' %') + '</span></span>' +
         '<span class="chart-tooltip-result-date">' + n + ' pari(s) simulé(s) · ' + decided + ' décidé(s) au total</span>';
       tip.classList.add("show");
     });
@@ -9449,14 +9580,14 @@
       var ly = cy + r + 14;
       if (ly > Y1 - 4 || (prevLabel && Math.abs(cx - prevLabel.x) < 46 && Math.abs(ly - prevLabel.y) < 14)) ly = cy - r - 7;
       prevLabel = { x: cx, y: ly };
-      var tip = EDGE_PRICE_BUCKETS[i].label + " : " + st.w + "/" + st.n + " gagnés (" + st.wr.toFixed(0) + "%, marge " + st.lo.toFixed(0) + "–" + st.hi.toFixed(0) + "%), cote moyenne " + st.avgPrice.toFixed(1) + "¢, ROI " + fmtPctAdv(st.roi) + " par pari";
+      var tip = EDGE_PRICE_BUCKETS[i].label + " : " + st.w + "/" + st.n + " gagnés (" + st.wr.toFixed(0) + "%, marge " + st.lo.toFixed(0) + "–" + st.hi.toFixed(0) + " %), cote moyenne " + st.avgPrice.toFixed(1).replace(".", ",") + " ¢, ROI " + fmtPctAdv(st.roi) + " par pari";
       svg += '<line x1="' + cx.toFixed(1) + '" y1="' + y(st.hi).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(st.lo).toFixed(1) + '" stroke="' + col + '" stroke-width="2" stroke-linecap="round" opacity="0.45"/>' +
         '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + col + '" fill-opacity="0.82" stroke="var(--panel)" stroke-width="2"><title>' + esc(tip) + '</title></circle>' +
         '<text x="' + cx.toFixed(1) + '" y="' + ly.toFixed(1) + '" class="adv-pt-label" fill="' + col + '" text-anchor="middle">' + fmtPctAdv(st.roi) + '</text>';
     });
     var rows = stats.map(function (st, i) {
       if (!st.n) return "";
-      return '<tr' + (st.n < ADV_MIN_N ? ' class="adv-few"' : '') + '><td>' + esc(EDGE_PRICE_BUCKETS[i].label) + '</td><td>' + st.n + '</td><td>' + st.wr.toFixed(0) + '%</td><td style="color:' + advSignColor(st) + ';font-weight:800;">' + fmtPctAdv(st.roi) + '</td></tr>';
+      return '<tr' + (st.n < ADV_MIN_N ? ' class="adv-few"' : '') + '><td>' + esc(EDGE_PRICE_BUCKETS[i].label) + '</td><td>' + st.n + '</td><td>' + st.wr.toFixed(0) + ' %</td><td style="color:' + advSignColor(st) + ';font-weight:800;">' + fmtPctAdv(st.roi) + '</td></tr>';
     }).join("");
     var ranked = stats.map(function (st, i) { return { st: st, i: i }; }).filter(function (o) { return o.st.n >= ADV_MIN_N; }).sort(function (a, b) { return b.st.roi - a.st.roi; });
     var insight = "";
@@ -9477,7 +9608,7 @@
     if (items.length < 20) return "";
     var stats = advGroup(items, stakeForOf(store), function (s) { return bucketIndex(NOTE_BANDS, s.noteAtSnapshot); }, advIdx(NOTE_BANDS.length));
     var names = NOTE_BANDS.map(function (b) { return b.label; });
-    var metas = stats.map(function (st) { return st.n ? st.n + " paris · " + st.wr.toFixed(0) + "%" : "aucun pari"; });
+    var metas = stats.map(function (st) { return st.n ? st.n + " paris · " + st.wr.toFixed(0) + " %" : "aucun pari"; });
     var withData = stats.map(function (st, i) { return { st: st, i: i }; }).filter(function (o) { return o.st.n >= ADV_MIN_N; });
     var worst = withData.slice().sort(function (a, b) { return a.st.roi - b.st.roi; })[0];
     var best = withData.slice().sort(function (a, b) { return b.st.roi - a.st.roi; })[0];
@@ -9510,7 +9641,7 @@
         '<div class="c adv-volcell"><div class="adv-vol"><div style="width:' + (st.n / totalN * 100).toFixed(1) + '%"></div></div><span>' + st.n + '</span></div>' +
         '<div class="c"><div class="adv-track"><div class="adv-zero"></div><div class="adv-bar" style="left:' + (st.roi >= 0 ? 50 : 50 - w).toFixed(2) + '%;width:' + w.toFixed(2) + '%;background:' + fill + ';border:1px solid ' + col + ';"></div></div></div>' +
         '<div class="c adv-num" style="font-weight:800;color:' + col + ';">' + fmtPctAdv(st.roi) + '</div>' +
-        '<div class="c adv-num">' + st.wr.toFixed(0) + '%</div>' +
+        '<div class="c adv-num">' + st.wr.toFixed(0) + ' %</div>' +
         '<div class="c adv-num" style="font-weight:700;color:' + col + ';">' + fmtUsdAdv(st.pnl) + '</div>';
     }).join("");
     var top = rows[0], insight = "";
@@ -9536,7 +9667,7 @@
       return '<div class="adv-kpi" style="border-color:' + col + ';"><div class="adv-kpi-label">' + label + '</div><div class="adv-kpi-val" style="color:' + col + ';">' + fmtPctAdv(st.roi) + '</div><div class="adv-kpi-sub">par pari · ' + st.n + ' paris · ' + fmtUsdAdv(st.pnl) + '</div></div>';
     }
     var names = DRIFT_BUCKETS.map(function (b) { return b.label; });
-    var metas = stats.map(function (st) { return st.n ? st.n + " paris · " + st.wr.toFixed(0) + "%" : "aucun pari"; });
+    var metas = stats.map(function (st) { return st.n ? st.n + " paris · " + st.wr.toFixed(0) + " %" : "aucun pari"; });
     return advSection("Le marché a-t-il déjà suivi les whales ?",
       items.length + " paris auto. Écart entre ton prix au moment du snapshot et le prix moyen d'entrée des whales du camp suivi. Positif = le prix a monté depuis leur entrée.",
       '<div class="adv-kpis">' + kpi("Le marché a suivi (+1¢ ou plus)", up) + kpi("Prix stable ou en recul", still) + '</div>' + advRoiBarsSvg(stats, names, metas, 600) +
@@ -9565,8 +9696,8 @@
       else if (st.wr - thr >= 2.5) v = ["Tendance ↑", "var(--green)", "color-mix(in srgb, var(--green) 13%, var(--panel))", "var(--green)"];
       else if (st.wr - thr <= -2.5) v = ["Tendance ↓", "var(--red)", "color-mix(in srgb, var(--red) 11%, var(--panel))", "var(--red)"];
       else v = ["À l'équilibre", "var(--text)", "color-mix(in srgb, var(--gold) 16%, var(--panel))", "var(--gold)"];
-      return '<div class="c"><b>' + esc(g.label) + '</b></div><div class="c adv-num">' + st.n + '</div><div class="c adv-num"><b>' + st.wr.toFixed(0) + '%</b></div>' +
-        '<div class="c"><div class="adv-forest-track" title="' + esc(g.label + " : " + st.wr.toFixed(1) + "% (marge " + st.lo.toFixed(0) + "–" + st.hi.toFixed(0) + "%), seuil à battre " + thr.toFixed(1) + "% = cote moyenne payée") + '">' +
+      return '<div class="c"><b>' + esc(g.label) + '</b></div><div class="c adv-num">' + st.n + '</div><div class="c adv-num"><b>' + st.wr.toFixed(0) + ' %</b></div>' +
+        '<div class="c"><div class="adv-forest-track" title="' + esc(g.label + " : " + st.wr.toFixed(1).replace(".", ",") + " % (marge " + st.lo.toFixed(0) + "–" + st.hi.toFixed(0) + " %), seuil à battre " + thr.toFixed(1).replace(".", ",") + " % = cote moyenne payée") + '">' +
           '<div class="adv-forest-base"></div><div class="adv-forest-ci" style="left:' + pos(st.lo).toFixed(2) + '%;width:' + (pos(st.hi) - pos(st.lo)).toFixed(2) + '%;background:' + v[3] + ';"></div>' +
           '<div class="adv-forest-thr" style="left:' + pos(thr).toFixed(2) + '%;"></div><div class="adv-forest-pt" style="left:' + pos(st.wr).toFixed(2) + '%;"></div></div></div>' +
         '<div class="c"><span class="adv-pill" style="color:' + v[1] + ';background:' + v[2] + ';">' + v[0] + '</span></div>';
@@ -9734,12 +9865,12 @@
     if (!st || !st.n) return "";
     if (st.n < ADV_MIN_N) return '<span class="vt-hist-chip few" title="' + esc(label + " — seulement " + st.n + " pari(s) décidé(s), trop peu pour conclure") + '">' + esc(label) + ' · ' + st.n + ' paris</span>';
     var alert = alertable && st.roi <= -10;
-    var title = label + " — " + st.w + "/" + st.n + " gagnés (" + st.wr.toFixed(0) + "%), ROI " + fmtPctAdv(st.roi) + " par pari sur ton historique";
+    var title = label + " — " + st.w + "/" + st.n + " gagnés (" + st.wr.toFixed(0) + " %), ROI " + fmtPctAdv(st.roi) + " par pari sur ton historique";
     return '<span class="vt-hist-chip ' + (alert ? "alert" : advTone(st)) + '" title="' + esc(title) + '">' + (alert ? '⚠ ' : '') + esc(label) + ' · ' + fmtPctAdv(st.roi, 0) + '<span class="vt-hist-n">' + st.n + '</span></span>';
   }
   function driftChipHtml(dc, st) {
-    var txt = dc >= 1 ? "↗ +" + dc.toFixed(1) + "¢ vs whales" : (dc <= -0.5 ? "↘ −" + Math.abs(dc).toFixed(1) + "¢ vs whales" : "→ prix des whales");
-    var title = "Prix actuel vs prix moyen d'entrée des whales du camp suivi : " + (dc >= 0 ? "+" : "−") + Math.abs(dc).toFixed(1) + "¢." + (st && st.n ? " Historique de cette tranche : ROI " + fmtPctAdv(st.roi) + " sur " + st.n + " paris." : "");
+    var txt = dc >= 1 ? "↗ +" + dc.toFixed(1).replace(".", ",") + " ¢ vs whales" : (dc <= -0.5 ? "↘ −" + Math.abs(dc).toFixed(1).replace(".", ",") + " ¢ vs whales" : "→ prix des whales");
+    var title = "Prix actuel vs prix moyen d'entrée des whales du camp suivi : " + (dc >= 0 ? "+" : "−") + Math.abs(dc).toFixed(1).replace(".", ",") + " ¢." + (st && st.n ? " Historique de cette tranche : ROI " + fmtPctAdv(st.roi) + " sur " + st.n + " paris." : "");
     return '<span class="vt-hist-chip ' + (st && st.n >= ADV_MIN_N ? advTone(st) : "few") + '" title="' + esc(title) + '">' + esc(txt) + '</span>';
   }
   function vtHistoryRowHtml(u, parts) {
@@ -9827,7 +9958,7 @@
     var dots = '<div class="home-dots" aria-label="Derniers résultats">' + last.map(function (w) { return '<span class="home-dot" style="background:' + (w ? 'var(--green)' : 'transparent') + ';border:2px solid ' + (w ? 'var(--green)' : 'var(--red)') + ';"></span>'; }).join("") + '</div>';
     var kpis = '<div class="home-kpis">' +
       kpi('PnL saison · simulé', fmtUsdAdv(sAgg.pnl), sAgg.pnl >= 0 ? 'var(--green)' : 'var(--red)', sDec.length + ' paris décidés · ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + ' par pari', spark) +
-      kpi('ROI par pari', fmtPctAdv(sAgg.roi), sAgg.roi >= 0 ? 'var(--green)' : 'var(--red)', avgPrice != null ? 'cote moyenne payée : ' + avgPrice.toFixed(0) + '¢' : '') +
+      kpi('ROI par pari', fmtPctAdv(sAgg.roi), sAgg.roi >= 0 ? 'var(--green)' : 'var(--red)', avgPrice != null ? 'cote moyenne payée : ' + avgPrice.toFixed(0) + ' ¢' : '') +
       kpi('Réussite', sDec.length ? Math.round(sWins / sDec.length * 100) + '%' : '—', null, sWins + ' gagnés sur ' + sDec.length) +
       kpi('Mes positions · réel', pDec.length ? fmtUsdAdv(pAgg.pnl) : '—', pAgg.pnl >= 0 ? 'var(--green)' : 'var(--red)', pDec.length ? pDec.length + ' paris · ' + fmtUsdAdv(pAgg.stakeSum).replace('+', '') + ' misés · ' + fmtPctAdv(pAgg.roi) : 'aucune position décidée') +
       kpi('Forme · ' + last.length + ' derniers', last.length ? streak + (last[last.length - 1] ? ' gagné' : ' perdu') + (streak > 1 ? 's' : '') + ' de suite' : '—', null, 'pire creux de la saison : ' + fmtUsdAdv(worstDd), dots) +
@@ -10105,7 +10236,7 @@
       var h = Math.max(2, Math.abs(w.pnl) * scale);
       var y = w.pnl >= 0 ? zeroY - h : zeroY;
       var color = w.pnl >= 0 ? "var(--green)" : "var(--red)";
-      var roiTxt = w.roi != null ? (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + "%" : "";
+      var roiTxt = w.roi != null ? (w.roi >= 0 ? "+" : "") + w.roi.toFixed(0) + " %" : "";
       // Count + ROI printed right on the chart, not just in the <title> —
       // hover-only info turned out to be easy to miss/rely on (see the
       // drawdown chart's own tooltip trouble), so anything worth knowing at
@@ -10118,7 +10249,7 @@
         labelsHtml = '<text x="' + cx.toFixed(2) + '" y="' + countY.toFixed(2) + '" font-size="9.5" font-weight="700" fill="var(--text)" text-anchor="middle">' + w.count + '</text>' +
           (roiTxt ? '<text x="' + cx.toFixed(2) + '" y="' + roiY.toFixed(2) + '" font-size="8" fill="' + color + '" text-anchor="middle">' + esc(roiTxt) + '</text>' : '');
       }
-      return '<rect class="vt-weekly-bar" data-week-key="' + w.key + '" data-first-idx="' + w.firstIdx + '" data-last-idx="' + w.lastIdx + '" x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.72"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + '% ROI)' : '') + '</title></rect>' + labelsHtml;
+      return '<rect class="vt-weekly-bar" data-week-key="' + w.key + '" data-first-idx="' + w.firstIdx + '" data-last-idx="' + w.lastIdx + '" x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.72"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + ' % ROI)' : '') + '</title></rect>' + labelsHtml;
     }).join("");
     // One faint divider per week boundary, sat exactly between the last dot
     // of one week and the first dot of the next (not just between the two
@@ -10200,20 +10331,20 @@
       var roi = agg.roi;
       var hypHtml = hyp == null ? "" :
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
-        ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
+        ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + ' % ROI)</span></span>';
       // data-tier lives on the whole row, not just the 36px badge — the
       // badge alone was too small a target to hit reliably, so the click
       // handler below matches ".tier-wr-row" and the row gets a hover fill
       // to make the bigger hit area visible. One rich title on the row
       // itself (not just the inner track) so hovering anywhere on the row
       // shows winrate/count/PnL/ROI, not just the click-to-filter hint.
-      var rowTitle = esc(tier) + " : " + countLabel + (wr != null ? " (" + wr.toFixed(0) + "% winrate)" : "") +
-        (hyp != null ? " — " + esc(fmtUSDSigned(hyp)) + " (" + (roi >= 0 ? "+" : "") + roi.toFixed(0) + "% ROI)" : "") +
+      var rowTitle = esc(tier) + " : " + countLabel + (wr != null ? " (" + wr.toFixed(0) + " % winrate)" : "") +
+        (hyp != null ? " — " + esc(fmtUSDSigned(hyp)) + " (" + (roi >= 0 ? "+" : "") + roi.toFixed(0) + " % ROI)" : "") +
         " — clique pour filtrer les paris ci-dessous";
       return '<div class="tier-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" data-store="' + store.name + '" title="' + rowTitle + '">' +
         '<button type="button" class="tier-wr-badge' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" style="' + badgeStyle + '">' + esc(tier) + '</button>' +
         '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
-        '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
+        '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + ' %') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
         hypHtml +
       '</div>';
@@ -10276,11 +10407,11 @@
       var roi = agg.roi;
       var hypHtml = hyp == null ? "" :
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
-        ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '% ROI)</span></span>';
+        ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + ' % ROI)</span></span>';
       return '<div class="note-wr-row' + resultClass + (isActive ? ' active' : '') + '" data-note-bin-min="' + b[0] + '" data-store="' + store.name + '" title="Filtrer les snapshots sur note ' + label + '">' +
         '<button type="button" class="note-wr-badge" data-note-bin-min="' + b[0] + '" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">' + label + '</button>' +
         '<div class="tier-wr-track" title="' + esc('Note ' + label + ' : ' + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
-        '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + '%') + '</span>' +
+        '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + ' %') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
         hypHtml +
       '</div>';
@@ -10623,7 +10754,7 @@
       // l'arrondi à l'entier masque de vrais changements (9,32%→9,01% se
       // lisait "+9%" dans les deux cas, ce qui a l'air d'un bug de calcul
       // alors que ça n'en est pas un).
-      var roiTxt = s.roi == null ? "—" : (s.roi >= 0 ? "+" : "") + s.roi.toFixed(1) + "%";
+      var roiTxt = s.roi == null ? "—" : (s.roi >= 0 ? "+" : "") + s.roi.toFixed(1).replace(".", ",") + " %";
       return '<div class="compare-col-stats" style="--sub-color:' + color + '">' +
         '<div class="compare-col-stat"><span class="compare-col-stat-label">Trades</span><span class="compare-col-stat-value">' + s.count + '</span></div>' +
         '<div class="compare-col-stat"><span class="compare-col-stat-label">PnL</span><span class="compare-col-stat-value ' + pnlCls + '">' + (s.count ? esc(fmtUSDSigned(s.pnl)) : "—") + '</span></div>' +
@@ -10760,7 +10891,7 @@
       // réellement différentes (ex: 9,32% et 9,01%) affichent toutes les
       // deux "+9%", ce qui a l'air d'un bug de calcul alors que ça n'en
       // est pas un — le PnL au centime près, lui, bouge bien.
-      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(1) + "%") + '</span></div>' +
+      '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(1).replace(".", ",") + " %") + '</span></div>' +
     '</div>';
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     var boxId = store.name + "-snapPnlChartBox";
@@ -11040,13 +11171,13 @@
       var roi = cellRoi(items);
       var f = store.state.snapDistCellFilter;
       var isActive = !!f && f.bracket[0] === bracket[0] && f.bracket[1] === bracket[1] && f.tier === tier;
-      return '<td class="num snap-dist-cell' + (isActive ? ' active' : '') + '" data-store="' + store.name + '"' + roiHeatStyle(roi) + ' data-odds-min="' + bracket[0] + '" data-odds-max="' + bracket[1] + '" data-tier="' + esc(tier || "") + '" title="' + esc(roi == null ? '' : 'ROI simulé ' + (roi >= 0 ? '+' : '') + roi.toFixed(0) + '% · ') + 'Filtrer les snapshots sur ' + esc(tier || "toutes conviction") + ' · ' + bracket[0] + '–' + bracket[1] + '¢">' +
+      return '<td class="num snap-dist-cell' + (isActive ? ' active' : '') + '" data-store="' + store.name + '"' + roiHeatStyle(roi) + ' data-odds-min="' + bracket[0] + '" data-odds-max="' + bracket[1] + '" data-tier="' + esc(tier || "") + '" title="' + esc(roi == null ? '' : 'ROI simulé ' + (roi >= 0 ? '+' : '') + roi.toFixed(0) + ' % · ') + 'Filtrer les snapshots sur ' + esc(tier || "toutes conviction") + ' · ' + bracket[0] + '–' + bracket[1] + '¢">' +
         '<span class="pnl-pos">' + win + '</span> / <span class="pnl-neg">' + (items.length - win) + '</span></td>';
     }
     function roiCell(items) {
       var roi = cellRoi(items);
       if (roi == null) return '<span class="snap-dist-empty">—</span>';
-      return '<span class="' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span>';
+      return '<span class="' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + ' %</span>';
     }
     var rows = DIST_ODDS_BUCKETS.map(function (b) {
       var inBucket = decided.filter(function (s) {
@@ -11100,7 +11231,7 @@
         var qTierCells = CONFIDENCE_TIERS.map(function (tier) {
           return cell(qItems.filter(function (s) { return s.confidence === tier; }), qBracket, tier);
         }).join("");
-        qRows += '<tr><td>' + qLabels[qi] + '<div class="market-sub">' + qBracket[0].toFixed(0) + '–' + qBracket[1].toFixed(0) + '¢</div></td>' +
+        qRows += '<tr><td>' + qLabels[qi] + '<div class="market-sub">' + qBracket[0].toFixed(0) + '–' + qBracket[1].toFixed(0) + ' ¢</div></td>' +
           '<td class="num snap-dist-n-col">' + qItems.length + '</td>' + cell(qItems, qBracket, null) + qTierCells +
           '<td class="num snap-dist-roi-col">' + roiCell(qItems) + '</td></tr>';
       }
@@ -11305,7 +11436,7 @@
         var bracket = dot.getAttribute("data-bracket");
         tip.style.borderColor = dot.style.borderColor;
         tip.innerHTML = '<span class="chart-tooltip-result-total"><b>' + esc(name) + '</b> — note ' + esc(weight) + ' <span class="dim">(palier ' + esc(bracket) + ')</span></span>' +
-          '<span class="chart-tooltip-result-row"><span class="chart-tooltip-result-value ' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">ROI/trade 1000$ ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + '%</span></span>' +
+          '<span class="chart-tooltip-result-row"><span class="chart-tooltip-result-value ' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">ROI/trade 1000$ ' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + ' %</span></span>' +
           '<span class="chart-tooltip-result-date">' + n + ' pari(s)</span>';
         tip.classList.add("show");
       });
@@ -11352,7 +11483,7 @@
       return;
     }
     function roiCell(v) {
-      return '<td class="num ' + (v == null ? '' : (v >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(0) + '%') + '</td>';
+      return '<td class="num ' + (v == null ? '' : (v >= 0 ? 'pnl-pos' : 'pnl-neg')) + '">' + (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(0) + ' %') + '</td>';
     }
     var rows = filteredRows.map(function (st) {
       var pnlClass = st.pnl > 0 ? "pnl-pos" : (st.pnl < 0 ? "pnl-neg" : "");
@@ -11423,6 +11554,32 @@
   function snapCommentDisplayHtml(snap) {
     return snap.comment ? '<div class="snap-comment">💬 ' + esc(snap.comment) + '</div>' : '';
   }
+  // Compact card (on request, 2026-10-31): what you read on the left, and on
+  // the right the result plus the everyday settings (camp gagnant,
+  // confiance, ampleur); Type, Prendre position, Modifier, Commenter,
+  // Corbeille, the order arrows and the saved date sit behind "⋯", which
+  // stays open for that card across re-renders (SNAP_MORE_OPEN).
+  var SNAP_MORE_OPEN = {};
+  function snapCompactToolbarHtml(snap, store, p) {
+    var key = store.name + "|" + snap.id, open = !!SNAP_MORE_OPEN[key];
+    return '<div class="snap-toolbar snap-toolbar-compact">' +
+      '<span class="snap-ctrl-row"><span class="snap-side-label">Gagnant :</span>' + p.sides + '</span>' +
+      '<span class="snap-ctrl-row"><span class="snap-side-label">Confiance :</span>' + p.conf + p.mag +
+        '<button type="button" class="snap-more-btn' + (open ? ' active' : '') + '" data-more-key="' + esc(key) + '" aria-expanded="' + open + '" title="Type, commentaire, position, corbeille…">⋯</button></span>' +
+      '<span class="snap-more"' + (open ? '' : ' hidden') + '>' + p.date + p.reorder + p.more + '</span>' +
+    '</div>';
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest(".snap-more-btn") : null;
+    if (!b) return;
+    e.preventDefault();
+    var key = b.getAttribute("data-more-key"), more = b.closest(".snap-toolbar-compact").querySelector(".snap-more");
+    SNAP_MORE_OPEN[key] = !SNAP_MORE_OPEN[key];
+    if (!SNAP_MORE_OPEN[key]) delete SNAP_MORE_OPEN[key];
+    more.hidden = !SNAP_MORE_OPEN[key];
+    b.classList.toggle("active", !more.hidden);
+    b.setAttribute("aria-expanded", more.hidden ? "false" : "true");
+  });
   function manualCardHtml(snap, isTrash, store) {
     var d = new Date(snap.savedAt);
     var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -11431,7 +11588,7 @@
     var hyp = stake ? hypotheticalFlatPnl(snap, stake) : null;
     var hypCardHtml = hyp == null ? "" :
       '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(store.cardHypLabel(stake)) + esc(fmtUSDSigned(hyp)) +
-      ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / stake * 100).toFixed(0) + '% ROI)</span></div>';
+      ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / stake * 100).toFixed(0) + ' % ROI)</span></div>';
     var price = snap.leaderPriceAtSnapshot;
     var priceText = price != null ? fmtCents(price) : "";
     var roiVal = (price != null && price > 0) ? (1 / price - 1) * 100 : null;
@@ -11442,7 +11599,7 @@
     var statsHtml = '<span class="vt-top-stats"' + statsWrapStyle + '>' +
       '<span class="vt-stat-odds"' + statsTextStyle + '>' + esc(priceText) + '</span>' +
       '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
-      '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roiVal != null ? (roiVal >= 0 ? '+' : '') + roiVal.toFixed(0) + '%' : '') + '</span>' +
+      '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roiVal != null ? (roiVal >= 0 ? '+' : '') + roiVal.toFixed(0) + ' %' : '') + '</span>' +
     '</span>';
     var leaderColor = (store.name === "positions" && positionOpposedColors[snap.id]) || sideColorFor(snap.leaderName);
     var leaderBadge = '<span class="vt-leader" style="--leader-color:' + leaderColor + '">→ ' + esc(snap.leaderName) + '</span>';
@@ -11505,29 +11662,21 @@
       var editPositionHtml = store.allowEditPosition
         ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
         : '';
-      toolbarHtml = '<div class="snap-toolbar">' +
-        (store.allowReorder ? '<span class="snap-reorder-btns"><button type="button" class="snap-reorder-btn snap-reorder-up" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Monter">▲</button><button type="button" class="snap-reorder-btn snap-reorder-down" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Descendre">▼</button></span>' : '') +
-        '<span class="dim">' + (snap.sebOpen ? 'Pari en cours' : esc(store.dateLabelPrefix) + ' ' + esc(dateLabel)) + '</span>' +
-        '<span class="snap-side-label">Camp gagnant :</span>' +
-        sideButtonsHtml +
-        '<span class="snap-side-label">Confiance :</span>' +
-        confidenceButtonsHtml + originButtonsHtml(snap, store) +
-        magnitudeSectionHtml +
-        takePositionHtml +
-        editPositionHtml +
-        snapCommentBtnHtml(snap, store) +
-        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
-      '</div>';
+      toolbarHtml = snapCompactToolbarHtml(snap, store, {
+        reorder: (store.allowReorder ? '<span class="snap-reorder-btns"><button type="button" class="snap-reorder-btn snap-reorder-up" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Monter">▲</button><button type="button" class="snap-reorder-btn snap-reorder-down" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Descendre">▼</button></span>' : ''),
+        date: '<span class="dim">' + (snap.sebOpen ? 'Pari en cours' : esc(store.dateLabelPrefix) + ' ' + esc(dateLabel)) + '</span>',
+        sides: sideButtonsHtml, conf: confidenceButtonsHtml, mag: magnitudeSectionHtml,
+        more: originButtonsHtml(snap, store) + takePositionHtml + editPositionHtml + snapCommentBtnHtml(snap, store) +
+          '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>'
+      });
     }
     return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (store.state.expandedItems[snap.id] ? " open" : "") +
       originCardAttrs(snap) + '>' +
-      '<summary class="vt-summary">' +
-        toolbarHtml +
-        snapCommentDisplayHtml(snap) +
-        hypCardHtml +
+      '<summary class="vt-summary snap-grid"><div class="snap-main">' +
         headerHtml +
         eventDateHtml +
-      '</summary>' +
+        snapCommentDisplayHtml(snap) +
+      '</div><div class="snap-side">' + hypCardHtml + toolbarHtml + '</div></summary>' +
     '</details>';
   }
   // Shared by the normal list and the trash view below — only the toolbar
@@ -11551,7 +11700,7 @@
     var hyp = stake ? hypotheticalFlatPnl(snap, stake) : null;
     var hypCardHtml = hyp == null ? "" :
       '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(store.cardHypLabel(stake)) + esc(fmtUSDSigned(hyp)) +
-      ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / stake * 100).toFixed(0) + '% ROI)</span></div>';
+      ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / stake * 100).toFixed(0) + ' % ROI)</span></div>';
     var resultsHtml = snap.winningSide ? '<div class="snap-trader-results">' +
       (snap.traderNames || []).map(function (name) {
         return '<span class="snap-trader-result-item">' + esc(name) + traderResultBadge(classifyTraderInSnapshot(snap, name)) + '</span>';
@@ -11649,30 +11798,21 @@
       var editPositionHtml = store.allowEditPosition
         ? '<button type="button" class="snap-edit-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="' + (store.name === "positions" ? "Corriger la mise ou la cote de cette position" : "Corriger la cote de ce snapshot") + '">✎ Modifier</button>'
         : '';
-      toolbarHtml = '<div class="snap-toolbar">' +
-        (store.allowReorder ? '<span class="snap-reorder-btns"><button type="button" class="snap-reorder-btn snap-reorder-up" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Monter">▲</button><button type="button" class="snap-reorder-btn snap-reorder-down" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Descendre">▼</button></span>' : '') +
-        '<span class="dim">' + (snap.sebOpen ? 'Pari en cours' : esc(store.dateLabelPrefix) + ' ' + esc(dateLabel)) + '</span>' +
-        '<span class="snap-side-label">Camp gagnant :</span>' +
-        sideButtonsHtml +
-        '<span class="snap-side-label">Confiance :</span>' +
-        confidenceButtonsHtml + originButtonsHtml(snap, store) +
-        magnitudeSectionHtml +
-        takePositionHtml +
-        toSaisonHtml +
-        editPositionHtml +
-        snapCommentBtnHtml(snap, store) +
-        '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>' +
-      '</div>';
+      toolbarHtml = snapCompactToolbarHtml(snap, store, {
+        reorder: (store.allowReorder ? '<span class="snap-reorder-btns"><button type="button" class="snap-reorder-btn snap-reorder-up" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Monter">▲</button><button type="button" class="snap-reorder-btn snap-reorder-down" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Descendre">▼</button></span>' : ''),
+        date: '<span class="dim">' + (snap.sebOpen ? 'Pari en cours' : esc(store.dateLabelPrefix) + ' ' + esc(dateLabel)) + '</span>',
+        sides: sideButtonsHtml, conf: confidenceButtonsHtml, mag: magnitudeSectionHtml,
+        more: originButtonsHtml(snap, store) + takePositionHtml + toSaisonHtml + editPositionHtml + snapCommentBtnHtml(snap, store) +
+          '<button type="button" class="snap-delete-btn" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" title="Va à la corbeille — jamais supprimé pour de vrai avant que tu ne le décides depuis là-bas">🗑 Corbeille</button>'
+      });
     }
     return '<details class="value-trade-item snap-item' + cardResultClass + '" data-key="' + esc(snap.id) + '"' + (store.state.expandedItems[snap.id] ? " open" : "") +
       originCardAttrs(snap) + '>' +
-      '<summary class="vt-summary">' +
-        toolbarHtml +
-        snapCommentDisplayHtml(snap) +
-        hypCardHtml +
-        resultsHtml +
+      '<summary class="vt-summary snap-grid"><div class="snap-main">' +
         cardHeadHtml +
-      '</summary>' +
+        resultsHtml +
+        snapCommentDisplayHtml(snap) +
+      '</div><div class="snap-side">' + hypCardHtml + toolbarHtml + '</div></summary>' +
       '<div class="vt-detail">' + cardDetailHtml + '</div>' +
     '</details>';
   }
@@ -12073,7 +12213,7 @@
     }).join("") + roiTicks.map(function (r) {
       var py = y(r);
       return '<line class="vt-volroi-grid" x1="' + padL + '" y1="' + py.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + py.toFixed(1) + '"/>' +
-        '<text class="vt-volroi-label" x="' + (padL - 6) + '" y="' + (py + 3).toFixed(1) + '" text-anchor="end">+' + r.toFixed(0) + '%</text>';
+        '<text class="vt-volroi-label" x="' + (padL - 6) + '" y="' + (py + 3).toFixed(1) + '" text-anchor="end">+' + r.toFixed(0) + ' %</text>';
     }).join("");
     var dots = pts.map(function (p) {
       var color = scoreColor(p.u.score != null ? p.u.score : 5);
@@ -12300,8 +12440,8 @@
       // demoted to supporting detail instead of the whole message.
       valueTradesContent.innerHTML = '<div class="empty-note vt-empty-illustrated">' +
         '<div class="vt-empty-whale">🐋</div><div class="vt-empty-headline">Aucun trade</div>' +
-        '<div class="vt-empty-detail">Aucun marché ne correspond à ce filtre parmi les ' + TRADERS.length + ' traders suivis (' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + ')' +
-        ' — ' + allUnits.length + ' marché' + (allUnits.length > 1 ? 's' : '') + ' au total actuellement suivi' + (allUnits.length > 1 ? 's' : '') + ', aucun avec > ' + (vtMinTraders - 1) + ' traders sur le même camp.</div></div>';
+        '<div class="vt-empty-detail">Aucun marché ne passe ces filtres pour l\'instant · ' + TRADERS.length + ' traders suivis · ' + allUnits.length + ' marché' + (allUnits.length > 1 ? 's' : '') + ' regardé' + (allUnits.length > 1 ? 's' : '') + ' (il en faut au moins ' + vtMinTraders + ' traders sur le même camp) · la liste se remet à jour toute seule.' +
+        '<details class="vt-empty-traders"><summary>Voir les traders suivis</summary><div>' + TRADERS.map(function (t) { return esc(t.name); }).join(", ") + '</div></details></div></div>';
       return;
     }
     // Ranked by note (default), volume, or trader count — picked via the
@@ -13412,6 +13552,7 @@
       if (btn.getAttribute("data-tab") === "trades-profiles") renderTraderSections();
       if (btn.getAttribute("data-tab") === "by-match") renderByMatch();
       if (btn.getAttribute("data-tab") === "analyse") { renderAnalyse(); anMaybeSync(true); }
+      if (btn.getAttribute("data-tab") === "alertes") alertsOpen();
     });
   });
   rtFilters.querySelectorAll("button").forEach(function (btn) {
@@ -14917,7 +15058,7 @@
     var statsHtml = '<span class="vt-top-stats"' + statsWrapStyle + '>' +
       '<span class="vt-stat-odds"' + statsTextStyle + '>' + esc(priceText) + '</span>' +
       '<span class="vt-stat-divider"' + statsDividerStyle + '></span>' +
-      '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roiVal != null ? (roiVal >= 0 ? '+' : '') + roiVal.toFixed(0) + '%' : '') + '</span>' +
+      '<span class="vt-stat-roi"' + statsTextStyle + '>' + (roiVal != null ? (roiVal >= 0 ? '+' : '') + roiVal.toFixed(0) + ' %' : '') + '</span>' +
     '</span>';
     var noteHtml = snap.noteAtSnapshot != null ? scoreBadgeHtml(snap.noteAtSnapshot, null, null, null) : '';
     var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">⚽</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
@@ -14956,7 +15097,7 @@
     var stakeLeadPct = totalStakeAll > 0 ? (sides[0].stake / totalStakeAll * 100) : 0;
     var dollarSegs = sides.map(function (m, i) {
       var pct = totalStakeAll > 0 ? (m.stake / totalStakeAll * 100) : 0;
-      var label = esc(m.name) + " — mise " + fmtUSD(m.stake) + " / " + fmtUSD(totalStakeAll) + " (" + pct.toFixed(0) + "%)";
+      var label = esc(m.name) + " — mise " + fmtUSD(m.stake) + " / " + fmtUSD(totalStakeAll) + " (" + pct.toFixed(0) + " %)";
       return '<div class="bal-seg" style="width:' + pct.toFixed(2) + '%;background:' + gaugeBg(i) + '"><div class="bal-tooltip">' + label + '</div></div>';
     }).join("") + tick(stakeLeadPct);
     var balanceHtml = '<div class="balance-group">' + consensusHtml +
@@ -15197,9 +15338,10 @@
       cmpFetchedAt = Date.now();
       try { cmpAutoCapture(cmpData.rows || [], cmpData.generatedAt); } catch (e) { /* capture is best-effort, retried next fetch */ }
     } catch (e) {
-      cmpError = e.message || String(e);
+      cmpError = /failed to fetch/i.test(e.message || "") ? "connexion impossible" : (e.message || String(e));
     }
     cmpLoading = false;
+    if (cmpError) setTimeout(function () { var tab = document.getElementById("tab-comparateur"); if (tab && tab.classList.contains("active")) cmpFetch(false); }, 60000);
     // The server recomputes in the background (~100 s) — come back for the
     // fresh copy once, while the tab is still open.
     clearTimeout(cmpRetryTimer);
@@ -15241,7 +15383,7 @@
     var parts = ["Prix réel par part pour 1 000 $, frais inclus : " + fmtCents(r.polyPrice)];
     if (r.avgPrice != null) parts.push("prix moyen du carnet : " + fmtCents(r.avgPrice));
     if (r.bestPrice != null) parts.push("meilleur prix affiché : " + fmtCents(r.bestPrice));
-    if (r.feeRate) parts.push("frais Polymarket : " + (r.feeRate * 100).toFixed(0) + " % × p × (1 − p) par part");
+    if (r.feeRate) parts.push("frais Polymarket : " + (r.feeRate * 100).toFixed(0) + " % × p × (1 − p) par part");
     return parts.join(" · ");
   }
   // Note /10 combining Δ ROI and the Polymarket ROI — fitted (2026-10-25)
@@ -15297,7 +15439,7 @@
     if (!row) return null;
     if (row._gone) return confirm("Attention : " + row._gone + ".\nEnregistrer quand même avec les dernières valeurs connues ?") ? row : null;
     if (!(row.delta > 30 && row.roiPoly >= 5)) {
-      return confirm("Les cotes ont bougé : maintenant Polymarket +" + row.roiPoly.toFixed(1) + " % contre " + (row.book || "Winamax") + " +" + row.roiWinamax.toFixed(1) + " % (delta +" + row.delta + " %).\nEnregistrer quand même ?") ? row : null;
+      return confirm("Les cotes ont bougé : maintenant Polymarket +" + row.roiPoly.toFixed(1).replace(".", ",") + " % contre " + (row.book || "Winamax") + " +" + row.roiWinamax.toFixed(1).replace(".", ",") + " % (delta +" + row.delta + " %).\nEnregistrer quand même ?") ? row : null;
     }
     return row;
   }
@@ -15322,15 +15464,20 @@
       "\nCote retenue " + Number(r.winamaxOdd).toFixed(2) + (r._checkedAt ? " (revérifiée à " + new Date(r._checkedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + ")" : "") +
       "\nClic : ouvre cet événement sur " + (w.site || "winamax.es");
   }
+  // Reading aids (on request, 2026-10-31): ⭐ = foot connu, the Polymarket ROI
+  // in green when it reaches the alert rule's ROI minimum for the line's
+  // group, 📧 when the line passes the whole rule, the delta as a bar.
+  function cmpRuleGroup(r) { var rule = cmpData && cmpData.alertRule; return rule ? (cmpIsKnown(r) ? rule.a : rule.b) : null; }
   function cmpRowHtml(r, pinned, picked) {
     var url = "https://polymarket.com/fr/event/" + encodeURIComponent(r.slug);
-    return '<tr data-cmp-id="' + esc(r.id) + '">' +
-      '<td class="cmp-match-cell"><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(r.match) + '</a><div class="market-sub">' + esc(r.comp) + '</div></td>' +
+    var g = cmpRuleGroup(r), roiHit = !!(g && g.on && r.roiPoly >= g.r), ruleHit = roiHit && r.delta > g.d;
+    return '<tr data-cmp-id="' + esc(r.id) + '"' + (ruleHit ? ' class="cmp-rule-hit"' : '') + '>' +
+      '<td class="cmp-match-cell">' + (cmpIsKnown(r) ? '<span class="cmp-known" title="Foot connu">⭐</span> ' : '') + '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(r.match) + '</a><div class="market-sub">' + esc(r.comp) + '</div></td>' +
       '<td class="cmp-date-cell">' + esc(cmpKickoffLabel(r.start)) + cmpCheckStatusHtml(r) + '</td>' +
       '<td class="cmp-market-cell">' + esc(r.market) + '</td>' +
-      '<td class="num cmp-poly-cell" title="' + esc(cmpPriceTitle(r)) + '"><b>+' + r.roiPoly.toFixed(1) + ' %</b><div class="market-sub">' + esc(fmtCents(r.polyPrice)) + ' frais incl.</div></td>' +
-      '<td class="num cmp-wm-cell"><a class="cmp-wm-link" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(r)) + '"><b>+' + r.roiWinamax.toFixed(1) + ' %</b><div class="market-sub">cote ' + r.winamaxOdd.toFixed(2) + ' · ' + esc(cmpBookName(r)) + ' ↗</div></a></td>' +
-      '<td class="num"><span class="cmp-delta" title="Écart relatif entre les deux ROI">+' + r.delta + ' %</span></td>' +
+      '<td class="num cmp-poly-cell' + (roiHit ? ' cmp-roi-hit' : '') + '" title="' + esc(cmpPriceTitle(r) + (roiHit ? "\nAu-dessus du ROI minimum de ta règle d'alerte (" + String(g.r).replace(".", ",") + " %)" : "")) + '"><b>+' + r.roiPoly.toFixed(1).replace(".", ",") + ' %</b><div class="market-sub">' + esc(fmtCents(r.polyPrice)) + ' frais incl.</div></td>' +
+      '<td class="num cmp-wm-cell"><a class="cmp-wm-link" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(r)) + '"><b>+' + r.roiWinamax.toFixed(1).replace(".", ",") + ' %</b><div class="market-sub">cote ' + r.winamaxOdd.toFixed(2) + ' · ' + esc(cmpBookName(r)) + ' ↗</div></a></td>' +
+      '<td class="num"><span class="cmp-delta-wrap"><i class="cmp-delta-bar" style="width:' + Math.round(Math.min(r.delta, 300) / 300 * 54) + 'px"></i><span class="cmp-delta" title="Écart relatif entre les deux ROI' + (ruleHit ? " — passe ta règle d'alerte" : "") + '">' + (ruleHit ? '📧 ' : '') + '+' + r.delta + ' %</span></span></td>' +
       '<td class="num">' + cmpNoteHtml(r) + '</td>' +
       '<td class="cmp-actions-cell"><button type="button" class="cmp-pin-btn cmp-check-btn" data-cmp-id="' + esc(r.id) + '" title="Revérifier en direct les cotes des bookmakers et le prix Polymarket (≈ 3 s)">🔄</button>' +
         '<button type="button" class="cmp-pin-btn' + (pinned ? ' pinned' : '') + '" data-cmp-id="' + esc(r.id) + '">' + (pinned ? '✅ Dans Saison 26/27' : '📌 Saison 26/27') + '</button>' +
@@ -15343,14 +15490,14 @@
     if (cmpCountEl) cmpCountEl.textContent = cmpData ? String(rows.length) : "—";
     // Status line
     var status;
-    if (cmpError && !cmpData) status = "Erreur de chargement (" + cmpError + ")";
+    if (cmpError && !cmpData) status = "Le Comparateur ne répond pas (" + cmpError.replace("HTTP ", "erreur ") + "). Nouvel essai dans 1 min.";
     else if (!cmpData) status = cmpLoading ? "Chargement…" : "—";
     else if (cmpData.pending) status = "Premier calcul en cours sur le serveur (~1 min)…";
     else {
       var mins = Math.max(0, Math.round((Date.now() - new Date(cmpData.generatedAt).getTime()) / 60000));
       status = "Mis à jour il y a " + (mins < 1 ? "moins d'1 min" : mins + " min") + " · " + cmpData.matches + " événements, " + cmpData.compared + " paris comparés";
       if (cmpData.refreshing) status += " · mise à jour en cours (~1 min)…";
-      if (cmpError) status += " · erreur au dernier rechargement (" + cmpError + ")";
+      if (cmpError) status += " · le dernier rechargement a échoué (" + cmpError.replace("HTTP ", "erreur ") + "), nouvel essai dans 1 min";
     }
     cmpUpdatedEl.textContent = (cmpLoading && cmpData ? "Rechargement… " : "") + status;
     // Three filters that combine: sport, match day and competition — each
@@ -15445,14 +15592,14 @@
           var r = a.row || {};
           var cur = nowById[a.id];
           var nowCell;
-          if (cur) nowCell = '<span class="cmp-delta">+' + cur.delta + ' %</span><div class="market-sub">Poly +' + cur.roiPoly.toFixed(1) + ' % · <a class="cmp-wm-inline" href="' + esc(cmpWmUrl(cur)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(cur)) + '">' + esc(cmpBookName(cur)) + ' +' + cur.roiWinamax.toFixed(1) + ' %</a></div>';
+          if (cur) nowCell = '<span class="cmp-delta">+' + cur.delta + ' %</span><div class="market-sub">Poly +' + cur.roiPoly.toFixed(1).replace(".", ",") + ' % · <a class="cmp-wm-inline" href="' + esc(cmpWmUrl(cur)) + '" target="_blank" rel="noopener" title="' + esc(cmpWmTitle(cur)) + '">' + esc(cmpBookName(cur)) + ' +' + cur.roiWinamax.toFixed(1).replace(".", ",") + ' %</a></div>';
           else if (r.start && r.start <= nowSec) nowCell = '<span class="cmp-alert-now-gone">événement commencé</span>';
           else nowCell = '<span class="cmp-alert-now-gone">plus dans la liste (delta ≤ 30 % ou cotes changées)</span>';
           var d = new Date(a.sentAt);
           return '<tr><td class="cmp-date-cell">' + esc(d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) + '</td>' +
             '<td class="cmp-match-cell">' + esc(r.match || "—") + (r.comp ? '<div class="market-sub">' + esc(r.comp) + '</div>' : '') + '</td>' +
             '<td class="cmp-market-cell">' + esc(r.market || "—") + '</td>' +
-            '<td class="num"><b>+' + esc(String(r.delta)) + ' %</b>' + (r.roiPoly != null ? '<div class="market-sub">Poly +' + Number(r.roiPoly).toFixed(1) + ' % · ' + (r.wmId || r.wmSrc ? '<a class="cmp-wm-inline" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener">' + esc(cmpBookName(r)) + ' +' + Number(r.roiWinamax).toFixed(1) + ' %</a>' : 'Winamax +' + Number(r.roiWinamax).toFixed(1) + ' %') + '</div>' : '') + '</td>' +
+            '<td class="num"><b>+' + esc(String(r.delta)) + ' %</b>' + (r.roiPoly != null ? '<div class="market-sub">Poly +' + Number(r.roiPoly).toFixed(1).replace(".", ",") + ' % · ' + (r.wmId || r.wmSrc ? '<a class="cmp-wm-inline" href="' + esc(cmpWmUrl(r)) + '" target="_blank" rel="noopener">' + esc(cmpBookName(r)) + ' +' + Number(r.roiWinamax).toFixed(1).replace(".", ",") + ' %</a>' : 'Winamax +' + Number(r.roiWinamax).toFixed(1).replace(".", ",") + ' %') + '</div>' : '') + '</td>' +
             '<td class="num">' + nowCell + '</td></tr>';
         }).join("") + '</tbody></table></div>';
     }
@@ -17461,6 +17608,14 @@
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
     }
+    function sebPlainError(m) {
+      m = String(m || "");
+      if (/failed to fetch|networkerror|load failed/i.test(m)) return "connexion impossible";
+      if (/429/.test(m)) return "trop de demandes, Polymarket freine";
+      if (/HTTP 5\d\d/.test(m)) return "le serveur de Polymarket est en panne (" + m.replace("HTTP ", "erreur ") + ")";
+      if (/abort/i.test(m)) return "pas de réponse au bout de 20 s";
+      return m;
+    }
     async function sebLoad() {
       if (sebState.loading) return;
       sebState.loading = true;
@@ -17510,6 +17665,8 @@
         setTimeout(sebSyncToSaison, 0);
       } catch (e) {
         sebState.error = (e && e.message) || "erreur réseau";
+        clearTimeout(sebState.retryTimer);
+        sebState.retryTimer = setTimeout(function () { if (sebState.error && !sebState.loading) sebLoad(); }, 30000);
       } finally {
         sebState.loading = false;
         renderSeb();
@@ -17982,7 +18139,7 @@
         if (!agg.count) return '<td' + (isTot ? ' class="seb-mx-tot"' : '') + '><span class="seb-mx-empty">—</span></td>';
         var roi = agg.roi;
         var h = Math.max(2, Math.min(Math.abs(roi), maxAbs) / maxAbs * 30);
-        return '<td' + (isTot ? ' class="seb-mx-tot"' : '') + ' title="' + esc(agg.count + " paris · ROI " + roi.toFixed(1) + " % · " + fmtUSDSigned(agg.pnl)) + '">' +
+        return '<td' + (isTot ? ' class="seb-mx-tot"' : '') + ' title="' + esc(agg.count + " paris · ROI " + roi.toFixed(1).replace(".", ",") + " % · " + fmtUSDSigned(agg.pnl)) + '">' +
           '<div class="seb-mx-plot"><div class="seb-mx-bar ' + (roi >= 0 ? "up" : "down") + '" style="height:' + h.toFixed(1) + 'px"></div></div>' +
           '<div class="seb-mx-roi ' + (roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (roi >= 0 ? "+" : "−") + Math.abs(roi).toFixed(1).replace(".", ",") + ' %</div>' +
           '<div class="seb-mx-n"><b>' + agg.count + '</b> pari' + (agg.count > 1 ? 's' : '') + '</div>' +
@@ -18096,7 +18253,7 @@
       var viewEls = [P + "PnlChartContent", P + "Matrix", P + "Content"].map(function (id) { return document.getElementById(id); });
       var toggleBar = document.querySelector("#tab-" + P + " .snap-toggle-bar");
       if (!sebState.bets) {
-        el.innerHTML = head + '<div class="loading-state">' + (sebState.error ? '⚠️ Polymarket n\'a pas répondu (' + esc(sebState.error) + '). <button type="button" class="seb-btn" data-seb-reload="1">Réessayer</button>' : 'Chargement de ton historique Polymarket…') + '</div>';
+        el.innerHTML = head + '<div class="loading-state">' + (sebState.error ? '⚠️ Polymarket ne répond pas pour l\'instant (' + esc(sebPlainError(sebState.error)) + '). Nouvel essai automatique dans 30 s. <button type="button" class="seb-btn" data-seb-reload="1">Réessayer maintenant</button>' : 'Chargement de ton historique Polymarket…') + '</div>';
         if (extra) extra.innerHTML = "";
         viewEls.forEach(function (x) { if (x) x.innerHTML = ""; });
         if (toggleBar) toggleBar.hidden = true;
@@ -18354,6 +18511,28 @@
   });
   var SEB2_STORE = SEB2_TAB.store;
 
+  // Value Trades: sport + tri on one line, the other filters folded behind
+  // "Filtres" (on request, 2026-10-31) — the button names the active ones.
+  (function () {
+    var btn = document.getElementById("vtMoreFiltersBtn"), box = document.getElementById("vtMoreFilters");
+    if (!btn || !box) return;
+    function label() {
+      var on = [];
+      box.querySelectorAll(".vt-filters button.active").forEach(function (b) {
+        var v = b.getAttribute("data-timing") || b.getAttribute("data-bigtrade") || b.getAttribute("data-mtype");
+        if (v && v !== "all") on.push(b.childNodes[0].textContent.trim());
+      });
+      var sel = document.getElementById("vtTraderFilterSelect");
+      if (sel && sel.value) on.push(sel.options[sel.selectedIndex].text);
+      btn.textContent = (box.hidden ? "▸ Filtres" : "▾ Filtres") + (on.length ? " · " + on.join(" · ") : "");
+      btn.classList.toggle("active", on.length > 0);
+      btn.setAttribute("aria-expanded", box.hidden ? "false" : "true");
+    }
+    btn.addEventListener("click", function () { box.hidden = !box.hidden; label(); });
+    box.addEventListener("click", function () { setTimeout(label, 0); });
+    box.addEventListener("change", function () { setTimeout(label, 0); });
+    label();
+  })();
   // ---------- 🩺 Voyants de santé (on request, 2026-10-31) ----------
   // One line above the tabs: is the Saison list readable from the server,
   // when did the Comparateur last compute, are Seb's bets copied into
@@ -18403,7 +18582,12 @@
     if (!strip || !det || typeof SEB_TAB === "undefined") return;
     var checks = healthChecks();
     strip.hidden = false;
-    strip.innerHTML = checks.map(function (c) { return '<span class="health-chip ' + c.cls + '" title="' + esc(c.label) + '">' + esc(c.short) + '</span>'; }).join("");
+    // one chip in the header bar (2026-10-31): "Tout va bien", or what needs a look
+    var issues = checks.filter(function (c) { return c.cls === "bad" || c.cls === "warn"; });
+    // green once the two server sides answer (Seb / données may stay neutral: no key, still loading)
+    var worst = checks.some(function (c) { return c.cls === "bad"; }) ? "bad" : issues.length ? "warn" : checks.slice(0, 2).every(function (c) { return c.cls === "ok"; }) ? "ok" : "";
+    var summary = issues.length ? issues.map(function (c) { return c.short; }).join(" · ") + (worst === "bad" ? " : en panne" : " : à vérifier") : worst === "ok" ? "Tout va bien" : "Vérification…";
+    strip.innerHTML = '<span class="health-chip ' + worst + '" title="' + esc(checks.map(function (c) { return c.label; }).join("\n")) + '">' + esc(summary) + '</span>';
     strip.setAttribute("aria-expanded", HEALTH.open ? "true" : "false");
     det.hidden = !HEALTH.open;
     if (HEALTH.open) det.innerHTML = checks.map(function (c) { return '<span class="health-chip ' + c.cls + '">' + esc(c.label) + '</span>' + (c.help ? '<p>' + esc(c.help) + '</p>' : ''); }).join("");
@@ -18421,6 +18605,240 @@
   setTimeout(healthFetchCmp, 3000);
   setInterval(healthFetchCmp, 5 * 60000);
   setInterval(healthRender, 30000);
+
+  // ---------- 🔔 Alertes match (on request, 2026-10-31) ----------
+  // Pick a match (today and the next 7 days, ESPN via the comparator's
+  // ?matches), a scenario and a label: the comparator Lambda watches the
+  // match live (every ~25 s) and emails you when it happens, with the team's
+  // Polymarket price then and before kick-off. Saving needs the write key.
+  var AL_SCEN = [
+    { type: "concede_first", side: true, until: true, text: function (t) { return t + " encaisse le premier but"; } },
+    { type: "score_first", side: true, until: true, text: function (t) { return t + " marque le premier but"; } },
+    { type: "trailing", side: true, until: true, text: function (t) { return t + " est menée au score"; } },
+    { type: "leading", side: true, until: true, text: function (t) { return t + " mène au score"; } },
+    { type: "red_card", side: true, until: true, text: function (t) { return t + " prend un carton rouge"; } },
+    { type: "ht_not_leading", side: true, text: function (t) { return "À la mi-temps, " + t + " ne mène pas"; } },
+    { type: "nil_at", n: { label: "e minute", def: 30, max: 90 }, text: function (t, n) { return "Toujours 0-0 à la " + n + "e minute"; } },
+    { type: "goals_atleast", n: { label: "buts", def: 3, max: 10 }, until: true, text: function (t, n) { return "Au moins " + n + " buts dans le match"; } },
+    { type: "kickoff", text: function () { return "Coup d'envoi du match"; } }
+  ];
+  var AL = { matches: null, matchesAt: 0, watches: null, log: [], err: null, filter: "known", q: "", sel: null, side: "home", type: "concede_first", n: null, until: "", label: "Opportunité", note: "", saving: false, msg: "", msgCls: "", timer: null };
+  function alScen() { return AL_SCEN.filter(function (x) { return x.type === AL.type; })[0]; }
+  function alMatch() { return (AL.matches || []).filter(function (m) { return m.id === AL.sel; })[0] || null; }
+  function alWhen(sec) { var d = new Date(sec * 1000); return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
+  function alSentence() {
+    var m = alMatch(), sc = alScen();
+    if (!m || !sc) return "";
+    var team = AL.side === "away" ? m.away : m.home, n = AL.n || (sc.n && sc.n.def);
+    var txt = sc.text(team, n) + (sc.until && Number(AL.until) ? " avant la " + Number(AL.until) + "e minute" : "");
+    if (!sc.side || sc.type === "ht_not_leading") txt = txt.charAt(0).toLowerCase() + txt.slice(1); // "toujours 0-0…", never a team name
+    return "Je t'envoie un mail « " + (AL.label || "Opportunité") + " » si " + txt + ", pendant " + m.home + " – " + m.away + " (" + m.comp + ", " + alWhen(m.start) + "), avec le prix Polymarket du moment.";
+  }
+  async function alFetch(what) {
+    try {
+      if (what !== "watches" && (!AL.matches || Date.now() - AL.matchesAt > 5 * 60 * 1000)) {
+        var r = await fetch(AWS_COMPARATOR_URL + "?matches=1", { cache: "no-store" });
+        if (!r.ok) throw new Error("erreur " + r.status);
+        AL.matches = (await r.json()).matches || []; AL.matchesAt = Date.now();
+      }
+      var w = await fetch(AWS_COMPARATOR_URL + "?watches=1", { cache: "no-store" });
+      if (!w.ok) throw new Error("erreur " + w.status);
+      var j = await w.json();
+      AL.watches = j.watches || []; AL.log = j.log || []; AL.err = null;
+    } catch (e) { AL.err = /failed to fetch/i.test(e.message || "") ? "connexion impossible" : e.message; }
+    alRenderLists();
+  }
+  function alOpen() {
+    alRender();
+    alFetch();
+    clearInterval(AL.timer);
+    AL.timer = setInterval(function () {
+      var tab = document.getElementById("tab-alertes");
+      if (tab && tab.classList.contains("active")) alFetch("watches"); else clearInterval(AL.timer);
+    }, 30000);
+  }
+  function alertsOpen() { alOpen(); }
+  function alRender() {
+    var root = document.getElementById("alertsRoot");
+    if (!root) return;
+    var hasKey = !!getWriteSecret();
+    root.innerHTML = '<div class="al-grid">' +
+      '<section class="al-panel" aria-label="Nouvelle alerte"><div class="al-h">Nouvelle alerte <small>un match, ce qui doit se passer, et tu reçois un mail</small></div>' +
+        '<div class="al-step"><span class="al-step-t">1 · Le match</span>' +
+          '<div class="al-tools"><button type="button" class="al-chip" data-al-filter="known" id="alFKnown">⭐ Foot connu</button><button type="button" class="al-chip" data-al-filter="all" id="alFAll">Tous</button>' +
+          '<input type="search" id="alSearch" placeholder="Chercher une équipe…" value="' + esc(AL.q) + '"></div>' +
+          '<div class="al-list" id="alList"><div class="al-sub" style="padding:10px">Chargement des matchs…</div></div></div>' +
+        '<div class="al-step"><span class="al-step-t">2 · Ce qui doit se passer</span>' +
+          '<div class="al-sides" id="alSides"></div>' +
+          '<div class="al-scens" id="alScens"></div>' +
+          '<div class="al-params" id="alParams"></div></div>' +
+        '<div class="al-step"><span class="al-step-t">3 · Le mail</span>' +
+          '<div class="al-params"><label>Titre <input type="text" id="alLabel" maxlength="40" value="' + esc(AL.label) + '"></label><label style="flex:1 1 220px;display:flex;gap:6px;align-items:center">Note <input type="text" id="alNote" maxlength="300" style="flex:1" placeholder="ex. regarder le live à 45 ¢" value="' + esc(AL.note) + '"></label></div></div>' +
+        '<div class="al-preview" id="alPreview"></div>' +
+        '<div class="al-actions"><button type="button" class="al-create" id="alCreate">🔔 Créer l\'alerte</button><span class="al-msg" id="alMsg"></span></div>' +
+        (hasKey ? '' : '<div class="al-msg bad">Clé d\'écriture absente sur cet appareil : tu peux préparer une alerte, mais pas l\'enregistrer.</div>') +
+      '</section>' +
+      '<section class="al-panel" aria-label="Mes alertes"><div class="al-h">Mes alertes</div><div id="alWatches" class="al-step"><div class="al-sub">Chargement…</div></div>' +
+        '<div class="al-h">Alertes envoyées</div><div id="alLog" class="al-log"></div>' +
+        '<div class="al-sub">Pendant le match, le score est vérifié toutes les 25 secondes environ (source : ESPN). Le mail part dans la minute, avec le prix Polymarket de l\'équipe à ce moment et avant le coup d\'envoi. Rien n\'est jamais parié automatiquement.</div>' +
+      '</section></div>';
+    alRenderForm();
+    alRenderLists();
+  }
+  function alRenderForm() {
+    var m = alMatch(), sc = alScen();
+    document.getElementById("alFKnown").classList.toggle("on", AL.filter === "known");
+    document.getElementById("alFAll").classList.toggle("on", AL.filter === "all");
+    var sides = document.getElementById("alSides");
+    sides.innerHTML = m && sc && sc.side ? ['home', 'away'].map(function (k) { return '<button type="button" class="al-chip' + (AL.side === k ? ' on' : '') + '" data-al-side="' + k + '">' + esc(k === "home" ? m.home : m.away) + '</button>'; }).join("") : '';
+    var team = m ? (AL.side === "away" ? m.away : m.home) : "L'équipe";
+    document.getElementById("alScens").innerHTML = AL_SCEN.map(function (x) {
+      var n = x.n ? (AL.type === x.type && AL.n ? AL.n : x.n.def) : null;
+      return '<label class="al-scen' + (AL.type === x.type ? ' on' : '') + '"><input type="radio" name="alScen" value="' + x.type + '"' + (AL.type === x.type ? ' checked' : '') + '>' + esc(x.text(team, n)) + '</label>';
+    }).join("");
+    var p = "";
+    if (sc && sc.n) p += '<label>Nombre <input type="number" id="alN" min="1" max="' + sc.n.max + '" value="' + (AL.n || sc.n.def) + '"> ' + esc(sc.n.label) + '</label>';
+    if (sc && sc.until) p += '<label>Seulement avant la <input type="number" id="alUntil" min="1" max="120" placeholder="—" value="' + esc(AL.until) + '">e minute <span class="al-sub">(facultatif)</span></label>';
+    document.getElementById("alParams").innerHTML = p;
+    document.getElementById("alPreview").textContent = m ? alSentence() : "Choisis d'abord un match dans la liste.";
+    var btn = document.getElementById("alCreate"), msg = document.getElementById("alMsg");
+    btn.disabled = !m || !getWriteSecret() || AL.saving;
+    btn.textContent = AL.saving ? "Enregistrement…" : "🔔 Créer l'alerte";
+    msg.className = "al-msg " + AL.msgCls; msg.textContent = AL.msg;
+  }
+  function alRenderLists() {
+    var list = document.getElementById("alList");
+    if (!list) return;
+    if (AL.err && !AL.matches) list.innerHTML = '<div class="al-sub" style="padding:10px">Les matchs ne se chargent pas (' + esc(AL.err) + '). Nouvel essai dans 30 s.</div>';
+    else if (AL.matches) {
+      var q = AL.q.trim().toLowerCase();
+      var ms = AL.matches.filter(function (m) { return (AL.filter === "all" || m.known) && (!q || (m.home + " " + m.away + " " + m.comp).toLowerCase().indexOf(q) !== -1); });
+      var day = "", html = "";
+      ms.forEach(function (m) {
+        var d = new Date(m.start * 1000).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+        if (d !== day) { day = d; html += '<div class="al-day">' + esc(d) + '</div>'; }
+        html += '<button type="button" class="al-match' + (AL.sel === m.id ? ' sel' : '') + '" data-al-match="' + esc(m.id) + '"><span class="al-time">' + esc(new Date(m.start * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })) + '</span><span class="al-comp">' + (m.known ? '⭐ ' : '') + esc(m.comp) + '</span><span class="al-teams">' + esc(m.home) + ' – ' + esc(m.away) + '</span>' +
+          (m.state === "in" ? '<span class="al-live">EN DIRECT ' + esc(m.clock) + ' · ' + m.sh + '-' + m.sa + '</span>' : '<span></span>') + '</button>';
+      });
+      list.innerHTML = html || '<div class="al-sub" style="padding:10px">Aucun match' + (q ? ' pour « ' + esc(AL.q) + ' »' : '') + (AL.filter === "known" ? ' en foot connu — essaie « Tous »' : '') + '.</div>';
+    }
+    var wEl = document.getElementById("alWatches");
+    if (wEl && AL.watches) {
+      var order = { live: 0, wait: 1, fired: 2, done: 3, expired: 4 };
+      var ws = AL.watches.slice().sort(function (a, b) { return (order[a.state.status] - order[b.state.status]) || (a.m.start - b.m.start); });
+      wEl.innerHTML = ws.length ? ws.map(function (w) {
+        var st = w.state || {}, s = st.status || "wait", line;
+        if (s === "wait") line = "En attente · coup d'envoi " + alWhen(w.m.start) + (st.poly && st.poly.slug ? " · match trouvé sur Polymarket" : st.poly && st.poly.none ? " · pas trouvé sur Polymarket (le mail partira sans prix)" : "");
+        else if (s === "live") line = "En direct · " + (st.minute || 0) + "' · " + (st.h || 0) + "-" + (st.a || 0) + " · surveillé";
+        else if (s === "fired") line = "✅ Déclenchée à la " + (st.firedMinute || 0) + "e minute (" + (st.firedScore || "") + ") · mail envoyé" + (st.sendError ? " — échec de l'envoi : " + st.sendError : "");
+        else if (s === "done") line = "Ne s'est pas produit" + (st.doneScore ? " (score " + st.doneScore + ")" : "");
+        else line = "Expirée";
+        return '<div class="al-watch ' + s + '"><div class="al-watch-top"><b>' + esc(w.label) + '</b><span class="al-sub">' + esc(w.m.home + " – " + w.m.away) + '</span><button type="button" class="al-del" data-al-del="' + esc(w.id) + '" title="Supprimer cette alerte">✕ Supprimer</button></div>' +
+          '<div>' + esc(w.text) + '</div><div class="al-status">' + esc(line) + '</div>' + (w.note ? '<div class="al-sub">Note : ' + esc(w.note) + '</div>' : '') + '</div>';
+      }).join("") : '<div class="al-sub">Aucune alerte pour l\'instant. Choisis un match à gauche.</div>';
+    } else if (wEl && AL.err) wEl.innerHTML = '<div class="al-sub">Indisponible (' + esc(AL.err) + ').</div>';
+    var lEl = document.getElementById("alLog");
+    if (lEl) lEl.innerHTML = (AL.log || []).length ? AL.log.slice(0, 15).map(function (x) {
+      return '<div><b>' + esc(x.label) + '</b> · ' + esc(x.text) + ' · ' + esc(x.match) + ' ' + esc(x.score) + ' (' + x.minute + "')" + (x.price != null ? ' · Polymarket ' + (Math.round(x.price * 1000) / 10).toFixed(1).replace(".", ",") + ' ¢' + (x.prePrice != null ? ' (avant : ' + (Math.round(x.prePrice * 1000) / 10).toFixed(1).replace(".", ",") + ' ¢)' : '') : '') + '<div class="al-sub">' + esc(new Date(x.at).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })) + '</div></div>';
+    }).join("") : '<div class="al-sub">Aucune pour l\'instant.</div>';
+  }
+  async function alPost(body) {
+    var res = await fetch(AWS_COMPARATOR_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(Object.assign({ key: getWriteSecret() }, body)) });
+    var j = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(j.error || "erreur " + res.status);
+    return j;
+  }
+  (function () {
+    var root = document.getElementById("alertsRoot");
+    if (!root) return;
+    root.addEventListener("click", async function (e) {
+      var t = e.target.closest ? e.target : null;
+      if (!t) return;
+      var f = t.closest("[data-al-filter]"); if (f) { AL.filter = f.getAttribute("data-al-filter"); alRenderForm(); alRenderLists(); return; }
+      var mm = t.closest("[data-al-match]"); if (mm) { AL.sel = mm.getAttribute("data-al-match"); AL.msg = ""; alRenderLists(); alRenderForm(); return; }
+      var sd = t.closest("[data-al-side]"); if (sd) { AL.side = sd.getAttribute("data-al-side"); alRenderForm(); return; }
+      var del = t.closest("[data-al-del]");
+      if (del) {
+        del.disabled = true; del.textContent = "Suppression…";
+        try { await alPost({ action: "delWatch", id: del.getAttribute("data-al-del") }); } catch (err) { del.textContent = "Échec : " + err.message; return; }
+        alFetch("watches");
+        return;
+      }
+      if (t.id === "alCreate") {
+        var m = alMatch(), sc = alScen();
+        if (!m || !sc) return;
+        AL.saving = true; AL.msg = ""; alRenderForm();
+        try {
+          var j = await alPost({ action: "addWatch", watch: { m: m, sc: { type: AL.type, side: sc.side ? AL.side : null, n: sc.n ? (AL.n || sc.n.def) : null, until: sc.until ? Number(AL.until) || null : null }, label: AL.label || "Opportunité", note: AL.note } });
+          AL.msg = "Alerte créée : " + j.text + "." + (j.state && j.state.poly && j.state.poly.none ? " (Match pas trouvé sur Polymarket : le mail partira sans prix.)" : ""); AL.msgCls = "ok";
+          AL.note = "";
+        } catch (err) { AL.msg = "Pas enregistrée : " + err.message; AL.msgCls = "bad"; }
+        AL.saving = false;
+        alRender();
+        alFetch("watches");
+      }
+    });
+    root.addEventListener("change", function (e) {
+      if (e.target.name === "alScen") { AL.type = e.target.value; AL.n = null; AL.until = ""; alRenderForm(); }
+    });
+    root.addEventListener("input", function (e) {
+      var id = e.target.id;
+      if (id === "alSearch") { AL.q = e.target.value; alRenderLists(); return; }
+      if (id === "alN") AL.n = Number(e.target.value) || null;
+      if (id === "alUntil") AL.until = e.target.value;
+      if (id === "alLabel") AL.label = e.target.value;
+      if (id === "alNote") AL.note = e.target.value;
+      if (id === "alN" || id === "alUntil" || id === "alLabel") {
+        document.getElementById("alPreview").textContent = alMatch() ? alSentence() : "Choisis d'abord un match dans la liste.";
+      }
+    });
+  })();
+
+  // ---------- Rubriques (on request, 2026-10-31) ----------
+  // The 15 tabs sorted into 5 groups: the group row on top, the active
+  // group's tabs as pills underneath (the .tab-btn buttons themselves, so
+  // every existing handler keeps working). A group reopens on its last tab.
+  var TAB_GROUPS = [
+    { id: "paris", label: "📒 Mes paris", tabs: ["snapshots", "seb", "seb2", "test"] },
+    { id: "cmp", label: "⚖️ Comparateur", tabs: ["comparateur", "cmp-auto", "cmp-pick"] },
+    { id: "alertes", label: "🔔 Alertes", tabs: ["alertes"] },
+    { id: "signaux", label: "📡 Signaux", tabs: ["value-trades", "by-match", "recent-trades", "trades-profiles"] },
+    { id: "labo", label: "🔬 Labo", tabs: ["analyse", "sandbox", "archives"] }
+  ];
+  function tabGroupOf(tab) { return TAB_GROUPS.filter(function (g) { return g.tabs.indexOf(tab) !== -1; })[0] || TAB_GROUPS[3]; }
+  function renderTabGroups() {
+    var nav = document.getElementById("tabGroups"), bar = document.querySelector(".tab-bar");
+    if (!nav || !bar) return;
+    var act = document.querySelector(".tab-bar .tab-btn.active"), g = tabGroupOf(act ? act.getAttribute("data-tab") : "value-trades");
+    nav.innerHTML = TAB_GROUPS.map(function (x) { return '<button type="button" class="tab-group-btn' + (x === g ? ' active' : '') + '" data-group="' + x.id + '">' + esc(x.label) + '</button>'; }).join("");
+    bar.classList.add("grouped");
+    bar.classList.toggle("single", g.tabs.length < 2);
+    bar.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.toggle("in-group", g.tabs.indexOf(b.getAttribute("data-tab")) !== -1); });
+    // pills in the group's own order
+    g.tabs.forEach(function (t, i) { var b = bar.querySelector('.tab-btn[data-tab="' + t + '"]'); if (b) b.style.order = i; });
+  }
+  document.getElementById("tabGroups").addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-group]") : null;
+    if (!b) return;
+    var g = TAB_GROUPS.filter(function (x) { return x.id === b.getAttribute("data-group"); })[0];
+    var last = null;
+    try { last = localStorage.getItem("vtLastTab:" + g.id); } catch (err) { last = null; }
+    var tab = g.tabs.indexOf(last) !== -1 ? last : g.tabs[0];
+    var btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
+    if (btn) btn.click();
+  });
+  document.querySelectorAll(".tab-bar .tab-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var t = btn.getAttribute("data-tab");
+      try { localStorage.setItem("vtLastTab:" + tabGroupOf(t).id, t); } catch (err) { /* convenience only */ }
+      renderTabGroups();
+    });
+  });
+  (function () {
+    var b = document.getElementById("topMoreBtn"), m = document.getElementById("topMore");
+    b.addEventListener("click", function (e) { e.stopPropagation(); m.hidden = !m.hidden; b.setAttribute("aria-expanded", m.hidden ? "false" : "true"); });
+    document.addEventListener("click", function (e) { if (!m.hidden && !m.contains(e.target) && e.target !== b) { m.hidden = true; b.setAttribute("aria-expanded", "false"); } });
+  })();
 
   // Reopen whichever tab was last used; a first visit lands on Value
   // Trades (Accueil and Auto >10k lost their tab buttons on request,
