@@ -3209,9 +3209,9 @@
       <span id="cmpUpdated">Chargement…</span>
       <button type="button" id="cmpRefreshBtn" class="snap-sync-link" title="Relancer le calcul sur le serveur (~1 min)">🔄 Actualiser</button>
     </div>
+    <div class="vt-filters" id="cmpSportFilters"></div>
     <div class="cmp-filters-bar"><button type="button" class="collapse-btn" id="cmpFiltersToggle" hidden>▸ Filtres</button></div>
     <div id="cmpFiltersWrap" hidden>
-      <div class="vt-filters" id="cmpSportFilters"></div>
       <div class="vt-filters" id="cmpDayFilters"></div>
       <div class="vt-filters" id="cmpCompFilters"></div>
     </div>
@@ -15152,7 +15152,12 @@
   // frozen `cmp` block, rendered by manualCardHtml in Saison 26/27, Mes
   // Positions and All Time alike (a position's deep clone keeps it).
   var AWS_COMPARATOR_URL = "https://n6ulxf7yidnnwgxi6fexcuzdj40ptxgt.lambda-url.eu-north-1.on.aws/";
-  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpComp = "all", cmpSport = "all", cmpAlertsOpen = false, cmpFiltersOpen = false, cmpLoading = false, cmpRetryTimer = null, cmpError = null;
+  // "Foot connu" (on request, 2026-10-31): the competitions you follow —
+  // also the "a" group of the email alert rule (ALERT_COMPS in the Lambda).
+  var CMP_KNOWN_COMPS = ["Ligue 1", "Coupe de France", "Premier League", "EFL Cup", "Champions League", "Europa League", "Conference League"];
+  function cmpIsKnown(r) { return (r.sport || "Football") === "Football" && CMP_KNOWN_COMPS.indexOf(r.comp) !== -1; }
+  var CMP_SPORT_KEY = "vtCmpSport";
+  var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpComp = "all", cmpSport = (function () { try { return localStorage.getItem(CMP_SPORT_KEY) || "all"; } catch (e) { return "all"; } })(), cmpAlertsOpen = false, cmpFiltersOpen = false, cmpLoading = false, cmpRetryTimer = null, cmpError = null;
   var cmpContentEl = document.getElementById("cmpContent");
   var cmpDayFiltersEl = document.getElementById("cmpDayFilters");
   var cmpCompFiltersEl = document.getElementById("cmpCompFilters");
@@ -15348,12 +15353,14 @@
     // Three filters that combine: sport, match day and competition — each
     // one's counts reflect the other two's current choice.
     var sportOf = function (r) { return r.sport || "Football"; };
-    var inSport = function (r) { return cmpSport === "all" || sportOf(r) === cmpSport; };
+    var inSport = function (r) { return cmpSport === "all" || (cmpSport === "known" ? cmpIsKnown(r) : sportOf(r) === cmpSport); };
     var inComp = function (r) { return cmpComp === "all" || r.comp === cmpComp; };
     var inDay = function (r) { return cmpDay === "all" || cmpDayKey(r.start) === cmpDay; };
-    var bySport = {};
-    rows.forEach(function (r) { if (inDay(r) && inComp(r)) bySport[sportOf(r)] = (bySport[sportOf(r)] || 0) + 1; });
-    if (cmpSport !== "all" && !bySport[cmpSport]) cmpSport = "all";
+    var bySport = {}, knownN = 0;
+    rows.forEach(function (r) { if (inDay(r) && inComp(r)) { bySport[sportOf(r)] = (bySport[sportOf(r)] || 0) + 1; if (cmpIsKnown(r)) knownN++; } });
+    // a remembered choice with nothing today stays selected (shows "aucune
+    // proposition") rather than silently switching to everything
+    if (cmpSport !== "all" && cmpSport !== "known" && !bySport[cmpSport] && cmpData) cmpSport = "all";
     var byDay = {}, byComp = {};
     rows.forEach(function (r) {
       if (!inSport(r)) return;
@@ -15368,6 +15375,7 @@
     cmpSportFiltersEl.innerHTML = !rows.length ? "" :
       '<span class="vt-sort-label">Sport</span>' +
       '<button type="button" data-cmp-sport="all" class="' + (cmpSport === "all" ? "active" : "") + '">Tous<span class="vt-filter-count"> · ' + sportTotal + '</span></button>' +
+      '<button type="button" data-cmp-sport="known" class="' + (cmpSport === "known" ? "active" : "") + '" title="' + esc(CMP_KNOWN_COMPS.join(", ")) + '">⭐ Foot connu<span class="vt-filter-count"> · ' + knownN + '</span></button>' +
       sports.map(function (sp) {
         return '<button type="button" data-cmp-sport="' + esc(sp) + '" class="' + (cmpSport === sp ? "active" : "") + '">' + (SPORT_ICONS[sp] ? SPORT_ICONS[sp] + ' ' : '') + esc(sp) + '<span class="vt-filter-count"> · ' + bySport[sp] + '</span></button>';
       }).join("");
@@ -15390,10 +15398,10 @@
     // the button says which filters are on while folded.
     var cmpFiltersBtn = document.getElementById("cmpFiltersToggle"), cmpFiltersWrap = document.getElementById("cmpFiltersWrap");
     if (cmpFiltersBtn && cmpFiltersWrap) {
-      var activeF = [cmpSport !== "all" ? cmpSport : null, cmpDay !== "all" ? cmpDayLabel(cmpDay) : null, cmpComp !== "all" ? cmpComp : null].filter(Boolean);
+      var activeF = [cmpDay !== "all" ? cmpDayLabel(cmpDay) : null, cmpComp !== "all" ? cmpComp : null].filter(Boolean);
       cmpFiltersBtn.hidden = !rows.length;
       cmpFiltersWrap.hidden = !cmpFiltersOpen;
-      cmpFiltersBtn.textContent = (cmpFiltersOpen ? "▾ Masquer les filtres" : "▸ Filtres (sport, jour, championnat)") + (activeF.length ? " · " + activeF.join(" · ") : "");
+      cmpFiltersBtn.textContent = (cmpFiltersOpen ? "▾ Masquer les filtres" : "▸ Filtres (jour, championnat)") + (activeF.length ? " · " + activeF.join(" · ") : "");
     }
     renderCmpRule(false);
     renderCmpAlerts(rows);
@@ -15402,9 +15410,9 @@
     var pinned = cmpPinnedIds(), picked = cmpPickedIds();
     // ⭐ Highlights — every line with a note ≥ CMP_HIGHLIGHT_MIN, whatever
     // the filters below, best note first.
-    var hl = rows.filter(function (r) { return cmpNote(r) >= CMP_HIGHLIGHT_MIN; }).sort(function (a, b) { return cmpNote(b) - cmpNote(a); });
+    var hl = rows.filter(function (r) { return inSport(r) && cmpNote(r) >= CMP_HIGHLIGHT_MIN; }).sort(function (a, b) { return cmpNote(b) - cmpNote(a); });
     var hlHead = CMP_COLUMNS.map(function (c) { return '<th' + (c.num ? ' class="num"' : '') + '>' + esc(c.label) + '</th>'; }).join("") + '<th></th>';
-    var hlHtml = '<div class="cmp-hl-box"><div class="cmp-hl-title">⭐ Highlights <span class="count-pill">' + hl.length + '</span><span class="cmp-hl-sub">bon delta et ROI Polymarket élevé — note ≥ ' + CMP_HIGHLIGHT_MIN + '/10, tous sports et jours confondus</span></div>' +
+    var hlHtml = '<div class="cmp-hl-box"><div class="cmp-hl-title">⭐ Highlights <span class="count-pill">' + hl.length + '</span><span class="cmp-hl-sub">bon delta et ROI Polymarket élevé — note ≥ ' + CMP_HIGHLIGHT_MIN + '/10, ' + (cmpSport === "all" ? "tous sports" : cmpSport === "known" ? "foot connu" : esc(cmpSport)) + ', tous jours confondus</span></div>' +
       (hl.length ? '<div class="table-scroll cmp-table-wrap"><table class="cmp-table"><thead><tr>' + hlHead + '</tr></thead><tbody>' +
         hl.map(function (r) { return cmpRowHtml(r, !!pinned[r.id], !!picked[r.id]); }).join("") + '</tbody></table></div>'
         : '<div class="empty-note">Aucune ligne à ' + CMP_HIGHLIGHT_MIN + '/10 ou plus pour l\'instant.</div>') + '</div>';
@@ -15455,7 +15463,7 @@
   // held to the end, at the price when the line was first seen. Replaying a
   // rule, a line counts at its first sighting if that passes, else at its
   // highest-Δ sighting (the history keeps those two moments).
-  var CR_COMPS = ["Ligue 1", "Premier League", "Coupe de France", "EFL Cup"];
+  var CR_COMPS = CMP_KNOWN_COMPS;
   var cr = { open: false, hist: null, histAt: 0, loading: false, error: null, draft: null, saved: null, saving: false, msg: "", msgCls: "" };
   function crIsTop(e) { return (e.s || "Football") === "Football" && CR_COMPS.indexOf(e.c) !== -1; }
   function crPass(m, g) { return !!g.on && m[0] > g.d && m[1] >= g.r; }
@@ -15472,7 +15480,7 @@
   function crPct(r) { return crNum(r, r % 1 ? 1 : 0) + " %"; }
   function crRuleText(r) {
     function g(x, lbl) { return lbl + " : " + (x.on ? "Δ > " + x.d + " %, ROI ≥ " + crPct(x.r) : "coupé"); }
-    return g(r.a, "L1 · PL · CdF · EFL Cup") + " / " + g(r.b, "reste");
+    return g(r.a, "foot connu") + " / " + g(r.b, "reste");
   }
   async function crLoadHist(force) {
     if (cr.loading || (!force && cr.hist && Date.now() - cr.histAt < 10 * 60 * 1000)) return;
@@ -15541,7 +15549,7 @@
       crGroup(done, "Selon le type de pari", crMarketType),
       crGroup(done, "Selon le prix Polymarket", function (e) { var p = e.f[2]; return p < 0.85 ? "moins de 85¢" : p < 0.92 ? "85–92¢" : p < 0.96 ? "92–96¢" : "96¢ et +"; }, ["moins de 85¢", "85–92¢", "92–96¢", "96¢ et +"]),
       crGroup(done, "Selon le sport", function (e) { return e.s || "Football"; }),
-      crGroup(done, "Selon la compétition", function (e) { return crIsTop(e) ? "L1 · PL · CdF · EFL Cup" : "Les autres"; }, ["L1 · PL · CdF · EFL Cup", "Les autres"])
+      crGroup(done, "Selon la compétition", function (e) { return crIsTop(e) ? "Foot connu" : "Les autres"; }, ["Foot connu", "Les autres"])
     ];
     return '<div class="cr-stats-title">Rendement des lignes par tranche · ' + done.length + ' lignes terminées depuis le ' + esc(new Date(first * 1000).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) + '</div>' +
       '<div class="cr-note">1 000 $ par ligne, gardée jusqu\'au bout, au prix où la ligne est apparue. Toutes lignes : ' + crNum(wins / done.length * 100, 1) + ' % gagnées, rendement ' + crSgn(all / done.length / 10, 1, " %") + (pend ? ' · ' + pend + ' lignes attendent leur résultat' : '') + '. Le petit chiffre gris = nombre de lignes.</div>' +
@@ -15576,7 +15584,7 @@
     var d = cr.draft;
     el.innerHTML = head + '<div class="cr-box">' +
       '<p class="cr-intro">Règle des mails d\'alerte. Les jauges rejouent la règle sur toutes les lignes que le Comparateur a montrées (résultat connu). « Enregistrer » l\'applique aux prochains mails.</p>' +
-      '<div class="cr-rules">' + crRuleHtml("a", "Ligue 1 · Premier League · Coupe de France · EFL Cup", d.a) + crRuleHtml("b", "Tout le reste (autres championnats, tennis, NFL…)", d.b) + '</div>' +
+      '<div class="cr-rules">' + crRuleHtml("a", "⭐ Foot connu : Ligue 1, Coupe de France, Premier League, EFL Cup, Ligue des champions, Europa League, Conference League", d.a) + crRuleHtml("b", "Tout le reste (autres championnats, tennis, NFL…)", d.b) + '</div>' +
       '<div class="cr-actions"><button type="button" class="seb-btn" id="crSave">💾 Enregistrer cette règle</button><button type="button" class="seb-btn" id="crReset">↺ Revenir à la règle enregistrée</button><span class="cr-msg" id="crMsg"></span></div>' +
       '<div class="cr-tiles" id="crTiles"></div><div class="cr-note" id="crNote"></div>' +
       '<div id="crStats">' + (cr.loading && !cr.hist ? '<div class="cr-note">Chargement de l\'historique…</div>' : cr.error && !cr.hist ? '<div class="cr-note warn">Historique indisponible (' + esc(cr.error) + ').</div>' : crStatsHtml()) + '</div>' +
@@ -15668,6 +15676,7 @@
       var b = e.target.closest ? e.target.closest("[data-cmp-sport]") : null;
       if (!b) return;
       cmpSport = b.getAttribute("data-cmp-sport");
+      try { localStorage.setItem(CMP_SPORT_KEY, cmpSport); } catch (e) { /* just not remembered */ }
       renderCmp();
     });
     cmpCompFiltersEl.addEventListener("click", function (e) {
