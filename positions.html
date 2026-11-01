@@ -2852,6 +2852,35 @@
   .tab-bar.grouped .tab-break { display: none; }
   .tab-bar.grouped.single { display: none; }
   /* 🔔 Alertes match (2026-10-31) */
+  /* ⏱️ Ne marque plus */
+  .gt-intro { color: var(--text-dim); font-size: 13.5px; max-width: 900px; margin: -4px 0 14px; line-height: 1.5; }
+  .gt-box { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .gt-h { font-weight: 800; font-size: 14.5px; margin-bottom: 8px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .gt-h small { font-weight: 500; color: var(--text-dim); font-size: 12.5px; }
+  .gt-state { font-size: 12.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--panel-border); }
+  .gt-state.on { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, var(--panel-border)); }
+  .gt-matches { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 6px 14px; font-size: 13px; }
+  .gt-match { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+  .gt-match .t { font-variant-numeric: tabular-nums; color: var(--text-dim); white-space: nowrap; }
+  .gt-match .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .gt-mins { display: flex; gap: 3px; }
+  .gt-mins i { font-style: normal; font-size: 11px; font-weight: 700; padding: 0 5px; border-radius: 5px; border: 1px solid var(--panel-border); color: var(--text-dim); }
+  .gt-mins i.ok { background: color-mix(in srgb, var(--green) 16%, transparent); border-color: color-mix(in srgb, var(--green) 45%, transparent); color: var(--green); }
+  .gt-filters { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .gt-filters .grp { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .gt-filters .lbl { font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-dim); margin-right: 2px; }
+  .gt-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .gt-tbl th { text-align: left; font-size: 11.5px; font-weight: 700; color: var(--text-dim); padding: 6px 8px; border-bottom: 1px solid var(--panel-border); white-space: nowrap; }
+  .gt-tbl td { padding: 6px 8px; border-bottom: 1px solid color-mix(in srgb, var(--panel-border) 55%, transparent); vertical-align: top; }
+  .gt-tbl .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .gt-tbl tr.tot td { font-weight: 800; border-top: 1px solid var(--panel-border); }
+  .gt-tbl .dim { color: var(--text-dim); font-size: 12px; }
+  .gt-tbl .nw { white-space: nowrap; }
+  .gt-scroll { max-height: 640px; overflow: auto; }
+  .gt-scroll thead th { position: sticky; top: 0; background: var(--panel); }
+  .gt-res-w { color: var(--green); font-weight: 700; }
+  .gt-res-l { color: var(--red); font-weight: 700; }
+  .gt-csv { font: inherit; font-size: 12.5px; font-weight: 700; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--bg); color: var(--text); cursor: pointer; margin-left: auto; }
   .al-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; }
   .al-panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
   .al-h { font-weight: 800; font-size: 15px; display: flex; gap: 8px; align-items: baseline; }
@@ -3021,6 +3050,12 @@
     <button class="tab-btn tab-btn-quiet" data-tab="archives" type="button"><span class="tab-btn-icon">🗄️</span>Archives</button>
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
     <button class="tab-btn tab-btn-quiet" data-tab="alertes" type="button"><span class="tab-btn-icon">🔔</span>Alertes match</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="goaltrack" type="button"><span class="tab-btn-icon">⏱️</span>Ne marque plus</button>
+  </div>
+
+  <div class="tab-panel" id="tab-goaltrack">
+    <h2 class="section-title">⏱️ Ne marque plus</h2>
+    <div id="gtRoot"><div class="loading-state">Chargement…</div></div>
   </div>
 
   <div class="tab-panel" id="tab-alertes">
@@ -13442,6 +13477,7 @@
       if (btn.getAttribute("data-tab") === "by-match") renderByMatch();
       if (btn.getAttribute("data-tab") === "analyse") { renderAnalyse(); anMaybeSync(true); }
       if (btn.getAttribute("data-tab") === "alertes") alertsOpen();
+      if (btn.getAttribute("data-tab") === "goaltrack") gtOpen();
     });
   });
   rtFilters.querySelectorAll("button").forEach(function (btn) {
@@ -18615,7 +18651,14 @@
     else out.push({ cls: sync && Date.now() - sync.since > 10 * 60000 ? "warn" : "", short: "Seb → Saison", label: "Seb → Saison 26/27 : en attente de la liste Saison" + (sync ? " depuis " + healthAgo(sync.since).replace("il y a ", "") : ""), help: "La copie attend que la liste Saison soit relue du serveur." });
     // 4. Alertes
     if (HEALTH.cmp) out.push({ cls: "ok", short: "Alertes " + (HEALTH.cmp.alertsToday || 0), label: "Alertes Comparateur : " + (HEALTH.cmp.alertsToday || 0) + " envoyée" + ((HEALTH.cmp.alertsToday || 0) > 1 ? "s" : "") + " aujourd'hui" + (HEALTH.cmp.lastAlertAt ? " · dernière " + healthAgo(Date.parse(HEALTH.cmp.lastAlertAt)) : ""), help: "Règle en service : à régler dans l'onglet Comparateur (🎚️)." });
-    // 5. Données
+    // 5. ⏱️ Ne marque plus: every match of 2 to 26 h ago got its 70/80/90
+    var gt = HEALTH.cmp && HEALTH.cmp.goaltrack;
+    if (gt && !gt.error) {
+      var gtLag = gt.maxLagMs != null && gt.maxLagMs > 20000;
+      out.push({ cls: gt.missing ? "warn" : gtLag ? "warn" : "ok", short: "Ne marque plus", label: "Ne marque plus : " + (gt.running ? "suivi en cours" : "en veille") + (gt.due ? " · " + (gt.due - gt.missing) + "/" + gt.due + " match" + (gt.due > 1 ? "s" : "") + " complet" + (gt.due > 1 ? "s" : "") + " sur 24 h" : "") + (gtLag ? " · un relais a démarré avec " + Math.round(gt.maxLagMs / 1000) + " s de retard" : ""),
+        help: "Chaque match suivi doit avoir ses relevés de 70, 80 et 90 minutes (onglet ⏱️ Ne marque plus)." });
+    }
+    // 6. Données
     var loc = healthLocalChars(), mb = sa.chars / 1e6;
     var dcls = mb > 35 || (loc != null && loc > 4.8e6) ? "bad" : mb > 25 || (loc != null && loc > 4.2e6) ? "warn" : sa.chars ? "ok" : "";
     out.push({ cls: dcls, short: "Données " + (sa.chars ? healthMb(sa.chars) : "…"), label: "Données : liste Saison " + (sa.chars ? healthMb(sa.chars) : "…") + (loc != null ? " · stockage de cet appareil " + healthMb(loc) + " sur ~5 Mo" : ""), help: "La liste est envoyée compressée : la limite du serveur est vers 40 Mo. Le navigateur garde environ 5 Mo." });
@@ -18649,6 +18692,151 @@
   setTimeout(healthFetchCmp, 3000);
   setInterval(healthFetchCmp, 5 * 60000);
   setInterval(healthRender, 30000);
+
+  // ---------- ⏱️ Ne marque plus (on request, 2026-11-01) ----------
+  // At 70:00, 80:00 and 90:00 of every Ligue 1 / Premier League / LaLiga /
+  // Bundesliga / Serie A / Champions League / Europa League match, the
+  // comparator Lambda reads on Polymarket the price of "<team> moins de (ses
+  // buts + 0,5)" — that team doesn't score again — for both teams, from the
+  // order book at that second (clock: Winamax's live feed, to the second).
+  // Results come in once the match is over. This tab lists every line, sums
+  // them up by minute, and exports them as CSV.
+  var GT = { data: null, err: null, comp: "", min: "", sit: "", timer: null };
+  var gtDec = function (n, d) { return n == null || !isFinite(n) ? "—" : n.toFixed(d).replace(".", ","); };
+  async function gtFetch() {
+    try {
+      var r = await fetch(AWS_COMPARATOR_URL + "?goaltrack=1", { cache: "no-store" });
+      if (!r.ok) throw new Error("erreur " + r.status);
+      GT.data = await r.json(); GT.err = null;
+    } catch (e) { GT.err = /failed to fetch/i.test(e.message || "") ? "connexion impossible" : e.message; }
+    gtRender();
+  }
+  function gtOpen() {
+    gtRender();
+    gtFetch();
+    clearInterval(GT.timer);
+    GT.timer = setInterval(function () {
+      var tab = document.getElementById("tab-goaltrack");
+      if (tab && tab.classList.contains("active")) gtFetch(); else clearInterval(GT.timer);
+    }, 60000);
+  }
+  // one line per team and minute; price = best ask at that second (else the
+  // first one that showed up after, `late` s later); buy = what a share
+  // really costs on a 100 $ buy, Polymarket's fee included.
+  function gtLines() {
+    var out = [];
+    ((GT.data && GT.data.rows) || []).forEach(function (r) {
+      ["H", "A"].forEach(function (s, i) {
+        var x = r[s];
+        if (!x) return;
+        var g = r.sc[i], og = r.sc[1 - i], lt = x.late || null;
+        var price = x.ask != null ? x.ask : lt ? lt.ask : null;
+        var buy = x.ask != null ? x.f100 : lt ? lt.f100 : null;
+        out.push({ r: r, side: s, team: s === "H" ? r.h : r.a, goals: g, sit: g > og ? "lead" : g < og ? "behind" : "level", line: x.x, none: !!x.none,
+          price: price, bid: x.ask != null ? x.bid : lt ? lt.bid : null, sz: x.ask != null ? x.sz : null, buy: buy, f1000: x.ask != null ? x.f1000 : null, late: x.ask == null && lt ? lt.s : null,
+          w: x.w == null ? null : x.w, wsrc: x.wsrc || null });
+      });
+    });
+    return out.sort(function (a, b) { return b.r.at - a.r.at || (a.side < b.side ? -1 : 1); });
+  }
+  var GT_SIT = { lead: "mène", level: "à égalité", behind: "est menée" };
+  function gtFiltered(lines, ignoreMin) {
+    return lines.filter(function (l) {
+      return (!GT.comp || l.r.c === GT.comp) && (ignoreMin || !GT.min || l.r.min === Number(GT.min)) && (!GT.sit || l.sit === GT.sit);
+    });
+  }
+  // by minute: lines with a price and a result; hit = share where the team
+  // didn't score again; ROI = buying each at its 100 $ price (fee in).
+  function gtStats(lines) {
+    var n = 0, wins = 0, pSum = 0, cSum = 0, roiSum = 0, roiN = 0, pending = 0, priced = 0;
+    lines.forEach(function (l) {
+      if (l.price == null) return;
+      priced++;
+      if (l.w == null) { pending++; return; }
+      n++; wins += l.w; pSum += l.price; cSum += 1 / l.price;
+      var p = l.buy != null ? l.buy : l.price;
+      roiSum += l.w / p - 1; roiN++;
+    });
+    return { priced: priced, n: n, pending: pending, hit: n ? wins / n * 100 : null, price: n ? pSum / n : null, cote: n ? cSum / n : null, roi: roiN ? roiSum / roiN * 100 : null };
+  }
+  function gtWhen(sec) { var d = new Date(sec * 1000); return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
+  function gtRender() {
+    var root = document.getElementById("gtRoot");
+    if (!root) return;
+    var d = GT.data;
+    if (!d) { root.innerHTML = '<div class="loading-state">' + (GT.err ? "Les données ne se chargent pas (" + esc(GT.err) + "). Nouvel essai dans une minute." : "Chargement…") + '</div>'; return; }
+    var all = gtLines(), comps = d.comps || [];
+    var intro = '<p class="gt-intro">À <b>70:00, 80:00 et 90:00</b> de chaque match (' + esc(comps.join(", ")) + '), le prix <b>Polymarket</b> de « l\'équipe ne marque plus » pour les deux équipes, c\'est-à-dire « moins de N,5 buts » pour l\'équipe, N étant ses buts à ce moment-là (Marseille à 2 buts → moins de 2,5 ; Toulouse à 0 → moins de 0,5). ' +
+      'Le prix est le meilleur prix d\'achat du carnet d\'ordres à cette seconde ; cote = 1 / prix. Le chrono vient du direct Winamax, à la seconde près (aucune cote Winamax n\'est utilisée). Le résultat arrive une fois le match fini.</p>';
+    // matches followed now / next
+    var ms = d.matches || [], now = Date.now() / 1000;
+    var state = d.running ? '<span class="gt-state on">● Suivi en cours</span>' : '<span class="gt-state">En veille : il se lance seul 50 min après chaque coup d\'envoi</span>';
+    var mHtml = ms.length ? '<div class="gt-matches">' + ms.map(function (m) {
+      var got = m.got || [];
+      return '<div class="gt-match"><span class="t">' + esc(gtWhen(m.start)) + '</span><span class="n" title="' + esc(m.comp + " · " + m.title) + '">' + esc(m.title) + '</span><span class="gt-mins">' +
+        (d.minutes || [70, 80, 90]).map(function (T) { return '<i class="' + (got.indexOf(T) !== -1 ? "ok" : "") + '">' + T + "'</i>"; }).join("") + '</span></div>';
+    }).join("") + '</div>' : '<div class="dim" style="font-size:13px;color:var(--text-dim)">Aucun match de ces compétitions dans les 36 prochaines heures (la liste se remplit à chaque passage du Comparateur).</div>';
+    var head = '<div class="gt-box"><div class="gt-h">Matchs suivis <small>4 h avant → 36 h après maintenant</small>' + state + '</div>' + mHtml + '</div>';
+    // filters
+    function chip(key, val, label) { return '<button type="button" class="al-chip' + (GT[key] === val ? ' on' : '') + '" data-gt-' + key + '="' + esc(val) + '">' + esc(label) + '</button>'; }
+    var usedComps = comps.filter(function (c) { return all.some(function (l) { return l.r.c === c; }); });
+    var filters = '<div class="gt-filters">' +
+      '<span class="grp"><span class="lbl">Compétition</span>' + chip("comp", "", "Toutes") + usedComps.map(function (c) { return chip("comp", c, c); }).join("") + '</span>' +
+      '<span class="grp"><span class="lbl">Minute</span>' + chip("min", "", "Toutes") + (d.minutes || [70, 80, 90]).map(function (T) { return chip("min", String(T), T + "'"); }).join("") + '</span>' +
+      '<span class="grp"><span class="lbl">L\'équipe</span>' + chip("sit", "", "Toutes") + chip("sit", "lead", "mène") + chip("sit", "level", "à égalité") + chip("sit", "behind", "est menée") + '</span>' +
+      '<button type="button" class="gt-csv" id="gtCsv" title="Toutes les lignes affichées, à ouvrir dans Excel / Numbers">📥 Exporter en CSV</button></div>';
+    // summary by minute
+    var sumLines = gtFiltered(all, true);
+    var rowsSum = (d.minutes || [70, 80, 90]).map(function (T) { return [T + "'", gtStats(sumLines.filter(function (l) { return l.r.min === T; }))]; }).concat([["Total", gtStats(sumLines)]]);
+    var sum = '<div class="gt-box"><div class="gt-h">Par minute <small>lignes terminées, sur les filtres compétition et équipe</small></div>' +
+      '<table class="gt-tbl"><thead><tr><th>Minute</th><th class="num">Lignes</th><th class="num" title="Part des lignes où l\'équipe n\'a plus marqué">N\'a plus marqué</th><th class="num">Prix moyen</th><th class="num">Cote moyenne</th><th class="num" title="Si tu achètes chaque ligne 100 $ à son prix, frais Polymarket compris">ROI</th><th class="num">En cours</th></tr></thead><tbody>' +
+      rowsSum.map(function (x, i) {
+        var st = x[1];
+        return '<tr' + (i === rowsSum.length - 1 ? ' class="tot"' : '') + '><td>' + esc(x[0]) + '</td><td class="num">' + st.n + '</td><td class="num">' + (st.hit == null ? "—" : gtDec(st.hit, 1) + " %") + '</td><td class="num">' + (st.price == null ? "—" : gtDec(st.price * 100, 1) + " ¢") + '</td><td class="num">' + gtDec(st.cote, 2) + '</td>' +
+          '<td class="num ' + (st.roi == null ? "" : st.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (st.roi == null ? "—" : (st.roi >= 0 ? "+" : "−") + gtDec(Math.abs(st.roi), 1) + " %") + '</td><td class="num dim">' + (st.pending || "") + '</td></tr>';
+      }).join("") + '</tbody></table></div>';
+    // every line
+    var lines = gtFiltered(all, false);
+    var list = '<div class="gt-box"><div class="gt-h">Toutes les lignes <small>' + lines.length + ' ligne' + (lines.length > 1 ? 's' : '') + ', les plus récentes en haut</small></div>' +
+      (lines.length ? '<div class="gt-scroll"><table class="gt-tbl"><thead><tr><th>Match</th><th>Moment</th><th>Score</th><th>Équipe</th><th title="L\'équipe ne marque plus : moins de (ses buts + 0,5)">Ne marque plus</th><th class="num" title="Meilleur prix d\'achat dans le carnet Polymarket à cette seconde">Prix</th><th class="num">Cote</th><th class="num" title="Cote réelle pour un achat de 100 $, frais compris">Cote 100 $</th><th>Résultat</th></tr></thead><tbody>' +
+        lines.map(function (l) {
+          var r = l.r, res = l.w == null ? '<span class="dim">' + (l.price == null ? "" : "⏳") + '</span>' : l.w === 1 ? '<span class="gt-res-w">✓ n\'a plus marqué</span>' : l.w === 0 ? '<span class="gt-res-l">✗ a marqué</span>' : '<span class="dim">remboursé</span>';
+          if (l.w != null && r.fin) res += ' <span class="dim">(' + r.fin.join("-") + ')</span>';
+          var price = l.none ? '<span class="dim" title="Polymarket n\'a pas cette ligne">pas de marché</span>' : l.price == null ? '<span class="dim" title="Aucun vendeur dans le carnet à ce moment ni dans la minute qui a suivi">aucun prix</span>' :
+            gtDec(l.price * 100, 1) + " ¢" + (l.late != null ? ' <span class="dim" title="Carnet vide à la seconde près : premier prix apparu ' + l.late + ' s après">+' + l.late + ' s</span>' : '') +
+            '<div class="dim" title="Meilleur prix auquel tu pourrais revendre à ce moment">vente ' + (l.bid == null ? "—" : gtDec(l.bid * 100, 1) + " ¢") + '</div>';
+          return '<tr><td class="nw"><div>' + esc(r.h + " – " + r.a) + '</div><div class="dim">' + esc(r.c + " · " + gtWhen(r.ko)) + '</div></td>' +
+            '<td class="num" title="' + esc("Relevé à " + new Date(r.at).toLocaleTimeString("fr-FR") + " · chrono Winamax " + (r.wclk || "?")) + '"><b>' + esc(r.clk) + '</b></td>' +
+            '<td class="num">' + esc(r.sc.join("-")) + '</td>' +
+            '<td class="nw">' + esc(l.team) + '<div class="dim">' + esc(GT_SIT[l.sit]) + '</div></td>' +
+            '<td class="nw">moins de ' + gtDec(l.line, 1) + '</td>' +
+            '<td class="num">' + price + '</td><td class="num">' + (l.price == null ? "—" : gtDec(1 / l.price, 2)) + '</td>' +
+            '<td class="num" title="' + esc(l.sz != null ? l.sz + " parts au meilleur prix" : "") + '">' + (l.buy == null ? '<span class="dim">' + (l.price == null ? "—" : "carnet trop mince") + '</span>' : gtDec(1 / l.buy, 2)) + '</td>' +
+            '<td>' + res + '</td></tr>';
+        }).join("") + '</tbody></table></div>' : '<div style="font-size:13px;color:var(--text-dim)">Pas encore de ligne' + (all.length ? " avec ces filtres" : " : la première arrivera à la 70e minute du prochain match suivi") + '.</div>') + '</div>';
+    root.innerHTML = intro + head + filters + sum + list;
+  }
+  function gtCsv() {
+    var cell = function (v) { if (v == null) return ""; if (typeof v === "number") return String(v).replace(".", ","); v = String(v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var head = ["date_match", "competition", "domicile", "exterieur", "minute", "chrono_exact", "releve_a", "score_domicile", "score_exterieur", "equipe", "situation", "buts_equipe", "pari", "prix_achat", "prix_vente", "parts_au_meilleur_prix", "prix_reel_100usd", "prix_reel_1000usd", "cote", "delai_prix_s", "resultat", "source_resultat", "final_domicile", "final_exterieur", "polymarket_condition_id"];
+    var rows = gtFiltered(gtLines(), false).map(function (l) {
+      var r = l.r, x = r[l.side];
+      return [new Date(r.ko * 1000).toLocaleString("fr-FR"), r.c, r.h, r.a, r.min, r.clk, new Date(r.at).toLocaleString("fr-FR"), r.sc[0], r.sc[1], l.team, GT_SIT[l.sit], l.goals, "moins de " + gtDec(l.line, 1), l.price, l.bid, l.sz, l.buy, l.f1000,
+        l.price == null ? null : Math.round(100 / l.price) / 100, l.late, l.w, l.wsrc === "poly" ? "Polymarket" : l.wsrc === "score" ? "score final" : "", r.fin ? r.fin[0] : null, r.fin ? r.fin[1] : null, x.cid || ""].map(cell).join(";");
+    });
+    var blob = new Blob(["﻿" + [head.join(";")].concat(rows).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "ne-marque-plus-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  }
+  document.getElementById("gtRoot").addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("button") : null;
+    if (!b) return;
+    if (b.id === "gtCsv") { gtCsv(); return; }
+    ["comp", "min", "sit"].forEach(function (k) { if (b.hasAttribute("data-gt-" + k)) GT[k] = b.getAttribute("data-gt-" + k); });
+    gtRender();
+  });
 
   // ---------- 🔔 Alertes match (on request, 2026-10-31) ----------
   // Pick a match (today and the next 7 days, ESPN via the comparator's
@@ -18850,7 +19038,7 @@
     { id: "cmp", label: "⚖️ Comparateur", tabs: ["comparateur", "cmp-auto", "cmp-pick"] },
     { id: "alertes", label: "🔔 Alertes", tabs: ["alertes"] },
     { id: "signaux", label: "📡 Signaux", tabs: ["value-trades", "by-match", "recent-trades", "trades-profiles"] },
-    { id: "labo", label: "🔬 Labo", tabs: ["analyse", "sandbox", "archives"] }
+    { id: "labo", label: "🔬 Labo", tabs: ["analyse", "goaltrack", "sandbox", "archives"] }
   ];
   function tabGroupOf(tab) { return TAB_GROUPS.filter(function (g) { return g.tabs.indexOf(tab) !== -1; })[0] || TAB_GROUPS[3]; }
   function renderTabGroups() {
