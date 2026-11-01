@@ -48,6 +48,7 @@
        those win/loss colors change later. */
     --tier-s: #8e44ad;
     --tier-a: #2563eb;
+    --tier-a-minus: #0f8b8d;
     --tier-b: #c2650f;
     /* Analyse des traders — behavior (held/sold/both camps) reuses the
        accent/tier hues; entry timing gets its own teal/magenta pair. */
@@ -106,6 +107,7 @@
       --tier-b-gray: #a39c8e;
       --tier-s: #c58ce0;
       --tier-a: #6fa8f5;
+      --tier-a-minus: #4cc9c0;
       --tier-b: #f0a35f;
       --an-pre: #2dd4bf;
       --an-live: #f472b6;
@@ -145,6 +147,7 @@
     --tier-b-gray: #a39c8e;
     --tier-s: #c58ce0;
     --tier-a: #6fa8f5;
+    --tier-a-minus: #4cc9c0;
     --tier-b: #f0a35f;
     --an-pre: #2dd4bf;
     --an-live: #f472b6;
@@ -3125,6 +3128,7 @@
         <option value="">Confiance (optionnel)</option>
         <option value="S">S</option>
         <option value="A">A</option>
+        <option value="A-">A-</option>
         <option value="B">B</option>
       </select>
       <button type="button" id="manualFormSave">Enregistrer</button>
@@ -3413,6 +3417,7 @@
         <option value="">Confiance (optionnel)</option>
         <option value="S">S</option>
         <option value="A">A</option>
+        <option value="A-">A-</option>
         <option value="B">B</option>
       </select>
       <button type="button" id="sandboxManualFormSave">Enregistrer</button>
@@ -6723,9 +6728,10 @@
   // Conviction tags a snapshot can be marked with at bet time, so backtests
   // can later check whether winrate actually correlates with confidence.
   // Collapsed from 4 tiers to 3 on request (2026-09-05) — A+ merged into S
-  // (see refreshSnapshotDisplay's confidence migration below).
-  var CONFIDENCE_TIERS = ["S", "A", "B"];
-  var CONFIDENCE_COLORS = { "S": "var(--tier-s)", "A": "var(--tier-a)", "B": "var(--tier-b)" };
+  // (see refreshSnapshotDisplay's confidence migration below). A- added
+  // between A and B on request (2026-11-01).
+  var CONFIDENCE_TIERS = ["S", "A", "A-", "B"];
+  var CONFIDENCE_COLORS = { "S": "var(--tier-s)", "A": "var(--tier-a)", "A-": "var(--tier-a-minus)", "B": "var(--tier-b)" };
   // Result-size tag — orthogonal to confidence (that's set BEFORE the bet,
   // this is set AFTER, once winningSide is known) — so it only ever shows on
   // an already-decided card, same !snap.winningSide gate as cardResultClass.
@@ -18181,7 +18187,7 @@
     // the "Mise" mode chosen above — réelle: total gain / total stake; 1 000 $
     // avec cashout: average of each bet's ROI; sans cashout: held to the
     // market's result (bets whose market isn't settled yet left out).
-    var SEB_CONF_ORDER = ["S", "A+", "A", "B", "—"];
+    var SEB_CONF_ORDER = ["S", "A+", "A", "A-", "B", "—"];
     // finished bets grouped by keyOf(bet, record): n, ROI sum, gain, stake
     function sebRoiAcc(list, recByKey, keyOf) {
       var acc = {};
