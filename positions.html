@@ -18562,6 +18562,8 @@
   var AL_SCEN = [
     { type: "concede_first", side: true, until: true, text: function (t) { return t + " encaisse le premier but"; } },
     { type: "score_first", side: true, until: true, text: function (t) { return t + " marque le premier but"; } },
+    // the first goal scored after the alert is created (the score then is kept by the server)
+    { type: "next_goal", side: true, until: true, text: function (t) { return t + " marque le prochain but"; } },
     { type: "trailing", side: true, until: true, text: function (t) { return t + " est menée au score"; } },
     { type: "leading", side: true, until: true, text: function (t) { return t + " mène au score"; } },
     { type: "red_card", side: true, until: true, text: function (t) { return t + " prend un carton rouge"; } },
@@ -18580,6 +18582,7 @@
     var team = AL.side === "away" ? m.away : m.home, n = AL.n || (sc.n && sc.n.def);
     var txt = sc.text(team, n) + (sc.until && Number(AL.until) ? " avant la " + Number(AL.until) + "e minute" : "");
     if (!sc.side || sc.type === "ht_not_leading") txt = txt.charAt(0).toLowerCase() + txt.slice(1); // "toujours 0-0…", never a team name
+    if (sc.type === "next_goal") txt += m.state === "in" ? " (le premier but marqué à partir de maintenant ; si c'est l'adversaire qui marque, l'alerte s'arrête)" : " (avant le match : c'est le premier but)";
     return "Je t'envoie un mail « " + (AL.label || "Opportunité") + " » si " + txt + ", pendant " + m.home + " – " + m.away + " (" + m.comp + ", " + alWhen(m.start) + "), avec le prix Polymarket du moment.";
   }
   async function alFetch(what) {
