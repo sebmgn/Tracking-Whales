@@ -1383,6 +1383,12 @@
   .snap-main .vt-question { white-space: normal; overflow: visible; min-width: 0; flex: 1 1 260px; font-size: 14.5px; }
   .snap-main .vt-sport-emoji { font-size: 20px; }
   .snap-main .vt-bottom-row { margin-top: 0; }
+  /* kickoff time and your stake bottom-left (2026-11-01) */
+  .snap-main .vt-bottom-row { justify-content: flex-start; gap: 14px; }
+  .snap-main .vt-exact-time { font-size: 12px; font-style: normal; }
+  .snap-main .vt-exact-time::before { content: "🕒 "; }
+  .snap-stake { font-size: 12px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .snap-stake b { color: var(--text); }
   @media (max-width: 760px) { details.value-trade-item > .vt-summary.snap-grid { grid-template-columns: 1fr; } .snap-side { justify-items: start; } }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
@@ -11456,8 +11462,9 @@
         '<span>Polymarket <b>+' + esc(Number(cmp.roiPoly).toFixed(1)) + ' %</b> (' + esc(fmtCents(cmp.polyPrice)) + ')</span>' +
         (cmp.wmSrc && cmp.wmSrc.url ? '<a class="cmp-wm-inline" href="' + esc(cmp.wmSrc.url) + '" target="_blank" rel="noopener"' : '<span') + (cmp.wmSrc ? ' title="' + esc("Source : " + (cmp.wmSrc.site || "winamax.es") + (cmp.odds ? "\nCotes trouvées : " + Object.keys(cmp.odds).map(function (b) { return b + " " + Number(cmp.odds[b]).toFixed(2); }).join(" · ") : "") + (cmp.wmSrc.match ? "\nÉvénement : " + cmp.wmSrc.match : "") + (cmp.wmSrc.bet ? "\nPari : " + cmp.wmSrc.bet : "")) + '"' : '') + '>' + esc(cmp.book || "Winamax") + (cmp.wmSrc && cmp.wmSrc.site ? ' (' + esc(cmp.wmSrc.site.replace(/^[a-z]+/, "")) + ')' : '') + ' <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')' + (cmp.wmSrc && cmp.wmSrc.url ? '</a>' : '</span>') +
         (cmp.comp ? '<span>' + esc(cmp.comp) + '</span>' : '') + '</div>' : '');
-    var eventDateHtml = snap.eventDate
-      ? '<div class="vt-bottom-row"><span class="vt-bottom-meta"></span><span class="vt-exact-time">' + esc(snapEventLabel(snap)) + '</span></div>'
+    var stakeHtml = snapStakeHtml(snap);
+    var eventDateHtml = snap.eventDate || stakeHtml
+      ? '<div class="vt-bottom-row">' + (snap.eventDate ? '<span class="vt-exact-time">' + esc(snapEventLabel(snap)) + '</span>' : '') + stakeHtml + '</div>'
       : '';
     var toolbarHtml;
     if (isTrash) {
@@ -11582,6 +11589,10 @@
     cardHeadHtml = cardHeadHtml.indexOf('<span class="vt-badge-group">') !== -1
       ? cardHeadHtml.replace('<span class="vt-badge-group">', '<span class="vt-badge-group">' + originBadgeHtml(snap))
       : '<div class="snap-origin-row">' + originBadgeHtml(snap) + '</div>' + cardHeadHtml;
+    var stakeHtml = snapStakeHtml(snap);
+    if (stakeHtml) cardHeadHtml = cardHeadHtml.indexOf('<div class="vt-bottom-row">') !== -1
+      ? cardHeadHtml.replace(/(<div class="vt-bottom-row">[\s\S]*?)(<\/div>)/, function (all, a, b) { return a + stakeHtml + b; })
+      : cardHeadHtml + '<div class="vt-bottom-row">' + stakeHtml + '</div>';
     if (snap.autoPre) cardHeadHtml = autoPreBannerHtml(snap) + cardHeadHtml;
     var toolbarHtml;
     if (isTrash) {
@@ -14878,6 +14889,13 @@
     var day = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
     return String(snap.eventDate).length > 10 ? day + " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : day;
   }
+  // Your real stake on the card, next to the kickoff time: a position's or a
+  // Seb bet's own (stakeUsd), else the one Seb copied onto the Saison entry
+  // of that bet (realStake, see sebSyncToSaison).
+  function snapStakeHtml(snap) {
+    var st = snap && (snap.stakeUsd || snap.realStake);
+    return st ? '<span class="snap-stake">Ta mise <b>' + esc(fmtUSD(st)) + '</b></span>' : '';
+  }
   // 📡 Live (on request, 2026-10-31): was the bet taken during the match?
   // Not live by default. Your own tick (live: true/false) wins; else
   // liveMin, minutes from kickoff to your first buy on Polymarket (set from
@@ -17872,6 +17890,7 @@
         if (r.cmp) snap.cmp = r.cmp;
         if (b.liveMin != null) snap.liveMin = b.liveMin;
         if (r.live != null) snap.live = r.live;
+        if (b.stake >= 1) snap.realStake = Math.round(b.stake * 100) / 100;
         ops.push({ type: "add", id: id, snapshot: snap });
       });
       // copies made here: their result once known, and the ratings given
@@ -17888,14 +17907,19 @@
         if (r.live != null && r.live !== s.live) { patch.live = r.live; n++; }
         if (n) ops.push({ type: "editPosition", id: s.id, patch: patch });
       });
-      // 📡 the minute of your first buy, onto every Saison entry of that bet
+      // 📡 the minute of your first buy and your stake, onto every Saison
+      // entry of that bet
       var have2 = {};
       ops.forEach(function (o) { if (o.type === "editPosition") have2[o.id] = o; });
       bets.forEach(function (b) {
         var s = found.tied[b.key];
-        if (!s || !have[s.id] || b.liveMin == null || s.liveMin === b.liveMin) return;
-        if (have2[s.id]) have2[s.id].patch.liveMin = b.liveMin;
-        else { have2[s.id] = { type: "editPosition", id: s.id, patch: { liveMin: b.liveMin } }; ops.push(have2[s.id]); }
+        if (!s || !have[s.id]) return;
+        var p = {}, stake = Math.round(b.stake * 100) / 100;
+        if (b.liveMin != null && s.liveMin !== b.liveMin) p.liveMin = b.liveMin;
+        if (stake >= 1 && Math.abs((s.realStake || 0) - stake) >= 0.5) p.realStake = stake;
+        if (!Object.keys(p).length) return;
+        if (have2[s.id]) Object.assign(have2[s.id].patch, p);
+        else { have2[s.id] = { type: "editPosition", id: s.id, patch: p }; ops.push(have2[s.id]); }
       });
       sebState.saisonSync = { state: "ok", at: Date.now(), added: ops.filter(function (o) { return o.type === "add"; }).length, edited: ops.filter(function (o) { return o.type === "editPosition"; }).length };
       healthRender();
