@@ -1407,6 +1407,7 @@
   .snap-live-btn { color: var(--text-dim); margin-left: 6px; }
   .snap-live-btn.active { background: #e5484d; border-color: #e5484d; color: #fff; }
   .snap-live-btn.active:hover { border-color: #b4232a; }
+  .snap-live-btn.snap-live-manual { border-style: dashed; border-color: #e5484d; }
   .snap-comment-btn.active { color: var(--accent); border-color: var(--accent); }
   .snap-comment { margin: 0 0 10px; font-size: 12.5px; color: var(--text); background: var(--row-hover); border-radius: var(--radius-sm); padding: 6px 10px; white-space: pre-wrap; word-break: break-word; }
   .snap-edit-btn { color: var(--accent); }
@@ -14979,12 +14980,17 @@
     function dur(x) { return x < 120 ? x + " min" : x < 2880 ? Math.round(x / 60) + " h" : Math.round(x / 1440) + " jours"; }
     var mm = inPlay ? matchMinute(m) : null;
     var when = m == null ? "" : inPlay ? "à la " + (mm === 1 ? "1re" : mm + "e") + " minute (" + m + " min après le coup d'envoi" + (m > 60 ? ", mi-temps comprise" : "") + ")" : m >= 0 ? dur(m) + " après le coup d'envoi" : dur(-m) + " avant le coup d'envoi";
-    var title = li.how === "hand" ? (li.on ? "Live, coché à la main" : "Pas en live, décoché à la main") + (when ? " (ton 1er achat : " + when + ")" : "")
+    // a hand tick that contradicts the detection is marked (dashed, ✋), so
+    // an unticked live bet can't pass for a detection miss (2026-11-01)
+    var auto = li.how === "hand" ? snapLiveInfo(Object.assign({}, snap, { live: null })) : null;
+    var against = !!(auto && auto.how !== "none" && auto.on !== li.on);
+    var title = li.how === "hand" ? (li.on ? "Live, coché à la main" : "Pas en live, décoché à la main") + (when ? ". Ton 1er achat : " + when : "") +
+        (against ? (li.on ? ". La détection disait avant-match" : ". La détection disait live") : "")
       : li.how === "trade" ? "Détecté automatiquement : ton 1er achat sur Polymarket, " + when
       : li.how === "pin" ? "Détecté automatiquement : épinglé " + when
       : "Pas en live (par défaut) : clique si tu as pris ce pari pendant le match";
-    return '<button type="button" class="snap-live-btn' + (li.on ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" aria-pressed="' + li.on + '" title="' + esc(title + (li.how === "none" ? "." : ". Clique pour changer.")) + '">' +
-      (li.on ? '✓ Live' + (inPlay ? ' ' + mm + '\'' : '') : 'Live') + '</button>';
+    return '<button type="button" class="snap-live-btn' + (li.on ? ' active' : '') + (against ? ' snap-live-manual' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" aria-pressed="' + li.on + '" title="' + esc(title + (li.how === "none" ? "." : ". Clique pour changer.")) + '">' +
+      (li.on ? '✓ Live' + (inPlay ? ' ' + mm + '\'' : '') : 'Live') + (against ? ' ✋' : '') + '</button>';
   }
   // Cards are ordered by when the event takes place (latest first), the
   // save time breaking ties (so ▲▼ still reorders bets of the same day).
