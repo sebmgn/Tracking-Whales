@@ -6770,15 +6770,43 @@
   // read so it can't show up on one device and not another, or break the
   // date sort of the charts.
   function isCompleteRecord(s) { return !!(s && s.id && s.question && s.savedAt && !isNaN(new Date(s.savedAt).getTime())); }
+  // The per-record rebuild (refreshSnapshotDisplay) cost ~1.4 s over the
+  // whole list, and a confiance/ampleur click read the list 3 times — 4 s+
+  // before the card changed, clicks lost meanwhile (user-reported
+  // 2026-11-01). It's now done once per stored version of each record: the
+  // list is re-parsed only when the stored string changes, a record is
+  // rebuilt only when its own stored JSON changes, and every caller gets
+  // shallow copies, so changing a field on one never touches the cache.
+  var refreshedListMemo = {};
+  function readRefreshedList(key) {
+    var raw;
+    try { raw = localStorage.getItem(key) || "[]"; } catch (e) { return []; }
+    var memo = refreshedListMemo[key] || (refreshedListMemo[key] = { raw: null, list: [], recs: {} });
+    if (memo.raw !== raw) {
+      var parsed;
+      try { parsed = JSON.parse(raw).filter(isCompleteRecord); } catch (e) { return []; }
+      // A record is known by two stored forms: the server's (after a sync)
+      // and the rebuilt one this device saves back (compactForStorage) —
+      // without the second, every local save after a sync rebuilt them all.
+      var recs = {};
+      memo.list = parsed.map(function (rec) {
+        var sig = JSON.stringify(rec), hit = memo.recs[rec.id];
+        if (hit && hit.sigs.indexOf(sig) !== -1) { recs[rec.id] = hit; return hit.out; }
+        var out = refreshSnapshotDisplay(rec);
+        recs[rec.id] = { sigs: [sig, JSON.stringify(compactForStorage([out])[0])], out: out };
+        return out;
+      });
+      memo.recs = recs;
+      memo.raw = raw;
+    }
+    return memo.list.map(function (rec) { return Object.assign({}, rec); });
+  }
   function loadSnapshotsRaw() {
-    var list;
-    try { list = JSON.parse(localStorage.getItem(SNAPSHOTS_KEY) || "[]").filter(isCompleteRecord); } catch (e) { return []; }
     // See refreshSnapshotDisplay — otherwise a sync pulling an un-migrated
     // copy back down from the server (or just a fresh page load before the
     // button's ever been pressed) silently resurrects the old wrong
     // totals/markup every time.
-    list.forEach(refreshSnapshotDisplay);
-    return list;
+    return readRefreshedList(SNAPSHOTS_KEY);
   }
   // The default reader everywhere except the trash view, the export button,
   // and op-application (all three need the trashed ones too) — trashed
@@ -6848,11 +6876,9 @@
   // history), so positions get the same treatment.
   var POSITIONS_KEY = "vtPositions";
   function loadPositionsRaw() {
-    var list;
-    try { list = JSON.parse(localStorage.getItem(POSITIONS_KEY) || "[]").filter(isCompleteRecord); } catch (e) { return []; }
     // Same self-healing pass as loadSnapshotsRaw — a position cloned from an
     // un-migrated snapshot inherited the same stale numbers/markup.
-    list.forEach(refreshSnapshotDisplay);
+    var list = readRefreshedList(POSITIONS_KEY);
     inheritFromSourceSnapshots(list);
     return list;
   }
@@ -7341,12 +7367,12 @@
         snapshotsFreshHooks.forEach(function (f) { setTimeout(f, 0); });
       }
       updateSyncStatus(store, hasSecret ? "synced" : "readonly");
-      renderStoreView(store);
+      whenRatingIdle("store:" + store.name, function () { renderStoreView(store); });
       // Views filtered out of this same list (📝 Test, Comparateur ones)
       // redraw too when they're the open tab, so another device's adds show.
       if (store === SNAPSHOTS_STORE) [["tab-sandbox", SANDBOX_STORE], ["tab-cmp-auto", CMP_AUTO_STORE], ["tab-cmp-pick", CMP_PICK_STORE], ["tab-seb", SEB_STORE], ["tab-seb2", SEB2_STORE]].forEach(function (v) {
         var tab = document.getElementById(v[0]);
-        if (tab && tab.classList.contains("active")) renderStoreView(v[1]);
+        if (tab && tab.classList.contains("active")) whenRatingIdle("store:" + v[1].name, function () { renderStoreView(v[1]); });
       });
       anScheduleRender(); // the Analyse tab reads the >10k signals from this same list
       if (pendingOps.length && hasSecret) setTimeout(function () { syncNow(store); }, 1000);
@@ -7370,18 +7396,20 @@
   // offline), queues it, then kicks off a sync attempt in the background.
   // Shared by both stores — replaces the old snapshots-only
   // enqueueSnapshotOp / positions-only local-write applyPositionOp.
-  function enqueueOp(store, op) {
-    if (store.enqueue) { store.enqueue(op); return; } // a computed view with its own write path (SEB_STORE)
+  // soon (rating clicks): the redraw waits for a pause in the clicks.
+  function enqueueOp(store, op, soon) {
+    if (store.enqueue) { store.enqueue(op, soon); return; } // a computed view with its own write path (SEB_STORE)
+    var render = soon ? function () { whenRatingIdle("store:" + store.name, function () { renderStoreView(store); }); } : function () { renderStoreView(store); };
     store.save(applyOpToList(store.loadRaw(), op));
     // A store with no remotePath (local-only, nothing to
     // reconcile against) has nothing to queue or sync either: skip both
     // rather than push into a queue that would only ever grow, unconsumed,
     // and attempt a fetch against an undefined endpoint.
-    if (!store.remotePath) { renderStoreView(store); return; }
+    if (!store.remotePath) { render(); return; }
     var q = loadSyncQueue(store);
     q.push(op);
     saveSyncQueue(store, q);
-    renderStoreView(store);
+    render();
     // store.syncStore lets a store that's really just a filtered VIEW over
     // another one's data (see UNCONFIDENT_STORE) delegate the actual network
     // reconciliation to the real underlying store instead of running its
@@ -13739,9 +13767,9 @@
         // refreshing while that tab is the one open, or "live" would only
         // ever mean "current as of whenever the tab happened to load."
         var snapTab = document.getElementById("tab-snapshots");
-        if (snapTab && snapTab.classList.contains("active")) renderSnapshots();
+        if (snapTab && snapTab.classList.contains("active")) whenRatingIdle("store:snapshots", renderSnapshots);
         var posTab = document.getElementById("tab-positions");
-        if (posTab && posTab.classList.contains("active")) renderPositions();
+        if (posTab && posTab.classList.contains("active")) whenRatingIdle("store:positions", renderPositions);
         var autoBigTradeTab = document.getElementById("tab-auto-bigtrade");
         if (autoBigTradeTab && autoBigTradeTab.classList.contains("active")) renderAutoBigTrade();
         var homeTab = document.getElementById("tab-home");
@@ -13920,6 +13948,72 @@
   // no backing storage of its own (TEST_STORE.save is a no-op) — any write
   // made from there (trash/restore/purge, and now side/confidence too) has
   // to actually land on whichever real store the item came from.
+  // Rating a card (user-reported 2026-11-01: 5 s before a click showed, some
+  // never taken): the button changes the moment it's pressed, from what the
+  // card shows; the value is set explicitly (not toggled from the stored
+  // one), so quick successive clicks land in order. Saving follows once
+  // that's on screen (afterPaint), and redrawing the lists (~1 s) waits
+  // until no rating has been clicked for RATING_IDLE_MS (whenRatingIdle),
+  // so a run of clicks is never interrupted. Acting on the press also means
+  // a redraw landing between press and release can't swallow the click.
+  // 📡 Live turns what the card shows (detected or not) the other way
+  // round, kept as your own choice; ++/+/-/-- and Live are mirrored onto the
+  // positions taken from a snapshot (tradeFamilyTargets).
+  var RATING_BTNS = ".snap-confidence-btn, .snap-magnitude-btn, .snap-live-btn";
+  var RATING_IDLE_MS = 1200, ratingBusyUntil = 0, ratingIdleTimers = {};
+  function afterPaint(fn) {
+    var done = false;
+    function run() { if (!done) { done = true; fn(); } }
+    requestAnimationFrame(function () { setTimeout(run, 0); });
+    setTimeout(run, 120); // no frame in a background tab: saved anyway
+  }
+  function whenRatingIdle(key, fn) {
+    if (!ratingIdleTimers) ratingIdleTimers = {}; // called before this part of the script ran
+    clearTimeout(ratingIdleTimers[key]);
+    var wait = (ratingBusyUntil || 0) - Date.now();
+    if (wait <= 0) { delete ratingIdleTimers[key]; fn(); return; }
+    ratingIdleTimers[key] = setTimeout(function () { whenRatingIdle(key, fn); }, wait + 50);
+  }
+  function ratingClick(btn) {
+    ratingBusyUntil = Date.now() + RATING_IDLE_MS;
+    var fromTest = btn.getAttribute("data-store") === "test";
+    var store = resolveWritableStoreFromEl(btn), id = btn.getAttribute("data-snap-id");
+    var patch = null, conf;
+    if (btn.classList.contains("snap-confidence-btn")) {
+      conf = btn.classList.contains("active") ? null : btn.getAttribute("data-tier");
+      paintTierButtons(btn, ".snap-confidence-btn", "data-tier", conf, CONFIDENCE_COLORS);
+    } else if (btn.classList.contains("snap-magnitude-btn")) {
+      patch = { magnitude: btn.classList.contains("active") ? null : btn.getAttribute("data-magnitude") };
+      paintTierButtons(btn, ".snap-magnitude-btn", "data-magnitude", patch.magnitude, MAGNITUDE_COLORS);
+    } else {
+      patch = { live: !btn.classList.contains("active") };
+      btn.classList.toggle("active", patch.live);
+      btn.setAttribute("aria-pressed", String(patch.live));
+      btn.textContent = patch.live ? "✓ Live" : "Live";
+    }
+    afterPaint(function () {
+      if (!patch) enqueueOp(store, { type: "setConf", id: id, confidence: conf }, true);
+      else tradeFamilyTargets(store, id).forEach(function (t) { enqueueOp(t.store, { type: "editPosition", id: t.id, patch: patch }, true); });
+      if (fromTest) whenRatingIdle("store:test", renderTest);
+    });
+  }
+  document.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0) return;
+    var b = e.target.closest ? e.target.closest(RATING_BTNS) : null;
+    if (!b) return;
+    b.setAttribute("data-pressed", String(Date.now()));
+    ratingClick(b);
+  });
+  // Shows the new choice on a card's S/A/B or ++/+/-/-- buttons right away
+  // (same look as snapCardHtml draws them).
+  function paintTierButtons(btn, selector, attr, value, colors) {
+    var bar = btn.closest(".snap-toolbar") || btn.parentNode;
+    bar.querySelectorAll(selector).forEach(function (b) {
+      var on = value != null && b.getAttribute(attr) === value, c = colors[b.getAttribute(attr)];
+      b.classList.toggle("active", on);
+      b.style.cssText = on ? "background:" + c + ";border-color:" + c + ";color:#fff" : "color:" + c + ";border-color:" + c;
+    });
+  }
   function resolveWritableStoreFromEl(el) {
     var store = resolveStoreFromEl(el);
     if (store.name !== "test") return store;
@@ -14249,19 +14343,15 @@
       if (fromTestSide) renderTest();
       return;
     }
-    var confBtn = e.target.closest ? e.target.closest(".snap-confidence-btn") : null;
-    if (confBtn) {
+    // Confiance / ampleur / Live: handled on the press itself (see the
+    // pointerdown listener below); a click arrives here only from the
+    // keyboard, or right after that press (then just swallowed).
+    var ratingBtn = e.target.closest ? e.target.closest(RATING_BTNS) : null;
+    if (ratingBtn) {
       e.preventDefault();
       e.stopPropagation();
-      var fromTestConf = confBtn.getAttribute("data-store") === "test";
-      var cStore = resolveWritableStoreFromEl(confBtn);
-      var cid = confBtn.getAttribute("data-snap-id");
-      var tier = confBtn.getAttribute("data-tier");
-      var curConfSnap = cStore.loadRaw().filter(function (s) { return s.id === cid; })[0];
-      var newConfidence = (curConfSnap && curConfSnap.confidence === tier) ? null : tier;
-      var confOp = { type: "setConf", id: cid, confidence: newConfidence };
-      enqueueOp(cStore, confOp);
-      if (fromTestConf) renderTest();
+      if (Date.now() - Number(ratingBtn.getAttribute("data-pressed") || 0) < 3000) { ratingBtn.removeAttribute("data-pressed"); return; }
+      ratingClick(ratingBtn);
       return;
     }
     var originBtn = e.target.closest ? e.target.closest(".snap-origin-btn") : null;
@@ -14269,41 +14359,6 @@
       e.preventDefault();
       e.stopPropagation();
       enqueueOp(resolveWritableStoreFromEl(originBtn), { type: "editPosition", id: originBtn.getAttribute("data-snap-id"), patch: { origin: originBtn.getAttribute("data-origin") } });
-      return;
-    }
-    // 📡 Live: the tick turns what the card shows (detected or not) the
-    // other way round, kept as your own choice; mirrored like ++/+/-/--.
-    var liveBtn = e.target.closest ? e.target.closest(".snap-live-btn") : null;
-    if (liveBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      var fromTestLive = liveBtn.getAttribute("data-store") === "test";
-      var lStore = resolveWritableStoreFromEl(liveBtn);
-      var lid = liveBtn.getAttribute("data-snap-id");
-      var curLiveSnap = lStore.loadRaw().filter(function (s) { return s.id === lid; })[0];
-      var newLive = !snapLiveInfo(curLiveSnap).on;
-      tradeFamilyTargets(lStore, lid).forEach(function (t) {
-        enqueueOp(t.store, { type: "editPosition", id: t.id, patch: { live: newLive } });
-      });
-      if (fromTestLive) renderTest();
-      return;
-    }
-    var magBtn = e.target.closest ? e.target.closest(".snap-magnitude-btn") : null;
-    if (magBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      var fromTestMag = magBtn.getAttribute("data-store") === "test";
-      var mStore = resolveWritableStoreFromEl(magBtn);
-      var mid = magBtn.getAttribute("data-snap-id");
-      var magnitude = magBtn.getAttribute("data-magnitude");
-      var curMagSnap = mStore.loadRaw().filter(function (s) { return s.id === mid; })[0];
-      var newMagnitude = (curMagSnap && curMagSnap.magnitude === magnitude) ? null : magnitude;
-      // Snapshot and the positions taken from it get the same tag, whichever
-      // one it's clicked on — see tradeFamilyTargets.
-      tradeFamilyTargets(mStore, mid).forEach(function (t) {
-        enqueueOp(t.store, { type: "editPosition", id: t.id, patch: { magnitude: newMagnitude } });
-      });
-      if (fromTestMag) renderTest();
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
@@ -17927,7 +17982,7 @@
       ops.forEach(function (o) { raw = applyOpToList(raw, o); });
       saveSnapshotsToStorage(raw);
       saveSyncQueue(SNAPSHOTS_STORE, loadSyncQueue(SNAPSHOTS_STORE).concat(ops));
-      renderStoreView(SNAPSHOTS_STORE);
+      whenRatingIdle("store:snapshots", renderSnapshots);
       syncNow(SNAPSHOTS_STORE);
     }
     // Was this bet one of the site's own snapshots (Saison 26/27, Auto >10k, Mes Positions)?
@@ -18046,7 +18101,7 @@
     // A rating clicked on a Seb card: the first one creates the bet's sebMeta
     // record (seeded with what the card showed, so values copied from Saison
     // 26/27 stick), then the op itself — same queue/sync as Saison 26/27.
-    function sebEnqueue(op) {
+    function sebEnqueue(op, soon) {
       if (op.type === "setSide") { alert("Le résultat d'un pari Seb est lu directement sur Polymarket."); return; }
       if (op.type === "add" || op.type === "setSavedAt") return;
       var raw = loadSnapshotsRaw();
@@ -18063,10 +18118,10 @@
       ops.forEach(function (o) { raw = applyOpToList(raw, o); });
       saveSnapshotsToStorage(raw);
       saveSyncQueue(SNAPSHOTS_STORE, loadSyncQueue(SNAPSHOTS_STORE).concat(ops));
-      renderSeb();
+      if (soon) whenRatingIdle("seb:" + P, renderSeb); else renderSeb();
       syncNow(SNAPSHOTS_STORE);
       // the Saison 26/27 copy follows (Seb's sync, whichever tab was edited)
-      if (typeof SEB_TAB !== "undefined" && SEB_TAB.resync) setTimeout(SEB_TAB.resync, 1500);
+      if (typeof SEB_TAB !== "undefined" && SEB_TAB.resync) setTimeout(function () { whenRatingIdle("seb:resync", SEB_TAB.resync); }, 1500);
     }
     // Catégories × confiance (on request, 2026-10-22): ROI, number of bets
     // and real gain for each Manuel/Auto/Comparaison × S/A/B/sans note cell,
