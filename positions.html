@@ -3639,6 +3639,193 @@
 </div>
 
 <script>
+// Polymarket retired its Data API v1 on 2026-11-02: every v1 route answers
+// 410 "Data API v1 has been retired" (with no CORS header, so a browser only
+// sees a network error). v2 changed the contract: rows wrapped in `data`,
+// snake_case fields, cursor paging instead of offset, `condition` instead of
+// `market`, and /closed-positions folded into /v2/positions?status=CLOSED.
+// installPolyV2Compat wraps fetch so the v1 calls keep working unchanged:
+// each one is rewritten to its v2 route, offset paging is replayed through
+// v2 cursors, and the rows come back as a bare array in the v1 shape
+// (camelCase, plus the v1 names that changed: asset, size, curPrice,
+// initialValue, cashPnl, totalBought, timestamp).
+function installPolyV2Compat(root) {
+  var V1 = /^https:\/\/data-api\.polymarket\.com\/(positions|closed-positions|trades|activity)(?:\?(.*))?$/;
+  var BASE = "https://data-api.polymarket.com/v2/";
+  var rawFetch = root.fetch.bind(root);
+  var MAX_ROWS = 20000, TTL_MS = 60000, BIG = 1000;
+  var DROP = { bio: 1, profile_image: 1, profile_image_optimized: 1 };
+  // v1 sortBy values v2 still has; the others are sorted here (sortLocal)
+  var POS_SORT = { CURRENT: "CURRENT_VALUE", TOKENS: "TOKENS", CASHPNL: "UNREALIZED_PNL", PRICE: "PRICE", TIMESTAMP: "TIMESTAMP", REALIZEDPNL: "REALIZED_PNL" };
+  var LOCAL_SORT = {
+    CURRENT: function (r) { return Number(r.currentValue) || 0; },
+    TOKENS: function (r) { return Number(r.size) || 0; },
+    CASHPNL: function (r) { return Number(r.cashPnl) || 0; },
+    PRICE: function (r) { return Number(r.curPrice) || 0; },
+    TIMESTAMP: function (r) { return Number(r.timestamp) || 0; },
+    REALIZEDPNL: function (r) { return Number(r.realizedPnl) || 0; },
+    RESOLVING: function (r) { return String(r.endDate || ""); },
+    INITIAL: function (r) { return Number(r.initialValue) || 0; },
+    AVGPRICE: function (r) { return Number(r.avgPrice) || 0; },
+    PERCENTPNL: function (r) { return Number(r.percentPnl) || 0; },
+    TITLE: function (r) { return String(r.title || "").toLowerCase(); }
+  };
+  var walks = {};
+
+  function camel(k) { return k.replace(/_([a-z0-9])/g, function (_, c) { return c.toUpperCase(); }); }
+  function v1Row(r, isPos) {
+    var o = {};
+    Object.keys(r).forEach(function (k) { if (!DROP[k]) o[camel(k)] = r[k]; });
+    o.asset = r.token_id;
+    if (isPos) {
+      o.size = r.current_size; o.curPrice = r.current_price; o.initialValue = r.entry_cost_usdc;
+      o.cashPnl = r.unrealized_pnl; o.totalBought = r.total_size; o.timestamp = r.last_event_at;
+      o.oppositeAsset = r.opposite_token_id;
+    }
+    return o;
+  }
+  function jsonResponse(rows) {
+    return new Response(JSON.stringify(rows), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+  function qs(o) {
+    return Object.keys(o).sort().filter(function (k) { return o[k] != null && o[k] !== ""; })
+      .map(function (k) { return encodeURIComponent(k) + "=" + encodeURIComponent(o[k]); }).join("&");
+  }
+
+  // The v1 query → v2 path, the v2 query of each part (several when v1 asked
+  // for more than v2 serves at once: open + settled positions, more than 20
+  // markets), how to sort, and the page wanted.
+  function plan(route, query) {
+    var q = new URLSearchParams(query || "");
+    var g = function (k) { var v = q.get(k); return v == null || v === "" ? null : v; };
+    var isPos = route === "positions" || route === "closed-positions";
+    var base = { user: g("user") };
+    var dir = (g("sortDirection") || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
+    var sortBy = (g("sortBy") || "").toUpperCase(), local = null;
+    var statuses = [null], live = false;
+    if (isPos) {
+      if (route === "closed-positions") statuses = ["CLOSED"];
+      else if (g("redeemable") === "true") statuses = ["REDEEMABLE"];
+      else if (g("redeemable") === "false") { statuses = ["OPEN"]; live = true; }
+      else statuses = ["OPEN", "REDEEMABLE"];
+      var st = g("sizeThreshold");
+      if (st != null && route === "positions") { base.filter_type = "TOKENS"; base.filter_amount = st; }
+      // v1 redeemable=false: v2's OPEN also lists the settled positions still
+      // held (12 000 rows for RN1 against ~400 live ones), so it's read by
+      // value, settled rows dropped, until the worthless ones start
+      if (live) {
+        base.sort_by = "CURRENT_VALUE"; base.sort_direction = "DESC";
+        if (sortBy && sortBy !== "CURRENT" && LOCAL_SORT[sortBy]) local = { key: LOCAL_SORT[sortBy], dir: dir };
+        else if (sortBy === "CURRENT" && dir === "ASC") local = { key: LOCAL_SORT.CURRENT, dir: dir };
+      } else if (POS_SORT[sortBy]) { base.sort_by = POS_SORT[sortBy]; base.sort_direction = dir; }
+      else if (LOCAL_SORT[sortBy]) local = { key: LOCAL_SORT[sortBy], dir: dir };
+      if (g("title")) base.title = g("title");
+    } else {
+      ["type", "side", "start", "end"].forEach(function (k) { if (g(k)) base[k] = g(k); });
+      if (route === "activity" && sortBy === "TIMESTAMP") base.sort_direction = dir;
+      if (route === "trades") {
+        if (g("takerOnly")) base.taker_only = g("takerOnly");
+        if (g("filterType")) base.filter_type = g("filterType");
+        if (g("filterAmount")) base.filter_amount = g("filterAmount");
+      }
+    }
+    var cids = (g("market") || g("condition") || "").split(",").filter(Boolean);
+    var chunks = [];
+    for (var i = 0; i < cids.length; i += 20) chunks.push(cids.slice(i, i + 20).join(","));
+    if (!chunks.length) chunks = [null];
+    var parts = [];
+    statuses.forEach(function (s) {
+      chunks.forEach(function (c) {
+        var p = Object.assign({}, base);
+        if (s) p.status = s;
+        if (c) p.condition = c;
+        parts.push({ q: p, live: live });
+      });
+    });
+    // merged parts come back sorted like v1 would (newest first for feeds)
+    if (!local && parts.length > 1 && !isPos) local = { key: function (r) { return Number(r.timestamp) || 0; }, dir: "DESC" };
+    return {
+      path: route === "closed-positions" ? "positions" : route, isPos: isPos, parts: parts, local: local, dedupe: isPos && parts.length > 1,
+      offset: Math.max(0, Number(g("offset")) || 0), limit: Math.max(1, Math.min(BIG, Number(g("limit")) || 100))
+    };
+  }
+
+  // One walk per v2 query and page size: rows read so far and the cursor to
+  // go on with, shared by the calls paging through it for TTL_MS. A first
+  // page (offset 0) starts over, for every page size of that query, so
+  // polling never sees stale rows and later pages never mix with older ones
+  // ("soft": a whole-list read keeps a walk still running or under 20 s
+  // old, so a caller that timed out and retries picks it up where it is).
+  function walkFor(path, p, pageSize, mode) {
+    var key = path + "?" + qs(p);
+    var g = walks[key], age = g ? Date.now() - g.at : 0;
+    var busy = g && Object.keys(g.bySize).some(function (k) { return !g.bySize[k].done; });
+    if (!g || age > TTL_MS || mode === "force" || (mode === "soft" && age > 20000 && !busy)) g = walks[key] = { at: Date.now(), bySize: {} };
+    return g.bySize[pageSize] || (g.bySize[pageSize] = { rows: [], cursor: null, started: false, done: false, chain: Promise.resolve() });
+  }
+  function grow(w, path, part, pageSize, need, isPos) {
+    var p = part.q;
+    w.chain = w.chain.then(async function () {
+      while (!w.done && w.rows.length < need && w.rows.length < MAX_ROWS) {
+        // every page restates the filters (v2 wants them back with the cursor)
+        var q = Object.assign({}, p, w.started ? { cursor: w.cursor } : { limit: pageSize });
+        var res = await rawFetch(BASE + path + "?" + qs(q));
+        if (!res.ok) { var e = new Error("HTTP " + res.status); e.response = res; throw e; }
+        var j = await res.json();
+        var rows = (j && Array.isArray(j.data)) ? j.data : [];
+        rows.forEach(function (r) { if (!(part.live && r.redeemable === true)) w.rows.push(v1Row(r, isPos)); });
+        w.started = true;
+        w.cursor = j && j.pagination ? j.pagination.next_cursor : null;
+        if (!w.cursor || (part.live && rows.length && !(Number(rows[rows.length - 1].current_value) > 0))) w.done = true;
+      }
+    });
+    var c = w.chain;
+    w.chain = c.catch(function () {}); // a failed page doesn't wedge the walk
+    return c;
+  }
+  async function serve(route, query, init) {
+    var pl = plan(route, query);
+    var signal = init && init.signal;
+    var whole = pl.parts.length > 1 || !!pl.local;
+    var need = whole ? MAX_ROWS : pl.offset + pl.limit;
+    var pageSize = whole || pl.offset > 0 ? BIG : pl.limit;
+    var mode = pl.offset > 0 ? "reuse" : whole ? "soft" : "force";
+    try {
+      // the walk is shared, so a caller's abort (its own timeout) only stops
+      // its wait, not the reading
+      var all = Promise.all(pl.parts.map(async function (p) {
+        var w = walkFor(pl.path, p.q, pageSize, mode);
+        await grow(w, pl.path, p, pageSize, need, pl.isPos);
+        return w.rows;
+      }));
+      var lists = await (signal ? Promise.race([all, new Promise(function (_, rej) {
+        if (signal.aborted) rej(new DOMException("Aborted", "AbortError"));
+        signal.addEventListener("abort", function () { rej(new DOMException("Aborted", "AbortError")); });
+      })]) : all);
+    } catch (e) {
+      if (e && e.response) return e.response;
+      throw e;
+    }
+    var rows = lists.length === 1 ? lists[0] : [].concat.apply([], lists);
+    if (pl.dedupe) { var seen = {}; rows = rows.filter(function (r) { var k = r.asset + "|" + r.proxyWallet; if (seen[k]) return false; seen[k] = 1; return true; }); }
+    if (pl.local) {
+      var k = pl.local.key, sg = pl.local.dir === "ASC" ? 1 : -1;
+      rows = rows.slice().sort(function (a, b) { var x = k(a), y = k(b); return (x < y ? -1 : x > y ? 1 : 0) * sg; });
+    }
+    return jsonResponse(rows.slice(pl.offset, pl.offset + pl.limit));
+  }
+
+  root.fetch = function (input, init) {
+    var url = typeof input === "string" ? input : input && input.url;
+    var m = url ? V1.exec(url) : null;
+    if (!m) return rawFetch(input, init);
+    return serve(m[1], m[2], init);
+  };
+}
+installPolyV2Compat(window);
+</script>
+
+<script>
 (function () {
   // --- Configuration ---
   // "weight" = quality rating (1-10) assigned to each profile; drives the
