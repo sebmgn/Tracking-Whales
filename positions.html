@@ -3051,6 +3051,7 @@
     <button class="tab-btn tab-btn-quiet" data-tab="test" type="button"><span class="tab-btn-icon">🌐</span>All Time</button>
     <button class="tab-btn tab-btn-quiet" data-tab="alertes" type="button"><span class="tab-btn-icon">🔔</span>Alertes match</button>
     <button class="tab-btn tab-btn-quiet" data-tab="goaltrack" type="button"><span class="tab-btn-icon">⏱️</span>Ne marque plus</button>
+    <button class="tab-btn tab-btn-quiet" data-tab="gt-pick" type="button"><span class="tab-btn-icon">💾</span>Choix ne marque plus</button>
   </div>
 
   <div class="tab-panel" id="tab-goaltrack">
@@ -3427,6 +3428,35 @@
     <div id="cmpPickTraderTableContent"></div>
     <div id="cmpPickContent" class="value-trades-box">
       <div class="empty-note">Aucun trade choisi pour l'instant — clique ✋ sur une ligne du Comparateur.</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-gt-pick">
+    <h2 class="section-title">💾 Choix ne marque plus <span class="count-pill" id="gtPickCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Les lignes de l'onglet ⏱️ Ne marque plus que tu as enregistrées avec 💾 : un pari simulé « l'équipe ne marque plus », pris à la seconde du relevé (70:00, 80:00 ou 90:00) au prix réel d'un achat de 100 $ sur Polymarket, frais compris (à défaut, le meilleur prix d'achat). Le résultat se remplit tout seul après le match. Enregistré sur le serveur (AWS) comme Saison 26/27. Aucun vrai ordre n'est jamais passé.</div>
+    <div class="snap-sync-bar">
+      <button type="button" id="gtPickExportBtn" class="snap-sync-link" title="Télécharger cette liste (y compris la corbeille) en JSON">⬇️ Exporter</button>
+      <button id="gtPickTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les paris mis à la corbeille">🗑 Corbeille</button>
+    </div>
+    <div id="gtPickPnlChartContent"></div>
+    <div class="snap-toggle-bar">
+      <button type="button" id="gtPickTierWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tier" data-store="gtPick">▸ Le winrate par conviction</button>
+      <button type="button" id="gtPickNoteWinrateToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="note" data-store="gtPick">▸ L'analyse winrate × note</button>
+      <button type="button" id="gtPickDistToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="dist" data-store="gtPick">▸ L'analyse cote × confiance</button>
+      <button type="button" id="gtPickManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="gtPick">▸ Les types de paris</button>
+      <button type="button" id="gtPickWeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="gtPick">▸ Paris par semaine</button>
+      <button type="button" id="gtPickOtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="gtPick">▸ Autres stats</button>
+      <button type="button" id="gtPickTraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="gtPick">▸ Le tableau des traders</button>
+    </div>
+    <div id="gtPickTierWinrateContent"></div>
+    <div id="gtPickNoteWinrateContent"></div>
+    <div id="gtPickDistContent"></div>
+    <div id="gtPickManualVsAutoContent"></div>
+    <div id="gtPickWeeklyPnlContent"></div>
+    <div id="gtPickOtherStatsContent"></div>
+    <div id="gtPickTraderTableContent"></div>
+    <div id="gtPickContent" class="value-trades-box">
+      <div class="empty-note">Aucune ligne enregistrée pour l'instant — clique 💾 sur une ligne de l'onglet ⏱️ Ne marque plus.</div>
     </div>
   </div>
 
@@ -7412,7 +7442,7 @@
       whenRatingIdle("store:" + store.name, function () { renderStoreView(store); });
       // Views filtered out of this same list (📝 Test, Comparateur ones)
       // redraw too when they're the open tab, so another device's adds show.
-      if (store === SNAPSHOTS_STORE) [["tab-sandbox", SANDBOX_STORE], ["tab-cmp-auto", CMP_AUTO_STORE], ["tab-cmp-pick", CMP_PICK_STORE], ["tab-seb", SEB_STORE], ["tab-seb2", SEB2_STORE]].forEach(function (v) {
+      if (store === SNAPSHOTS_STORE) [["tab-sandbox", SANDBOX_STORE], ["tab-cmp-auto", CMP_AUTO_STORE], ["tab-cmp-pick", CMP_PICK_STORE], ["tab-gt-pick", GT_PICK_STORE], ["tab-seb", SEB_STORE], ["tab-seb2", SEB2_STORE]].forEach(function (v) {
         var tab = document.getElementById(v[0]);
         if (tab && tab.classList.contains("active")) whenRatingIdle("store:" + v[1].name, function () { renderStoreView(v[1]); });
       });
@@ -8246,7 +8276,7 @@
   // and get their result straight from the Polymarket market
   // (checkCmpResolutions). LOCAL TRACKING ONLY: no order is ever placed.
   var CMP_AUTO_MIN_DELTA = 75;
-  function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true || s.sandbox === true || s.sebMeta === true); }
+  function isCmpSideList(s) { return !!s && (s.cmpAuto === true || s.cmpPick === true || s.sandbox === true || s.sebMeta === true || s.gtPick === true); }
   function cmpViewStore(name, opts) {
     function loadRaw() { return loadSnapshotsRaw().filter(function (s) { return s[name] === true; }); }
     function load() { return loadRaw().filter(function (s) { return !s.deletedAt; }); }
@@ -8303,6 +8333,17 @@
   var CMP_PICK_STORE = cmpViewStore("cmpPick", {
     emptyHint: "Aucun trade choisi pour l'instant — clique ✋ sur une ligne du Comparateur.",
     dateLabelPrefix: "Choisi le", priceMoment: "au moment du clic"
+  });
+  // 💾 Choix ne marque plus (on request, 2026-11-02): the ⏱️ Ne marque plus
+  // lines saved with 💾 — a simulated "<team> doesn't score again" bet taken
+  // at the second of the reading (70:00 / 80:00 / 90:00), at the real price
+  // of a 100 $ Polymarket buy, fee included (else the best ask). Same
+  // flag-filtered view as ✋ Choix comparateur; manual-bet records with a
+  // frozen `gt` block (gtRecordFromLine); results from the market
+  // (checkCmpResolutions) or the tracker's own result (gtSyncPickResults).
+  var GT_PICK_STORE = cmpViewStore("gtPick", {
+    emptyHint: "Aucune ligne enregistrée pour l'instant — clique 💾 sur une ligne de l'onglet ⏱️ Ne marque plus.",
+    dateLabelPrefix: "Relevé le", priceMoment: "au moment du relevé"
   });
   // 📝 Test (on request, 2026-10-21): a blank Saison 26/27 — same cards,
   // panels and controls, filled with 📝 on a Value Trades card. Same
@@ -8368,12 +8409,13 @@
   // that are already closed, so a still-open bet just comes back absent.
   var GAMMA_MARKETS_BASE = "https://gamma-api.polymarket.com/markets";
   async function checkCmpResolutions() {
-    var stores = [CMP_AUTO_STORE, CMP_PICK_STORE];
+    var stores = [CMP_AUTO_STORE, CMP_PICK_STORE, GT_PICK_STORE];
     var pendingByCid = {};
     stores.forEach(function (store) {
       store.loadRaw().forEach(function (s) {
-        if (s.winningSide || s.deletedAt || !s.cmp || !s.cmp.cid) return;
-        (pendingByCid[s.cmp.cid] = pendingByCid[s.cmp.cid] || []).push({ store: store, snap: s });
+        var m = s.cmp || s.gt; // the market bought: a Comparateur line, or a ⏱️ Ne marque plus one
+        if (s.winningSide || s.deletedAt || !m || !m.cid) return;
+        (pendingByCid[m.cid] = pendingByCid[m.cid] || []).push({ store: store, snap: s, oi: m.oi });
       });
     });
     var cids = Object.keys(pendingByCid);
@@ -8394,7 +8436,7 @@
           if (maxPrice < 0.95) return; // voided / 50-50 — left for a human to look at
           var winIdx = prices.indexOf(maxPrice);
           entries.forEach(function (x) {
-            var side = winIdx === Number(x.snap.cmp.oi) ? x.snap.leaderName : OTHER_SIDE_SENTINEL;
+            var side = winIdx === Number(x.oi) ? x.snap.leaderName : OTHER_SIDE_SENTINEL;
             enqueueOp(x.store, { type: "setSide", id: x.snap.id, winningSide: side });
           });
         });
@@ -11525,13 +11567,19 @@
     // A bet pinned from the Comparateur tab (snap.cmp) rides on this same
     // manual-bet card — no traders behind it either — and keeps the ROI
     // comparison that made it worth taking, frozen at pin time.
-    var cmp = snap.cmp;
-    var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">' + (cmp ? '⚖️' : '✍️') + '</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
+    var cmp = snap.cmp, gt = snap.gt;
+    var gtDec2 = function (n) { return n.toFixed(2).replace(".", ","); };
+    var headerHtml = '<div class="vt-top"><span class="vt-top-left"><span class="vt-sport-emoji">' + (cmp ? '⚖️' : gt ? '⏱️' : '✍️') + '</span><span class="vt-question">' + esc(snap.question) + '</span>' + leaderBadge + '</span>' +
       statsHtml + '<span class="vt-badge-group">' + originBadgeHtml(snap) + '</span></div>' +
       (cmp ? '<div class="snap-cmp-line"><span class="snap-cmp-delta">Δ ROI +' + esc(String(cmp.delta)) + ' %</span>' +
         '<span>Polymarket <b>+' + esc(Number(cmp.roiPoly).toFixed(1)) + ' %</b> (' + esc(fmtCents(cmp.polyPrice)) + ')</span>' +
         (cmp.wmSrc && cmp.wmSrc.url ? '<a class="cmp-wm-inline" href="' + esc(cmp.wmSrc.url) + '" target="_blank" rel="noopener"' : '<span') + (cmp.wmSrc ? ' title="' + esc("Source : " + (cmp.wmSrc.site || "winamax.es") + (cmp.odds ? "\nCotes trouvées : " + Object.keys(cmp.odds).map(function (b) { return b + " " + Number(cmp.odds[b]).toFixed(2); }).join(" · ") : "") + (cmp.wmSrc.match ? "\nÉvénement : " + cmp.wmSrc.match : "") + (cmp.wmSrc.bet ? "\nPari : " + cmp.wmSrc.bet : "")) + '"' : '') + '>' + esc(cmp.book || "Winamax") + (cmp.wmSrc && cmp.wmSrc.site ? ' (' + esc(cmp.wmSrc.site.replace(/^[a-z]+/, "")) + ')' : '') + ' <b>+' + esc(Number(cmp.roiWinamax).toFixed(1)) + ' %</b> (cote ' + esc(Number(cmp.winamaxOdd).toFixed(2)) + ')' + (cmp.wmSrc && cmp.wmSrc.url ? '</a>' : '</span>') +
-        (cmp.comp ? '<span>' + esc(cmp.comp) + '</span>' : '') + '</div>' : '');
+        (cmp.comp ? '<span>' + esc(cmp.comp) + '</span>' : '') + '</div>' : '') +
+      // a ⏱️ Ne marque plus line: when it was read, the score then, the book
+      (gt ? '<div class="snap-cmp-line"><span class="snap-cmp-delta" title="' + esc("Relevé à " + new Date(gt.at).toLocaleTimeString("fr-FR")) + '">⏱️ ' + esc(gt.clk) + '</span><span>score <b>' + esc(gt.sc.join("-")) + '</b></span>' +
+        '<span>achat <b>' + (gt.ask != null ? esc(fmtCents(gt.ask)) : "—") + '</b>' + (gt.late != null ? ' (+' + gt.late + ' s)' : '') + (gt.bid != null ? ' · vente ' + esc(fmtCents(gt.bid)) : '') + '</span>' +
+        (gt.buy != null ? '<span>cote 100 $ <b>' + gtDec2(1 / gt.buy) + '</b></span>' : '<span>carnet trop mince pour 100 $</span>') +
+        (gt.comp ? '<span>' + esc(gt.comp) + '</span>' : '') + '</div>' : '');
     var stakeHtml = snapStakeHtml(snap);
     var eventDateHtml = snap.eventDate || stakeHtml
       ? '<div class="vt-bottom-row">' + (snap.eventDate ? '<span class="vt-exact-time">' + esc(snapEventLabel(snap)) + '</span>' : '') + stakeHtml + '</div>'
@@ -13478,6 +13526,7 @@
       if (btn.getAttribute("data-tab") === "analyse") { renderAnalyse(); anMaybeSync(true); }
       if (btn.getAttribute("data-tab") === "alertes") alertsOpen();
       if (btn.getAttribute("data-tab") === "goaltrack") gtOpen();
+      if (btn.getAttribute("data-tab") === "gt-pick") { renderStoreView(GT_PICK_STORE); gtFetch(); }
     });
   });
   rtFilters.querySelectorAll("button").forEach(function (btn) {
@@ -13982,6 +14031,7 @@
     if (name === "autoBigTrade") return AUTO_BIGTRADE_STORE;
     if (name === "cmpAuto") return CMP_AUTO_STORE;
     if (name === "cmpPick") return CMP_PICK_STORE;
+    if (name === "gtPick") return GT_PICK_STORE;
     if (name === "sandbox") return SANDBOX_STORE;
     if (name === "seb") return SEB_STORE;
     if (name === "seb2") return SEB2_STORE;
@@ -14776,6 +14826,8 @@
   wireTrashToggle(CMP_AUTO_STORE, "cmpAutoTrashToggleBtn", function () { renderStoreView(CMP_AUTO_STORE); });
   wireExport(CMP_PICK_STORE, "cmpPickExportBtn");
   wireTrashToggle(CMP_PICK_STORE, "cmpPickTrashToggleBtn", function () { renderStoreView(CMP_PICK_STORE); });
+  wireExport(GT_PICK_STORE, "gtPickExportBtn");
+  wireTrashToggle(GT_PICK_STORE, "gtPickTrashToggleBtn", function () { renderStoreView(GT_PICK_STORE); });
   wireExport(SANDBOX_STORE, "sandboxExportBtn");
   wireTrashToggle(SANDBOX_STORE, "sandboxTrashToggleBtn", renderSandbox);
   wireImport(POSITIONS_STORE, "posImportBtn", "posImportInput", renderPositions);
@@ -18708,8 +18760,47 @@
       var r = await fetch(AWS_COMPARATOR_URL + "?goaltrack=1", { cache: "no-store" });
       if (!r.ok) throw new Error("erreur " + r.status);
       GT.data = await r.json(); GT.err = null;
+      gtSyncPickResults();
     } catch (e) { GT.err = /failed to fetch/i.test(e.message || "") ? "connexion impossible" : e.message; }
     gtRender();
+  }
+  // 💾 one line -> a simulated bet in Choix ne marque plus (GT_PICK_STORE):
+  // taken at the second of the reading, at the 100 $ price (fee in) when the
+  // book had it, else the best ask; result filled in if already known.
+  function gtPickKey(k, side) { return k + "|" + side; }
+  function gtPickedKeys() {
+    var out = {};
+    GT_PICK_STORE.load().forEach(function (s) { if (s.gt) out[gtPickKey(s.gt.k, s.gt.side)] = true; });
+    return out;
+  }
+  function gtRecordFromLine(l) {
+    var r = l.r, x = r[l.side] || {};
+    var name = l.team + " ne marque plus (moins de " + gtDec(l.line, 1) + ")";
+    var rec = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      isManual: true, gtPick: true,
+      question: r.h + " – " + r.a,
+      leaderName: name,
+      leaderPriceAtSnapshot: l.buy != null ? l.buy : l.price,
+      eventDate: new Date(r.ko * 1000).toISOString(),
+      confidence: null,
+      winningSide: l.w === 1 ? name : l.w === 0 ? OTHER_SIDE_SENTINEL : null,
+      savedAt: new Date(r.at).toISOString(),
+      gt: { k: r.k, side: l.side, min: r.min, clk: r.clk, at: r.at, sc: r.sc, team: l.team, line: l.line, ask: l.price, bid: l.bid, buy: l.buy, late: l.late,
+        comp: r.c, slug: r.slug, cid: x.cid || null, oi: x.oi != null ? x.oi : 1 }
+    };
+    return rec;
+  }
+  // results the tracker already has (final score / market) for saved lines
+  function gtSyncPickResults() {
+    var byKey = {};
+    gtLines().forEach(function (l) { byKey[gtPickKey(l.r.k, l.side)] = l; });
+    GT_PICK_STORE.load().forEach(function (s) {
+      if (s.winningSide || !s.gt) return;
+      var l = byKey[gtPickKey(s.gt.k, s.gt.side)];
+      if (!l || (l.w !== 0 && l.w !== 1)) return;
+      enqueueOp(GT_PICK_STORE, { type: "setSide", id: s.id, winningSide: l.w === 1 ? s.leaderName : OTHER_SIDE_SENTINEL });
+    });
   }
   function gtOpen() {
     gtRender();
@@ -18796,9 +18887,9 @@
           '<td class="num ' + (st.roi == null ? "" : st.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (st.roi == null ? "—" : (st.roi >= 0 ? "+" : "−") + gtDec(Math.abs(st.roi), 1) + " %") + '</td><td class="num dim">' + (st.pending || "") + '</td></tr>';
       }).join("") + '</tbody></table></div>';
     // every line
-    var lines = gtFiltered(all, false);
+    var lines = gtFiltered(all, false), picked = gtPickedKeys();
     var list = '<div class="gt-box"><div class="gt-h">Toutes les lignes <small>' + lines.length + ' ligne' + (lines.length > 1 ? 's' : '') + ', les plus récentes en haut</small></div>' +
-      (lines.length ? '<div class="gt-scroll"><table class="gt-tbl"><thead><tr><th>Match</th><th>Moment</th><th>Score</th><th>Équipe</th><th title="L\'équipe ne marque plus : moins de (ses buts + 0,5)">Ne marque plus</th><th class="num" title="Meilleur prix d\'achat dans le carnet Polymarket à cette seconde">Prix</th><th class="num">Cote</th><th class="num" title="Cote réelle pour un achat de 100 $, frais compris">Cote 100 $</th><th>Résultat</th></tr></thead><tbody>' +
+      (lines.length ? '<div class="gt-scroll"><table class="gt-tbl"><thead><tr><th>Match</th><th>Moment</th><th>Score</th><th>Équipe</th><th title="L\'équipe ne marque plus : moins de (ses buts + 0,5)">Ne marque plus</th><th class="num" title="Meilleur prix d\'achat dans le carnet Polymarket à cette seconde">Prix</th><th class="num">Cote</th><th class="num" title="Cote réelle pour un achat de 100 $, frais compris">Cote 100 $</th><th>Résultat</th><th></th></tr></thead><tbody>' +
         lines.map(function (l) {
           var r = l.r, res = l.w == null ? '<span class="dim">' + (l.price == null ? "" : "⏳") + '</span>' : l.w === 1 ? '<span class="gt-res-w">✓ n\'a plus marqué</span>' : l.w === 0 ? '<span class="gt-res-l">✗ a marqué</span>' : '<span class="dim">remboursé</span>';
           if (l.w != null && r.fin) res += ' <span class="dim">(' + r.fin.join("-") + ')</span>';
@@ -18812,7 +18903,8 @@
             '<td class="nw">moins de ' + gtDec(l.line, 1) + '</td>' +
             '<td class="num">' + price + '</td><td class="num">' + (l.price == null ? "—" : gtDec(1 / l.price, 2)) + '</td>' +
             '<td class="num" title="' + esc(l.sz != null ? l.sz + " parts au meilleur prix" : "") + '">' + (l.buy == null ? '<span class="dim">' + (l.price == null ? "—" : "carnet trop mince") + '</span>' : gtDec(1 / l.buy, 2)) + '</td>' +
-            '<td>' + res + '</td></tr>';
+            '<td>' + res + '</td>' +
+            '<td>' + (l.price == null ? '' : '<button type="button" class="cmp-pin-btn gt-save-btn' + (picked[gtPickKey(r.k, l.side)] ? ' pinned' : '') + '" data-gt-k="' + esc(r.k) + '" data-gt-side="' + l.side + '" title="Simuler ce pari dans 💾 Choix ne marque plus">' + (picked[gtPickKey(r.k, l.side)] ? '✅ Enregistré' : '💾 Enregistrer') + '</button>') + '</td></tr>';
         }).join("") + '</tbody></table></div>' : '<div style="font-size:13px;color:var(--text-dim)">Pas encore de ligne' + (all.length ? " avec ces filtres" : " : la première arrivera à la 70e minute du prochain match suivi") + '.</div>') + '</div>';
     root.innerHTML = intro + head + filters + sum + list;
   }
@@ -18834,6 +18926,16 @@
     var b = e.target.closest ? e.target.closest("button") : null;
     if (!b) return;
     if (b.id === "gtCsv") { gtCsv(); return; }
+    if (b.classList.contains("gt-save-btn")) {
+      var k = b.getAttribute("data-gt-k"), side = b.getAttribute("data-gt-side");
+      if (gtPickedKeys()[gtPickKey(k, side)]) { alert("Déjà dans 💾 Choix ne marque plus."); return; }
+      var line = gtLines().filter(function (l) { return l.r.k === k && l.side === side; })[0];
+      if (!line || line.price == null) return;
+      var rec = gtRecordFromLine(line);
+      enqueueOp(GT_PICK_STORE, { type: "add", id: rec.id, snapshot: rec });
+      b.classList.add("pinned"); b.textContent = "✅ Enregistré";
+      return;
+    }
     ["comp", "min", "sit"].forEach(function (k) { if (b.hasAttribute("data-gt-" + k)) GT[k] = b.getAttribute("data-gt-" + k); });
     gtRender();
   });
@@ -19038,7 +19140,7 @@
     { id: "cmp", label: "⚖️ Comparateur", tabs: ["comparateur", "cmp-auto", "cmp-pick"] },
     { id: "alertes", label: "🔔 Alertes", tabs: ["alertes"] },
     { id: "signaux", label: "📡 Signaux", tabs: ["value-trades", "by-match", "recent-trades", "trades-profiles"] },
-    { id: "labo", label: "🔬 Labo", tabs: ["analyse", "goaltrack", "sandbox", "archives"] }
+    { id: "labo", label: "🔬 Labo", tabs: ["analyse", "goaltrack", "gt-pick", "sandbox", "archives"] }
   ];
   function tabGroupOf(tab) { return TAB_GROUPS.filter(function (g) { return g.tabs.indexOf(tab) !== -1; })[0] || TAB_GROUPS[3]; }
   function renderTabGroups() {
