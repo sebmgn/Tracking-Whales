@@ -1635,6 +1635,12 @@
   }
   .manual-auto-tier-chip:hover { filter: brightness(0.94); }
   .manual-auto-tier-chip.active { color: #fff !important; }
+  /* ⏱️ Fin de match by slot (70' / 80' / 90') — read-only, under its row */
+  .manual-auto-fin-chip {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px dashed;
+    background: var(--panel); cursor: default; font-variant-numeric: tabular-nums;
+  }
+  .snap-origin-btn:not(.snap-fin-btn) + .snap-fin-btn { margin-left: 8px; }
   /* Same visual language as .tier-wr-* above (winrate-by-conviction), under
      its own class namespace — this gauge is keyed by cumulative note
      threshold instead of confidence tag, and needs its own click-filter
@@ -3159,6 +3165,9 @@
         <option value="manual">✍️ Manuel</option>
         <option value="cmp">⚖️ Comparaison</option>
         <option value="props">⏳ Props (long terme)</option>
+        <option value="fin70">⏱️ Fin de match — pris à la 70e</option>
+        <option value="fin80">⏱️ Fin de match — pris à la 80e</option>
+        <option value="fin90">⏱️ Fin de match — pris à la 90e</option>
       </select>
       <select id="manualConfSelect">
         <option value="">Confiance (optionnel)</option>
@@ -3477,6 +3486,9 @@
         <option value="manual">✍️ Manuel</option>
         <option value="cmp">⚖️ Comparaison</option>
         <option value="props">⏳ Props (long terme)</option>
+        <option value="fin70">⏱️ Fin de match — pris à la 70e</option>
+        <option value="fin80">⏱️ Fin de match — pris à la 80e</option>
+        <option value="fin90">⏱️ Fin de match — pris à la 90e</option>
       </select>
       <select id="sandboxManualConfSelect">
         <option value="">Confiance (optionnel)</option>
@@ -4143,7 +4155,8 @@
         manual: { tiers: [], noteBins: [], sinceWeek: null },
         auto: { tiers: [], noteBins: [], traderWeightBrackets: [], traders: [], sinceWeek: null },
         cmp: { tiers: [], noteBins: [], sinceWeek: null },
-        props: { tiers: [], noteBins: [], sinceWeek: null }
+        props: { tiers: [], noteBins: [], sinceWeek: null },
+        fin: { tiers: [], noteBins: [], sinceWeek: null }
       },
       chartSelectedId: null, chartPrevScrollY: null, expandedItems: {},
       traderTableSort: { key: "total", dir: "desc" }, traderCardFilter: null, traderTableCollapsed: true, traderTableWeightBrackets: [],
@@ -6996,7 +7009,7 @@
   // written before that (2026-10-03: 1 comment, 27 tags): a position with no
   // value of its own shows its snapshot's. Read-time only, nothing is sent
   // to the server.
-  var INHERITED_FROM_SNAPSHOT = ["comment", "magnitude", "live", "liveMin"];
+  var INHERITED_FROM_SNAPSHOT = ["comment", "magnitude", "live", "liveMin", "origin", "finMin", "finOff"];
   function inheritFromSourceSnapshots(positions) {
     var snapById = null;
     positions.forEach(function (p) {
@@ -8633,11 +8646,14 @@
   // Fourth one since 2026-10-24: "props" = long-term bets (a season or an
   // election — top 4, most clean sheets, relegation, présidentielle…),
   // i.e. a Polymarket event whose slug carries no match date.
-  var ORIGIN_KEYS = ["manual", "auto", "cmp", "props"];
-  var ORIGIN_COLORS = { manual: "#f472b6", auto: "#38bdf8", cmp: "#f59e0b", props: "#14b8a6" };
-  var ORIGIN_ICONS = { manual: "✍️", auto: "🎯", cmp: "⚖️", props: "⏳" };
-  var ORIGIN_LABELS = { manual: "Manuel", auto: "Auto", cmp: "Comparaison", props: "Props" };
-  var ORIGIN_FILTER_LABELS = { manual: "manuels", auto: "auto", cmp: "comparaison", props: "props" };
+  // Fifth one since 2026-11-02: "fin" = Fin de match, a bet taken live late
+  // (from the 70th minute of play on, what the ⏱️ Ne marque plus Labo
+  // measures), with the ten-minute slot it was taken in (snapFinMin).
+  var ORIGIN_KEYS = ["manual", "auto", "cmp", "props", "fin"];
+  var ORIGIN_COLORS = { manual: "#f472b6", auto: "#38bdf8", cmp: "#f59e0b", props: "#14b8a6", fin: "#818cf8" };
+  var ORIGIN_ICONS = { manual: "✍️", auto: "🎯", cmp: "⚖️", props: "⏳", fin: "⏱️" };
+  var ORIGIN_LABELS = { manual: "Manuel", auto: "Auto", cmp: "Comparaison", props: "Props", fin: "Fin de match" };
+  var ORIGIN_FILTER_LABELS = { manual: "manuels", auto: "auto", cmp: "comparaison", props: "props", fin: "fin de match" };
   // Long-term market: its Polymarket event slug is known and has no
   // YYYY-MM-DD in it (every single-match event slug does).
   function isLongTermSlug(slug) { return !!slug && !/\d{4}-\d{2}-\d{2}/.test(slug); }
@@ -8650,20 +8666,42 @@
     if (snapPropsCache) snapPropsCache.set(s, v);
     return v;
   }
+  // Fin de match slot, 70 / 80 / 90 (70e–79e, 80e–89e, 90e and stoppage
+  // time): the one picked by hand (finMin, Seb's 70'/80'/90' buttons), else
+  // the ⏱️ Ne marque plus reading the bet was saved from, else the minute of
+  // play of your first buy or pin (snapLiveInfo) — null before the 70th.
+  var FIN_SLOTS = [70, 80, 90];
+  function finSlot(m) { return m >= 90 ? 90 : m >= 80 ? 80 : m >= 70 ? 70 : null; }
+  function snapFinMin(s) {
+    if (!s) return null;
+    if (FIN_SLOTS.indexOf(s.finMin) !== -1) return s.finMin;
+    if (s.gt && s.gt.min) return finSlot(s.gt.min);
+    var li = snapLiveInfo(s);
+    if (!li.on || li.min == null || li.min < 0 || li.min > LIVE_PIN_MAX) return null;
+    return finSlot(matchMinute(li.min));
+  }
+  function finSlotLabel(m) { return m ? m + "'" : ""; }
   function snapOrigin(s) {
     if (!s) return "auto";
+    // a late live bet is Fin de match whatever it was filed under before,
+    // unless another Type was clicked on it since (finOff)
+    if (s.origin === "fin" || (!s.finOff && snapFinMin(s) != null)) return "fin";
     if (ORIGIN_LABELS[s.origin]) return s.origin;
     if (s.cmp) return "cmp";
     if (snapIsProps(s)) return "props";
     return s.isManual ? "manual" : "auto";
   }
   function originCardAttrs(s) { var o = snapOrigin(s); return ' data-origin="' + o + '" style="--oc:' + ORIGIN_COLORS[o] + '"'; }
-  function originBadgeHtml(s) { var o = snapOrigin(s); return '<span class="snap-origin-badge">' + ORIGIN_ICONS[o] + ' ' + ORIGIN_LABELS[o] + '</span>'; }
+  function originBadgeHtml(s) {
+    var o = snapOrigin(s), fm = o === "fin" ? snapFinMin(s) : null;
+    return '<span class="snap-origin-badge"' + (o === "fin" ? ' title="' + (fm ? "Pris entre la " + fm + "e et la " + (fm === 90 ? "fin du match" : (fm + 9) + "e minute") : "Minute de prise inconnue") + '"' : '') + '>' + ORIGIN_ICONS[o] + ' ' + ORIGIN_LABELS[o] + (fm ? ' · ' + finSlotLabel(fm) : '') + '</span>';
+  }
   var MANUAL_VS_AUTO_GROUPS = [
     { key: "manual", label: "✍️ Paris manuels", color: ORIGIN_COLORS.manual, match: function (s) { return snapOrigin(s) === "manual"; } },
     { key: "auto", label: "🎯 Suivi des whales", color: ORIGIN_COLORS.auto, match: function (s) { return snapOrigin(s) === "auto"; } },
     { key: "cmp", label: "⚖️ Comparaison", color: ORIGIN_COLORS.cmp, match: function (s) { return snapOrigin(s) === "cmp"; } },
-    { key: "props", label: "⏳ Props", color: ORIGIN_COLORS.props, match: function (s) { return snapOrigin(s) === "props"; } }
+    { key: "props", label: "⏳ Props", color: ORIGIN_COLORS.props, match: function (s) { return snapOrigin(s) === "props"; } },
+    { key: "fin", label: "⏱️ Fin de match", color: ORIGIN_COLORS.fin, match: function (s) { return snapOrigin(s) === "fin"; } }
   ];
   function renderManualVsAuto(list, store) {
     list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
@@ -8713,13 +8751,21 @@
           : "color:" + tierColor + ";border-color:" + tierColor;
         return '<button type="button" class="manual-auto-tier-chip' + (tierActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" data-group="' + esc(g.key) + '" data-store="' + store.name + '" style="' + chipStyle + '" title="' + esc(g.label + " · " + tier + " : " + tierWin + "/" + tierItems.length) + '">' + esc(tier) + " " + tierWr + '%</button>';
       }).join("");
-      return rowHtml + (tierChips ? '<div class="manual-auto-tier-chips">' + tierChips + '</div>' : "");
+      // Fin de match: its winrate and ROI by ten-minute slot too
+      var finChips = g.key !== "fin" ? "" : FIN_SLOTS.concat([null]).map(function (m) {
+        var its = decided.filter(function (s) { return snapFinMin(s) === m; });
+        if (!its.length) return "";
+        var w = its.filter(function (s) { return s.leaderName === s.winningSide; }).length, a = aggregateFlatPnl(its, store);
+        var lbl = m ? finSlotLabel(m) : "minute ?";
+        return '<span class="manual-auto-fin-chip" style="color:' + g.color + ';border-color:' + g.color + '" title="' + esc("⏱️ Fin de match " + (m ? "à la " + m + "e" + (m === 90 ? " et après" : "–" + (m + 9) + "e") : "minute de prise inconnue") + " : " + w + "/" + its.length + " gagnés" + (a.roi != null ? ", ROI " + (a.roi >= 0 ? "+" : "") + a.roi.toFixed(0) + " %" : "")) + '">' + esc(lbl) + ' ' + Math.round(w / its.length * 100) + '%' + (a.roi != null ? ' · ' + (a.roi >= 0 ? '+' : '') + a.roi.toFixed(0) + ' % ROI' : '') + ' · ' + its.length + ' pari' + (its.length > 1 ? 's' : '') + '</span>';
+      }).join("");
+      return rowHtml + (tierChips ? '<div class="manual-auto-tier-chips">' + tierChips + '</div>' : "") + (finChips ? '<div class="manual-auto-tier-chips">' + finChips + '</div>' : "");
     }).join("");
     var filterNoteHtml = store.state.manualVsAutoFilter
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(MANUAL_VS_AUTO_GROUPS.filter(function (g) { return g.key === store.state.manualVsAutoFilter; })[0].label) + '</b> — reclique la ligne active pour l\'enlever.</div>'
       : '';
     syncSnapToggleLabel(store.ids.manualVsAutoToggle, store.state.manualVsAutoCollapsed, "les types de paris");
-    el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.manualVsAutoCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Par type : manuel, suivi des whales, comparaison, props</div>' +
+    el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.manualVsAutoCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Par type : manuel, suivi des whales, comparaison, props, fin de match</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — clique une ligne pour filtrer, une pastille de confiance pour affiner.</div>' +
       rows + filterNoteHtml + '</div></div>';
   }
@@ -8788,6 +8834,12 @@
     w.propsPnl = propsAgg.pnl;
     w.propsStake = propsAgg.stakeSum;
     w.propsRoi = propsItems.length ? propsAgg.roi : null;
+    var finItems = items.filter(function (s) { return snapOrigin(s) === "fin"; });
+    var finAgg = aggregateFlatPnl(finItems, store);
+    w.finCount = finItems.length;
+    w.finPnl = finAgg.pnl;
+    w.finStake = finAgg.stakeSum;
+    w.finRoi = finItems.length ? finAgg.roi : null;
     w.manualCount = manual.length;
     w.autoCount = auto.length;
     w.manualPnl = manualAgg.pnl;
@@ -8874,13 +8926,15 @@
     var aRoiTxt = w.autoRoi == null ? '' : ' · ROI ' + (w.autoRoi >= 0 ? '+' : '') + w.autoRoi.toFixed(0) + ' %';
     var cRoiTxt = w.cmpRoi == null ? '' : ' · ROI ' + (w.cmpRoi >= 0 ? '+' : '') + w.cmpRoi.toFixed(0) + ' %';
     var pRoiTxt = w.propsRoi == null ? '' : ' · ROI ' + (w.propsRoi >= 0 ? '+' : '') + w.propsRoi.toFixed(0) + ' %';
+    var fRoiTxt = w.finRoi == null ? '' : ' · ROI ' + (w.finRoi >= 0 ? '+' : '') + w.finRoi.toFixed(0) + ' %';
     // #f472b6/#38bdf8 — same manuel/auto color convention as the console
     // avancée and Manuel vs suivi auto (MANUAL_VS_AUTO_GROUPS) above.
     return labeledBarsHtml([
       { label: '✍️', count: w.manualCount || 0, color: '#f472b6', title: '✍️ Manuel ' + (w.manualCount || 0) + mRoiTxt },
       { label: '🎯', count: w.autoCount || 0, color: '#38bdf8', title: '🎯 Suivi whales ' + (w.autoCount || 0) + aRoiTxt },
       { label: '⚖️', count: w.cmpCount || 0, color: ORIGIN_COLORS.cmp, title: '⚖️ Comparaison ' + (w.cmpCount || 0) + cRoiTxt },
-      { label: '⏳', count: w.propsCount || 0, color: ORIGIN_COLORS.props, title: '⏳ Props ' + (w.propsCount || 0) + pRoiTxt }
+      { label: '⏳', count: w.propsCount || 0, color: ORIGIN_COLORS.props, title: '⏳ Props ' + (w.propsCount || 0) + pRoiTxt },
+      { label: '⏱️', count: w.finCount || 0, color: ORIGIN_COLORS.fin, title: '⏱️ Fin de match ' + (w.finCount || 0) + fRoiTxt }
     ]);
   }
   // Cells shared by both a normal week row and the bold totals row below —
@@ -8903,6 +8957,7 @@
       autoCount: 0, autoPnl: 0, autoStake: 0,
       cmpCount: 0, cmpPnl: 0, cmpStake: 0,
       propsCount: 0, propsPnl: 0, propsStake: 0,
+      finCount: 0, finPnl: 0, finStake: 0,
       tierCounts: {}
     };
     weeks.forEach(function (w) {
@@ -8923,6 +8978,9 @@
       t.propsCount += w.propsCount || 0;
       t.propsPnl += w.propsPnl || 0;
       t.propsStake += w.propsStake || 0;
+      t.finCount += w.finCount || 0;
+      t.finPnl += w.finPnl || 0;
+      t.finStake += w.finStake || 0;
       CONFIDENCE_TIERS.forEach(function (tier) { if (w.tierCounts && w.tierCounts[tier]) t.tierCounts[tier] = (t.tierCounts[tier] || 0) + w.tierCounts[tier]; });
     });
     t.roi = t.stakeSum > 0 ? (t.pnl / t.stakeSum * 100) : null;
@@ -8932,6 +8990,7 @@
     t.autoRoi = t.autoStake > 0 ? (t.autoPnl / t.autoStake * 100) : null;
     t.cmpRoi = t.cmpStake > 0 ? (t.cmpPnl / t.cmpStake * 100) : null;
     t.propsRoi = t.propsStake > 0 ? (t.propsPnl / t.propsStake * 100) : null;
+    t.finRoi = t.finStake > 0 ? (t.finPnl / t.finStake * 100) : null;
     return t;
   }
   // Collapsed by default to just the Total row — the per-week breakdown is
@@ -9645,6 +9704,7 @@
     groups.push({ label: "Suivi auto", items: items.filter(function (s) { return snapOrigin(s) === "auto"; }) });
     groups.push({ label: "Comparaison", items: items.filter(function (s) { return snapOrigin(s) === "cmp"; }) });
     groups.push({ label: "Props", items: items.filter(function (s) { return snapOrigin(s) === "props"; }) });
+    groups.push({ label: "Fin de match", items: items.filter(function (s) { return snapOrigin(s) === "fin"; }) });
     NOTE_BANDS.forEach(function (b, i) { groups.push({ label: b.label, items: items.filter(function (s) { return typeof s.noteAtSnapshot === "number" && bucketIndex(NOTE_BANDS, s.noteAtSnapshot) === i; }) }); });
     function pos(v) { return (Math.max(20, Math.min(100, v)) - 20) / 80 * 100; }
     var body = groups.map(function (g) {
@@ -10090,6 +10150,7 @@
           autoCount: 0, autoPnl: 0, autoStake: 0,
           cmpCount: 0, cmpPnl: 0, cmpStake: 0,
           propsCount: 0, propsPnl: 0, propsStake: 0,
+          finCount: 0, finPnl: 0, finStake: 0,
           tierCounts: {}
         };
         weeks.push(current);
@@ -10115,6 +10176,7 @@
       w.autoRoi = w.autoStake > 0 ? (w.autoPnl / w.autoStake * 100) : null;
       w.cmpRoi = w.cmpStake > 0 ? (w.cmpPnl / w.cmpStake * 100) : null;
       w.propsRoi = w.propsStake > 0 ? (w.propsPnl / w.propsStake * 100) : null;
+      w.finRoi = w.finStake > 0 ? (w.finPnl / w.finStake * 100) : null;
     });
     return weeks;
   }
@@ -10438,13 +10500,22 @@
   function compareCfgFor(st, s) { return st.pnlChartCompareFilters[snapOrigin(s)] || st.pnlChartCompareFilters.manual; }
   // "Type : ✍️ 🎯 ⚖️" on a card, where the category can be corrected by
   // hand (store.allowOriginEdit — Seb, whose bets are classified by guess).
+  // On a Fin de match card, 70' / 80' / 90' follow: the slot found from
+  // your first buy is lit, a click sets it by hand (again: back to it).
   function originButtonsHtml(snap, store) {
     if (!store.allowOriginEdit) return "";
-    var cur = snapOrigin(snap);
+    var cur = snapOrigin(snap), finAuto = snapFinMin(Object.assign({}, snap, { finMin: null }));
+    var base = ' data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '"' + (finAuto != null ? ' data-fin-auto="1"' : '');
+    function look(c, on) { return on ? "background:" + c + ";border-color:" + c + ";color:#fff" : "color:" + c + ";border-color:" + c; }
+    var fm = cur === "fin" ? snapFinMin(snap) : null;
     return '<span class="snap-side-label">Type :</span>' + ORIGIN_KEYS.map(function (k) {
       var c = ORIGIN_COLORS[k], on = cur === k;
-      return '<button type="button" class="snap-origin-btn' + (on ? ' active' : '') + '" data-snap-id="' + esc(snap.id) + '" data-store="' + store.name + '" data-origin="' + k + '" title="' + ORIGIN_LABELS[k] + '" style="' + (on ? "background:" + c + ";border-color:" + c + ";color:#fff" : "color:" + c + ";border-color:" + c) + '">' + ORIGIN_ICONS[k] + '</button>';
-    }).join("");
+      return '<button type="button" class="snap-origin-btn' + (on ? ' active' : '') + '"' + base + ' data-origin="' + k + '" title="' + ORIGIN_LABELS[k] + '" style="' + look(c, on) + '">' + ORIGIN_ICONS[k] + '</button>';
+    }).join("") + (cur !== "fin" ? "" : FIN_SLOTS.map(function (m) {
+      var on = fm === m, hand = snap.finMin === m;
+      var title = "Pris entre la " + m + "e et la " + (m === 90 ? "fin du match" : (m + 9) + "e minute") + (on ? (hand ? " (choisi à la main — reclique pour revenir à la détection)" : " (détecté : ton 1er achat)") : "");
+      return '<button type="button" class="snap-origin-btn snap-fin-btn' + (on ? ' active' : '') + '"' + base + ' data-origin="fin" data-fin-min="' + m + '"' + (hand ? ' data-fin-hand="1"' : '') + ' title="' + esc(title) + '" style="' + look(ORIGIN_COLORS.fin, on) + '">' + finSlotLabel(m) + '</button>';
+    }).join(""));
   }
   function snapMatchesCompareFilters(snap, cfg, weekOptions) {
     if (cfg.tiers && cfg.tiers.length && cfg.tiers.indexOf(snap.confidence) === -1) return false;
@@ -10671,7 +10742,7 @@
     // lands in. Only populated in console mode (the only place isManual is
     // a first-class filter dimension); cheap enough to leave the branch in
     // rather than duplicate the loop.
-    var subStats = { manual: { count: 0, pnl: 0, stakeSum: 0 }, auto: { count: 0, pnl: 0, stakeSum: 0 }, cmp: { count: 0, pnl: 0, stakeSum: 0 }, props: { count: 0, pnl: 0, stakeSum: 0 } };
+    var subStats = { manual: { count: 0, pnl: 0, stakeSum: 0 }, auto: { count: 0, pnl: 0, stakeSum: 0 }, cmp: { count: 0, pnl: 0, stakeSum: 0 }, props: { count: 0, pnl: 0, stakeSum: 0 }, fin: { count: 0, pnl: 0, stakeSum: 0 } };
     decidedForLoop.forEach(function (snap) {
       var stake = chartStakeFor(snap);
       var pnl = pricingFn(snap, stake);
@@ -10699,7 +10770,7 @@
       // (hypotheticalFlatPnl is only ever positive on a leader win, always
       // -stake on a loss).
       var won = pnl >= 0;
-      series.push({ date: new Date(snapSortTime(snap)), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744", isManual: !!snap.isManual, origin: snapOrigin(snap), confidence: snap.confidence });
+      series.push({ date: new Date(snapSortTime(snap)), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744", isManual: !!snap.isManual, origin: snapOrigin(snap), finMin: snapFinMin(snap), confidence: snap.confidence });
       weeklySeries.push({ date: new Date(snapSortTime(snap)), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, origin: snapOrigin(snap), confidence: snap.confidence });
     });
     subStats.manual.roi = subStats.manual.stakeSum > 0 ? (subStats.manual.pnl / subStats.manual.stakeSum * 100) : null;
@@ -10795,7 +10866,7 @@
       // 2026-10-10) — the same split the console avancée makes, as a plain filter.
       (store.originChips ? originChipsHtml(st) :
       '<label>Type <select id="' + idp + 'pnlChartOriginSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' +
-        [["", "Tout"], ["manual", "✍️ Manuel"], ["auto", "🎯 Auto"], ["cmp", "⚖️ Comparaison"], ["props", "⏳ Props"]].map(function (o) {
+        [["", "Tout"], ["manual", "✍️ Manuel"], ["auto", "🎯 Auto"], ["cmp", "⚖️ Comparaison"], ["props", "⏳ Props"], ["fin", "⏱️ Fin de match"]].map(function (o) {
           return '<option value="' + o[0] + '"' + (st.pnlChartOriginFilter === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join("") + '</select></label>') +
       tierChipsHtml +
@@ -10811,7 +10882,7 @@
     // rather
     // than hiding them, since the console's own per-ligne filters take
     // over computing the curve while it's open.
-    var consoleToggleHtml = '<button type="button" id="' + idp + 'pnlChartConsoleBtn" class="pnl-chart-console-btn' + (st.pnlChartConsoleOpen ? ' active' : '') + '">⚙ Console avancée — Manuel, Auto, Comparaison, Props, filtres détaillés' + (st.pnlChartConsoleOpen ? ' · fermer ▴' : ' ▾') + '</button>';
+    var consoleToggleHtml = '<button type="button" id="' + idp + 'pnlChartConsoleBtn" class="pnl-chart-console-btn' + (st.pnlChartConsoleOpen ? ' active' : '') + '">⚙ Console avancée — Manuel, Auto, Comparaison, Props, Fin de match, filtres détaillés' + (st.pnlChartConsoleOpen ? ' · fermer ▴' : ' ▾') + '</button>';
     var consolePanelHtml = "";
     if (st.pnlChartConsoleOpen) {
       consolePanelHtml = '<div class="compare-console">' +
@@ -10819,6 +10890,7 @@
         compareLineFiltersHtml("auto", "🎯 Auto", st.pnlChartCompareFilters.auto, true, weekOptions, compareColStatsHtml("#38bdf8", subStats.auto), "#38bdf8") +
         compareLineFiltersHtml("cmp", "⚖️ Comparaison", st.pnlChartCompareFilters.cmp, false, weekOptions, compareColStatsHtml(ORIGIN_COLORS.cmp, subStats.cmp), ORIGIN_COLORS.cmp) +
         compareLineFiltersHtml("props", "⏳ Props", st.pnlChartCompareFilters.props, false, weekOptions, compareColStatsHtml(ORIGIN_COLORS.props, subStats.props), ORIGIN_COLORS.props) +
+        compareLineFiltersHtml("fin", "⏱️ Fin de match", st.pnlChartCompareFilters.fin, false, weekOptions, compareColStatsHtml(ORIGIN_COLORS.fin, subStats.fin), ORIGIN_COLORS.fin) +
       '</div>';
     }
     // Realized PnL / avg ROI for the exact subset of filters above —
@@ -13217,20 +13289,24 @@
       var cx = x(i), cy = y(lineVals[i]);
       var strokeColor = p.origin ? ORIGIN_COLORS[p.origin] : p.isManual != null ? (p.isManual ? "#f472b6" : "#38bdf8") : (p.pointColor ? "var(--panel)" : null);
       var strokeAttr = strokeColor ? ' stroke="' + strokeColor + '" stroke-width="1.5"' : '';
-      var letterY = p.isManual && p.origin !== "cmp" && p.origin !== "props" ? cy - 3 : cy;
+      var letterY = p.origin === "fin" ? cy + 1.5 : p.isManual && p.origin !== "cmp" && p.origin !== "props" ? cy - 3 : cy;
       var letterHtml = hasTier
         ? '<text x="' + cx.toFixed(2) + '" y="' + letterY.toFixed(2) + '" font-size="6" font-weight="800" fill="#fff" text-anchor="middle" dominant-baseline="central" pointer-events="none">' + esc(p.confidence) + '</text>'
         : '';
       var cls = 'chart-pt' + (p.id != null ? ' chart-pt-clickable' : '');
       var fill = p.pointColor || lineColor;
-      var dataAttrs = 'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + (p.isManual != null ? ' data-manual="' + (p.isManual ? "1" : "0") + '"' : '') + (p.origin ? ' data-origin="' + p.origin + '"' : '') + (p.confidence ? ' data-confidence="' + esc(p.confidence) + '"' : '');
+      var dataAttrs = 'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + (p.isManual != null ? ' data-manual="' + (p.isManual ? "1" : "0") + '"' : '') + (p.origin ? ' data-origin="' + p.origin + '"' : '') + (p.origin === "fin" && p.finMin ? ' data-fin="' + p.finMin + '"' : '') + (p.confidence ? ' data-confidence="' + esc(p.confidence) + '"' : '');
       var pinD = 'M' + cx.toFixed(2) + ',' + (cy + 11).toFixed(2) +
         ' C' + (cx - 7).toFixed(2) + ',' + (cy + 2).toFixed(2) + ' ' + (cx - 6).toFixed(2) + ',' + (cy - 6).toFixed(2) + ' ' + cx.toFixed(2) + ',' + (cy - 6).toFixed(2) +
         ' C' + (cx + 6).toFixed(2) + ',' + (cy - 6).toFixed(2) + ' ' + (cx + 7).toFixed(2) + ',' + (cy + 2).toFixed(2) + ' ' + cx.toFixed(2) + ',' + (cy + 11).toFixed(2) + ' Z';
       // Comparaison = losange, so the three categories read apart by shape too.
       var diamondD = 'M' + cx.toFixed(2) + ',' + (cy - 7).toFixed(2) + ' L' + (cx + 7).toFixed(2) + ',' + cy.toFixed(2) + ' L' + cx.toFixed(2) + ',' + (cy + 7).toFixed(2) + ' L' + (cx - 7).toFixed(2) + ',' + cy.toFixed(2) + ' Z';
       var squareHtml = '<rect x="' + (cx - 5.5).toFixed(2) + '" y="' + (cy - 5.5).toFixed(2) + '" width="11" height="11" rx="1.5" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></rect>';
-      var shapeHtml = p.origin === "props" ? squareHtml : p.origin === "cmp"
+      // Fin de match = triangle.
+      var triD = 'M' + cx.toFixed(2) + ',' + (cy - 7).toFixed(2) + ' L' + (cx + 7).toFixed(2) + ',' + (cy + 5).toFixed(2) + ' L' + (cx - 7).toFixed(2) + ',' + (cy + 5).toFixed(2) + ' Z';
+      var shapeHtml = p.origin === "props" ? squareHtml : p.origin === "fin"
+        ? '<path d="' + triD + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></path>'
+        : p.origin === "cmp"
         ? '<path d="' + diamondD + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></path>'
         : p.isManual
         ? '<path d="' + pinD + '" class="' + cls + '" fill="' + fill + '"' + strokeAttr + ' ' + dataAttrs + '></path>'
@@ -13359,7 +13435,7 @@
         var originAttr = pt.getAttribute("data-origin") || (manualAttr == null ? null : manualAttr === "1" ? "manual" : "auto");
         var confidence = pt.getAttribute("data-confidence");
         var manualHtml = originAttr
-          ? '<span class="chart-tooltip-result-tag" style="color:' + ORIGIN_COLORS[originAttr] + ';background:color-mix(in srgb, ' + ORIGIN_COLORS[originAttr] + ' 18%, transparent)">' + ORIGIN_ICONS[originAttr] + ' ' + ORIGIN_LABELS[originAttr] + '</span>'
+          ? '<span class="chart-tooltip-result-tag" style="color:' + ORIGIN_COLORS[originAttr] + ';background:color-mix(in srgb, ' + ORIGIN_COLORS[originAttr] + ' 18%, transparent)">' + ORIGIN_ICONS[originAttr] + ' ' + ORIGIN_LABELS[originAttr] + (pt.getAttribute("data-fin") ? ' · ' + pt.getAttribute("data-fin") + "'" : '') + '</span>'
           : '';
         var confHtml = confidence
           ? '<span class="chart-tooltip-result-tag" style="color:' + CONFIDENCE_COLORS[confidence] + ';background:color-mix(in srgb, ' + CONFIDENCE_COLORS[confidence] + ' 18%, transparent)">' + esc(confidence) + '</span>'
@@ -14451,7 +14527,14 @@
     if (originBtn) {
       e.preventDefault();
       e.stopPropagation();
-      enqueueOp(resolveWritableStoreFromEl(originBtn), { type: "editPosition", id: originBtn.getAttribute("data-snap-id"), patch: { origin: originBtn.getAttribute("data-origin") } });
+      // Fin de match: a slot button sets (or, clicked again, clears) the
+      // slot; another Type on a bet detected as late live sets finOff, so
+      // the detection stops filing it under Fin de match.
+      var oKey = originBtn.getAttribute("data-origin"), oMin = originBtn.getAttribute("data-fin-min");
+      var oPatch = oMin ? { origin: "fin", finMin: originBtn.hasAttribute("data-fin-hand") ? null : Number(oMin), finOff: null }
+        : oKey === "fin" ? { origin: "fin", finOff: null }
+        : { origin: oKey, finOff: originBtn.hasAttribute("data-fin-auto") ? true : null };
+      enqueueOp(resolveWritableStoreFromEl(originBtn), { type: "editPosition", id: originBtn.getAttribute("data-snap-id"), patch: oPatch });
       return;
     }
     var delBtn = e.target.closest ? e.target.closest(".snap-delete-btn") : null;
@@ -14723,7 +14806,9 @@
         winningSide: null,
         savedAt: new Date().toISOString()
       };
-      if (originSel && originSel.value !== "manual") manualSnap.origin = originSel.value;
+      var finPick = originSel && /^fin(\d+)$/.exec(originSel.value);
+      if (finPick) { manualSnap.origin = "fin"; manualSnap.finMin = Number(finPick[1]); }
+      else if (originSel && originSel.value !== "manual") manualSnap.origin = originSel.value;
       Object.keys(flags || {}).forEach(function (k) { manualSnap[k] = flags[k]; });
       enqueueOp(store, { type: "add", id: manualSnap.id, snapshot: manualSnap });
       clear();
@@ -14759,7 +14844,11 @@
     var btn = document.getElementById(btnId);
     if (!btn) return;
     btn.addEventListener("click", function () {
-      var list = store.loadRaw();
+      // a Fin de match bet carries its slot (finDeMatch: 70 / 80 / 90, null
+      // when unknown) so the file can be analysed as it is
+      var list = store.loadRaw().map(function (s) {
+        return snapOrigin(s) === "fin" ? Object.assign({}, s, { finDeMatch: snapFinMin(s) }) : s;
+      });
       var blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
       var url = URL.createObjectURL(blob);
       var a = document.createElement("a");
@@ -17645,7 +17734,7 @@
     var SEB_COLS = [
       { key: "date", label: "Réglé le", val: function (b) { return b.doneAt || null; } },
       { key: "title", label: "Marché", text: true, val: function (b) { return (b.title || "").toLowerCase(); } },
-      { key: "type", label: "Type", text: true, val: function (b) { return ORIGIN_LABELS[b._origin] || ""; } },
+      { key: "type", label: "Type", text: true, val: function (b) { return (ORIGIN_LABELS[b._origin] || "") + (b._finMin ? " " + b._finMin : ""); } },
       { key: "outcome", label: "Camp", text: true, val: function (b) { return (b.outcome || "").toLowerCase(); } },
       { key: "avg", label: "Prix moyen", val: function (b) { return b.avg; } },
       { key: "stake", label: "Misé", val: function (b) { return b.stake; } },
@@ -18050,6 +18139,8 @@
         if (r.cmp) snap.cmp = r.cmp;
         if (b.liveMin != null) snap.liveMin = b.liveMin;
         if (r.live != null) snap.live = r.live;
+        if (r.sebOriginSet && r.finMin != null) snap.finMin = r.finMin;
+        if (r.sebOriginSet && r.finOff) snap.finOff = true;
         if (b.stake >= 1) snap.realStake = Math.round(b.stake * 100) / 100;
         ops.push({ type: "add", id: id, snapshot: snap });
       });
@@ -18061,7 +18152,7 @@
         if (!s.winningSide && side) ops.push({ type: "setSide", id: s.id, winningSide: side });
         if (!r || !r.sebRated) return;
         var patch = {}, n = 0;
-        ["confidence", "magnitude", "comment"].concat(r.sebOriginSet ? ["origin"] : []).forEach(function (f) {
+        ["confidence", "magnitude", "comment"].concat(r.sebOriginSet ? ["origin", "finMin", "finOff"] : []).forEach(function (f) {
           if ((r[f] || null) !== (s[f] || null)) { patch[f] = r[f] || null; n++; }
         });
         if (r.live != null && r.live !== s.live) { patch.live = r.live; n++; }
@@ -18179,6 +18270,7 @@
           comment: m ? m.comment || null : (inh && ((src && src.comment) || (fz && fz.comment))) || null,
           live: m && m.live != null ? m.live : (inh && src && src.live != null ? src.live : null),
           liveMin: b.liveMin != null ? b.liveMin : null,
+          finMin: m && m.finMin != null ? m.finMin : null, finOff: m && m.finOff ? true : null,
           deletedAt: m && m.deletedAt ? m.deletedAt : null,
           eventSlug: b.slug, isManual: !rich, sebSport: b.sport, sebOpen: !done,
           sebRated: !!m, sebOriginSet: !!(m && m.origin)
@@ -18313,11 +18405,14 @@
     // 📡 Live or before the match (2026-10-31), from each card's Live tick;
     // a bet with no kickoff time (props, futures) stands apart.
     function sebLiveHtml(list, recByKey) {
+      // live bets from the 70th on split off as ⏱️ Fin de match, by slot
       var acc = sebRoiAcc(list, recByKey, function (b, rec) {
+        if (snapOrigin(rec) === "fin") { var fm = snapFinMin(rec); return fm ? "fin" + fm : "fin"; }
         var li = snapLiveInfo(rec);
         return li.on ? "live" : (li.how === "none" && !b.kickoff) ? "unknown" : "pre";
       });
-      return sebRoiBoxHtml("📡 Live ou avant-match", acc, ["live", "pre", "unknown"], { live: "📡 Live", pre: "Avant-match", unknown: "Sans heure de match" });
+      return sebRoiBoxHtml("📡 Live, fin de match ou avant-match", acc, ["live", "fin70", "fin80", "fin90", "fin", "pre", "unknown"],
+        { live: "📡 Live (hors fin de match)", fin70: "⏱️ Fin de match 70'", fin80: "⏱️ Fin de match 80'", fin90: "⏱️ Fin de match 90'", fin: "⏱️ Fin de match (minute ?)", pre: "Avant-match", unknown: "Sans heure de match" });
     }
     // Par sport / Par cote d'entrée / Par mois — at the top of Autres stats
     // (on request, 2026-10-25; they used to sit above "Tes paris").
@@ -18403,7 +18498,10 @@
       // panel (long-term bets live there, not in "Tes paris").
       var recByKey = {};
       sebRecords(list).forEach(function (rec) { recByKey[rec.sebKey] = rec; });
-      list.forEach(function (b) { b._origin = recByKey[b.key] ? snapOrigin(recByKey[b.key]) : "manual"; });
+      list.forEach(function (b) {
+        b._origin = recByKey[b.key] ? snapOrigin(recByKey[b.key]) : "manual";
+        b._finMin = b._origin === "fin" ? snapFinMin(recByKey[b.key]) : null;
+      });
       var isProps = function (b) { return b._origin === "props"; };
       var propsList = list.filter(isProps);
       var propsOpenN = propsList.filter(function (b) { return b.status === "open"; }).length;
@@ -18438,7 +18536,7 @@
           : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td><td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
         return '<tr data-seb-key="' + esc(b.key) + '" class="' + (b.status === "open" ? 'seb-open' : '') + '"><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
           '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + (sebFromSite(b) ? ' <span class="seb-tag" title="Ce pari est aussi dans Saison 26/27 ou Auto >10k">📌</span>' : '') + (snapLiveInfo(recByKey[b.key]).on ? ' <span class="seb-tag" title="Pris en live">📡</span>' : '') + (b.acct && b.acct.tag ? ' <span class="seb-tag" title="Compte ' + esc(b.acct.label) + '">' + esc(b.acct.tag) + '</span>' : '') + '</td>' +
-          '<td class="seb-nowrap"><span class="seb-type" style="color:' + ORIGIN_COLORS[b._origin] + '">' + ORIGIN_ICONS[b._origin] + ' ' + ORIGIN_LABELS[b._origin] + '</span></td>' +
+          '<td class="seb-nowrap"><span class="seb-type" style="color:' + ORIGIN_COLORS[b._origin] + '">' + ORIGIN_ICONS[b._origin] + ' ' + ORIGIN_LABELS[b._origin] + (b._finMin ? ' ' + finSlotLabel(b._finMin) : '') + '</span></td>' +
           '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
       }).join("");
       if (extra) extra.innerHTML = sebConfHtml(list, recByKey) + sebLiveHtml(list, recByKey) +
@@ -18778,7 +18876,7 @@
     var name = l.team + " ne marque plus (moins de " + gtDec(l.line, 1) + ")";
     var rec = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-      isManual: true, gtPick: true,
+      isManual: true, gtPick: true, origin: "fin", finMin: r.min,
       question: r.h + " – " + r.a,
       leaderName: name,
       leaderPriceAtSnapshot: l.buy != null ? l.buy : l.price,
