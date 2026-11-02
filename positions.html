@@ -18776,7 +18776,7 @@
       return '<div class="gt-match"><span class="t">' + esc(gtWhen(m.start)) + '</span><span class="n" title="' + esc(m.comp + " · " + m.title) + '">' + esc(m.title) + '</span><span class="gt-mins">' +
         (d.minutes || [70, 80, 90]).map(function (T) { return '<i class="' + (got.indexOf(T) !== -1 ? "ok" : "") + '">' + T + "'</i>"; }).join("") + '</span></div>';
     }).join("") + '</div>' : '<div class="dim" style="font-size:13px;color:var(--text-dim)">Aucun match de ces compétitions dans les 36 prochaines heures (la liste se remplit à chaque passage du Comparateur).</div>';
-    var head = '<div class="gt-box"><div class="gt-h">Matchs suivis <small>4 h avant → 36 h après maintenant</small>' + state + '</div>' + mHtml + '</div>';
+    var head = '<div class="gt-box"><div class="gt-h">Matchs suivis <small>en cours (coup d\x27envoi il y a moins de 4 h) et à venir dans les 36 prochaines heures</small>' + state + '</div>' + mHtml + '</div>';
     // filters
     function chip(key, val, label) { return '<button type="button" class="al-chip' + (GT[key] === val ? ' on' : '') + '" data-gt-' + key + '="' + esc(val) + '">' + esc(label) + '</button>'; }
     var usedComps = comps.filter(function (c) { return all.some(function (l) { return l.r.c === c; }); });
