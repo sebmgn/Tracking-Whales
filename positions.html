@@ -3671,6 +3671,9 @@ function installPolyV2Compat(root) {
     TITLE: function (r) { return String(r.title || "").toLowerCase(); }
   };
   var walks = {};
+  // Outside a browser fetch says "node" as its user agent, which v2 answers
+  // with 429 (seen 2026-11-03); a browser sends its own and is left alone.
+  var OPTS = typeof window === "undefined" ? { headers: { "User-Agent": "TrackingWhales/1.0" } } : undefined;
 
   function camel(k) { return k.replace(/_([a-z0-9])/g, function (_, c) { return c.toUpperCase(); }); }
   function v1Row(r, isPos) {
@@ -3769,7 +3772,7 @@ function installPolyV2Compat(root) {
       while (!w.done && w.rows.length < need && w.rows.length < MAX_ROWS) {
         // every page restates the filters (v2 wants them back with the cursor)
         var q = Object.assign({}, p, w.started ? { cursor: w.cursor } : { limit: pageSize });
-        var res = await rawFetch(BASE + path + "?" + qs(q));
+        var res = await rawFetch(BASE + path + "?" + qs(q), OPTS);
         if (!res.ok) { var e = new Error("HTTP " + res.status); e.response = res; throw e; }
         var j = await res.json();
         var rows = (j && Array.isArray(j.data)) ? j.data : [];
