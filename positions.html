@@ -10381,13 +10381,17 @@ installPolyV2Compat(window);
   // per bet at the exact x of its dot (same W/padL/padR as
   // buildHistoryChartSvg), height = the stake. Only drawn when stakes
   // actually vary (Seb, Mes Positions) — a flat 1 000 $ sim would be a
-  // row of identical bars.
+  // row of identical bars. Left of the axis: the biggest stake, then the
+  // average stake of the bets on screen (weeklySeries follows the chart's
+  // filters, on request 2026-11-04).
   function buildStakeStripSvg(weeklySeries) {
     var n = weeklySeries.length;
     if (n < 2) return "";
     var stakes = weeklySeries.map(function (p) { return p.stake || 0; });
     var max = Math.max.apply(null, stakes), min = Math.min.apply(null, stakes);
     if (!(max > 0) || max - min < 0.01) return "";
+    var avg = stakes.reduce(function (sum, v) { return sum + v; }, 0) / n;
+    function axisUsd(v) { return fmtUSD(Math.round(v)).replace(/,00\s*\$/, " $"); }
     var W = 1000, padL = 54, padR = 14, H = 46, padT = 4, padB = 2;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     function x(i) { return padL + (i / (n - 1)) * innerW; }
@@ -10403,8 +10407,9 @@ installPolyV2Compat(window);
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-stake-svg" role="img" aria-label="Mise de chaque pari">' +
       '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + (H - padB) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
-      '<text x="' + (padL - 6) + '" y="' + (padT + 8) + '" text-anchor="end" font-size="10" fill="var(--text-dim)">' + esc(fmtUSD(max).replace(/,00\s*\$/, " $")) + '</text>' +
-      '<text x="' + (padL - 6) + '" y="' + (H - padB) + '" text-anchor="end" font-size="10" fill="var(--text-dim)">Mise</text>' +
+      '<text x="' + (padL - 6) + '" y="' + (padT + 8) + '" text-anchor="end" font-size="10" fill="var(--text-dim)">' + esc(axisUsd(max)) + '</text>' +
+      '<text x="' + (padL - 6) + '" y="' + (H - padB - 11) + '" text-anchor="end" font-size="10" fill="var(--text-dim)">Mise moy.</text>' +
+      '<text x="' + (padL - 6) + '" y="' + (H - padB) + '" text-anchor="end" font-size="10" font-weight="700" fill="var(--text-dim)">' + esc(axisUsd(avg)) + '</text>' +
       bars + '</svg>';
   }
   function wireStakeStripTooltip(box) {
