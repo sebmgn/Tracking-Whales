@@ -3043,6 +3043,7 @@
     <button class="tab-btn tab-btn-primary tab-gold-1 active" data-tab="value-trades" type="button"><span class="tab-btn-icon">⭐</span>Value Trades</button>
     <button class="tab-btn tab-btn-primary tab-gold-2" data-tab="snapshots" type="button"><span class="tab-btn-icon">📌</span>Saison 26/27</button>
     <button class="tab-btn tab-btn-primary tab-gold-3" data-tab="by-match" type="button"><span class="tab-btn-icon">🏟️</span>Matchs</button>
+    <button class="tab-btn tab-btn-primary" data-tab="auto-bigtrade" type="button"><span class="tab-btn-icon">🐋</span>Big trades</button>
     <button class="tab-btn tab-btn-primary" data-tab="analyse" type="button"><span class="tab-btn-icon">🔬</span>Analyse</button>
     <button class="tab-btn tab-btn-primary" data-tab="sandbox" type="button"><span class="tab-btn-icon">📝</span>Test</button>
     <button class="tab-btn tab-btn-primary tab-btn-seb" data-tab="seb" type="button"><span class="tab-btn-icon">👤</span>Seb</button>
@@ -3524,8 +3525,8 @@
   </div>
 
   <div class="tab-panel" id="tab-auto-bigtrade">
-    <h2 class="section-title">🐋 Auto &gt;10k avant-match <span class="count-pill" id="autoBigTradeCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Capture automatiquement, carte Value Trades complète, tout match où <b>flaznorp</b> ou <b>RN1</b> a mis 10 000 $ ou plus <b>avant le coup d'envoi</b>, sur leur camp et au prix du marché à ce moment-là — pas besoin de cliquer 📌. Enregistré sur le serveur (AWS) comme Saison 26/27 : visible sur tous tes navigateurs. Aucun vrai ordre n'est jamais passé. La capture se fait quand le site est ouvert sur au moins un appareil avant le début du match ; chaque carte indique quand le pari a vraiment été pris par rapport au coup d'envoi.</div>
+    <h2 class="section-title">🐋 Big trades <span class="count-pill" id="autoBigTradeCount">—</span></h2>
+    <div class="empty-note" style="padding:0 4px 14px;">Chaque fois que <b>flaznorp</b>, <b>RN1</b> ou <b>VeryLucky888</b> a mis 10 000 $ ou plus sur un camp <b>avant le coup d'envoi</b>, et que ce camp rapporte encore plus de 5 % s'il gagne (cote ≤ 95,2¢) : capturé tout seul sur leur camp, au prix du marché à ce moment-là. Relevé toutes les 15 minutes sur le serveur, même site fermé, et enregistré sur AWS comme Saison 26/27. Chaque carte indique quand le pari a vraiment été pris par rapport au coup d'envoi. Aucun vrai ordre n'est jamais passé.</div>
     <div class="snap-sync-bar">
       <button type="button" id="autoBigTradeExportBtn" class="snap-sync-link" title="Télécharger les captures automatiques (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button id="autoBigTradeTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
@@ -8215,7 +8216,11 @@ installPolyV2Compat(window);
   // derived from the market (autoPreId), so two browsers capturing the same
   // bet write the same record instead of a duplicate.
   var AUTO_PRE_LEGACY_KEY = "vtAutoPre10kSnapshots"; // local-only list from the first version (2026-10-04), moved to AWS on load
-  var AUTO_PRE_TRADERS = ["flaznorp", "RN1"];
+  // Shown under 📡 Signaux → 🐋 Big trades since 2026-11-05, VeryLucky888 added
+  // then. Same list as PRE10K_TRADERS in the notify Lambda. The Analyse
+  // simulator and the emails stay on the first two (AN_SIGNAL_TRADERS).
+  var AUTO_PRE_TRADERS = ["flaznorp", "RN1", "VeryLucky888"];
+  var AN_SIGNAL_TRADERS = ["flaznorp", "RN1"];
   var AUTO_PRE_MIN_STAKE = 10000;
   // A signal counts only while it's still worth more than +5 % if it wins
   // (on request, 2026-10-10): price at most 1 / 1.05 ≈ 95.2¢. Same rule in
@@ -8248,7 +8253,7 @@ installPolyV2Compat(window);
     allowEditPosition: false, // no cote/manual correction — this list is meant to stay an untouched record of what the rule actually captured
     allowSimStakeSlider: true,
     itemNoun: "snapshot",
-    emptyHint: "Rien capturé pour l'instant — dès que flaznorp ou RN1 a 10 000 $+ sur un match qui n'a pas encore commencé, le trade atterrit ici tout seul, sur leur camp.",
+    emptyHint: "Rien capturé pour l'instant — dès que flaznorp, RN1 ou VeryLucky888 a 10 000 $+ sur un match qui n'a pas encore commencé, le trade atterrit ici tout seul, sur leur camp.",
     dateLabelPrefix: "Capturé le",
     simSubtitle: function (stake) { return "PnL simulé si chaque pari avait été misé à " + fmtUSD(stake) + " sur leur camp, au prix du marché au moment de la capture"; },
     cardHypLabel: function (stake) { return "Simulation " + fmtUSD(stake) + "/pari : "; },
@@ -15328,7 +15333,7 @@ installPolyV2Compat(window);
   // of that bet (realStake, see sebSyncToSaison).
   function snapStakeHtml(snap) {
     var st = snap && (snap.stakeUsd || snap.realStake);
-    return st ? '<span class="snap-stake">Ta mise <b>' + esc(fmtUSD(st)) + '</b></span>' : '';
+    return st ? '<span class="snap-stake">Mise <b>' + esc(fmtUSD(st)) + '</b></span>' : '';
   }
   // 📡 Live (on request, 2026-10-31): was the bet taken during the match?
   // Not live by default. Your own tick (live: true/false) wins; else
@@ -17717,7 +17722,7 @@ installPolyV2Compat(window);
   function anSignals() {
     var from = anPeriodStart();
     return loadAutoBigTrade().filter(function (s) {
-      if (!s.autoTrader || anState.hidden[s.autoTrader]) return false;
+      if (AN_SIGNAL_TRADERS.indexOf(s.autoTrader) === -1 || anState.hidden[s.autoTrader]) return false;
       if (from && Date.parse(s.kickoffAt || s.savedAt) < from) return false;
       if (anState.sport !== "all" && anSportOf(s.question, s.eventSlug || "") !== anState.sport) return false;
       return true;
@@ -17729,7 +17734,7 @@ installPolyV2Compat(window);
   }
   function anSignalsHtml() {
     var list = anSignals(), S = anState.stake;
-    var names = AUTO_PRE_TRADERS.filter(function (n) { return !anState.hidden[n]; });
+    var names = AN_SIGNAL_TRADERS.filter(function (n) { return !anState.hidden[n]; });
     if (!names.length) return '';
     var summary = '<div class="an-results">' + names.map(function (n) {
       var mine = list.filter(function (x) { return x.autoTrader === n; });
@@ -17806,7 +17811,7 @@ installPolyV2Compat(window);
     };
   }
   function anWithSignals(name, bets) {
-    if (AUTO_PRE_TRADERS.indexOf(name) === -1) return bets;
+    if (AN_SIGNAL_TRADERS.indexOf(name) === -1) return bets;
     var sigs = loadAutoBigTrade().filter(function (s) { return s.autoTrader === name && s.polyCid && s.leaderPriceAtSnapshot > 0; });
     if (!sigs.length) return bets;
     var cids = {};
@@ -17852,7 +17857,7 @@ installPolyV2Compat(window);
         anResultsHtml(per) + anChartHtml(per) + '</section>' +
       '<section class="an-section"><h3 class="an-stitle">Les paris</h3>' +
         '<div class="an-ssub">Exactement ceux qui font les chiffres ci-dessus, du plus récent au plus ancien, rebâtis à partir de ses achats sur chaque marché · seulement ceux qui rapportent plus de 5 % s\'ils gagnent · « Toi » : ce que la stratégie choisie t\'aurait rapporté avec ' + anK(anState.stake) + '.</div>' +
-        (AUTO_PRE_TRADERS.some(function (n) { return !anState.hidden[n]; }) ? '<div class="an-note">Les signaux >10k de flaznorp et RN1 (ceux des alertes email, pris au moment de l\'alerte même s\'il change d\'avis ensuite) sont tous dans la section <b>🐋 Signaux >10k avant-match</b> en haut de la page. Ici, un pari où il a changé de camp (ex. Barcelona) apparaît sur le camp qu\'il a réellement acheté sur ce marché.</div>' : '') +
+        (AN_SIGNAL_TRADERS.some(function (n) { return !anState.hidden[n]; }) ? '<div class="an-note">Les signaux >10k de flaznorp et RN1 (ceux des alertes email, pris au moment de l\'alerte même s\'il change d\'avis ensuite) sont tous dans la section <b>🐋 Signaux >10k avant-match</b> en haut de la page. Ici, un pari où il a changé de camp (ex. Barcelona) apparaît sur le camp qu\'il a réellement acheté sur ce marché.</div>' : '') +
         anJournalHtml(per) + '</section>' +
       '<section class="an-section"><h3 class="an-stitle">Plus il mise, mieux c\'est ?</h3>' +
         '<div class="an-ssub">ROI moyen par pari selon le montant atteint par le trader, stratégie choisie · ' + esc(period + (anState.pre ? " · avant le match" : "") + (anState.sport !== "all" ? " · " + anSportLabel(anState.sport) : "")) + '</div>' +
@@ -19432,7 +19437,7 @@ installPolyV2Compat(window);
     { id: "paris", label: "📒 Mes paris", tabs: ["seb2", "seb", "snapshots", "test"] },
     { id: "cmp", label: "⚖️ Comparateur", tabs: ["comparateur", "cmp-auto", "cmp-pick"] },
     { id: "alertes", label: "🔔 Alertes", tabs: ["alertes"] },
-    { id: "signaux", label: "📡 Signaux", tabs: ["value-trades", "by-match", "recent-trades", "trades-profiles"] },
+    { id: "signaux", label: "📡 Signaux", tabs: ["value-trades", "auto-bigtrade", "by-match", "recent-trades", "trades-profiles"] },
     { id: "labo", label: "🔬 Labo", tabs: ["analyse", "goaltrack", "gt-pick", "sandbox", "archives"] }
   ];
   function tabGroupOf(tab) { return TAB_GROUPS.filter(function (g) { return g.tabs.indexOf(tab) !== -1; })[0] || TAB_GROUPS[3]; }
