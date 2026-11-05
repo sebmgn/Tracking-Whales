@@ -2882,6 +2882,9 @@
   .gt-tbl tr.tot td { font-weight: 800; border-top: 1px solid var(--panel-border); }
   .gt-tbl .dim { color: var(--text-dim); font-size: 12px; }
   .gt-tbl .nw { white-space: nowrap; }
+  .big-live-on { color: var(--red); font-weight: 800; }
+  #bigLiveBox a { color: var(--text); text-decoration: none; }
+  #bigLiveBox a:hover { color: var(--accent); text-decoration: underline; }
   .gt-scroll { max-height: 640px; overflow: auto; }
   .gt-scroll thead th { position: sticky; top: 0; background: var(--panel); }
   .gt-res-w { color: var(--green); font-weight: 700; }
@@ -3526,7 +3529,8 @@
 
   <div class="tab-panel" id="tab-auto-bigtrade">
     <h2 class="section-title">🐋 Big trades <span class="count-pill" id="autoBigTradeCount">—</span></h2>
-    <div class="empty-note" style="padding:0 4px 14px;">Chaque fois que <b>flaznorp</b>, <b>RN1</b> ou <b>VeryLucky888</b> a mis 10 000 $ ou plus sur un camp <b>avant le coup d'envoi</b>, et que ce camp rapporte encore plus de 5 % s'il gagne (cote ≤ 95,2¢) : capturé tout seul sur leur camp, au prix du marché à ce moment-là. Relevé toutes les 15 minutes sur le serveur, même site fermé, et enregistré sur AWS comme Saison 26/27. Chaque carte indique quand le pari a vraiment été pris par rapport au coup d'envoi. Aucun vrai ordre n'est jamais passé.</div>
+    <div id="bigLiveBox"></div>
+    <div class="empty-note" style="padding:0 4px 14px;"><b>Historique</b> : chaque fois que <b>flaznorp</b>, <b>RN1</b> ou <b>VeryLucky888</b> a mis 10 000 $ ou plus sur un camp <b>avant le coup d'envoi</b>, et que ce camp rapporte encore plus de 5 % s'il gagne (cote ≤ 95,2¢) : capturé tout seul sur leur camp, au prix du marché à ce moment-là. Relevé toutes les 15 minutes sur le serveur, même site fermé, et enregistré sur AWS comme Saison 26/27. Chaque carte indique quand le pari a vraiment été pris par rapport au coup d'envoi. Aucun vrai ordre n'est jamais passé.</div>
     <div class="snap-sync-bar">
       <button type="button" id="autoBigTradeExportBtn" class="snap-sync-link" title="Télécharger les captures automatiques (y compris la corbeille) en JSON">⬇️ Exporter</button>
       <button id="autoBigTradeTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les captures mises à la corbeille">🗑 Corbeille</button>
@@ -4691,6 +4695,7 @@ installPolyV2Compat(window);
       curPrice: typeof p.curPrice === "number" ? p.curPrice : (shares > 0 ? valueUsd / shares : 0),
       valueUsd: valueUsd,
       pnlUsd: (p.cashPnl || 0) * mult,
+      lastAt: p.timestamp || null, // last buy or sell on it (epoch seconds), for 🐋 Big trades
       feeRateBps: 0,
       marketUrl: (p.eventSlug || p.slug) ? "https://polymarket.com/fr/event/" + (p.eventSlug || p.slug) : "https://polymarket.com/fr"
     };
@@ -5214,6 +5219,7 @@ installPolyV2Compat(window);
         var kickoff = raw ? new Date(raw) : null;
         matchTimingCache[matchKey] = { kickoff: (kickoff && !isNaN(kickoff.getTime())) ? kickoff : null, fetchedAt: Date.now() };
         renderValueTrades(); // upgrade from the day-level fallback now that a precise kickoff is known
+        renderBigLive();
       })
       .catch(function () {
         matchTimingCache[matchKey] = { kickoff: null, fetchedAt: Date.now() }; // give up gracefully — day heuristic keeps handling this one
@@ -8438,6 +8444,7 @@ installPolyV2Compat(window);
         var raw = list && list[0] && list[0].gameStartTime;
         var d = raw ? new Date(String(raw).replace(" ", "T").replace(/\+00(:00)?$/, "Z")) : null;
         autoPreCidKickoffCache[cid] = { kickoff: d && !isNaN(d.getTime()) ? d : null, at: Date.now() };
+        renderBigLive();
       })
       .catch(function () { autoPreCidKickoffCache[cid] = { kickoff: null, at: Date.now() - 3000000 }; });
     return undefined;
@@ -8471,7 +8478,90 @@ installPolyV2Compat(window);
         .finally(function () { delete autoPreTimeInFlight[snap.id]; });
     });
   }
-  function renderAutoBigTrade() { renderStoreView(AUTO_BIGTRADE_STORE); }
+  function renderAutoBigTrade() { renderStoreView(AUTO_BIGTRADE_STORE); renderBigLive(); }
+  // ---------- 🐋 Big trades en cours (on request, 2026-11-06) ----------
+  // What flaznorp, RN1 and VeryLucky888 hold right now for 10 000 $ or more,
+  // at the top of the Big trades tab. Read from tradersData, so it follows
+  // the 30 s refresh with no request of its own for the positions. Unlike the
+  // captures below it, any bet still running counts: pre-match, in play or
+  // long term, at any price. It drops out once the match has outlasted
+  // SPORT_MAX_LIVE_MS or the price is decided.
+  var bigLive = { trader: "" };
+  function bigLiveTiming(p) {
+    var mk = matchKeyFromSlug(p.slug);
+    if (!mk) return { st: "long", rank: 2 }; // no date in the slug: a season, an election…
+    scheduleMatchTimingFetch(mk);
+    var cached = matchTimingCache[mk], kickoff = cached ? cached.kickoff : null;
+    if (cached && !kickoff) kickoff = autoPreCidKickoff(p.marketKey.slice("polymarket|".length)) || null;
+    if (!kickoff) {
+      var day = extractMatchDate(p.question, mk), today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (day && day.getTime() < today.getTime()) return { st: "over" };
+      return { st: "day", rank: 1, at: day ? day.getTime() : Infinity };
+    }
+    var left = kickoff.getTime() - Date.now();
+    if (left > 0) return { st: "up", rank: 1, at: kickoff.getTime() };
+    var emoji = sportEmojiFor(p.question, p.slug);
+    var maxLive = SPORT_MAX_LIVE_MS[emoji] != null ? SPORT_MAX_LIVE_MS[emoji] : DEFAULT_MAX_LIVE_MS;
+    return -left > maxLive ? { st: "over" } : { st: "live", rank: 0, at: kickoff.getTime() };
+  }
+  // In play first, then the soonest kickoff, long term last.
+  function bigLiveRows() {
+    var rows = [];
+    AUTO_PRE_TRADERS.forEach(function (name) {
+      (tradersData[name] || []).forEach(function (p) {
+        var paid = p.shares * p.avgPrice;
+        if (!(paid >= AUTO_PRE_MIN_STAKE) || isPriceDecided(p.curPrice)) return;
+        var when = bigLiveTiming(p);
+        if (when.st !== "over") rows.push({ p: p, paid: paid, when: when });
+      });
+    });
+    return rows.sort(function (a, b) { return a.when.rank - b.when.rank || (a.when.at || 0) - (b.when.at || 0) || b.paid - a.paid; });
+  }
+  function bigLiveWhenHtml(w) {
+    var now = Date.now();
+    if (w.st === "live") return '<span class="big-live-on">● En cours</span> <span class="dim">depuis ' + esc(fmtCountdown(now - w.at) || "1 min") + '</span>';
+    if (w.st === "up") return 'Dans ' + esc(fmtCountdown(w.at - now)) + ' <span class="dim">' + esc(new Date(w.at).toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" })) + '</span>';
+    if (w.st === "day") return w.at === Infinity ? '<span class="dim">Date inconnue</span>' : esc(new Date(w.at).toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }));
+    return '<span class="dim">Long terme</span>';
+  }
+  function renderBigLive() {
+    var box = document.getElementById("bigLiveBox"), tab = document.getElementById("tab-auto-bigtrade");
+    if (!box || !tab || !tab.classList.contains("active")) return;
+    var title = '<div class="gt-h">🔴 En cours maintenant';
+    if (!hasLoadedOnce) { box.innerHTML = '<div class="gt-box">' + title + '</div><div class="empty-note">Lecture des positions…</div></div>'; return; }
+    var rows = bigLiveRows(), now = Date.now();
+    var shown = bigLive.trader ? rows.filter(function (r) { return r.p.trader === bigLive.trader; }) : rows;
+    var total = shown.reduce(function (sum, r) { return sum + r.paid; }, 0);
+    function chip(val, label) { return '<button type="button" class="al-chip' + (bigLive.trader === val ? ' on' : '') + '" data-big-live="' + esc(val) + '">' + esc(label) + '</button>'; }
+    var chips = '<div class="gt-filters"><div class="grp">' + chip("", "Tous · " + rows.length) + AUTO_PRE_TRADERS.map(function (n) {
+      return chip(n, n + " · " + rows.filter(function (r) { return r.p.trader === n; }).length);
+    }).join("") + '</div></div>';
+    var missing = AUTO_PRE_TRADERS.filter(function (n) { return !tradersData[n]; });
+    var body = shown.map(function (r) {
+      var p = r.p, cur = p.curPrice, late = p.shares * cur - r.paid, roi = p.avgPrice > 0 ? (cur / p.avgPrice - 1) * 100 : 0;
+      var ago = p.lastAt ? now - p.lastAt * 1000 : null;
+      return '<tr><td class="nw"><b>' + esc(p.trader) + '</b></td>' +
+        '<td>' + esc(sportEmojiFor(p.question, p.slug)) + ' <a href="' + esc(p.marketUrl) + '" target="_blank" rel="noopener">' + esc(p.question) + '</a> <span class="dim">→</span> <b>' + esc(p.outcomeName) + '</b></td>' +
+        '<td class="nw">' + bigLiveWhenHtml(r.when) + '</td>' +
+        '<td class="num"><b>' + esc(fmtUSD(Math.round(r.paid))) + '</b></td>' +
+        '<td class="num">' + esc(fmtCents(p.avgPrice)) + '</td>' +
+        '<td class="num">' + esc(fmtCents(cur)) + '</td>' +
+        '<td class="num ' + (late >= 0 ? 'pnl-pos' : 'pnl-neg') + '">' + esc(fmtUSDSigned(Math.round(late))) + ' <span class="dim">(' + (roi >= 0 ? '+' : '') + roi.toFixed(0) + ' %)</span></td>' +
+        '<td class="nw dim">' + (ago == null ? '—' : ago < 60000 ? "à l'instant" : 'il y a ' + esc(fmtCountdown(ago))) + '</td></tr>';
+    }).join("");
+    box.innerHTML = '<div class="gt-box">' + title + (shown.length ? ' <small>' + shown.length + ' pari' + (shown.length > 1 ? 's' : '') + ' de 10 000 $ ou plus · ' + esc(fmtUSD(Math.round(total))) + ' engagés</small>' : '') + '</div>' + chips +
+      (missing.length ? '<div class="empty-note" style="padding:0 0 8px;">⚠️ Positions non lues pour ' + esc(missing.join(", ")) + ' : Polymarket ne répond pas depuis ta connexion.</div>' : '') +
+      (shown.length ? '<div class="seb-scroll"><table class="gt-tbl"><thead><tr><th>Trader</th><th>Pari</th><th>Match</th><th class="num">Misé</th><th class="num">Prix d\'entrée</th><th class="num">Prix actuel</th><th class="num">Gain latent</th><th>Dernière opération</th></tr></thead><tbody>' + body + '</tbody></table></div>'
+        : '<div class="empty-note">Aucun big trade en cours' + (bigLive.trader ? ' pour ' + esc(bigLive.trader) : '') + ' pour l\'instant.</div>') +
+      '</div>';
+  }
+  document.getElementById("bigLiveBox").addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-big-live]") : null;
+    if (!b) return;
+    bigLive.trader = b.getAttribute("data-big-live");
+    renderBigLive();
+  });
   function checkAutoBigTradeResolutions() { fillAutoPreTradeTimes(); return checkAutoStoreResolutions(AUTO_BIGTRADE_STORE, "tab-auto-bigtrade", renderAutoBigTrade); }
   // ---------- 🧪 Test comparatif / ✋ Choix comparateur (on request, 2026-10-18) ----------
   // Two more filtered views over the shared snapshots list, same pattern as
