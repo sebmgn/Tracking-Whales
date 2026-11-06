@@ -2883,6 +2883,12 @@
   .gt-tbl .dim { color: var(--text-dim); font-size: 12px; }
   .gt-tbl .nw { white-space: nowrap; }
   .big-live-on { color: var(--red); font-weight: 800; }
+  .snap-search { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+  .snap-search[hidden] { display: none; }
+  .snap-search input { flex: 1; max-width: 560px; padding: 8px 12px; font: inherit; font-size: 14px; color: var(--text); background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px; }
+  .snap-search input:focus { outline: none; border-color: var(--accent); }
+  .snap-search-n { font-size: 12.5px; color: var(--text-dim); white-space: nowrap; }
+  .tab-panel.snap-searching > :not(.section-title):not(.snap-search):not(.snap-search-results) { display: none; }
   #bigLiveBox a { color: var(--text); text-decoration: none; }
   #bigLiveBox a:hover { color: var(--accent); text-decoration: underline; }
   .gt-scroll { max-height: 640px; overflow: auto; }
@@ -12198,6 +12204,7 @@ installPolyV2Compat(window);
       preViewCount = fullList.filter(function (s) { return !s.deletedAt; }).length;
       fullList = fullList.filter(store.viewFilter);
     }
+    snapSearchSync(store);
     if (store.state.trashMode) { renderSnapPosTrashView(fullList, store); return; }
     // All Time uses its OWN independent trash field (allTimeDeletedAt) —
     // see the store definition and the delete/restore handlers — so
@@ -12268,8 +12275,18 @@ installPolyV2Compat(window);
     renderWeeklyPnl(list, store);
     renderOtherStats(list, store, cardsList, activeFilterLabels);
     if (store.afterRender) store.afterRender(list);
+    renderStoreCards(store);
+  }
+  // The card list alone (st.panelArgs from renderStoreView), so a search
+  // doesn't redraw the charts on every key.
+  function renderStoreCards(store) {
+    var a = store.state.panelArgs, q = snapSearchQuery(store);
+    if (!a) return;
+    var cardsList = q ? snapSearchList(a.list, q) : a.cardsList, activeFilterLabels = a.labels;
+    if (store.searchCount) store.searchCount.textContent = q ? cardsList.length + " résultat" + (cardsList.length > 1 ? "s" : "") : "";
     if (!cardsList.length) {
-      store.els.list.innerHTML = '<div class="empty-note">' + (activeFilterLabels.length
+      store.els.list.innerHTML = '<div class="empty-note">' + (q ? "Aucun " + store.itemNoun + " pour « " + esc(q) + " »."
+        : activeFilterLabels.length
         ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
         : store.emptyHint) + '</div>';
       return;
@@ -12277,6 +12294,42 @@ installPolyV2Compat(window);
     store.els.list.innerHTML = store.name === "positions"
       ? renderPositionCardsWithOpposedGroups(cardsList, store)
       : cardsList.map(function (snap) { return snapCardHtml(snap, false, store); }).join("");
+  }
+  // 🔎 Recherche (on request, 2026-11-06), under the title of every tab of
+  // bets. It looks through the whole tab whatever the filters above say, and
+  // the chart and panels step aside while it's on, so the results sit right
+  // under the box. Every word must match, accents and case ignored.
+  function snapSearchNorm(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+  function snapSearchQuery(store) { return String(store.state.searchQ || "").trim(); }
+  function snapSearchList(list, q) {
+    var words = snapSearchNorm(q).split(/\s+/);
+    return list.filter(function (s) {
+      var text = snapSearchNorm([s.question, s.leaderName, s.comment, s.autoTrader, s.eventSlug, snapEventLabel(s)].join(" "));
+      return words.every(function (w) { return text.indexOf(w) !== -1; });
+    });
+  }
+  function snapSearchSync(store) {
+    var list = store.els.list, panel = list && list.parentNode;
+    if (!panel || !panel.classList || !panel.classList.contains("tab-panel")) return;
+    if (!store.searchBox) {
+      var box = document.createElement("div"), title = panel.querySelector(".section-title"), timer = null;
+      box.className = "snap-search";
+      box.innerHTML = '<input type="search" placeholder="🔎 Rechercher un pari : équipe, camp, commentaire, date…" aria-label="Rechercher un pari"><span class="snap-search-n"></span>';
+      panel.insertBefore(box, title ? title.nextSibling : panel.firstChild);
+      list.classList.add("snap-search-results");
+      store.searchBox = box;
+      store.searchCount = box.querySelector(".snap-search-n");
+      var input = box.querySelector("input");
+      var apply = function () {
+        store.state.searchQ = input.value;
+        snapSearchSync(store);
+        renderStoreCards(store);
+      };
+      input.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(apply, 120); });
+      input.addEventListener("keydown", function (e) { if (e.key === "Escape") { input.value = ""; apply(); } });
+    }
+    store.searchBox.hidden = !!store.state.trashMode;
+    panel.classList.toggle("snap-searching", !store.state.trashMode && !!snapSearchQuery(store));
   }
   // Mes Positions only — two (or more) of your own positions on the exact
   // same market with different leading sides (see computePositionOpposedColors)
