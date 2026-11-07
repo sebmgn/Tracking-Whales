@@ -1835,6 +1835,8 @@
     box-shadow: 0 4px 14px rgba(51,43,30,.25);
   }
   .chart-tooltip.show { opacity: 1; }
+  .chart-tooltip-match { display: block; font-weight: 700; font-size: 12px; }
+  .chart-tooltip-match:empty { display: none; }
   /* Proposal #5 ("Avec icône de résultat") from the 10-tooltip gallery —
      only the PnL history chart's tooltip (wireHistoryChartTooltip); the
      legacy .vt-scatter-pt tooltip below keeps the plain baseline look
@@ -2062,6 +2064,7 @@
   }
   .pnl-chart-weekly-svg { display: block; width: 100%; height: auto; margin-bottom: 8px; }
   .pnl-chart-stake-svg { display: block; width: 100%; height: auto; margin: -2px 0 4px; }
+  .stake-hit { cursor: pointer; }
   /* Streaks — current run + records. */
   .pnl-streaks { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--panel-border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .pnl-streaks-badges { display: flex; gap: 18px; }
@@ -10504,7 +10507,7 @@ installPolyV2Compat(window);
       // to its neighbours, so hovering anywhere near it shows the stake
       // (wireStakeStripTooltip).
       return '<rect class="stake-bar" id="stakeBar' + i + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + (H - padB - h).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1" fill="' + ((p.pnl || 0) > 0 ? "#00c853" : "#ff1744") + '" fill-opacity="0.9"></rect>' +
-        '<rect class="stake-hit" data-bar="' + i + '" data-tip="' + esc(fmtDateShort(p.date) + " — mise " + fmtUSD(p.stake || 0) + " · " + ((p.pnl || 0) > 0 ? "gagné " : "perdu ") + fmtUSDSigned(p.pnl || 0)) + '" x="' + (x(i) - hitW / 2).toFixed(2) + '" y="0" width="' + hitW.toFixed(2) + '" height="' + H + '" fill="transparent"></rect>';
+        '<rect class="stake-hit" data-bar="' + i + '" data-id="' + esc(p.id) + '" data-tip="' + esc(fmtDateShort(p.date) + " — mise " + fmtUSD(p.stake || 0) + " · " + ((p.pnl || 0) > 0 ? "gagné " : "perdu ") + fmtUSDSigned(p.pnl || 0)) + '" x="' + (x(i) - hitW / 2).toFixed(2) + '" y="0" width="' + hitW.toFixed(2) + '" height="' + H + '" fill="transparent"></rect>';
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-stake-svg" role="img" aria-label="Mise de chaque pari">' +
       '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + (H - padB) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
@@ -10513,7 +10516,7 @@ installPolyV2Compat(window);
       '<text x="' + (padL - 6) + '" y="' + (H - padB) + '" text-anchor="end" font-size="10" font-weight="700" fill="var(--text-dim)">' + esc(axisUsd(avg)) + '</text>' +
       bars + '</svg>';
   }
-  function wireStakeStripTooltip(box) {
+  function wireStakeStripTooltip(box, snaps) {
     var svg = box.querySelector(".pnl-chart-stake-svg");
     if (!svg) return;
     var tip = document.createElement("div");
@@ -10526,7 +10529,8 @@ installPolyV2Compat(window);
         if (lit) { lit.setAttribute("fill-opacity", "0.9"); lit.removeAttribute("stroke"); }
         lit = bar;
         if (bar) { bar.setAttribute("fill-opacity", "1"); bar.setAttribute("stroke", "var(--text)"); }
-        tip.textContent = hit.getAttribute("data-tip");
+        tip.innerHTML = '<span class="chart-tooltip-match"></span>' + esc(hit.getAttribute("data-tip"));
+        snapMatchFill(tip.firstChild, snaps[hit.getAttribute("data-id")]);
         tip.classList.add("show");
       });
       hit.addEventListener("mousemove", function (ev) {
@@ -10971,7 +10975,7 @@ installPolyV2Compat(window);
     // the "Paris par semaine" bar chart embedded right under this one, so
     // its weekly bars can center themselves on this exact chart's own dot
     // positions. See computeWeeklyPnlAligned/buildWeeklyAlignedBarSvg.
-    var weeklySeries = [];
+    var weeklySeries = [], chartSnaps = {};
     // "Tout sélectionner" safety net: traderFilteredFlatPnl (below) and
     // hypotheticalFlatPnl now both price at the same value-trade price
     // (traderHypFlatPnl was switched off each trader's own avgPrice on
@@ -11067,7 +11071,8 @@ installPolyV2Compat(window);
       // -stake on a loss).
       var won = pnl >= 0;
       series.push({ date: new Date(snapSortTime(snap)), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744", isManual: !!snap.isManual, origin: snapOrigin(snap), finMin: snapFinMin(snap), confidence: snap.confidence });
-      weeklySeries.push({ date: new Date(snapSortTime(snap)), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, origin: snapOrigin(snap), confidence: snap.confidence });
+      chartSnaps[snap.id] = snap;
+      weeklySeries.push({ id: snap.id, date: new Date(snapSortTime(snap)), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, origin: snapOrigin(snap), confidence: snap.confidence });
     });
     subStats.manual.roi = subStats.manual.stakeSum > 0 ? (subStats.manual.pnl / subStats.manual.stakeSum * 100) : null;
     subStats.auto.roi = subStats.auto.stakeSum > 0 ? (subStats.auto.pnl / subStats.auto.stakeSum * 100) : null;
@@ -11233,7 +11238,7 @@ installPolyV2Compat(window);
       return;
     }
     var chartHtml = buildHistoryChartSvg(series, { smooth: !!st.pnlChartSmooth, markers: cmpPolicyMarkers(cardsList, store) }) + buildStakeStripSvg(weeklySeries);
-    var hintHtml = '<div class="chart-hint">Clique un point pour aller au trade correspondant — reclique pour revenir.</div>';
+    var hintHtml = '<div class="chart-hint">Clique un point ou une barre de mise pour aller au trade correspondant — reclique pour revenir.</div>';
     var weeks = computeWeeklyPnlAligned(weeklySeries);
     var weeklyHtml = '<div class="pnl-chart-weekly">' +
       '<div class="pnl-chart-weekly-label">Paris par semaine</div>' +
@@ -11246,8 +11251,8 @@ installPolyV2Compat(window);
     wireCompareConsole(el, cardsList, store);
     var box = document.getElementById(boxId);
     if (box) {
-      wireHistoryChartTooltip(box);
-      wireStakeStripTooltip(box);
+      wireHistoryChartTooltip(box, chartSnaps);
+      wireStakeStripTooltip(box, chartSnaps);
       wireDrawdownTooltip(box);
       wireSnapPnlChartClicks(box, store);
     }
@@ -11419,12 +11424,12 @@ installPolyV2Compat(window);
       });
     });
   }
-  // Clicking a point jumps to (and highlights) the matching snapshot card
-  // below; clicking that same point again undoes it — removes the
+  // Clicking a point, or its bar in the stake strip, jumps to (and highlights)
+  // the matching snapshot card below; clicking it again undoes it — removes the
   // highlight and scrolls back to wherever the page was before the first
   // jump, instead of leaving the user stranded down in the card list.
   function wireSnapPnlChartClicks(box, store) {
-    box.querySelectorAll(".chart-pt[data-id]").forEach(function (pt) {
+    box.querySelectorAll(".chart-pt[data-id], .stake-hit[data-id]").forEach(function (pt) {
       pt.addEventListener("click", function () {
         var id = pt.getAttribute("data-id");
         var card = store.els.list ? store.els.list.querySelector('.snap-item[data-key="' + id + '"]') : null;
@@ -13760,7 +13765,52 @@ installPolyV2Compat(window);
         yLabels + xLabels + points + extremaLabels + policyMarker +
       '</svg>';
   }
-  function wireHistoryChartTooltip(box) {
+  // Short match name in the chart's hover boxes (on request, 2026-11-07), read
+  // from the many shapes of the question: "A vs. B: O/U 2.5", "A – B (live)",
+  // "Will A vs. B end in a draw?", "Exact Score: A 0 – 0 B?"…
+  var MATCH_CLUB_TAG = "(?:A?FC|CF|SC|CD|SD|AC|BC|FK|IF)";
+  var MATCH_CLUB_RE = new RegExp("^" + MATCH_CLUB_TAG + "\\s+|\\s+" + MATCH_CLUB_TAG + "(?:\\s+\\d{4})?$", "g");
+  var MATCH_ONE_TEAM_RE = /^(?:Will (.+?) win on [\d-]+\?|Spread: (.+?) \([-+][\d.]+\))$/i;
+  var GAMMA_SEARCH_BASE = "https://gamma-api.polymarket.com/public-search";
+  var chartMatchNames = {}; // condition id or question -> promise of "A – B", or of "" if none
+  function matchTeamShort(t) { return String(t).replace(MATCH_CLUB_RE, "").trim(); }
+  function matchPair(text) {
+    var t = String(text || "")
+      .replace(/\s*-\s*More Markets$/i, "").replace(/\s*\(BO\d\).*$/i, "").replace(/\s*\(live[^)]*\)\s*$/i, "")
+      .replace(/^Will\s+(.+?)\s+end in a draw\?$/i, "$1")
+      .replace(/^Exact Score:\s*(.+?)\s+\d+\s*[-–]\s*\d+\s+(.+?)\??$/i, "$1 – $2").trim();
+    var m = /^Will\s/i.test(t) ? null : t.match(/^(?:[^:]*:\s*)?(.+?)\s+vs\.?\s+([^:]+)/i) || t.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+    return m ? matchTeamShort(m[1]) + " – " + matchTeamShort(m[2]) : "";
+  }
+  function snapMatchShort(snap) {
+    var q = String(snap.question || ""), one = q.match(MATCH_ONE_TEAM_RE);
+    // On a Spread the side bought is usually the other team.
+    if (one) return matchTeamShort(one[1] || one[2]) + (one[2] && snap.leaderName && snap.leaderName !== one[2] ? " – " + matchTeamShort(snap.leaderName) : "");
+    return matchPair(q) || (q.length > 44 ? q.slice(0, 43).trim() + "…" : q);
+  }
+  // Polymarket's "Will A win on …?" and "Spread: A (-1.5)" name one team: the
+  // pair comes from the market's event, read on first hover only and kept for
+  // the session — by condition id, else by searching the exact question (old
+  // bets have no id; a dated "Will" question is unique, a Spread one isn't).
+  function snapMatchFill(el, snap) {
+    if (!snap) return;
+    var q = String(snap.question || ""), cid = snap.polyCid || String(snap.sebKey || "").split("|")[0];
+    if (!/^0x/.test(cid)) cid = "";
+    el.textContent = snapMatchShort(snap);
+    if (!MATCH_ONE_TEAM_RE.test(q) || (!cid && !/^Will /i.test(q))) return;
+    var key = cid || q;
+    chartMatchNames[key] = chartMatchNames[key] || throttledFetch(cid ? GAMMA_MARKETS_BASE + "?condition_ids=" + cid + "&closed=true" : GAMMA_SEARCH_BASE + "?q=" + encodeURIComponent(q))
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        var ev = cid
+          ? data && data[0] && data[0].events && data[0].events[0]
+          : ((data && data.events) || []).filter(function (e) { return (e.markets || []).some(function (m) { return m.question === q; }); })[0];
+        return ev ? matchPair(ev.title) : "";
+      })
+      .catch(function () { delete chartMatchNames[key]; return ""; });
+    chartMatchNames[key].then(function (name) { if (name) el.textContent = name; });
+  }
+  function wireHistoryChartTooltip(box, snaps) {
     var tip = document.createElement("div");
     tip.className = "chart-tooltip chart-tooltip-result";
     box.appendChild(tip);
@@ -13789,6 +13839,7 @@ installPolyV2Compat(window);
         // joined it) — taller and narrower instead: total on its own line,
         // the result itself on the next, the tags + date on the last.
         tip.innerHTML =
+          '<span class="chart-tooltip-match"></span>' +
           '<span class="chart-tooltip-result-total">Total à ce moment : <b>' + esc(pt.getAttribute("data-value")) + '</b></span>' +
           '<span class="chart-tooltip-result-row">' +
             '<span class="chart-tooltip-result-icon" style="background:' + color + '">' + (win ? "✓" : "✗") + '</span>' +
@@ -13799,6 +13850,7 @@ installPolyV2Compat(window);
             manualHtml + confHtml +
             '<span class="chart-tooltip-result-date">' + esc(pt.getAttribute("data-date")) + '</span>' +
           '</span>';
+        snapMatchFill(tip.firstChild, snaps[pt.getAttribute("data-id")]);
         tip.classList.add("show");
       });
       pt.addEventListener("mousemove", function (ev) {
