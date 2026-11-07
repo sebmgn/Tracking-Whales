@@ -1360,7 +1360,16 @@
      and a filled type badge pinned far right. (A wash fading from the left
      was tried and dropped, 2026-10-25.) */
   .snap-item[data-origin] { border-left: 7px solid var(--oc); }
-  .snap-item.snap-win[data-origin], .snap-item.snap-lose[data-origin] { border-left-color: var(--oc); }
+  /* 💸 Cashout: sold before the end — grey, neither won nor lost. */
+  .snap-item.snap-cashout {
+    background: linear-gradient(180deg, color-mix(in srgb, #8a8a8a 20%, var(--cream-grad-1)), color-mix(in srgb, #8a8a8a 28%, var(--cream-grad-2)));
+    border-color: color-mix(in srgb, #8a8a8a 55%, var(--panel-border));
+  }
+  .snap-item.snap-win[data-origin], .snap-item.snap-lose[data-origin], .snap-item.snap-cashout[data-origin] { border-left-color: var(--oc); }
+  .snap-cashout-final { font-size: 12.5px; font-weight: 800; padding: 2px 10px; border-radius: 999px; color: var(--text-dim); border: 1px solid var(--panel-border); white-space: nowrap; }
+  .snap-cashout-final.win { background: var(--green); border-color: transparent; color: #fff; }
+  .snap-cashout-final.lose { background: var(--red); border-color: transparent; color: #fff; }
+  .snap-cashout-verdict { font-size: 12.5px; font-weight: 600; color: var(--text-dim); }
   .snap-origin-badge { order: 99; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: var(--oc); color: #fff; white-space: nowrap; }
   .snap-origin-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -1560,6 +1569,7 @@
   }
   .snap-hyp-pnl.pnl-pos { background: var(--green); }
   .snap-hyp-pnl.pnl-neg { background: var(--red); }
+  .snap-hyp-pnl.pnl-cashout { background: #7a7a7a; }
   .snap-hyp-pnl .tier-wr-roi { color: #fff; opacity: .85; }
   /* Per-trader verdict line under the toolbar, above the frozen card — the
      card's own trader rows are a static snapshot, so this is the only place
@@ -10506,8 +10516,8 @@ installPolyV2Compat(window);
       // Green = that bet won (pnl > 0), red = lost. Visible bar + an invisible full-height hit zone as wide as the gap
       // to its neighbours, so hovering anywhere near it shows the stake
       // (wireStakeStripTooltip).
-      return '<rect class="stake-bar" id="stakeBar' + i + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + (H - padB - h).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1" fill="' + ((p.pnl || 0) > 0 ? "#00c853" : "#ff1744") + '" fill-opacity="0.9"></rect>' +
-        '<rect class="stake-hit" data-bar="' + i + '" data-id="' + esc(p.id) + '" data-tip="' + esc(fmtDateShort(p.date) + " — mise " + fmtUSD(p.stake || 0) + " · " + ((p.pnl || 0) > 0 ? "gagné " : "perdu ") + fmtUSDSigned(p.pnl || 0)) + '" x="' + (x(i) - hitW / 2).toFixed(2) + '" y="0" width="' + hitW.toFixed(2) + '" height="' + H + '" fill="transparent"></rect>';
+      return '<rect class="stake-bar" id="stakeBar' + i + '" x="' + (x(i) - barW / 2).toFixed(2) + '" y="' + (H - padB - h).toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1" fill="' + (p.cashout ? "#9e9e9e" : (p.pnl || 0) > 0 ? "#00c853" : "#ff1744") + '" fill-opacity="0.9"></rect>' +
+        '<rect class="stake-hit" data-bar="' + i + '" data-id="' + esc(p.id) + '" data-tip="' + esc(fmtDateShort(p.date) + " — mise " + fmtUSD(p.stake || 0) + " · " + (p.cashout ? "cashout " : (p.pnl || 0) > 0 ? "gagné " : "perdu ") + fmtUSDSigned(p.pnl || 0)) + '" x="' + (x(i) - hitW / 2).toFixed(2) + '" y="0" width="' + hitW.toFixed(2) + '" height="' + H + '" fill="transparent"></rect>';
     }).join("");
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" class="pnl-chart-stake-svg" role="img" aria-label="Mise de chaque pari">' +
       '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + (H - padB) + '" y2="' + (H - padB) + '" stroke="var(--panel-border)" stroke-width="1"/>' +
@@ -11070,9 +11080,9 @@ installPolyV2Compat(window);
       // (hypotheticalFlatPnl is only ever positive on a leader win, always
       // -stake on a loss).
       var won = pnl >= 0;
-      series.push({ date: new Date(snapSortTime(snap)), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: won ? "#00e676" : "#ff1744", isManual: !!snap.isManual, origin: snapOrigin(snap), finMin: snapFinMin(snap), confidence: snap.confidence });
+      series.push({ date: new Date(snapSortTime(snap)), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: snap.cashout ? "#9e9e9e" : won ? "#00e676" : "#ff1744", cashout: !!snap.cashout, isManual: !!snap.isManual, origin: snapOrigin(snap), finMin: snapFinMin(snap), confidence: snap.confidence });
       chartSnaps[snap.id] = snap;
-      weeklySeries.push({ id: snap.id, date: new Date(snapSortTime(snap)), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, origin: snapOrigin(snap), confidence: snap.confidence });
+      weeklySeries.push({ id: snap.id, cashout: !!snap.cashout, date: new Date(snapSortTime(snap)), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, origin: snapOrigin(snap), confidence: snap.confidence });
     });
     subStats.manual.roi = subStats.manual.stakeSum > 0 ? (subStats.manual.pnl / subStats.manual.stakeSum * 100) : null;
     subStats.auto.roi = subStats.auto.stakeSum > 0 ? (subStats.auto.pnl / subStats.auto.stakeSum * 100) : null;
@@ -11894,10 +11904,26 @@ installPolyV2Compat(window);
   // Corbeille, the order arrows and the saved date sit behind "⋯", which
   // stays open for that card across re-renders (SNAP_MORE_OPEN).
   var SNAP_MORE_OPEN = {};
+  // 💸 A cashed-out Seb bet (snap.cashout, see sebCashout): grey card, the
+  // sale price on the result pill, and in place of « Gagnant » what the
+  // market finally did with your side and what holding it would have given.
+  function snapCashoutTag(snap) {
+    var c = snap.cashout;
+    return c ? "💸 Cashout" + (c.part ? " partiel" : "") + " à " + esc(fmtCents(c.price)) + " · " : "";
+  }
+  function snapCashoutFinalHtml(snap, store) {
+    var c = snap.cashout;
+    if (c.hold == null) return '<span class="snap-cashout-final">pas encore connu</span>';
+    var stake = store.stakeFor(snap), hold = c.hold * (snap.stakeUsd > 0 ? stake / snap.stakeUsd : 1);
+    var gap = hold - (hypotheticalFlatPnl(snap, stake) || 0), won = c.hold > 0;
+    return '<span class="snap-cashout-final ' + (won ? 'win">✓ ' : 'lose">✗ ') + esc(snap.leaderName) + (won ? ' gagnant' : ' perdant') + '</span>' +
+      '<span class="snap-cashout-verdict">gardé : ' + esc(fmtUSDSigned(hold)) + ' · le cashout t\'a ' + (gap >= 0 ? 'coûté ' + esc(fmtUSD(gap)) : 'sauvé ' + esc(fmtUSD(-gap))) + '</span>';
+  }
   function snapCompactToolbarHtml(snap, store, p) {
     var key = store.name + "|" + snap.id, open = !!SNAP_MORE_OPEN[key];
     return '<div class="snap-toolbar snap-toolbar-compact">' +
-      '<span class="snap-ctrl-row"><span class="snap-side-label">Gagnant :</span>' + p.sides + '</span>' +
+      (snap.cashout ? '<span class="snap-ctrl-row"><span class="snap-side-label">Au final :</span>' + snapCashoutFinalHtml(snap, store) + '</span>'
+        : '<span class="snap-ctrl-row"><span class="snap-side-label">Gagnant :</span>' + p.sides + '</span>') +
       '<span class="snap-ctrl-row"><span class="snap-side-label">Confiance :</span>' + p.conf + p.mag + snapLiveBtnHtml(snap, store) +
         '<button type="button" class="snap-more-btn' + (open ? ' active' : '') + '" data-more-key="' + esc(key) + '" aria-expanded="' + open + '" title="Type, commentaire, position, corbeille…">⋯</button></span>' +
       '<span class="snap-more"' + (open ? '' : ' hidden') + '>' + p.date + p.reorder + p.more + '</span>' +
@@ -11917,11 +11943,11 @@ installPolyV2Compat(window);
   function manualCardHtml(snap, isTrash, store) {
     var d = new Date(snap.savedAt);
     var dateLabel = isNaN(d.getTime()) ? snap.savedAt : d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
+    var cardResultClass = snap.cashout ? " snap-cashout" : !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
     var stake = store.stakeFor(snap);
     var hyp = stake ? hypotheticalFlatPnl(snap, stake) : null;
     var hypCardHtml = hyp == null ? "" :
-      '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(store.cardHypLabel(stake)) + esc(fmtUSDSigned(hyp)) +
+      '<div class="snap-hyp-pnl ' + (snap.cashout ? "pnl-cashout" : hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + snapCashoutTag(snap) + esc(store.cardHypLabel(stake)) + esc(fmtUSDSigned(hyp)) +
       ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / stake * 100).toFixed(0) + ' % ROI)</span></div>';
     var price = snap.leaderPriceAtSnapshot;
     var priceText = price != null ? fmtCents(price) : "";
@@ -12033,14 +12059,14 @@ installPolyV2Compat(window);
     // winningSide, the same "one win/loss per snapshot" call the global
     // dashboard tiles use — so it's an unambiguous win/lose regardless of
     // whether individual traders hedged both sides underneath.
-    var cardResultClass = !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
+    var cardResultClass = snap.cashout ? " snap-cashout" : !snap.winningSide ? "" : (snap.leaderName === snap.winningSide ? " snap-win" : " snap-lose");
     // Same flat-stake-per-bet simulation as the tier winrate chart, but
     // per snapshot here — a bold standalone pill (not just colored text)
     // so the number is impossible to miss scanning down the list.
     var stake = store.stakeFor(snap);
     var hyp = stake ? hypotheticalFlatPnl(snap, stake) : null;
     var hypCardHtml = hyp == null ? "" :
-      '<div class="snap-hyp-pnl ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(store.cardHypLabel(stake)) + esc(fmtUSDSigned(hyp)) +
+      '<div class="snap-hyp-pnl ' + (snap.cashout ? "pnl-cashout" : hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + snapCashoutTag(snap) + esc(store.cardHypLabel(stake)) + esc(fmtUSDSigned(hyp)) +
       ' <span class="tier-wr-roi">(' + (hyp >= 0 ? "+" : "") + (hyp / stake * 100).toFixed(0) + ' % ROI)</span></div>';
     var resultsHtml = snap.winningSide ? '<div class="snap-trader-results">' +
       (snap.traderNames || []).map(function (name) {
@@ -13643,7 +13669,7 @@ installPolyV2Compat(window);
         : '';
       var cls = 'chart-pt' + (p.id != null ? ' chart-pt-clickable' : '');
       var fill = p.pointColor || lineColor;
-      var dataAttrs = 'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + (p.isManual != null ? ' data-manual="' + (p.isManual ? "1" : "0") + '"' : '') + (p.origin ? ' data-origin="' + p.origin + '"' : '') + (p.origin === "fin" && p.finMin ? ' data-fin="' + p.finMin + '"' : '') + (p.confidence ? ' data-confidence="' + esc(p.confidence) + '"' : '');
+      var dataAttrs = 'data-date="' + fmtDateLong(p.date) + '" data-value="' + esc(fmtUSDSigned(p.value)) + '"' + (p.delta != null ? ' data-delta="' + esc(fmtUSDSigned(p.delta)) + '"' : '') + (p.win != null ? ' data-win="' + (p.win ? "1" : "0") + '"' : '') + (p.note != null ? ' data-note="' + p.note.toFixed(1) + '"' : '') + (p.id != null ? ' data-id="' + esc(p.id) + '"' : '') + (p.isManual != null ? ' data-manual="' + (p.isManual ? "1" : "0") + '"' : '') + (p.origin ? ' data-origin="' + p.origin + '"' : '') + (p.origin === "fin" && p.finMin ? ' data-fin="' + p.finMin + '"' : '') + (p.confidence ? ' data-confidence="' + esc(p.confidence) + '"' : '') + (p.cashout ? ' data-cashout="1"' : '');
       var pinD = 'M' + cx.toFixed(2) + ',' + (cy + 11).toFixed(2) +
         ' C' + (cx - 7).toFixed(2) + ',' + (cy + 2).toFixed(2) + ' ' + (cx - 6).toFixed(2) + ',' + (cy - 6).toFixed(2) + ' ' + cx.toFixed(2) + ',' + (cy - 6).toFixed(2) +
         ' C' + (cx + 6).toFixed(2) + ',' + (cy - 6).toFixed(2) + ' ' + (cx + 7).toFixed(2) + ',' + (cy + 2).toFixed(2) + ' ' + cx.toFixed(2) + ',' + (cy + 11).toFixed(2) + ' Z';
@@ -13821,7 +13847,8 @@ installPolyV2Compat(window);
         // decided snapshot (see decidedAll in renderSnapPnlChart), so
         // data-win is always present here.
         var win = pt.getAttribute("data-win") === "1";
-        var color = win ? "var(--green)" : "var(--red)";
+        var cashout = pt.hasAttribute("data-cashout");
+        var color = cashout ? "#9e9e9e" : win ? "var(--green)" : "var(--red)";
         var delta = pt.getAttribute("data-delta") || pt.getAttribute("data-value");
         var note = pt.getAttribute("data-note");
         var manualAttr = pt.getAttribute("data-manual");
@@ -13847,6 +13874,7 @@ installPolyV2Compat(window);
             (note ? '<span class="chart-tooltip-result-note">Note ' + esc(note) + '</span>' : '') +
           '</span>' +
           '<span class="chart-tooltip-result-row">' +
+            (cashout ? '<span class="chart-tooltip-result-tag" style="color:#8a8a8a;background:color-mix(in srgb, #9e9e9e 20%, transparent)">💸 Cashout</span>' : '') +
             manualHtml + confHtml +
             '<span class="chart-tooltip-result-date">' + esc(pt.getAttribute("data-date")) + '</span>' +
           '</span>';
@@ -18241,27 +18269,34 @@ installPolyV2Compat(window);
         finalPrice: p.curPrice != null && p.curPrice !== "" ? Number(p.curPrice) : null,
         stake: stake, avg: Number(p.avgPrice) || 0, pnl: pnl, status: status, doneAt: doneAt,
         sport: sportEmojiFor(title, p.slug || ""), win: status === "done" ? pnl > 0 : null,
-        firstBuy: (firstBuys && firstBuys[mk]) || null
+        firstBuy: (firstBuys && firstBuys[mk]) || null,
+        sold: (sebSellCache[acct.address] || {})[mk] || null
       };
     }
     // 📡 When each bet was taken: the account's first buy on that market ×
     // side (activity feed, 500 fills a page), compared with the kickoff for
     // the Live tick (snapLiveInfo). Kept from the last load if the feed fails.
-    var sebBuyCache = {};
+    var sebBuyCache = {}, sebSellCache = {}; // sells: market × side -> shares sold and $ received (💸 cashouts)
     async function sebFirstBuys(acct) {
       try {
-        var first = {};
+        var first = {}, sold = {};
         for (var off = 0; off < 10000; off += 500) {
           var pg = await sebFetchJson("https://data-api.polymarket.com/activity?user=" + acct.address + "&type=TRADE&limit=500&offset=" + off);
           if (!Array.isArray(pg)) break;
           pg.forEach(function (t) {
-            if (t.side !== "BUY") return;
             var k = t.conditionId + "|" + t.outcomeIndex, ts = (Number(t.timestamp) || 0) * 1000;
+            if (t.side === "SELL") {
+              var s = sold[k] = sold[k] || { size: 0, usdc: 0 };
+              s.size += Number(t.size) || 0; s.usdc += Number(t.usdcSize) || 0;
+              return;
+            }
+            if (t.side !== "BUY") return;
             if (ts && (!first[k] || ts < first[k])) first[k] = ts;
           });
           if (pg.length < 500) break;
         }
         sebBuyCache[acct.address] = first;
+        sebSellCache[acct.address] = sold;
       } catch (e) { /* best effort: no Live detection for new bets this time */ }
       return sebBuyCache[acct.address] || {};
     }
@@ -18500,6 +18535,16 @@ installPolyV2Compat(window);
     }
     // The market's result (Saison 26/27 simulates 1 000 $ held to the end):
     // a bet cashed out before it stays pending until the market resolves.
+    // 💸 Cashout (on request, 2026-11-07): a finished bet you sold on
+    // Polymarket for a result clearly apart from holding it to the end (a
+    // sale at 99.9¢ just before settlement isn't one; fees stay under 1 %).
+    // hold = what holding it gave, null while the market isn't settled.
+    function sebCashout(b) {
+      if (b.status !== "done" || !b.sold || !(b.sold.size > 0) || !(b.avg > 0)) return null;
+      var hold = b.finalPrice === 1 ? b.stake / b.avg - b.stake : b.finalPrice === 0 ? -b.stake : null;
+      if (hold != null && Math.abs(b.pnl - hold) <= Math.max(1, b.stake * 0.01)) return null;
+      return { hold: hold, price: b.sold.usdc / b.sold.size, part: b.sold.size < b.stake / b.avg * 0.95 };
+    }
     function sebResultSide(b) {
       if (b.finalPrice === 1 || b.finalPrice === 0) return b.finalPrice === 1 ? b.outcome : OTHER_SIDE_SENTINEL;
       return null;
@@ -18680,6 +18725,8 @@ installPolyV2Compat(window);
           rec.realPnl = null;
           rec.winningSide = b.finalPrice === 1 ? b.outcome : OTHER_SIDE_SENTINEL;
         }
+        var cashout = rec.realPnl != null ? sebCashout(b) : null; // "sans cashout" shows it held
+        if (cashout) rec.cashout = cashout;
         var guess = isLongTermSlug(b.evSlug || b.slug) ? "props" : (cmpHit || (src && snapOrigin(src) === "cmp")) ? "cmp" : (rich ? "auto" : "manual");
         rec.origin = (m && m.origin) || guess;
         if (cmpHit && !rich) rec.cmp = cmpHit.cmp;
@@ -18928,7 +18975,7 @@ installPolyV2Compat(window);
       var rows = shownRows.map(function (b) {
         var url = b.slug ? "https://polymarket.com/event/" + encodeURIComponent(b.slug) : "";
         var res = b.status === "open" ? '<td class="seb-dim">En cours</td><td class="seb-dim">—</td>'
-          : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td><td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
+          : (sebCashout(b) ? '<td class="seb-dim">💸 Cashout</td>' : '<td class="' + (b.pnl > 0 ? "pnl-pos" : "pnl-neg") + '">' + (b.pnl > 0 ? "Gagné" : "Perdu") + '</td>') + '<td class="' + (b.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + esc(fmtUSDSigned(b.pnl)) + '</b></td>';
         return '<tr data-seb-key="' + esc(b.key) + '" class="' + (b.status === "open" ? 'seb-open' : '') + '"><td class="seb-nowrap">' + (b.doneAt ? esc(new Date(b.doneAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : '—') + '</td>' +
           '<td class="seb-q">' + esc(b.sport) + ' ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(b.title) + '</a>' : esc(b.title)) + (sebFromSite(b) ? ' <span class="seb-tag" title="Ce pari est aussi dans Saison 26/27 ou Auto >10k">📌</span>' : '') + (snapLiveInfo(recByKey[b.key]).on ? ' <span class="seb-tag" title="Pris en live">📡</span>' : '') + (b.acct && b.acct.tag ? ' <span class="seb-tag" title="Compte ' + esc(b.acct.label) + '">' + esc(b.acct.tag) + '</span>' : '') + '</td>' +
           '<td class="seb-nowrap"><span class="seb-type" style="color:' + ORIGIN_COLORS[b._origin] + '">' + ORIGIN_ICONS[b._origin] + ' ' + ORIGIN_LABELS[b._origin] + (b._finMin ? ' ' + finSlotLabel(b._finMin) : '') + '</span></td>' +
