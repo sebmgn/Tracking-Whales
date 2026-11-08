@@ -18954,8 +18954,9 @@ installPolyV2Compat(window);
         : '<button type="button" class="seb-btn seb-noletter-btn" data-seb-noletter="1"' + (noLetterN ? ' title="Afficher seulement les paris sans lettre de confiance (S, A, B)"' : ' disabled title="Tous tes paris ont une lettre"') + '>🔤 Sans lettre · ' + noLetterN + '</button>';
       var controls = '<div class="seb-controls">' +
         sebSeg("Période", "data-seb-period", [["7", "7 j"], ["30", "30 j"], ["90", "90 j"], ["all", "Tout"]], sebState.period) +
-        sebSeg("Sport", "data-seb-sport", [["all", "Tous"]].concat(Object.keys(sports).sort(function (a, b) { return sports[b] - sports[a]; }).map(function (k) { return [k, k + " " + (AN_SPORT_LABELS[k] || "") + " · " + sports[k]]; })), sebState.sport) +
-        sebSeg("Origine", "data-seb-origin", [["all", "Tous"], ["site", "📌 Snapshot du site"], ["other", "Hors site"]], sebState.origin) +
+        // Seb 2.0 has no Sport / Origine filter (on request, 2026-11-08)
+        (cfg.noSportOrigin ? '' : sebSeg("Sport", "data-seb-sport", [["all", "Tous"]].concat(Object.keys(sports).sort(function (a, b) { return sports[b] - sports[a]; }).map(function (k) { return [k, k + " " + (AN_SPORT_LABELS[k] || "") + " · " + sports[k]]; })), sebState.sport) +
+        sebSeg("Origine", "data-seb-origin", [["all", "Tous"], ["site", "📌 Snapshot du site"], ["other", "Hors site"]], sebState.origin)) +
         sebSeg("Mise", "data-seb-stake", [["real", "Réelle"], ["flat", "1 000 $ avec cashout"], ["hold", "1 000 $ sans cashout"]], sebState.stakeMode) +
         (propsList.length ? '<button type="button" class="seb-btn seb-props-btn' + (sebState.propsOpen ? ' active' : '') + '" data-seb-props="1" title="Tes paris long terme (saison, classement, relégation…)">⏳ Props · ' + propsOpenN + ' en cours' + (sebState.propsOpen ? ' ▴' : ' ▾') + '</button>' : '') +
         noLetterBtn +
@@ -19177,7 +19178,7 @@ installPolyV2Compat(window);
   // its new bets without opening the Seb tab.
   setTimeout(function () { if (!document.getElementById("tab-seb").classList.contains("active")) SEB_TAB.load(); }, 20000);
   var SEB2_TAB = makeSeb({
-    p: "seb2", metaPrefix: "seb2meta-", inherit: false,
+    p: "seb2", metaPrefix: "seb2meta-", inherit: false, noSportOrigin: true,
     accounts: [SEB_PREDICT_ACCOUNT],
     intro: "Le même affichage que Seb, pour le compte sebpredict seul, en copie blanche : aucune note reprise de Saison 26/27 ni de Seb. Note la confiance (S/A/B) et l'ampleur (++ + - --) sur chaque carte en bas ; elles ne comptent qu'ici."
   });
