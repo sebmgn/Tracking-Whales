@@ -1372,6 +1372,8 @@
   .snap-cashout-verdict { font-size: 12.5px; font-weight: 600; color: var(--text-dim); }
   .snap-origin-badge { order: 99; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: var(--oc); color: #fff; white-space: nowrap; }
   .snap-origin-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+  .snap-item:has(.snap-origin-btn) .snap-origin-badge { cursor: pointer; }
+  .snap-item:has(.snap-origin-btn) .snap-origin-badge:hover { filter: brightness(1.12); box-shadow: 0 0 0 2px color-mix(in srgb, var(--oc) 35%, transparent); }
   .snap-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   /* compact card (2026-10-31) */
   details.value-trade-item > .vt-summary.snap-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; align-items: center; padding: 9px 16px; }
@@ -11929,6 +11931,17 @@ installPolyV2Compat(window);
       '<span class="snap-more"' + (open ? '' : ' hidden') + '>' + p.date + p.reorder + p.more + '</span>' +
     '</div>';
   }
+  // The Type badge of a card whose Type can be changed (Seb, Seb 2.0) opens
+  // the ⋯ panel, where the Type buttons are (on request, 2026-11-08).
+  document.addEventListener("click", function (e) {
+    var badge = e.target.closest ? e.target.closest(".snap-origin-badge") : null;
+    var card = badge && badge.closest(".snap-item");
+    var more = card && card.querySelector(".snap-origin-btn") && card.querySelector(".snap-more-btn");
+    if (!more) return;
+    e.preventDefault();
+    e.stopPropagation();
+    more.click();
+  });
   document.addEventListener("click", function (e) {
     var b = e.target.closest ? e.target.closest(".snap-more-btn") : null;
     if (!b) return;
