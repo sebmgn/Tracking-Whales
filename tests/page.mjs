@@ -15,13 +15,14 @@ export const NAMES = [
   "hypotheticalFlatPnl", "aggregateFlatPnl", "crPnl",
   "snapCashoutTag", "snapCashoutFinalHtml", "snapOrigin", "isLongTermSlug",
   "compactForStorage", "applyOpToList", "isCompleteRecord",
+  "storeListSafely", "readStoredList", "bigMem",
   "SNAPSHOTS_STORE", "POSITIONS_STORE", "HYPOTHETICAL_FLAT_STAKE", "OTHER_SIDE_SENTINEL",
 ];
 
 export function loadPage() {
   let html = readFileSync(PAGE, "utf8");
   if (!html.includes(TAIL)) throw new Error("positions.html : fin de script introuvable (tests/page.mjs à adapter)");
-  html = html.replace(TAIL, "window.__T = {" + NAMES.map((n) => n + ": typeof " + n + " === 'undefined' ? undefined : " + n).join(",") + "};");
+  html = html.replace(TAIL, "window.__T = {__ls: localStorage, " + NAMES.map((n) => n + ": typeof " + n + " === 'undefined' ? undefined : " + n).join(",") + "};");
   const errors = [];
   const vc = new VirtualConsole();
   vc.on("jsdomError", (e) => errors.push(String((e.detail && e.detail.message) || e.message)));

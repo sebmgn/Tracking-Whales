@@ -1681,6 +1681,12 @@
   .open-tb th, .open-tb td { padding: 7px 10px; border-bottom: 1px solid var(--panel-border); text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
   .open-tb tr > th:first-child { text-align: left; width: auto; text-transform: capitalize; }
   .open-tb tr:first-child th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 600; }
+  .gt-cross-tb { margin: 0; border-spacing: 6px; }
+  .gt-cross-tb tr > th:first-child { width: 170px; white-space: normal; }
+  .gt-cross-cell { padding: 0; }
+  .gt-cross { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 8px 11px; cursor: pointer; border-radius: var(--radius-md); }
+  .gt-cross b { font-size: 15.5px; }
+  .gt-cross .tier-wr-few { font-style: normal; margin-left: 2px; }
   /* Comparer les courbes : sous-fenêtre sous la courbe principale */
   .pnl-compare { margin: 10px 0 4px; padding-top: 10px; border-top: 1px dashed var(--panel-border); }
   .pnl-compare.open { border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 12px 14px; }
@@ -7168,10 +7174,58 @@ installPolyV2Compat(window);
   // list is re-parsed only when the stored string changes, a record is
   // rebuilt only when its own stored JSON changes, and every caller gets
   // shallow copies, so changing a field on one never touches the cache.
+  // Stockage de secours (2026-11-11, on request): localStorage holds ~5 MB
+  // per site and the synced lists keep growing. A list that no longer fits
+  // is kept in memory and written to IndexedDB (no such ceiling) instead of
+  // being lost with an alert; from then on that list lives there, and its
+  // localStorage copy is removed to leave room for the small settings.
+  // Nothing changes for a list that still fits.
+  var bigMem = {}, bigDb = null;
+  function bigGet(key) {
+    if (bigMem[key] != null) return bigMem[key];
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function bigDbOpen() {
+    if (bigDb) return bigDb;
+    bigDb = new Promise(function (resolve) {
+      var req;
+      try { req = indexedDB.open("vtBigLists", 1); } catch (e) { resolve(null); return; }
+      req.onupgradeneeded = function () { req.result.createObjectStore("lists"); };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { resolve(null); };
+    });
+    return bigDb;
+  }
+  function bigPut(key, json) {
+    bigMem[key] = json;
+    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+    bigDbOpen().then(function (db) {
+      if (!db) { console.error("Stockage de secours indisponible — " + key + " gardé en mémoire seulement"); return; }
+      try { db.transaction("lists", "readwrite").objectStore("lists").put(json, key); } catch (e) { console.error("Stockage de secours : écriture refusée", e); }
+    });
+  }
+  // At start-up: lists that already moved there. Resolves to true when at
+  // least one was found (the page then redraws).
+  function bigHydrate() {
+    return bigDbOpen().then(function (db) {
+      if (!db) return false;
+      return new Promise(function (resolve) {
+        var found = false, tx;
+        try { tx = db.transaction("lists", "readonly"); } catch (e) { resolve(false); return; }
+        var cur = tx.objectStore("lists").openCursor();
+        cur.onsuccess = function () {
+          var c = cur.result;
+          if (!c) { resolve(found); return; }
+          if (typeof c.value === "string" && bigMem[c.key] == null) { bigMem[c.key] = c.value; found = true; }
+          c.continue();
+        };
+        cur.onerror = function () { resolve(found); };
+      });
+    });
+  }
   var refreshedListMemo = {};
   function readRefreshedList(key) {
-    var raw;
-    try { raw = localStorage.getItem(key) || "[]"; } catch (e) { return []; }
+    var raw = bigGet(key) || "[]";
     var memo = refreshedListMemo[key] || (refreshedListMemo[key] = { raw: null, list: [], recs: {} });
     if (memo.raw !== raw) {
       var parsed;
@@ -7243,15 +7297,16 @@ installPolyV2Compat(window);
   var storageFullWarned = false;
   function storeListSafely(key, list) {
     var json = JSON.stringify(compactForStorage(list));
+    if (bigMem[key] != null) { bigPut(key, json); return true; } // this list already lives in the fallback store
     try {
       localStorage.setItem(key, json);
       return true;
     } catch (e) {
       freeDeadStorage();
       try { localStorage.setItem(key, json); return true; } catch (e2) {
-        console.error("Stockage local plein — " + key + " non enregistré", e2);
-        if (!storageFullWarned) { storageFullWarned = true; alert("⚠️ La mémoire de ce navigateur pour le site est pleine : les dernières modifications ne sont pas enregistrées ici (elles restent sur le serveur si elles ont été envoyées). Préviens Claude."); }
-        return false;
+        if (!storageFullWarned) { storageFullWarned = true; console.warn("Stockage local plein — " + key + " passe dans le stockage de secours (IndexedDB)"); }
+        bigPut(key, json);
+        return true;
       }
     }
   }
@@ -7280,14 +7335,13 @@ installPolyV2Compat(window);
   // per-item card rebuild — for lookups that only need ids/links/a field or
   // two, and may run once per card.
   function readStoredList(key) {
-    try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { return []; }
+    try { return JSON.parse(bigGet(key) || "[]"); } catch (e) { return []; }
   }
   // Re-parsed only when the stored string itself changes — reading the same
   // unchanged list back is near-free, unlike a JSON.parse per call.
   var storedListCache = {};
   function cachedStoredList(key) {
-    var raw;
-    try { raw = localStorage.getItem(key) || "[]"; } catch (e) { return []; }
+    var raw = bigGet(key) || "[]";
     var hit = storedListCache[key];
     if (hit && hit.raw === raw) return hit.list;
     var list;
@@ -19742,7 +19796,7 @@ installPolyV2Compat(window);
     // 6. Données
     var loc = healthLocalChars(), mb = sa.chars / 1e6;
     var dcls = mb > 35 || (loc != null && loc > 4.8e6) ? "bad" : mb > 25 || (loc != null && loc > 4.2e6) ? "warn" : sa.chars ? "ok" : "";
-    out.push({ cls: dcls, short: "Données " + (sa.chars ? healthMb(sa.chars) : "…"), label: "Données : liste Saison " + (sa.chars ? healthMb(sa.chars) : "…") + (loc != null ? " · stockage de cet appareil " + healthMb(loc) + " sur ~5 Mo" : ""), help: "La liste est envoyée compressée : la limite du serveur est vers 40 Mo. Le navigateur garde environ 5 Mo." });
+    out.push({ cls: dcls, short: "Données " + (sa.chars ? healthMb(sa.chars) : "…"), label: "Données : liste Saison " + (sa.chars ? healthMb(sa.chars) : "…") + (loc != null ? " · stockage de cet appareil " + healthMb(loc) + " sur ~5 Mo" : "") + (Object.keys(bigMem).length ? " · liste trop grosse rangée dans le stockage de secours, sans limite" : ""), help: "La liste est envoyée compressée : la limite du serveur est vers 40 Mo. Le navigateur garde environ 5 Mo." });
     return out;
   }
   function healthRender() {
@@ -19915,6 +19969,22 @@ installPolyV2Compat(window);
         return '<tr' + (i === rowsSum.length - 1 ? ' class="tot"' : '') + '><td>' + esc(x[0]) + '</td><td class="num">' + st.n + '</td><td class="num">' + (st.hit == null ? "—" : gtDec(st.hit, 1) + " %") + '</td><td class="num">' + (st.price == null ? "—" : gtDec(st.price * 100, 1) + " ¢") + '</td><td class="num">' + gtDec(st.cote, 2) + '</td>' +
           '<td class="num ' + (st.roi == null ? "" : st.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (st.roi == null ? "—" : (st.roi >= 0 ? "+" : "−") + gtDec(Math.abs(st.roi), 1) + " %") + '</td><td class="num dim">' + (st.pending || "") + '</td></tr>';
       }).join("") + '</tbody></table></div>';
+    // by competition and by minute (2026-11-11, on request): one cell per
+    // competition × minute with its ROI, the share where the team didn't
+    // score again and the break-even (average price) it has to beat; a click
+    // sets the two filters above. Follows the « L'équipe » filter only.
+    var sitLines = all.filter(function (l) { return !GT.sit || l.sit === GT.sit; }), mins = d.minutes || [70, 80, 90];
+    var crossCell = function (comp, T) {
+      var st = gtStats(sitLines.filter(function (l) { return (!comp || l.r.c === comp) && (T == null || l.r.min === T); }));
+      if (!st.n) return '<td class="cross-cell cross-empty">' + (st.pending ? st.pending + ' en cours' : '—') + '</td>';
+      var few = st.n < 10, on = GT.comp === (comp || "") && GT.min === (T == null ? "" : String(T));
+      return '<td class="cross-cell gt-cross-cell' + (few || st.roi == null ? '' : st.roi >= 0 ? ' tier-win' : ' tier-lose') + (on ? ' active' : '') + '"><button type="button" class="gt-cross" data-gt-comp="' + esc(comp || "") + '" data-gt-min="' + (T == null ? "" : T) + '" title="Afficher ces lignes">' +
+        '<b class="' + (st.roi == null ? "" : st.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (st.roi == null ? "—" : (st.roi >= 0 ? "+" : "−") + gtDec(Math.abs(st.roi), 1) + " % ROI") + '</b>' +
+        '<span>' + gtDec(st.hit, 0) + ' % réussis · seuil ' + gtDec(st.price * 100, 0) + ' %<br>' + st.n + ' ligne' + (st.n > 1 ? 's' : '') + (few ? ' <i class="tier-wr-few">peu de lignes</i>' : '') + '</span></button></td>';
+    };
+    var cross = usedComps.length ? '<div class="gt-box"><div class="gt-h">Par compétition et par minute <small>lignes terminées ; « seuil » = part à dépasser pour être rentable au prix moyen ; clique une case pour voir ses lignes</small></div>' +
+      '<table class="cross-tb gt-cross-tb"><tr><th></th>' + mins.map(function (T) { return '<th>' + T + "'</th>"; }).join("") + '<th>Toutes minutes</th></tr>' +
+      usedComps.concat([""]).map(function (c) { return '<tr><th>' + esc(c || "Toutes compétitions") + '</th>' + mins.map(function (T) { return crossCell(c, T); }).join("") + crossCell(c, null) + '</tr>'; }).join("") + '</table></div>' : '';
     // every line
     var lines = gtFiltered(all, false), picked = gtPickedKeys();
     var list = '<div class="gt-box"><div class="gt-h">Toutes les lignes <small>' + lines.length + ' ligne' + (lines.length > 1 ? 's' : '') + ', les plus récentes en haut</small></div>' +
@@ -19935,7 +20005,7 @@ installPolyV2Compat(window);
             '<td>' + res + '</td>' +
             '<td>' + (l.price == null ? '' : '<button type="button" class="cmp-pin-btn gt-save-btn' + (picked[gtPickKey(r.k, l.side)] ? ' pinned' : '') + '" data-gt-k="' + esc(r.k) + '" data-gt-side="' + l.side + '" title="Simuler ce pari dans 💾 Choix ne marque plus">' + (picked[gtPickKey(r.k, l.side)] ? '✅ Enregistré' : '💾 Enregistrer') + '</button>') + '</td></tr>';
         }).join("") + '</tbody></table></div>' : '<div style="font-size:13px;color:var(--text-dim)">Pas encore de ligne' + (all.length ? " avec ces filtres" : " : la première arrivera à la 70e minute du prochain match suivi") + '.</div>') + '</div>';
-    root.innerHTML = intro + head + filters + sum + list;
+    root.innerHTML = intro + head + filters + cross + sum + list;
   }
   function gtCsv() {
     var cell = function (v) { if (v == null) return ""; if (typeof v === "number") return String(v).replace(".", ","); v = String(v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
@@ -20223,6 +20293,7 @@ installPolyV2Compat(window);
     (savedBtn || document.querySelector('.tab-btn[data-tab="value-trades"]')).click();
   })();
 
+  bigHydrate().then(function (found) { if (found) { renderStoreView(SNAPSHOTS_STORE); renderStoreView(POSITIONS_STORE); } });
   refresh(true);
   setInterval(tick, 1000);
 })();

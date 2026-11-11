@@ -164,3 +164,18 @@ test("opérations de synchro : chacune ne touche que sa fiche", () => {
   l = ap({ type: "add", id: "c", snapshot: { id: "c", question: "Q3", savedAt: "2026-11-05T10:00:00Z" } }); assert.equal(l.length, 3);
   assert.deepEqual(ap({ type: "inconnu", id: "a" }), base);
 });
+
+test("stockage plein : la liste passe dans le stockage de secours et reste lisible", () => {
+  const key = "vtTestBigList", list = [{ id: "a1", question: "Lens – Lille", savedAt: "2026-11-09T20:00:00Z" }];
+  const ls = T.__ls;
+  const orig = ls.setItem;
+  Object.getPrototypeOf(ls).setItem = function (k) { if (k === key) throw new Error("QuotaExceededError"); return orig.apply(this, arguments); };
+  try {
+    assert.equal(T.storeListSafely(key, list), true);
+    assert.equal(typeof T.bigMem[key], "string");
+    assert.deepEqual(JSON.parse(JSON.stringify(T.readStoredList(key))), list);
+    // a later save of the same list goes straight to the fallback store
+    assert.equal(T.storeListSafely(key, list.concat([{ id: "b2", question: "Lyon – OM", savedAt: "2026-11-10T20:00:00Z" }])), true);
+    assert.equal(T.readStoredList(key).length, 2);
+  } finally { Object.getPrototypeOf(ls).setItem = orig; delete T.bigMem[key]; }
+});
