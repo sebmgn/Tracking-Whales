@@ -1696,6 +1696,10 @@
   .pnl-compare-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 6px; font-size: 12.5px; }
   .pnl-compare-key i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
   .pnl-compare-key b { font-variant-numeric: tabular-nums; } .pnl-compare-key em { font-style: normal; color: var(--text-dim); font-size: 11.5px; }
+  .open-cards-title { font-size: 13px; font-weight: 700; margin: 14px 2px 8px; }
+  .open-cards-title:first-child { margin-top: 2px; }
+  .open-cards-title span { font-weight: 500; font-size: 12px; color: var(--text-dim); margin-left: 6px; }
+  .roi-ladder-title { margin-top: 4px; }
   .snap-sort { font-size: 12.5px; color: var(--text-dim); white-space: nowrap; margin-left: auto; }
   .snap-sort select { font: inherit; font-size: 13px; color: var(--text); background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 8px; }
   /* Avant-match vs live block, under the types (same columns as their rows) */
@@ -3475,7 +3479,7 @@
       <button type="button" id="seb2ManualVsAutoToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="manualvsauto" data-store="seb2">▸ Les analyses des paris</button>
       <button type="button" id="seb2WeeklyPnlToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="weeklypnl" data-store="seb2">▸ Paris par semaine</button>
       <button type="button" id="seb2OtherStatsToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="otherstats" data-store="seb2">▸ Autres stats</button>
-      <button type="button" id="seb2TraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="seb2">▸ Le tableau des traders</button>
+      <button type="button" id="seb2TraderTableToggleBtn" class="collapse-btn snap-stats-toggle-btn" data-panel="tradertable" data-store="seb2" style="display:none" aria-hidden="true" tabindex="-1">▸ Le tableau des traders</button>
     </div>
     <div id="seb2TierWinrateContent"></div>
     <div id="seb2NoteWinrateContent"></div>
@@ -3483,7 +3487,7 @@
     <div id="seb2ManualVsAutoContent"></div>
     <div id="seb2WeeklyPnlContent"></div>
     <div id="seb2OtherStatsContent"></div>
-    <div id="seb2TraderTableContent"></div>
+    <div id="seb2TraderTableContent" style="display:none"></div>
     <div id="seb2Extra"></div>
     <div id="seb2Content" class="value-trades-box"></div>
   </div>
@@ -9210,7 +9214,7 @@ installPolyV2Compat(window);
   // buttons — types, avant-match / live, cotes, sports, mises, type × moment,
   // en cours. Every row, card or cell of these views filters the card list
   // (store.state.bucketFilter = { dim, key, label }, reclick to clear).
-  var TYPES_VIEWS = [["types", "Types"], ["live", "Avant-match / live"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"], ["cross", "Type × moment"], ["close", "Clôture"], ["open", "En cours"]];
+  var TYPES_VIEWS = [["types", "Types"], ["live", "Avant-match / live"], ["conf", "Confiance"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"], ["cross", "Type × moment"], ["close", "Clôture"], ["open", "En cours"]];
   var PRICE_BUCKETS = [[0, 0.6, "Moins de 60 ¢"], [0.6, 0.75, "60 – 75 ¢"], [0.75, 0.85, "75 – 85 ¢"], [0.85, 0.92, "85 – 92 ¢"], [0.92, 2, "92 ¢ et plus"]];
   var STAKE_BUCKETS = [[0, 100, "Moins de 100 $"], [100, 300, "100 – 300 $"], [300, 1000, "300 – 1 000 $"], [1000, Infinity, "1 000 $ et plus"]];
   var BUCKET_COLORS = { price: "#6366f1", sport: "#0891b2", stake: "#d97706", live: LIVE_COLORS.live };
@@ -9268,6 +9272,34 @@ installPolyV2Compat(window);
         (o.pnl == null ? '' : '<span class="live-card-pnl ' + (o.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(o.pnl)) + (o.roi == null ? '' : '<span class="live-card-roi">' + signedTxt(o.roi, ' % ROI') + '</span>') + '</span>') +
       '</div>' + (o.track || '') + (o.facts ? '<div class="live-card-facts">' + o.facts + '</div>' : '') + '</div>';
   }
+  // ROI side by side, as diverging bars (the look of the old Seb boxes):
+  // rows = [label, items]; thin bar under 30 decided bets.
+  function roiLadderHtml(title, rows, store) {
+    var data = rows.map(function (r) { var st = liveSegStats(r[1], store); return st.roi == null ? null : [r[0], st.roi, st.decided]; }).filter(Boolean);
+    if (data.length < 2) return "";
+    return '<div class="live-seg-title roi-ladder-title">' + esc(title) + '</div>' +
+      '<div class="cr-stats" style="grid-template-columns:1fr;">' + crBarsHtml([{ title: "", rows: data }]) + '</div>' +
+      '<div class="cr-legend" style="margin-top:6px;"><span><i class="cr-sw"></i>30 paris ou plus</span><span><i class="cr-sw thin"></i>moins de 30 : trop peu pour conclure</span><span>le petit chiffre gris = nombre de paris décidés</span></div>';
+  }
+  // Confiance : rendement par lettre (the Seb box, now a view for every tab)
+  function confViewHtml(list, store) {
+    var letters = CONFIDENCE_TIERS.concat([null]);
+    var groups = letters.map(function (t) { return [t || "Sans lettre", list.filter(function (s) { return (s.confidence || null) === t; }), t]; }).filter(function (g) { return g[1].length; });
+    if (!groups.length) return '<div class="empty-note">Rien à analyser dans cette sélection.</div>';
+    var rows = groups.map(function (g) {
+      var color = g[2] ? CONFIDENCE_COLORS[g[2]] : LIVE_COLORS.pre, items = g[1];
+      var st = liveSegStats(items, store), cls = st.pnl == null || st.few ? "" : (st.pnl >= 0 ? " tier-win" : " tier-lose");
+      return '<div class="live-seg-row' + cls + '">' +
+        '<span class="tier-wr-badge tier-wr-badge-wide" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">' + esc(g[0]) + '</span>' +
+        bucketTrackHtml(st, color) +
+        '<span class="tier-wr-value">' + (st.wr == null ? '—' : st.wr.toFixed(0) + '\u202f%') + '</span>' +
+        '<span class="tier-wr-count">' + (st.decided ? st.win + ' / ' + st.decided + (st.few ? ' ' + FEW_TAG_HTML : st.n > st.decided ? ' · ' + (st.n - st.decided) + ' en cours' : ' gagnés') : st.n + ' en cours') + '</span>' +
+        (st.pnl == null ? '<span></span>' : '<span class="tier-wr-hyp ' + (st.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(st.pnl)) + ' <span class="tier-wr-roi">(' + signedTxt(st.roi, '\u202f% ROI') + ')</span></span>') +
+      '</div>';
+    }).join("");
+    return roiLadderHtml("Rendement par lettre de confiance", groups.map(function (g) { return [g[0], g[1]]; }), store) +
+      '<div class="live-seg-title" style="margin-top:18px;">Réussite et gain par lettre</div>' + rows;
+  }
   function liveSplitHtml(list, store) {
     var bySeg = {};
     list.forEach(function (s) { var k = snapLiveSeg(s); (bySeg[k] = bySeg[k] || []).push(s); });
@@ -9292,8 +9324,11 @@ installPolyV2Compat(window);
       if (g.key === "unk" && !items.length) return "";
       return bucketRowHtml(store, "live", g.key, "Live · " + g.label.toLowerCase(), g.tip, items, LIVE_COLORS.live).replace(esc("Live · " + g.label.toLowerCase()) + '</span>', esc(g.label) + '</span>');
     }).join("");
+    var ladder = roiLadderHtml("Le rendement, côte à côte", [["🗓️ Avant-match", pre]].concat(LIVE_SEGS.map(function (g) {
+      return ["📡 Live · " + g.label.toLowerCase(), bySeg[g.key] || []];
+    })), store);
     return verdict + '<div class="live-duo">' + card('🗓️ Avant-match', "pre", "avant-match", pre, LIVE_COLORS.pre) + card('📡 Live', "live", "live", live, LIVE_COLORS.live) + '</div>' +
-      '<div class="live-seg-title">Le live, selon la minute de prise</div>' + segRows;
+      ladder + '<div class="live-seg-title"' + (ladder ? ' style="margin-top:18px;"' : '') + '>Le live, selon la minute de prise</div>' + segRows;
   }
   function bucketViewHtml(list, store, dim) {
     var stakeFn = dim === "stake" ? snapRealStake : null, groups = {}, order = [];
@@ -9496,6 +9531,7 @@ installPolyV2Compat(window);
     var V = {
       types: ["Par type : manuel, suivi des whales, comparaison, props, fin de match", sim + ' — le trait noir sur chaque barre est le seuil de rentabilité ; clique une ligne pour filtrer, une pastille de confiance pour affiner.', function () { return verdictHtml + rows + filterNoteHtml; }],
       live: ["Avant-match ou live", "Les mêmes paris, selon le moment où ils ont été pris : avant le coup d'envoi ou pendant le match. Clique une carte ou une ligne pour ne voir que ces paris.", function () { return liveSplitHtml(list, store); }],
+      conf: ["Par lettre de confiance", sim + ' — le rendement de chaque lettre, puis sa réussite face au seuil de rentabilité (trait noir).', function () { return confViewHtml(list, store); }],
       price: ["Par tranche de cote", "Selon le prix payé. Le trait noir est le seuil de rentabilité de la tranche : la barre doit le dépasser pour gagner de l'argent.", function () { return bucketViewHtml(list, store, "price"); }],
       sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées.", function () { return bucketViewHtml(list, store, "sport"); }],
       stake: ["Par taille de mise", "Uniquement les paris dont la mise réelle est connue ; gains calculés avec ces mises réelles.", function () { return stakeEffectHtml(list) + bucketViewHtml(list, store, "stake"); }],
@@ -12844,12 +12880,28 @@ installPolyV2Compat(window);
     if (!a) return;
     var cardsList = snapSortCards(q ? snapSearchList(a.list, q) : a.cardsList, store), activeFilterLabels = a.labels;
     if (store.searchCount) store.searchCount.textContent = q ? cardsList.length + " résultat" + (cardsList.length > 1 ? "s" : "") : "";
-    if (!cardsList.length) {
+    var hasOpenFirst = !!store.openFirst && !q && a.list.some(function (s) { return s.sebOpen; });
+    if (!cardsList.length && !hasOpenFirst) {
       store.els.list.innerHTML = '<div class="empty-note">' + (q ? "Aucun " + store.itemNoun + " pour « " + esc(q) + " »."
         : activeFilterLabels.length
         ? "Aucun " + store.itemNoun + " dans " + (activeFilterLabels.length > 1 ? "ces catégories" : "cette catégorie") + "."
         : store.emptyHint) + '</div>';
       return;
+    }
+    // Seb tabs (on request, 2026-11-11): bets still running come first, as
+    // normal cards under their own heading, whatever the filters say — a
+    // filter is about the finished bets' stats, a running bet must stay in
+    // sight. Not during a search, which lists its own results.
+    if (store.openFirst && !q) {
+      var openCards = a.list.filter(function (s) { return s.sebOpen; }).sort(function (x, y) { return (snapSortTime(x) || 0) - (snapSortTime(y) || 0); });
+      if (openCards.length) {
+        var restCards = cardsList.filter(function (s) { return !s.sebOpen; });
+        store.els.list.innerHTML = '<div class="open-cards-title">⏳ Paris en cours · ' + openCards.length + ' <span>le prochain match en premier</span></div>' +
+          openCards.map(function (snap) { return snapCardHtml(snap, false, store); }).join("") +
+          '<div class="open-cards-title">Paris terminés · ' + restCards.length + (activeFilterLabels.length ? ' <span>selon les filtres</span>' : '') + '</div>' +
+          (restCards.length ? restCards.map(function (snap) { return snapCardHtml(snap, false, store); }).join("") : '<div class="empty-note">Aucun pari terminé sur cette sélection.</div>');
+        return;
+      }
     }
     store.els.list.innerHTML = store.name === "positions"
       ? renderPositionCardsWithOpposedGroups(cardsList, store)
@@ -19480,6 +19532,7 @@ installPolyV2Compat(window);
       allowTakePosition: false, allowEditPosition: false, allowSimStakeSlider: false, allowReorder: false,
       allowOriginEdit: true,
       originChips: true,
+      openFirst: true,
       itemNoun: "pari",
       emptyHint: "Aucun pari sur cette sélection.",
       dateLabelPrefix: "Réglé le",
@@ -19570,7 +19623,10 @@ installPolyV2Compat(window);
           '<td class="seb-nowrap"><span class="seb-type" style="color:' + ORIGIN_COLORS[b._origin] + '">' + ORIGIN_ICONS[b._origin] + ' ' + ORIGIN_LABELS[b._origin] + (b._finMin ? ' ' + finSlotLabel(b._finMin) : '') + '</span></td>' +
           '<td>' + esc(b.outcome) + '</td><td>' + Math.round(b.avg * 1000) / 10 + '¢</td><td>' + esc(fmtUSD(b.stake)) + '</td>' + res + '</tr>';
       }).join("");
-      if (extra) extra.innerHTML = sebConfHtml(list, recByKey) + sebLiveHtml(list, recByKey) +
+      // The two ROI boxes (par lettre de confiance, live / avant-match) left
+      // this default display on request (2026-11-11): their figures are in
+      // « Les analyses des paris » (views Confiance and Avant-match / live).
+      if (extra) extra.innerHTML =
         '<div class="chart-box seb-box"><div class="tier-wr-title">Tes paris' + (openT.length ? ' · ' + openT.length + ' en cours' : '') + (propsList.length ? ' <span class="seb-dim" style="font-weight:500;font-size:12px;">(hors props — voir ⏳ Props en haut)</span>' : '') + '</div>' +
           '<div class="seb-scroll"><table class="seb-tbl seb-list"><thead><tr>' + SEB_COLS.map(function (c) {
             var active = sebState.sortKey === c.key;
