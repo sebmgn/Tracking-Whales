@@ -1589,7 +1589,11 @@
   .tier-wr-collapse-wrap.collapsed { display: none; }
   .tier-wr-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); font-weight: 600; margin-bottom: 4px; }
   .tier-wr-subtitle { font-style: italic; font-size: 11px; color: var(--text-dim); margin-bottom: 14px; }
-  .tier-wr-row { display: flex; align-items: center; gap: 12px; margin: 0 -8px 12px; padding: 4px 8px; border-radius: var(--radius-md); cursor: pointer; transition: background-color .15s ease; }
+  /* Fixed columns (2026-11-11): badge, bar, winrate, count, PnL — so the
+     bars all end at the same place and the figures line up from one row to
+     the next, whatever each row's text. The border is always there
+     (transparent without a wash) so a coloured row isn't 1px off. */
+  .tier-wr-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) 48px 132px 180px; align-items: center; column-gap: 12px; margin: 0 -8px 12px; padding: 4px 8px; border: 1px solid transparent; border-radius: var(--radius-md); cursor: pointer; transition: background-color .15s ease; }
   .tier-wr-row:last-child { margin-bottom: 0; }
   .tier-wr-row:hover { background: var(--row-hover); }
   /* Net-winning tiers wash green, net-losing ones red — an at-a-glance
@@ -1602,9 +1606,9 @@
   .tier-wr-badge:hover { filter: brightness(0.94); }
   .tier-wr-track { flex: 1; height: 12px; border-radius: 999px; background: var(--panel-border); overflow: hidden; }
   .tier-wr-fill { height: 100%; border-radius: 999px; transition: width .6s ease; min-width: 2px; }
-  .tier-wr-value { flex: 0 0 40px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .tier-wr-count { flex: 0 0 auto; min-width: 78px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
-  .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+  .tier-wr-value { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tier-wr-count { color: var(--text-dim); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tier-wr-hyp { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tier-wr-roi { font-style: italic; font-size: 13px; font-weight: 700; color: var(--text); }
   .tier-wr-few { font-size: 10.5px; font-weight: 600; color: var(--text-dim); border: 1px dashed var(--panel-border); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
@@ -1628,7 +1632,8 @@
      its own class above — this row's click-filter handler (manualVsAutoFilter)
      would otherwise collide with the conviction gauge's own .tier-wr-row
      handler reading a data-tier attribute this row doesn't have. */
-  .manual-auto-row { display: flex; align-items: center; gap: 12px; margin: 0 -8px 4px; padding: 4px 8px; border-radius: var(--radius-md); cursor: pointer; transition: background-color .15s ease; }
+  .manual-auto-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 48px 132px 180px; align-items: center; column-gap: 12px; margin: 0 -8px 4px; padding: 4px 8px; border: 1px solid transparent; border-radius: var(--radius-md); cursor: pointer; transition: background-color .15s ease; }
+  .manual-auto-row + .manual-auto-row { margin-top: 12px; } /* a type with no detail line under it */
   .manual-auto-row:hover { background: var(--row-hover); }
   .manual-auto-row.tier-win { background: color-mix(in srgb, var(--green) 38%, transparent); border: 1px solid color-mix(in srgb, var(--green) 55%, transparent); }
   .manual-auto-row.tier-lose { background: color-mix(in srgb, var(--red) 38%, transparent); border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); }
@@ -1640,12 +1645,12 @@
      that class, or the delegated .manual-auto-row click handler would
      misfire and clear an unrelated filter elsewhere on the page. */
   .magnitude-group-row { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; }
-  .manual-auto-tier-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px 162px; }
+  .manual-auto-tier-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px 163px; }
   .manual-auto-tier-chips:last-child { margin-bottom: 0; }
   /* Per-type analysis: break-even tick on the winrate bar, facts line, small PnL curve. */
   .type-track { position: relative; }
   .type-be { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: var(--text); }
-  .type-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; margin: 0 0 8px 162px; font-size: 12px; color: var(--text-dim); }
+  .type-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; min-height: 28px; margin: 0 1px 8px 163px; font-size: 12px; color: var(--text-dim); }
   .type-facts b { color: var(--text); font-variant-numeric: tabular-nums; }
   .type-facts b.pnl-pos { color: var(--green); }
   .type-facts b.pnl-neg { color: var(--red); }
@@ -9092,6 +9097,7 @@ installPolyV2Compat(window);
         (gap != null ? '<span title="Réussite moins seuil de rentabilité">Écart <b class="' + (gap >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (gap >= 0 ? "+" : "−") + Math.abs(gap).toFixed(0) + ' pt' + (Math.abs(gap) >= 1.5 ? 's' : '') + '</b></span>' : '') +
         (last ? '<span title="Les ' + TYPE_FORM_N + ' derniers paris décidés de ce type">' + TYPE_FORM_N + ' derniers <b>' + lastWin + '/' + TYPE_FORM_N + '</b>' + (lastAgg.roi != null ? ' · <b class="' + (lastAgg.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (lastAgg.roi >= 0 ? "+" : "−") + Math.abs(lastAgg.roi).toFixed(0) + ' % ROI</b>' : '') + '</span>' : '') +
         (pendingN > 0 ? '<span>En cours <b>' + pendingN + '</b></span>' : '') +
+        (few ? FEW_TAG_HTML : '') +
         spark +
       '</div>';
       var isActive = store.state.manualVsAutoFilter === g.key;
@@ -9100,7 +9106,7 @@ installPolyV2Compat(window);
         '<div class="tier-wr-track type-track"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + g.color + '"></div>' + (avgPrice != null && wr != null ? '<span class="type-be" style="left:' + (avgPrice * 100).toFixed(1) + '%" title="Seuil de rentabilité : ' + (avgPrice * 100).toFixed(0) + ' %"></span>' : '') + '</div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + ' %') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + ' · ' + items.length + ' total</span>' +
-        hypHtml + (few ? FEW_TAG_HTML : '') +
+        hypHtml +
       '</div>';
       // Confidence differential — this group's own winrate per tag, tags
       // with zero items in this group omitted rather than shown as "—".
@@ -10757,8 +10763,8 @@ installPolyV2Compat(window);
         '<button type="button" class="tier-wr-badge' + (isActive ? ' active' : '') + '" data-tier="' + esc(tier) + '" style="' + badgeStyle + '">' + esc(tier) + '</button>' +
         '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + ' %') + '</span>' +
-        '<span class="tier-wr-count">' + countLabel + '</span>' +
-        hypHtml + (few ? FEW_TAG_HTML : '') +
+        '<span class="tier-wr-count">' + countLabel + (few ? ' ' + FEW_TAG_HTML : '') + '</span>' +
+        hypHtml +
       '</div>';
     }).join("");
     var noteHtml = untagged > 0
