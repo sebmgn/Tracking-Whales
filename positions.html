@@ -1403,6 +1403,7 @@
   .snap-main .vt-exact-time::before { content: "🕒 "; }
   .snap-stake { font-size: 12px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .snap-stake b { color: var(--text); }
+  .snap-close { margin-left: 10px; } .snap-close b.pnl-pos { color: var(--green); } .snap-close b.pnl-neg { color: var(--red); }
   @media (max-width: 760px) { details.value-trade-item > .vt-summary.snap-grid { grid-template-columns: 1fr; } .snap-side { justify-items: start; } }
   .snap-toolbar .dim { flex: 1; }
   .snap-side-label { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
@@ -7369,7 +7370,7 @@ installPolyV2Compat(window);
   // written before that (2026-10-03: 1 comment, 27 tags): a position with no
   // value of its own shows its snapshot's. Read-time only, nothing is sent
   // to the server.
-  var INHERITED_FROM_SNAPSHOT = ["comment", "magnitude", "live", "liveMin", "origin", "finMin", "finOff"];
+  var INHERITED_FROM_SNAPSHOT = ["comment", "magnitude", "live", "liveMin", "origin", "finMin", "finOff", "closePrice", "closeAt"];
   function inheritFromSourceSnapshots(positions) {
     var snapById = null;
     positions.forEach(function (p) {
@@ -9209,7 +9210,7 @@ installPolyV2Compat(window);
   // buttons — types, avant-match / live, cotes, sports, mises, type × moment,
   // en cours. Every row, card or cell of these views filters the card list
   // (store.state.bucketFilter = { dim, key, label }, reclick to clear).
-  var TYPES_VIEWS = [["types", "Types"], ["live", "Avant-match / live"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"], ["cross", "Type × moment"], ["open", "En cours"]];
+  var TYPES_VIEWS = [["types", "Types"], ["live", "Avant-match / live"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"], ["cross", "Type × moment"], ["close", "Clôture"], ["open", "En cours"]];
   var PRICE_BUCKETS = [[0, 0.6, "Moins de 60 ¢"], [0.6, 0.75, "60 – 75 ¢"], [0.75, 0.85, "75 – 85 ¢"], [0.85, 0.92, "85 – 92 ¢"], [0.92, 2, "92 ¢ et plus"]];
   var STAKE_BUCKETS = [[0, 100, "Moins de 100 $"], [100, 300, "100 – 300 $"], [300, 1000, "300 – 1 000 $"], [1000, Infinity, "1 000 $ et plus"]];
   var BUCKET_COLORS = { price: "#6366f1", sport: "#0891b2", stake: "#d97706", live: LIVE_COLORS.live };
@@ -9236,7 +9237,8 @@ installPolyV2Compat(window);
   function bucketKeyOf(dim, s) {
     return dim === "live" ? String(snapLiveSeg(s)) : dim === "moment" ? snapMoment(s)
       : dim === "price" ? rangeBucket(PRICE_BUCKETS, snapLeaderPrice(s)) : dim === "stake" ? rangeBucket(STAKE_BUCKETS, snapRealStake(s))
-      : dim === "sport" ? snapSportBucket(s) : dim === "cross" ? snapOrigin(s) + "|" + snapMoment(s) : null;
+      : dim === "sport" ? snapSportBucket(s) : dim === "cross" ? snapOrigin(s) + "|" + snapMoment(s)
+      : dim === "close" ? (snapCloseGap(s) == null ? null : snapCloseGap(s) > 0.05 ? "beat" : "miss") : null;
   }
   function bucketAttrs(store, dim, key, label) {
     var f = store.state.bucketFilter;
@@ -9347,6 +9349,35 @@ installPolyV2Compat(window);
         }).join("") + '</tr>';
     }).join("");
     return '<table class="cross-tb"><tr><th></th><th>🗓️ Avant-match</th><th>📡 Live</th></tr>' + rows + '</table>';
+  }
+  // Clôture : as-tu payé moins cher que le prix au coup d'envoi ?
+  function closeViewHtml(list, store) {
+    var its = list.filter(function (s) { return snapCloseGap(s) != null; });
+    var pre = list.filter(function (s) { return snapMoment(s) === "pre" && !snapIsProps(s); });
+    var missing = pre.length - pre.filter(function (s) { return snapCloseGap(s) != null; }).length;
+    var missNote = missing > 0 ? '<div class="tier-wr-note">' + missing + ' pari' + (missing > 1 ? 's' : '') + ' d\'avant-match sans prix de clôture : pari sans lien Polymarket, ou pas encore relevé (le relevé se fait par petits lots, toutes les 15 minutes).</div>' : '';
+    if (!its.length) return '<div class="empty-note">Aucun prix de clôture relevé pour l\'instant dans cette sélection.</div>' + missNote;
+    var beat = its.filter(function (s) { return snapCloseGap(s) > 0.05; }), miss = its.filter(function (s) { return snapCloseGap(s) <= 0.05; });
+    var avg = function (arr) { return arr.reduce(function (a, s) { return a + snapCloseGap(s); }, 0) / arr.length; };
+    var gapTxt = function (v) { return (v >= 0 ? "+" : "\u2212") + Math.abs(v).toFixed(1).replace(".", ",") + ' pt' + (Math.abs(v) >= 1.95 ? 's' : ''); };
+    var a = avg(its), share = beat.length / its.length * 100;
+    var verdict = '<div class="type-verdict">Tu as payé moins cher que la clôture sur <b>' + share.toFixed(0) + '\u202f%</b> de tes ' + its.length + ' paris relevés ; en moyenne, ton prix est <b class="' + (a >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (a >= 0 ? 'meilleur' : 'moins bon') + ' de ' + Math.abs(a).toFixed(1).replace(".", ",") + ' pt' + (Math.abs(a) >= 1.95 ? 's' : '') + '</b> que celui du coup d\'envoi.</div>';
+    var card = function (name, key, label, arr, color) {
+      var st = liveSegStats(arr, store);
+      return duoCardHtml({ name: name, color: color, attrs: bucketAttrs(store, "close", key, label),
+        share: st.n + ' pari' + (st.n > 1 ? 's' : '') + ' · ' + Math.round(st.n / its.length * 100) + '\u202f% des relevés',
+        big: st.wr == null ? '—' : st.wr.toFixed(0) + '\u202f%', sub: 'de réussite<br>' + (st.decided ? st.win + ' / ' + st.decided + ' gagnés' : 'aucun résultat'),
+        pnl: st.pnl, roi: st.roi, track: bucketTrackHtml(st, color),
+        facts: (arr.length ? '<span>Écart moyen avec la clôture <b class="' + (avg(arr) >= 0 ? "pnl-pos" : "pnl-neg") + '">' + gapTxt(avg(arr)) + '</b></span>' : '') + (st.few ? FEW_TAG_HTML : '') });
+    };
+    var typeRows = MANUAL_VS_AUTO_GROUPS.map(function (g) {
+      var arr = its.filter(g.match);
+      if (!arr.length) return "";
+      var b = arr.filter(function (s) { return snapCloseGap(s) > 0.05; }).length, av = avg(arr);
+      return '<tr><th>' + esc(g.label) + '</th><td>' + arr.length + '</td><td>' + Math.round(b / arr.length * 100) + '\u202f%</td><td class="' + (av >= 0 ? "pnl-pos" : "pnl-neg") + '">' + gapTxt(av) + '</td></tr>';
+    }).join("");
+    return verdict + '<div class="live-duo">' + card('✅ Clôture battue', "beat", "clôture battue", beat, "#16a34a") + card('❌ Clôture non battue', "miss", "clôture non battue", miss, "#dc2626") + '</div>' +
+      '<div class="live-seg-title">Par type</div><table class="cross-tb open-tb"><tr><th>Type</th><th>Paris relevés</th><th>Clôture battue</th><th>Écart moyen</th></tr>' + typeRows + '</table>' + missNote;
   }
   function openViewHtml(list) {
     var pending = list.filter(function (s) { return !s.winningSide && s.leaderName; });
@@ -9469,6 +9500,7 @@ installPolyV2Compat(window);
       sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées.", function () { return bucketViewHtml(list, store, "sport"); }],
       stake: ["Par taille de mise", "Uniquement les paris dont la mise réelle est connue ; gains calculés avec ces mises réelles.", function () { return stakeEffectHtml(list) + bucketViewHtml(list, store, "stake"); }],
       cross: ["Chaque type, en avant-match et en live", "ROI de chaque case ; clique une case pour ne voir que ces paris.", function () { return crossViewHtml(list, store); }],
+      close: ["As-tu battu le prix de clôture ?", "Pour les paris pris avant le match : ton prix comparé au prix du même camp au coup d'envoi sur Polymarket. Payer moins cher que la clôture, c'est avoir eu raison avant le marché ; sur la durée, c'est le meilleur signe d'un pari de valeur. Clique une carte pour ne voir que ces paris.", function () { return closeViewHtml(list, store); }],
       open: ["Paris en cours : ce qui est engagé", "Avec les mises réelles et le prix payé. « Si tout gagne » est le gain net.", function () { return openViewHtml(list); }]
     }[view];
     var bf = store.state.bucketFilter;
@@ -16098,7 +16130,21 @@ installPolyV2Compat(window);
   // of that bet (realStake, see sebSyncToSaison).
   function snapStakeHtml(snap) {
     var st = snap && (snap.stakeUsd || snap.realStake);
-    return st ? '<span class="snap-stake">Mise <b>' + esc(fmtUSD(st)) + '</b></span>' : '';
+    return (st ? '<span class="snap-stake">Mise <b>' + esc(fmtUSD(st)) + '</b></span>' : '') + snapCloseHtml(snap);
+  }
+  // 🏁 Clôture (2026-11-11, on request): the price of the same side at
+  // kick-off, read by the notify Lambda for bets taken before the match
+  // (closePrice). Paid less than the close = the market moved your way.
+  function snapCloseGap(snap) {
+    var p = snap && snap.closePrice != null ? snapLeaderPrice(snap) : null;
+    return p > 0 ? (snap.closePrice - p) * 100 : null;
+  }
+  function snapCloseHtml(snap) {
+    var g = snapCloseGap(snap);
+    if (g == null) return '';
+    var beat = g > 0.05, same = Math.abs(g) <= 0.05;
+    return '<span class="snap-stake snap-close" title="Prix de ce camp au coup d\'envoi. ' + (same ? 'Tu as payé le même prix.' : beat ? 'Tu as payé moins cher : clôture battue.' : 'Tu as payé plus cher que la clôture.') + '">Clôture <b>' + esc(fmtCents(snap.closePrice)) + '</b>' +
+      (same ? '' : ' <b class="' + (beat ? "pnl-pos" : "pnl-neg") + '">' + (beat ? "+" : "\u2212") + Math.abs(g).toFixed(1).replace(".", ",") + ' pt' + (Math.abs(g) >= 1.95 ? 's' : '') + '</b>') + '</span>';
   }
   // 📡 Live (on request, 2026-10-31): was the bet taken during the match?
   // Not live by default. Your own tick (live: true/false) wins; else
