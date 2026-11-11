@@ -1651,6 +1651,10 @@
   .manual-auto-tier-chips:last-child { margin-bottom: 0; }
   /* Per-type analysis: break-even tick on the winrate bar, facts line, small PnL curve. */
   /* Analyses en sous-fenêtres : boutons de vue, lignes et cases cliquables */
+  .snap-toggle-bar > .snap-stats-toggle-btn { display: none; } /* replaced by .stat-nav */
+  .stat-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+  .stat-nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; color: var(--text-dim); margin-right: 4px; }
+  .stat-nav-sep { width: 1px; height: 20px; background: var(--panel-border); margin: 0 4px; }
   .types-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--panel-border); }
   .types-tab { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-dim); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
   .types-tab:hover { color: var(--text); border-color: var(--text-dim); }
@@ -9287,19 +9291,9 @@ installPolyV2Compat(window);
     var letters = CONFIDENCE_TIERS.concat([null]);
     var groups = letters.map(function (t) { return [t || "Sans lettre", list.filter(function (s) { return (s.confidence || null) === t; }), t]; }).filter(function (g) { return g[1].length; });
     if (!groups.length) return '<div class="empty-note">Rien à analyser dans cette sélection.</div>';
-    var rows = groups.map(function (g) {
-      var color = g[2] ? CONFIDENCE_COLORS[g[2]] : LIVE_COLORS.pre, items = g[1];
-      var st = liveSegStats(items, store), cls = st.pnl == null || st.few ? "" : (st.pnl >= 0 ? " tier-win" : " tier-lose");
-      return '<div class="live-seg-row' + cls + '">' +
-        '<span class="tier-wr-badge tier-wr-badge-wide" style="color:' + color + ';border-color:' + color + ';background:color-mix(in srgb, ' + color + ' 14%, transparent)">' + esc(g[0]) + '</span>' +
-        bucketTrackHtml(st, color) +
-        '<span class="tier-wr-value">' + (st.wr == null ? '—' : st.wr.toFixed(0) + '\u202f%') + '</span>' +
-        '<span class="tier-wr-count">' + (st.decided ? st.win + ' / ' + st.decided + (st.few ? ' ' + FEW_TAG_HTML : st.n > st.decided ? ' · ' + (st.n - st.decided) + ' en cours' : ' gagnés') : st.n + ' en cours') + '</span>' +
-        (st.pnl == null ? '<span></span>' : '<span class="tier-wr-hyp ' + (st.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(st.pnl)) + ' <span class="tier-wr-roi">(' + signedTxt(st.roi, '\u202f% ROI') + ')</span></span>') +
-      '</div>';
-    }).join("");
-    return roiLadderHtml("Rendement par lettre de confiance", groups.map(function (g) { return [g[0], g[1]]; }), store) +
-      '<div class="live-seg-title" style="margin-top:18px;">Réussite et gain par lettre</div>' + rows;
+    // the rows (winrate, count, gain per letter) are the conviction panel's, shown just above
+    return roiLadderHtml("Rendement par lettre de confiance", groups.map(function (g) { return [g[0], g[1]]; }), store) ||
+      '<div class="empty-note">Pas assez de lettres différentes pour comparer leur rendement.</div>';
   }
   function liveSplitHtml(list, store) {
     var bySeg = {};
@@ -9435,6 +9429,35 @@ installPolyV2Compat(window);
       }).join("") + '</table>' : '') +
       (unknownN ? '<div class="tier-wr-note">' + unknownN + ' pari' + (unknownN > 1 ? 's' : '') + ' en cours sans mise réelle connue : non compté' + (unknownN > 1 ? 's' : '') + ' ici.</div>' : '');
   }
+  // Une seule barre pour toutes les stats (2026-11-11, on request): the row
+  // of panel buttons is replaced by one navigation bar; a view is either a
+  // view of the analyses box (TYPES_VIEWS) or one of the older panels
+  // (conviction, cote × confiance, par semaine, autres stats, traders), which
+  // keep their own renderers and are simply opened one at a time from here.
+  // Nothing is open until a button is pressed; pressing the open one folds it.
+  var STAT_NAV = [["types", "Types"], ["live", "Avant-match / live"], ["conf", "Confiance"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"],
+    ["cross", "Type × moment"], ["close", "Clôture"], ["open", "En cours"], null,
+    ["weekly", "Par semaine"], ["other", "Autres stats"], ["traders", "Traders"], ["dist", "Cote × confiance"]];
+  var STAT_LEGACY = { conf: "tierWinrateCollapsed", dist: "distCollapsed", weekly: "weeklyPnlCollapsed", other: "otherStatsCollapsed", traders: "traderTableCollapsed" };
+  function statViewApply(store) {
+    var st = store.state, v = st.statView || null;
+    Object.keys(STAT_LEGACY).forEach(function (k) { st[STAT_LEGACY[k]] = v !== k; });
+    var inBox = !!v && TYPES_VIEWS.some(function (t) { return t[0] === v; });
+    st.manualVsAutoCollapsed = !inBox;
+    if (inBox) st.typesView = v;
+  }
+  function renderStatNav(store) {
+    var btn = document.getElementById(store.ids.manualVsAutoToggle), bar = btn && btn.parentNode;
+    if (!bar) return;
+    var nav = bar.querySelector(".stat-nav");
+    if (!nav) { nav = document.createElement("div"); nav.className = "stat-nav"; nav.setAttribute("role", "tablist"); nav.setAttribute("aria-label", "Statistiques"); bar.appendChild(nav); }
+    var v = store.state.statView || null;
+    nav.innerHTML = '<span class="stat-nav-label">Statistiques</span>' + STAT_NAV.map(function (t) {
+      if (!t) return '<span class="stat-nav-sep" aria-hidden="true"></span>';
+      if (t[0] === "traders" && store.name === "seb2") return ""; // no trader table in Seb 2.0
+      return '<button type="button" role="tab" class="types-tab' + (t[0] === v ? ' active' : '') + '" aria-selected="' + (t[0] === v) + '" data-stat-view="' + t[0] + '" data-store="' + store.name + '"' + (t[0] === v ? ' title="Recliquer pour replier"' : '') + '>' + t[1] + '</button>';
+    }).join("");
+  }
   function renderManualVsAuto(list, store) {
     list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.manualVsAuto;
@@ -9524,15 +9547,12 @@ installPolyV2Compat(window);
       ? '<div class="tier-wr-note">Filtré sur <b>' + esc(MANUAL_VS_AUTO_GROUPS.filter(function (g) { return g.key === store.state.manualVsAutoFilter; })[0].label) + '</b> — reclique la ligne active pour l\'enlever.</div>'
       : '';
     syncSnapToggleLabel(store.ids.manualVsAutoToggle, store.state.manualVsAutoCollapsed, "les analyses des paris");
-    var view = store.state.typesView || "types";
-    var tabsHtml = '<div class="types-tabs" role="tablist">' + TYPES_VIEWS.map(function (v) {
-      return '<button type="button" role="tab" class="types-tab' + (v[0] === view ? ' active' : '') + '" aria-selected="' + (v[0] === view) + '" data-types-view="' + v[0] + '" data-store="' + store.name + '">' + v[1] + '</button>';
-    }).join("") + '</div>';
+    var view = store.state.typesView || "types", tabsHtml = "";
     var sim = esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE));
     var V = {
       types: ["Par type : manuel, suivi des whales, comparaison, props, fin de match", sim + ' — le trait noir sur chaque barre est le seuil de rentabilité ; clique une ligne pour filtrer, une pastille de confiance pour affiner.', function () { return verdictHtml + rows + filterNoteHtml; }],
       live: ["Avant-match ou live", "Les mêmes paris, selon le moment où ils ont été pris : avant le coup d'envoi ou pendant le match. Clique une carte ou une ligne pour ne voir que ces paris.", function () { return liveSplitHtml(list, store); }],
-      conf: ["Par lettre de confiance", sim + ' — le rendement de chaque lettre, puis sa réussite face au seuil de rentabilité (trait noir).', function () { return confViewHtml(list, store); }],
+      conf: ["Le rendement de chaque lettre", sim + '.', function () { return confViewHtml(list, store); }],
       price: ["Par tranche de cote", "Selon le prix payé. Le trait noir est le seuil de rentabilité de la tranche : la barre doit le dépasser pour gagner de l'argent.", function () { return bucketViewHtml(list, store, "price"); }],
       sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées.", function () { return bucketViewHtml(list, store, "sport"); }],
       stake: ["Par taille de mise", "Uniquement les paris dont la mise réelle est connue ; gains calculés avec ces mises réelles.", function () { return stakeEffectHtml(list) + bucketViewHtml(list, store, "stake"); }],
@@ -12861,6 +12881,7 @@ installPolyV2Compat(window);
       ? cardsList.length + ' / ' + (preViewCount != null ? preViewCount : list.length) + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
       : list.length + ' ' + store.itemNoun + (list.length > 1 ? 's' : '');
     st.panelArgs = { list: list, cardsList: cardsList, labels: activeFilterLabels };
+    renderStatNav(store);
     renderTierWinrate(list, store);
     renderNoteWinrate(list, store);
     st.panelsLock = true;
@@ -15764,8 +15785,10 @@ installPolyV2Compat(window);
     var typesTab = e.target.closest ? e.target.closest(".types-tab") : null;
     if (typesTab) {
       var typesTabStore = resolveStoreFromEl(typesTab);
-      typesTabStore.state.typesView = typesTab.getAttribute("data-types-view");
-      renderManualVsAuto(typesTabStore.state.panelArgs ? typesTabStore.state.panelArgs.list : typesTabStore.load(), typesTabStore);
+      var statNext = typesTab.getAttribute("data-stat-view");
+      typesTabStore.state.statView = typesTabStore.state.statView === statNext ? null : statNext;
+      statViewApply(typesTabStore);
+      renderStoreView(typesTabStore);
       return;
     }
     var bucketEl = e.target.closest ? e.target.closest("[data-bucket-dim]") : null;
