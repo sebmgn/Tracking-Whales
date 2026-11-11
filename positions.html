@@ -1648,6 +1648,29 @@
   .manual-auto-tier-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px 163px; }
   .manual-auto-tier-chips:last-child { margin-bottom: 0; }
   /* Per-type analysis: break-even tick on the winrate bar, facts line, small PnL curve. */
+  /* Avant-match vs live block, under the types (same columns as their rows) */
+  .live-split { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--panel-border); }
+  .live-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .live-card { border: 1px solid var(--panel-border); border-top: 3px solid var(--lc); border-radius: var(--radius-md); padding: 12px 14px 10px; background: color-mix(in srgb, var(--lc) 7%, transparent); }
+  .live-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .live-card-name { font-size: 14px; font-weight: 700; }
+  .live-card-share { font-size: 11.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .live-card-main { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .live-card-wr { font-size: 30px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .live-card-sub { font-size: 11.5px; color: var(--text-dim); line-height: 1.35; font-variant-numeric: tabular-nums; }
+  .live-card-pnl { margin-left: auto; text-align: right; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.2; }
+  .live-card-roi { display: block; font-size: 12px; font-style: italic; }
+  .live-card-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 9px; font-size: 12px; color: var(--text-dim); min-height: 20px; }
+  .live-card-facts b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .live-card-facts b.pnl-pos { color: var(--green); }
+  .live-card-facts b.pnl-neg { color: var(--red); }
+  .live-seg-title { font-size: 12.5px; font-weight: 700; margin-bottom: 8px; }
+  .live-seg-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 48px 132px 180px; align-items: center; column-gap: 12px; margin: 0 -8px 8px; padding: 4px 8px; border: 1px solid transparent; border-radius: var(--radius-md); }
+  .live-seg-row:last-child { margin-bottom: 0; }
+  .live-seg-row.tier-win { background: color-mix(in srgb, var(--green) 38%, transparent); border-color: color-mix(in srgb, var(--green) 55%, transparent); }
+  .live-seg-row.tier-lose { background: color-mix(in srgb, var(--red) 38%, transparent); border-color: color-mix(in srgb, var(--red) 55%, transparent); }
+  .live-seg-row.live-seg-empty { opacity: .55; }
+  .live-seg-badge { color: #a855f7; border-color: #a855f7; background: color-mix(in srgb, #a855f7 14%, transparent); cursor: default; }
   .type-track { position: relative; }
   .type-be { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: var(--text); }
   .type-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; min-height: 28px; margin: 0 1px 8px 163px; font-size: 12px; color: var(--text-dim); }
@@ -9057,6 +9080,81 @@ installPolyV2Compat(window);
       '<line x1="' + pad + '" y1="' + Y(0).toFixed(1) + '" x2="' + (W - pad) + '" y2="' + Y(0).toFixed(1) + '" stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="2,3" opacity="0.6"/>' +
       '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>';
   }
+  // Avant-match vs live (2026-11-11, on request): the same bets split by
+  // WHEN they were taken — before kickoff or during the match — and the live
+  // ones by minute of play: before the 70th, 70', 80', 90' (the Fin de match
+  // slots, snapFinMin), "unk" when the minute isn't known.
+  var LIVE_COLORS = { pre: "#94a3b8", live: "#a855f7" };
+  var LIVE_SEGS = [
+    { key: "early", label: "Avant la 70e", tip: "Pris pendant le match, avant la 70e minute" },
+    { key: 70, label: "70e – 79e", tip: "Pris entre la 70e et la 79e minute" },
+    { key: 80, label: "80e – 89e", tip: "Pris entre la 80e et la 89e minute" },
+    { key: 90, label: "90e et après", tip: "Pris à partir de la 90e minute, temps additionnel compris" },
+    { key: "unk", label: "Minute inconnue", tip: "Pris en live, sans minute connue" }
+  ];
+  function snapLiveSeg(s) {
+    var fm = snapFinMin(s);
+    if (fm) return fm;
+    var li = snapLiveInfo(s);
+    if (li.on) return li.min != null && li.min >= 0 && li.min <= LIVE_PIN_MAX ? "early" : "unk";
+    return s.origin === "fin" ? "unk" : "pre";
+  }
+  function liveSegStats(items, store) {
+    var decided = items.filter(function (s) { return !!s.winningSide; });
+    var win = decided.filter(function (s) { return s.leaderName === s.winningSide; }).length;
+    var agg = aggregateFlatPnl(decided, store);
+    var prices = decided.map(function (s) { return snapLeaderPrice(s); }).filter(function (pr) { return pr > 0; });
+    var be = prices.length ? prices.reduce(function (x, y) { return x + y; }, 0) / prices.length * 100 : null;
+    var wr = decided.length ? win / decided.length * 100 : null;
+    return { n: items.length, decided: decided.length, win: win, wr: wr, pnl: agg.count > 0 ? agg.pnl : null, roi: agg.count > 0 ? agg.roi : null, be: be, gap: wr != null && be != null ? wr - be : null, few: fewDecided(decided.length) };
+  }
+  function liveSplitHtml(list, store) {
+    var bySeg = {};
+    list.forEach(function (s) { var k = snapLiveSeg(s); (bySeg[k] = bySeg[k] || []).push(s); });
+    var pre = bySeg.pre || [], live = list.filter(function (s) { return snapLiveSeg(s) !== "pre"; });
+    if (!live.length) return "";
+    var signed = function (v, unit) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(0) + unit; };
+    var track = function (st, color) {
+      return '<div class="tier-wr-track type-track"><div class="tier-wr-fill" style="width:' + (st.wr == null ? 0 : st.wr.toFixed(1)) + '%;background:' + color + '"></div>' +
+        (st.be != null && st.wr != null ? '<span class="type-be" style="left:' + st.be.toFixed(1) + '%" title="Seuil de rentabilité : ' + st.be.toFixed(0) + ' %"></span>' : '') + '</div>';
+    };
+    var card = function (name, items, color) {
+      var st = liveSegStats(items, store);
+      return '<div class="live-card" style="--lc:' + color + '">' +
+        '<div class="live-card-head"><span class="live-card-name">' + name + '</span><span class="live-card-share">' + st.n + ' pari' + (st.n > 1 ? 's' : '') + ' · ' + Math.round(st.n / list.length * 100) + ' % du total</span></div>' +
+        '<div class="live-card-main"><span class="live-card-wr">' + (st.wr == null ? '—' : st.wr.toFixed(0) + ' %') + '</span>' +
+          '<span class="live-card-sub">de réussite<br>' + (st.decided ? st.win + ' / ' + st.decided + ' gagnés' : 'aucun résultat') + '</span>' +
+          (st.pnl == null ? '' : '<span class="live-card-pnl ' + (st.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(st.pnl)) + '<span class="live-card-roi">' + signed(st.roi, ' % ROI') + '</span></span>') +
+        '</div>' + track(st, color) +
+        '<div class="live-card-facts">' +
+          (st.be != null ? '<span title="Part de paris gagnés qu\'il faut dépasser pour être rentable à cette cote moyenne">Seuil de rentabilité <b>' + st.be.toFixed(0) + ' %</b></span>' : '') +
+          (st.gap != null ? '<span title="Réussite moins seuil de rentabilité">Écart <b class="' + (st.gap >= 0 ? "pnl-pos" : "pnl-neg") + '">' + signed(st.gap, ' pt' + (Math.abs(st.gap) >= 1.5 ? 's' : '')) + '</b></span>' : '') +
+          (st.n - st.decided > 0 ? '<span>En cours <b>' + (st.n - st.decided) + '</b></span>' : '') +
+          (st.few ? FEW_TAG_HTML : '') +
+        '</div></div>';
+    };
+    var sp = liveSegStats(pre, store), sl = liveSegStats(live, store);
+    var verdict = sp.roi == null || sl.roi == null || sp.few || sl.few ? "" :
+      '<div class="type-verdict">' + (sl.roi >= sp.roi ? 'Le <b>live</b> rapporte plus' : 'L\'<b>avant-match</b> rapporte plus') + ' : ' +
+      signed(sl.roi >= sp.roi ? sl.roi : sp.roi, ' % de ROI') + ' contre ' + signed(sl.roi >= sp.roi ? sp.roi : sl.roi, ' %') + (sl.roi >= sp.roi ? ' en avant-match' : ' en live') + '.</div>';
+    var segRows = LIVE_SEGS.map(function (g) {
+      var items = bySeg[g.key] || [];
+      if (g.key === "unk" && !items.length) return "";
+      var st = liveSegStats(items, store);
+      var cls = st.pnl == null || st.few ? "" : (st.pnl >= 0 ? " tier-win" : " tier-lose");
+      return '<div class="live-seg-row' + cls + (st.n ? '' : ' live-seg-empty') + '" title="' + esc(g.tip) + '">' +
+        '<span class="tier-wr-badge tier-wr-badge-wide live-seg-badge">' + esc(g.label) + '</span>' +
+        track(st, LIVE_COLORS.live) +
+        '<span class="tier-wr-value">' + (st.wr == null ? '—' : st.wr.toFixed(0) + ' %') + '</span>' +
+        '<span class="tier-wr-count">' + (st.decided ? st.win + ' / ' + st.decided + (st.few ? ' ' + FEW_TAG_HTML : st.n > st.decided ? ' · ' + (st.n - st.decided) + ' en cours' : ' gagnés') : st.n ? st.n + ' en cours' : 'aucun pari') + '</span>' +
+        (st.pnl == null ? '<span></span>' : '<span class="tier-wr-hyp ' + (st.pnl >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(st.pnl)) + ' <span class="tier-wr-roi">(' + signed(st.roi, ' % ROI') + ')</span></span>') +
+      '</div>';
+    }).join("");
+    return '<div class="live-split"><div class="tier-wr-title">Avant-match ou live</div>' +
+      '<div class="tier-wr-subtitle">Les mêmes paris, selon le moment où ils ont été pris : avant le coup d\'envoi ou pendant le match.</div>' +
+      verdict + '<div class="live-duo">' + card('🗓️ Avant-match', pre, LIVE_COLORS.pre) + card('📡 Live', live, LIVE_COLORS.live) + '</div>' +
+      '<div class="live-seg-title">Le live, selon la minute de prise</div>' + segRows + '</div>';
+  }
   function renderManualVsAuto(list, store) {
     list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.manualVsAuto;
@@ -9148,7 +9246,7 @@ installPolyV2Compat(window);
     syncSnapToggleLabel(store.ids.manualVsAutoToggle, store.state.manualVsAutoCollapsed, "les types de paris");
     el.innerHTML = '<div class="tier-wr-collapse-wrap' + (store.state.manualVsAutoCollapsed ? " collapsed" : "") + '"><div class="chart-box tier-wr-box"><div class="tier-wr-title">Par type : manuel, suivi des whales, comparaison, props, fin de match</div>' +
       '<div class="tier-wr-subtitle">' + esc(store.simSubtitle(HYPOTHETICAL_FLAT_STAKE)) + ' — le trait noir sur chaque barre est le seuil de rentabilité ; clique une ligne pour filtrer, une pastille de confiance pour affiner.</div>' +
-      verdictHtml + rows + filterNoteHtml + '</div></div>';
+      verdictHtml + rows + filterNoteHtml + liveSplitHtml(list, store) + '</div></div>';
   }
 
   // ---------- Paris par semaine (barres divergentes + tableau) ----------
