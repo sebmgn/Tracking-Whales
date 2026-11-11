@@ -1652,9 +1652,18 @@
   /* Per-type analysis: break-even tick on the winrate bar, facts line, small PnL curve. */
   /* Analyses en sous-fenêtres : boutons de vue, lignes et cases cliquables */
   .snap-toggle-bar > .snap-stats-toggle-btn { display: none; } /* replaced by .stat-nav */
-  .stat-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
-  .stat-nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; color: var(--text-dim); margin-right: 4px; }
-  .stat-nav-sep { width: 1px; height: 20px; background: var(--panel-border); margin: 0 4px; }
+  .stat-nav { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; width: 100%; padding: 12px 14px 14px; border: 1px solid var(--panel-border); border-radius: var(--radius-md); background: var(--panel); }
+  .stat-nav-head { flex: 0 0 100%; display: flex; align-items: baseline; gap: 12px; margin-bottom: 2px; }
+  .stat-nav-label { font-size: 15px; font-weight: 800; color: var(--text); }
+  .stat-nav-hint { font-size: 12px; color: var(--text-dim); }
+  .stat-nav-sep { width: 1px; background: var(--panel-border); margin: 2px 4px; }
+  /* same neon look as the panel buttons this bar replaces */
+  .stat-nav .types-tab { font-size: 13.5px; font-weight: 600; padding: 9px 16px; border-radius: 10px; color: var(--text);
+    background: color-mix(in srgb, var(--neon) 9%, var(--panel)); border: 1px solid color-mix(in srgb, var(--neon) 60%, transparent);
+    box-shadow: 0 0 7px color-mix(in srgb, var(--neon) 40%, transparent), inset 0 0 6px color-mix(in srgb, var(--neon) 10%, transparent);
+    transition: box-shadow .2s ease, border-color .2s ease, background .2s ease, color .2s ease; }
+  .stat-nav .types-tab:hover { border-color: var(--neon); color: var(--text); box-shadow: 0 0 18px color-mix(in srgb, var(--neon) 70%, transparent), 0 0 32px color-mix(in srgb, var(--neon) 30%, transparent); }
+  .stat-nav .types-tab.active { background: var(--neon); border-color: var(--neon); color: #fff; }
   .types-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--panel-border); }
   .types-tab { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--panel-border); background: transparent; color: var(--text-dim); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
   .types-tab:hover { color: var(--text); border-color: var(--text-dim); }
@@ -1695,6 +1704,8 @@
   /* Comparer les courbes : sous-fenêtre sous la courbe principale */
   .pnl-compare { margin: 10px 0 4px; padding-top: 10px; border-top: 1px dashed var(--panel-border); }
   .pnl-compare.open { border: 1px solid var(--panel-border); border-radius: var(--radius-md); padding: 12px 14px; }
+  /* the svg steps out of the box's padding and border, to be exactly as wide as the main curve above */
+  .chart-box .pnl-compare.open svg.pnl-compare-svg { width: calc(100% + 30px); max-width: none; margin: 0 -15px; display: block; }
   .pnl-compare-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .pnl-compare-bar .pnl-chart-tier-chip.active { background: var(--text); border-color: var(--text); color: var(--panel); }
   .pnl-compare-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 6px; font-size: 12.5px; }
@@ -9438,6 +9449,7 @@ installPolyV2Compat(window);
   var STAT_NAV = [["types", "Types"], ["live", "Avant-match / live"], ["conf", "Confiance"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"],
     ["cross", "Type × moment"], ["close", "Clôture"], ["open", "En cours"], null,
     ["weekly", "Par semaine"], ["other", "Autres stats"], ["traders", "Traders"], ["dist", "Cote × confiance"]];
+  var STAT_NAV_COLORS = { types: "#f472b6", live: "#a855f7", conf: "#d4a017", price: "#6366f1", sport: "#0891b2", stake: "#d97706", cross: "#ec4899", close: "#16a34a", open: "#0ea5e9", weekly: "#34d399", other: "#94a3b8", traders: "#fb923c", dist: "#a78bfa" };
   var STAT_LEGACY = { conf: "tierWinrateCollapsed", dist: "distCollapsed", weekly: "weeklyPnlCollapsed", other: "otherStatsCollapsed", traders: "traderTableCollapsed" };
   function statViewApply(store) {
     var st = store.state, v = st.statView || null;
@@ -9452,10 +9464,10 @@ installPolyV2Compat(window);
     var nav = bar.querySelector(".stat-nav");
     if (!nav) { nav = document.createElement("div"); nav.className = "stat-nav"; nav.setAttribute("role", "tablist"); nav.setAttribute("aria-label", "Statistiques"); bar.appendChild(nav); }
     var v = store.state.statView || null;
-    nav.innerHTML = '<span class="stat-nav-label">Statistiques</span>' + STAT_NAV.map(function (t) {
+    nav.innerHTML = '<div class="stat-nav-head"><span class="stat-nav-label">📊 Statistiques</span><span class="stat-nav-hint">' + (v ? 'reclique le bouton allumé pour replier' : 'clique un bouton pour ouvrir une vue') + '</span></div>' + STAT_NAV.map(function (t) {
       if (!t) return '<span class="stat-nav-sep" aria-hidden="true"></span>';
       if (t[0] === "traders" && store.name === "seb2") return ""; // no trader table in Seb 2.0
-      return '<button type="button" role="tab" class="types-tab' + (t[0] === v ? ' active' : '') + '" aria-selected="' + (t[0] === v) + '" data-stat-view="' + t[0] + '" data-store="' + store.name + '"' + (t[0] === v ? ' title="Recliquer pour replier"' : '') + '>' + t[1] + '</button>';
+      return '<button type="button" role="tab" class="types-tab' + (t[0] === v ? ' active' : '') + '" style="--neon:' + STAT_NAV_COLORS[t[0]] + '" aria-selected="' + (t[0] === v) + '" data-stat-view="' + t[0] + '" data-store="' + store.name + '"' + (t[0] === v ? ' title="Recliquer pour replier"' : '') + '>' + t[1] + '</button>';
     }).join("");
   }
   function renderManualVsAuto(list, store) {
@@ -11552,7 +11564,7 @@ installPolyV2Compat(window);
       var won = pnl >= 0;
       series.push({ date: new Date(snapSortTime(snap)), value: cum, delta: pnl, id: snap.id, win: won, note: snap.noteAtSnapshot, pointColor: snap.cashout ? "#9e9e9e" : won ? "#00e676" : "#ff1744", cashout: !!snap.cashout, isManual: !!snap.isManual, origin: snapOrigin(snap), finMin: snapFinMin(snap), confidence: snap.confidence });
       chartSnaps[snap.id] = snap;
-      comparePts.push({ t: snapSortTime(snap), pnl: pnl, snap: snap });
+      comparePts.push({ i: series.length - 1, t: snapSortTime(snap), pnl: pnl, stake: stake, snap: snap });
       weeklySeries.push({ id: snap.id, cashout: !!snap.cashout, date: new Date(snapSortTime(snap)), pnl: pnl, stake: stake, note: snap.noteAtSnapshot, isManual: !!snap.isManual, origin: snapOrigin(snap), confidence: snap.confidence });
     });
     subStats.manual.roi = subStats.manual.stakeSum > 0 ? (subStats.manual.pnl / subStats.manual.stakeSum * 100) : null;
@@ -11774,29 +11786,38 @@ installPolyV2Compat(window);
   // avant-match, or real stakes vs the same stake everywhere. The main
   // curve stays as it is, so it remains readable.
   var PNL_COMPARE_MODES = [["type", "Par type"], ["moment", "Avant-match / live"], ["stake", "Mises réelles / mise fixe"]];
-  function buildCompareSvg(groups) {
-    var W = 1000, H = 250, padL = 62, padR = 16, padT = 12, padB = 24, tMin = Infinity, tMax = -Infinity, vMin = 0, vMax = 0;
+  // Same horizontal scale as the main curve above it (buildHistoryChartSvg:
+  // width, left and right margins, one even step per bet of the whole
+  // series, same 7 date labels), so a bet sits at the same x in both charts
+  // (on request, 2026-11-11 — it used to be a time scale, which drifted).
+  function buildCompareSvg(groups, n, dates) {
+    var W = 1000, H = 250, padL = 54, padR = 14, padT = 12, padB = 24, vMin = 0, vMax = 0;
     groups.forEach(function (g) {
       var cum = 0;
-      g.line = g.pts.map(function (p) { cum += p.d; tMin = Math.min(tMin, p.t); tMax = Math.max(tMax, p.t); vMin = Math.min(vMin, cum); vMax = Math.max(vMax, cum); return { t: p.t, v: cum }; });
+      g.line = g.pts.map(function (p) { cum += p.d; vMin = Math.min(vMin, cum); vMax = Math.max(vMax, cum); return { i: p.i, v: cum }; });
       g.total = cum;
     });
-    var tr = (tMax - tMin) || 1, vr = (vMax - vMin) || 1;
-    var X = function (t) { return padL + (t - tMin) / tr * (W - padL - padR); }, Y = function (v) { return padT + (1 - (v - vMin) / vr) * (H - padT - padB); };
+    var vr = (vMax - vMin) || 1, innerW = W - padL - padR;
+    var X = function (i) { return padL + (n <= 1 ? 0 : (i / (n - 1)) * innerW); }, Y = function (v) { return padT + (1 - (v - vMin) / vr) * (H - padT - padB); };
     var raw = vr / 4, mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), step = [1, 2, 5, 10].map(function (m) { return m * mag; }).filter(function (x) { return x >= raw; })[0] || raw;
     var grid = "";
     for (var v = Math.ceil(vMin / step) * step; v <= vMax + 1e-9; v += step) {
       grid += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="var(--panel-border)" stroke-width="' + (Math.abs(v) < 1e-9 ? 1.5 : 1) + '"' + (Math.abs(v) < 1e-9 ? '' : ' stroke-dasharray="3,4"') + '/>' +
-        '<text x="' + (padL - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="var(--text-dim)">' + esc(Math.abs(v) < 1e-9 ? "0 $" : fmtUSD(v)) + '</text>';
+        '<text x="' + (padL - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--text-dim)">' + esc(Math.abs(v) < 1e-9 ? "0 $" : fmtUSD(v)) + '</text>';
     }
-    var dates = [tMin, (tMin + tMax) / 2, tMax].map(function (t, i) { return '<text x="' + X(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? "start" : i === 2 ? "end" : "middle") + '" font-size="11" fill="var(--text-dim)">' + fmtDateShort(new Date(t)) + '</text>'; }).join("");
+    var labelCount = Math.min(7, n), xLabels = "";
+    for (var li = 0; li < labelCount; li++) {
+      var idx = Math.round((li / (labelCount - 1 || 1)) * (n - 1));
+      var lastLbl = li === labelCount - 1 && labelCount > 1; // kept clear of the box's right border
+      xLabels += '<text x="' + (X(idx) + (lastLbl ? 12 : 0)).toFixed(2) + '" y="' + (H - 6) + '" font-size="10" fill="var(--text-dim)" text-anchor="' + (lastLbl ? "end" : "middle") + '">' + fmtDateShort(new Date(dates[idx])) + '</text>';
+    }
     var lines = groups.map(function (g) {
-      var d = "M" + X(g.line[0].t).toFixed(1) + "," + Y(0).toFixed(1) + g.line.map(function (p) { return "L" + X(p.t).toFixed(1) + "," + Y(p.v).toFixed(1); }).join("");
+      var d = "M" + X(g.line[0].i).toFixed(1) + "," + Y(0).toFixed(1) + g.line.map(function (p) { return "L" + X(p.i).toFixed(1) + "," + Y(p.v).toFixed(1); }).join("");
       var last = g.line[g.line.length - 1];
       return '<path d="' + d + '" fill="none" stroke="' + g.color + '" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"' + (g.dashed ? ' stroke-dasharray="7,5"' : '') + '><title>' + esc(g.label + " : " + fmtUSDSigned(g.total)) + '</title></path>' +
-        '<circle cx="' + X(last.t).toFixed(1) + '" cy="' + Y(last.v).toFixed(1) + '" r="4" fill="' + g.color + '"/>';
+        '<circle cx="' + X(last.i).toFixed(1) + '" cy="' + Y(last.v).toFixed(1) + '" r="4" fill="' + g.color + '"/>';
     }).join("");
-    return '<svg class="pnl-compare-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Courbes comparées">' + grid + dates + lines + '</svg>';
+    return '<svg class="pnl-compare-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Courbes comparées">' + grid + xLabels + lines + '</svg>';
   }
   function pnlCompareHtml(pts, st) {
     var mode = st.pnlChartCompare || "";
@@ -11805,9 +11826,10 @@ installPolyV2Compat(window);
     }).join("") + (mode ? '<button type="button" class="pnl-chart-tier-chip" data-compare="">✕ Fermer</button>' : '') + '</div>';
     if (!mode) return '<div class="pnl-compare">' + bar + '</div>';
     var groups = [], note = "";
-    var mk = function (label, color, sel, dFn, dashed) {
-      var g = pts.filter(sel).map(function (p) { return { t: p.t, d: dFn ? dFn(p) : p.pnl }; }).filter(function (p) { return p.d != null; });
-      if (g.length) groups.push({ label: label, color: color, pts: g, dashed: !!dashed });
+    var mk = function (label, color, sel, dFn, dashed, stakeFn) {
+      var g = pts.filter(sel).map(function (p) { return { i: p.i, d: dFn ? dFn(p) : p.pnl, k: stakeFn ? stakeFn(p) : p.stake }; }).filter(function (p) { return p.d != null; });
+      var stake = g.reduce(function (a, p) { return a + (p.k || 0); }, 0), pnl = g.reduce(function (a, p) { return a + p.d; }, 0);
+      if (g.length) groups.push({ label: label, color: color, pts: g, dashed: !!dashed, roi: stake > 0 ? pnl / stake * 100 : null });
     };
     if (mode === "type") ORIGIN_KEYS.forEach(function (k) { mk(ORIGIN_ICONS[k] + " " + ORIGIN_LABELS[k], ORIGIN_COLORS[k], function (p) { return snapOrigin(p.snap) === k; }); });
     else if (mode === "moment") {
@@ -11817,15 +11839,15 @@ installPolyV2Compat(window);
       var withStake = function (p) { return !!snapRealStake(p.snap); }, sum = 0, n = 0;
       pts.filter(withStake).forEach(function (p) { sum += snapRealStake(p.snap); n++; });
       var avg = n ? sum / n : 0;
-      mk("💵 Tes mises réelles", "var(--accent)", withStake, function (p) { return hypotheticalFlatPnl(p.snap, snapRealStake(p.snap)); });
-      mk("⚖️ Même mise partout (" + fmtUSD(avg) + ")", "var(--text-dim)", withStake, function (p) { return hypotheticalFlatPnl(p.snap, avg); }, true);
+      mk("💵 Tes mises réelles", "var(--accent)", withStake, function (p) { return hypotheticalFlatPnl(p.snap, snapRealStake(p.snap)); }, false, function (p) { return snapRealStake(p.snap); });
+      mk("⚖️ Même mise partout (" + fmtUSD(avg) + ")", "var(--text-dim)", withStake, function (p) { return hypotheticalFlatPnl(p.snap, avg); }, true, function () { return avg; });
       note = "Sur les " + n + " paris dont la mise réelle est connue ; la mise fixe est ta mise moyenne.";
     }
     var total = 0; groups.forEach(function (g) { total += g.pts.length; });
     if (!groups.length || total < 2) return '<div class="pnl-compare open">' + bar + '<div class="empty-note" style="padding:10px 0;">' + (mode === "stake" ? "Aucune mise réelle connue sur ces paris." : "Pas assez de paris décidés pour comparer.") + '</div></div>';
-    var svg = buildCompareSvg(groups);
+    var svg = buildCompareSvg(groups, pts.length, pts.map(function (p) { return p.t; }));
     var legend = '<div class="pnl-compare-legend">' + groups.map(function (g) {
-      return '<span class="pnl-compare-key"><i style="background:' + g.color + '"></i>' + esc(g.label) + ' <b class="' + (g.total >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(g.total)) + '</b> <em>' + g.pts.length + ' pari' + (g.pts.length > 1 ? 's' : '') + '</em></span>';
+      return '<span class="pnl-compare-key"><i style="background:' + g.color + '"></i>' + esc(g.label) + ' <b class="' + (g.total >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(g.total)) + '</b>' + (g.roi == null ? '' : ' <b class="' + (g.roi >= 0 ? "pnl-pos" : "pnl-neg") + '" title="Gain total rapporté au total misé sur ces paris">ROI ' + (g.roi >= 0 ? "+" : "\u2212") + Math.abs(g.roi).toFixed(1).replace(".", ",") + '\u202f%</b>') + ' <em>' + g.pts.length + ' pari' + (g.pts.length > 1 ? 's' : '') + '</em></span>';
     }).join("") + '</div>';
     return '<div class="pnl-compare open">' + bar + legend + svg + (note ? '<div class="tier-wr-note">' + esc(note) + '</div>' : '') + '</div>';
   }
