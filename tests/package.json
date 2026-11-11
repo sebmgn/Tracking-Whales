@@ -1,0 +1,11 @@
+{
+  "name": "tracking-whales-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-force-exit calc.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}
