@@ -12893,10 +12893,10 @@ installPolyV2Compat(window);
     // filter is about the finished bets' stats, a running bet must stay in
     // sight. Not during a search, which lists its own results.
     if (store.openFirst && !q) {
-      var openCards = a.list.filter(function (s) { return s.sebOpen; }).sort(function (x, y) { return (snapSortTime(x) || 0) - (snapSortTime(y) || 0); });
+      var openCards = a.list.filter(function (s) { return s.sebOpen; }).sort(function (x, y) { return (snapSortTime(y) || 0) - (snapSortTime(x) || 0); }); // settled last first: props on top (2026-11-11)
       if (openCards.length) {
         var restCards = cardsList.filter(function (s) { return !s.sebOpen; });
-        store.els.list.innerHTML = '<div class="open-cards-title">⏳ Paris en cours · ' + openCards.length + ' <span>le prochain match en premier</span></div>' +
+        store.els.list.innerHTML = '<div class="open-cards-title">⏳ Paris en cours · ' + openCards.length + ' <span>celui qui se règle le plus tard en premier</span></div>' +
           openCards.map(function (snap) { return snapCardHtml(snap, false, store); }).join("") +
           '<div class="open-cards-title">Paris terminés · ' + restCards.length + (activeFilterLabels.length ? ' <span>selon les filtres</span>' : '') + '</div>' +
           (restCards.length ? restCards.map(function (snap) { return snapCardHtml(snap, false, store); }).join("") : '<div class="empty-note">Aucun pari terminé sur cette sélection.</div>');
