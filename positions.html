@@ -1686,6 +1686,18 @@
     padding: 0;
   }
   .snap-sync-link:hover { text-decoration: underline; }
+  /* Saison's rarely used actions (sync key, export/import, restyle, archive)
+     behind one "⋯ Outils" (2026-11-11) — same buttons, same ids. */
+  .snap-tools { position: relative; }
+  .snap-tools > summary { list-style: none; }
+  .snap-tools > summary::-webkit-details-marker { display: none; }
+  .snap-tools-menu {
+    position: absolute; z-index: 40; top: calc(100% + 8px); left: 0;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 11px;
+    padding: 12px 16px; white-space: nowrap;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: var(--radius-sm);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .14);
+  }
   .snap-sync-setup {
     background: var(--panel);
     border: 1px solid var(--panel-border);
@@ -1984,7 +1996,7 @@
      reads as a consolidated readout without looking like a spreadsheet row. */
   .pnl-chart-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
   .pnl-chart-header .tier-wr-title { margin-bottom: 0; }
-  .pnl-chart-stats { display: flex; gap: 8px; }
+  .pnl-chart-stats { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
   .pnl-chart-stat {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     min-width: 58px; padding: 4px 10px 5px;
@@ -1998,6 +2010,7 @@
     white-space: nowrap; text-align: center;
   }
   .pnl-chart-stat-value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pnl-chart-stat-sub { font-size: 9px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; margin-top: -1px; }
   /* Manuel/Auto breakdown — one bigger 3-tile row per console column, sat
      above that column's own fields (on request, after a first pass put both
      shared and small above the whole console). Same colors as Manuel vs
@@ -2104,7 +2117,7 @@
   .vt-volroi-grid { stroke: var(--panel-border); stroke-width: 1; opacity: .5; stroke-dasharray: 2 3; }
   .vt-volroi-label { font-size: 9.5px; fill: var(--text-dim); }
   .vt-volroi-pt-label { font-size: 8px; font-weight: 700; fill: #fff; pointer-events: none; user-select: none; }
-  .drawdown-stats b { font-family: "IBM Plex Mono", monospace; }
+  .drawdown-stats b { font-variant-numeric: tabular-nums; }
   /* Manuel/Auto split and confidence-tier counts in the weekly table —
      secondary detail next to Paris/Note/ROI/Gain, kept visually quieter
      on purpose (smaller, muted) rather than as co-equal columns. */
@@ -3166,14 +3179,19 @@
     <div class="snap-sync-bar">
       <span id="snapSyncStatus" class="snap-sync-status">—</span>
       <button type="button" id="snapSyncRefreshBtn" class="snap-sync-link" title="Resynchroniser maintenant">🔄 Resynchro</button>
-      <button type="button" id="snapSyncConfigBtn" class="snap-sync-link">⚙️ Config. synchro</button>
-      <button type="button" id="snapExportBtn" class="snap-sync-link" title="Télécharger toutes les données de snapshots (y compris la corbeille) en JSON">⬇️ Exporter</button>
-      <button type="button" id="snapImportBtn" class="snap-sync-link" title="Restaurer une sauvegarde JSON exportée précédemment — remplace entièrement les snapshots actuels de cet appareil">⬆️ Importer</button>
-      <input type="file" id="snapImportInput" accept="application/json" style="display:none;">
-      <button type="button" id="snapRestyleBtn" class="snap-sync-link" title="Applique le dégradé bleu-or cote/ROI aux anciens snapshots enregistrés avant son introduction — télécharge une sauvegarde automatiquement avant de toucher à quoi que ce soit">🎨 Mettre à jour le style</button>
       <button type="button" id="snapAddManualBtn" class="snap-sync-link" title="Enregistrer un pari pris en dehors des traders suivis — pas de note, juste titre/camp/cote/date/confiance">✍️ Pari manuel</button>
-      <button type="button" id="snapArchiveSeasonBtn" class="snap-sync-link" title="Déplace TOUS les snapshots et positions actuels vers Archives — télécharge une sauvegarde automatiquement, rien n'est supprimé, réactivable plus tard">🗄️ Archiver la saison</button>
       <button id="snapTrashToggleBtn" type="button" class="vt-dense-toggle-btn" title="Voir les snapshots mis à la corbeille — rien n'y est jamais supprimé automatiquement">🗑 Corbeille</button>
+      <details class="snap-tools">
+        <summary class="snap-sync-link" title="Réglages, sauvegardes et archivage">⋯ Outils</summary>
+        <div class="snap-tools-menu">
+          <button type="button" id="snapSyncConfigBtn" class="snap-sync-link">⚙️ Config. synchro</button>
+          <button type="button" id="snapExportBtn" class="snap-sync-link" title="Télécharger toutes les données de snapshots (y compris la corbeille) en JSON">⬇️ Exporter</button>
+          <button type="button" id="snapImportBtn" class="snap-sync-link" title="Restaurer une sauvegarde JSON exportée précédemment — remplace entièrement les snapshots actuels de cet appareil">⬆️ Importer</button>
+          <input type="file" id="snapImportInput" accept="application/json" style="display:none;">
+          <button type="button" id="snapRestyleBtn" class="snap-sync-link" title="Applique le dégradé bleu-or cote/ROI aux anciens snapshots enregistrés avant son introduction — télécharge une sauvegarde automatiquement avant de toucher à quoi que ce soit">🎨 Mettre à jour le style</button>
+          <button type="button" id="snapArchiveSeasonBtn" class="snap-sync-link" title="Déplace TOUS les snapshots et positions actuels vers Archives — télécharge une sauvegarde automatiquement, rien n'est supprimé, réactivable plus tard">🗄️ Archiver la saison</button>
+        </div>
+      </details>
     </div>
     <div id="snapSyncSetup" class="snap-sync-setup" style="display:none;">
       <input type="password" id="snapSyncTokenInput" placeholder="Clé de synchro AWS" autocomplete="off" />
@@ -10557,9 +10575,10 @@ installPolyV2Compat(window);
     });
   }
   function buildWeeklyAlignedBarSvg(weeklySeries, weeks) {
-    var W = 1000, padL = 54, padR = 14, H = 124, padT = 22, padB = 4;
+    var W = 1000, padL = 54, padR = 14, H = 158, padT = 22, padB = 38; // padB: a losing week's two labels, then the week's date
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var n = weeklySeries.length;
+    var lastDateX = -Infinity; // week dates under the bars, skipped when they would touch
     function x(i) { return padL + (n === 1 ? 0 : (i / (n - 1)) * innerW); }
     var maxAbs = Math.max.apply(null, weeks.map(function (w) { return Math.abs(w.pnl); }).concat([1]));
     var zeroY = padT + innerH / 2;
@@ -10583,6 +10602,10 @@ installPolyV2Compat(window);
         var roiY = w.pnl >= 0 ? (y - 4) : (y + h + 23);
         labelsHtml = '<text x="' + cx.toFixed(2) + '" y="' + countY.toFixed(2) + '" font-size="9.5" font-weight="700" fill="var(--text)" text-anchor="middle">' + w.count + '</text>' +
           (roiTxt ? '<text x="' + cx.toFixed(2) + '" y="' + roiY.toFixed(2) + '" font-size="8" fill="' + color + '" text-anchor="middle">' + esc(roiTxt) + '</text>' : '');
+      }
+      if (cx - lastDateX >= 34) {
+        labelsHtml += '<text x="' + cx.toFixed(2) + '" y="' + (H - 5) + '" font-size="8.5" fill="var(--text-dim)" text-anchor="middle">' + fmtDateShort(w.start) + '</text>';
+        lastDateX = cx;
       }
       return '<rect class="vt-weekly-bar" data-week-key="' + w.key + '" data-first-idx="' + w.firstIdx + '" data-last-idx="' + w.lastIdx + '" x="' + (cx - barW / 2).toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barW.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="2" fill="' + color + '" fill-opacity="0.72"><title>' + esc(fmtDateShort(w.start)) + ' — ' + w.count + ' pari' + (w.count > 1 ? 's' : '') + ' · ' + esc(fmtUSDSigned(w.pnl)) + (w.roi != null ? ' (' + (w.roi >= 0 ? '+' : '') + w.roi.toFixed(0) + ' % ROI)' : '') + '</title></rect>' + labelsHtml;
     }).join("");
@@ -11216,6 +11239,19 @@ installPolyV2Compat(window);
     var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
     var statsAvgRoi = statsStakeSum > 0 ? (cum / statsStakeSum * 100) : null;
     var monthlyMini = monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
+    // Chiffres clés (2026-11-11): success rate, drawdown and current streak
+    // of the very series the curve draws, so they follow every filter too.
+    var statsHasWin = statsCount > 0 && series.every(function (p) { return p.win != null; });
+    var statsWins = statsHasWin ? series.filter(function (p) { return p.win; }).length : 0;
+    var statsDd = statsCount ? computeDrawdown(series) : null;
+    var statsStreak = 0, statsStreakWin = null;
+    if (statsHasWin) {
+      for (var ski = series.length - 1; ski >= 0; ski--) {
+        if (statsStreakWin === null) statsStreakWin = !!series[ski].win;
+        if (!!series[ski].win !== statsStreakWin) break;
+        statsStreak++;
+      }
+    }
     // On request, after "Trades" here not matching Snapshots in Le tableau
     // des traders for the same trader filter: this count (like PnL/ROI next
     // to it) excludes pending snapshots and, when Traders is active, ones
@@ -11238,6 +11274,9 @@ installPolyV2Compat(window);
       // deux "+9%", ce qui a l'air d'un bug de calcul alors que ça n'en
       // est pas un — le PnL au centime près, lui, bouge bien.
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">ROI/paris</span><span class="pnl-chart-stat-value ' + (statsAvgRoi == null ? "" : (statsAvgRoi >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsAvgRoi == null ? "—" : (statsAvgRoi >= 0 ? "+" : "") + statsAvgRoi.toFixed(1).replace(".", ",") + " %") + '</span></div>' +
+      (statsHasWin ? '<div class="pnl-chart-stat" title="' + statsWins + ' gagnés sur ' + statsCount + ' paris décidés"><span class="pnl-chart-stat-label">Réussite</span><span class="pnl-chart-stat-value">' + (statsWins / statsCount * 100).toFixed(0) + ' %</span></div>' : '') +
+      (statsDd ? '<div class="pnl-chart-stat" title="Écart au plus haut atteint : maintenant, et au pire de la période"><span class="pnl-chart-stat-label">Drawdown</span><span class="pnl-chart-stat-value ' + (statsDd.current < 0 ? "pnl-neg" : "") + '">' + esc(fmtUSDSigned(statsDd.current)) + '</span><span class="pnl-chart-stat-sub">pire ' + esc(fmtUSDSigned(statsDd.maxDD)) + '</span></div>' : '') +
+      (statsHasWin ? '<div class="pnl-chart-stat" title="Série en cours : ' + statsStreak + (statsStreakWin ? ' gagné' : ' perdu') + (statsStreak > 1 ? 's' : '') + ' d\'affilée"><span class="pnl-chart-stat-label">Série</span><span class="pnl-chart-stat-value ' + (statsStreakWin ? "pnl-pos" : "pnl-neg") + '">' + statsStreak + (statsStreakWin ? ' ✓' : ' ✗') + '</span></div>' : '') +
     '</div>';
     var headerHtml = '<div class="pnl-chart-header"><div class="tier-wr-title">Évolution du PnL simulé' + filterNote + '</div>' + statsHtml + '</div>';
     var boxId = store.name + "-snapPnlChartBox";
@@ -13608,7 +13647,7 @@ installPolyV2Compat(window);
   // about the site's snapshots, not e.g. the Seb tab's real bets).
   function buildHistoryChartSvg(series, opts) {
     if (series.length < 2) return "";
-    var W = 1000, H = 260, padL = 54, padR = 14, padT = 14, padB = 26;
+    var W = 1000, H = 272, padL = 54, padR = 14, padT = 26, padB = 26; // padT leaves room for the best day's label above its point
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var values = series.map(function (p) { return p.value; });
     var min = Math.min.apply(null, values.concat([0]));
@@ -13655,6 +13694,19 @@ installPolyV2Compat(window);
     var yLabels =
       '<text x="' + (padL - 8) + '" y="' + (y(max) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(max) + '</text>' +
       '<text x="' + (padL - 8) + '" y="' + (y(min) + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + fmtUSD(min) + '</text>';
+    // Graduations (2026-11-11): round steps between the two extremes, each
+    // with a faint line across, so a point's level can be read without a
+    // hover. A step too close to the min/max label is skipped; zero keeps
+    // its own dashed line.
+    var yStepRaw = range / 4, yMag = Math.pow(10, Math.floor(Math.log(yStepRaw) / Math.LN10)), yNorm = yStepRaw / yMag;
+    var yStep = (yNorm < 1.5 ? 1 : yNorm < 3.5 ? 2 : yNorm < 7.5 ? 5 : 10) * yMag;
+    var yGrid = "";
+    for (var yk = Math.ceil(min / yStep); yk * yStep <= max; yk++) {
+      var yv = yk * yStep, yy = y(yv);
+      if (Math.abs(yy - y(max)) < 11 || Math.abs(yy - y(min)) < 11) continue;
+      if (yk !== 0) yGrid += '<line x1="' + padL + '" y1="' + yy.toFixed(2) + '" x2="' + (W - padR) + '" y2="' + yy.toFixed(2) + '" stroke="var(--panel-border)" stroke-width="1" opacity="0.7"/>';
+      yLabels += '<text x="' + (padL - 8) + '" y="' + (yy + 3).toFixed(2) + '" font-size="10" fill="var(--text-dim)" text-anchor="end">' + (yk === 0 ? "0 $" : fmtUSD(yv)) + '</text>';
+    }
 
     // Per-point id makes that point clickable — see wireSnapPnlChartClicks.
     // Per-point color (pointColor) marks each dot by its OWN outcome (a
@@ -13717,9 +13769,9 @@ installPolyV2Compat(window);
     }
     function extremumLabel(idx, color) {
       var px = x(idx), py = y(values[idx]);
-      var above = py - padT > 14; // enough room to sit above the point without clipping the top edge
-      var ly = above ? py - 8 : py + 14;
-      return '<text x="' + px.toFixed(2) + '" y="' + ly.toFixed(2) + '" font-size="9.5" font-weight="700" fill="' + color + '" text-anchor="middle">' + esc(fmtUSDSigned(values[idx])) + '</text>';
+      var above = py > 18; // enough room to sit above the point without clipping the top edge
+      var ly = above ? py - 11 : py + 14;
+      return '<text x="' + px.toFixed(2) + '" y="' + ly.toFixed(2) + '" font-size="9.5" font-weight="700" fill="' + color + '" stroke="var(--panel)" stroke-width="3" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">' + esc(fmtUSDSigned(values[idx])) + '</text>';
     }
     var extremaLabels = "";
     if (n > 2 && !smooth) {
@@ -13770,7 +13822,10 @@ installPolyV2Compat(window);
     // of it when the line is too close to the y axis.
     function markerSvg(mx, color, lines, title, row) {
       if (mx == null) return "";
-      var right = mx - padL < 120;
+      // …or when the best day's own label sits just left of the line, up
+      // where a top-row label prints (they used to overlap).
+      var maxPx = x(maxIdx);
+      var right = mx - padL < 120 || (row >= 0 && !!extremaLabels && maxPx <= mx + 4 && mx - maxPx < 135 && y(values[maxIdx]) - padT < 44);
       return '<line x1="' + mx.toFixed(2) + '" y1="' + padT + '" x2="' + mx.toFixed(2) + '" y2="' + (H - padB) + '" stroke="' + color + '" stroke-width="2.5" stroke-linecap="round"><title>' + esc(title) + '</title></line>' +
         lines.map(function (line, li) {
           return '<text x="' + (mx + (right ? 6 : -6)).toFixed(2) + '" y="' + (row >= 0 ? padT + 10 + (row * 2 + li) * 10 : H - padB - 6 - (lines.length - 1 - li) * 10 + (row + 1) * 22) + '" font-size="9" font-weight="700" fill="' + color + '" stroke="var(--panel)" stroke-width="3" stroke-linejoin="round" paint-order="stroke" text-anchor="' + (right ? "start" : "end") + '">' + esc(line) + '</text>';
@@ -13791,7 +13846,7 @@ installPolyV2Compat(window);
           '<stop offset="100%" stop-color="' + lineColor + '" stop-opacity="0"/>' +
         '</linearGradient></defs>' +
         '<path d="' + areaD + '" fill="url(#' + gradId + ')" stroke="none"/>' +
-        zeroLine +
+        yGrid + zeroLine +
         trendLine +
         // Smoothed mode keeps the real curve as a faint line underneath, so
         // the gap between the trend and the actual totals stays visible.
@@ -19730,6 +19785,13 @@ installPolyV2Compat(window);
     b.addEventListener("click", function (e) { e.stopPropagation(); m.hidden = !m.hidden; b.setAttribute("aria-expanded", m.hidden ? "false" : "true"); });
     document.addEventListener("click", function (e) { if (!m.hidden && !m.contains(e.target) && e.target !== b) { m.hidden = true; b.setAttribute("aria-expanded", "false"); } });
   })();
+  // "⋯ Outils": closes on a click anywhere else, and once one of its actions is clicked.
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll("details.snap-tools[open]").forEach(function (d) {
+      var sum = d.querySelector("summary");
+      if (!sum.contains(e.target)) d.removeAttribute("open");
+    });
+  });
 
   // Reopen whichever tab was last used; a first visit lands on Value
   // Trades (Accueil and Auto >10k lost their tab buttons on request,
