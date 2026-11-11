@@ -10732,13 +10732,15 @@ installPolyV2Compat(window);
         ? "background:" + color + ";color:#fff;border-color:" + color
         : "color:" + color + ";border-color:" + color + ";background:color-mix(in srgb, " + color + " 14%, transparent)";
       // Row background reads win/lose at a glance, independent of the
-      // tier's own badge color: net-winning tiers (wr >= 50) get a green
-      // wash, net-losing ones red — "aucun résultat" stays neutral.
+      // tier's own badge color: tiers in profit get a green
+      // wash, losing ones red — "aucun résultat" stays neutral.
       var few = fewDecided(st.decided);
-      var resultClass = wr == null || few ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
       var agg = aggregateFlatPnl(st.items, store);
       var hyp = agg.count > 0 ? agg.pnl : null;
       var roi = agg.roi;
+      // Green or red by what the tier EARNED, as in the per-type panel
+      // (2026-11-11): B won 70 % of its bets and still lost money.
+      var resultClass = hyp == null || few ? "" : (hyp >= 0 ? " tier-win" : " tier-lose");
       var hypHtml = hyp == null ? "" :
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
         ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + ' % ROI)</span></span>';
