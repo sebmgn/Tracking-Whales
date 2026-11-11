@@ -1606,6 +1606,7 @@
   .tier-wr-count { flex: 0 0 auto; min-width: 78px; color: var(--text-dim); font-size: 11.5px; white-space: nowrap; }
   .tier-wr-hyp { flex: 0 0 auto; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
   .tier-wr-roi { font-style: italic; font-size: 13px; font-weight: 700; color: var(--text); }
+  .tier-wr-few { font-size: 10.5px; font-weight: 600; color: var(--text-dim); border: 1px dashed var(--panel-border); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
   .tier-wr-note { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
   .trader-history-collapse-wrap { margin-bottom: 16px; }
   .trader-history-collapse-wrap #traderHistoryToggleBtn { display: block; width: 100%; margin-bottom: 8px; flex: none; }
@@ -8014,6 +8015,13 @@ installPolyV2Compat(window);
   // Snapshots frozen before this field existed fall back to the old
   // stakeholder-entry-price blend — the only price they have on record.
   var HYPOTHETICAL_FLAT_STAKE = 1000;
+  // A winrate / ROI on a handful of bets is a trend, not a verdict (2026-11-11):
+  // under FEW_DECIDED_N decided bets a row of the conviction, note and
+  // type panels loses its green/red wash and says so. Same threshold as
+  // ADV_MIN_N (result analyses) and AN_MIN_N (Analyse).
+  var FEW_DECIDED_N = 10;
+  function fewDecided(n) { return n > 0 && n < FEW_DECIDED_N; }
+  var FEW_TAG_HTML = '<span class="tier-wr-few" title="Moins de ' + FEW_DECIDED_N + ' paris décidés : simple tendance, pas encore une conclusion">peu de paris</span>';
   // The leading side's price for this snapshot — frozen at save time
   // (leaderPriceAtSnapshot) for anything saved after that field existed,
   // falling back to the stakeholders' own blended entry price for older
@@ -9045,14 +9053,15 @@ installPolyV2Compat(window);
       var hypHtml = hyp == null ? "" :
         '<span class="tier-wr-hyp ' + (hyp >= 0 ? "pnl-pos" : "pnl-neg") + '">' + esc(fmtUSDSigned(hyp)) +
         ' <span class="tier-wr-roi">(' + (roi >= 0 ? "+" : "") + roi.toFixed(0) + ' % ROI)</span></span>';
-      var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
+      var few = fewDecided(decided.length);
+      var resultClass = wr == null || few ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
       var isActive = store.state.manualVsAutoFilter === g.key;
       var rowHtml = '<div class="manual-auto-row' + resultClass + (isActive ? ' active' : '') + '" data-manual-auto="' + g.key + '" data-store="' + store.name + '" title="Filtrer sur ' + esc(g.label) + '">' +
         '<span class="tier-wr-badge tier-wr-badge-wide" style="color:' + g.color + ';border-color:' + g.color + ';background:color-mix(in srgb, ' + g.color + ' 14%, transparent)">' + esc(g.label) + '</span>' +
         '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + g.color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + ' %') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + ' · ' + items.length + ' total</span>' +
-        hypHtml +
+        hypHtml + (few ? FEW_TAG_HTML : '') +
       '</div>';
       // Confidence differential — this group's own winrate per tag, tags
       // with zero items in this group omitted rather than shown as "—".
@@ -10683,7 +10692,8 @@ installPolyV2Compat(window);
       // Row background reads win/lose at a glance, independent of the
       // tier's own badge color: net-winning tiers (wr >= 50) get a green
       // wash, net-losing ones red — "aucun résultat" stays neutral.
-      var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
+      var few = fewDecided(st.decided);
+      var resultClass = wr == null || few ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
       var agg = aggregateFlatPnl(st.items, store);
       var hyp = agg.count > 0 ? agg.pnl : null;
       var roi = agg.roi;
@@ -10704,7 +10714,7 @@ installPolyV2Compat(window);
         '<div class="tier-wr-track"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + ' %') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
-        hypHtml +
+        hypHtml + (few ? FEW_TAG_HTML : '') +
       '</div>';
     }).join("");
     var noteHtml = untagged > 0
@@ -10758,7 +10768,8 @@ installPolyV2Compat(window);
       var wr = st.decided > 0 ? (st.win / st.decided * 100) : null;
       var color = scoreColor((b[0] + b[1]) / 2);
       var countLabel = st.decided > 0 ? (st.win + " / " + st.decided) : "aucun résultat";
-      var resultClass = wr == null ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
+      var few = fewDecided(st.decided);
+      var resultClass = wr == null || few ? "" : (wr >= 50 ? " tier-win" : " tier-lose");
       var isActive = store.state.noteCardFilter === b[0];
       var agg = aggregateFlatPnl(st.items, store);
       var hyp = agg.count > 0 ? agg.pnl : null;
@@ -10771,7 +10782,7 @@ installPolyV2Compat(window);
         '<div class="tier-wr-track" title="' + esc('Note ' + label + ' : ' + countLabel) + '"><div class="tier-wr-fill" style="width:' + (wr == null ? 0 : wr.toFixed(1)) + '%;background:' + color + '"></div></div>' +
         '<span class="tier-wr-value">' + (wr == null ? '—' : wr.toFixed(0) + ' %') + '</span>' +
         '<span class="tier-wr-count">' + countLabel + '</span>' +
-        hypHtml +
+        hypHtml + (few ? FEW_TAG_HTML : '') +
       '</div>';
     }).join("");
     var noteHtml = untagged > 0
