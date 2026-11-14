@@ -9230,7 +9230,7 @@ installPolyV2Compat(window);
   // buttons — types, avant-match / live, cotes, sports, mises, type × moment,
   // en cours. Every row, card or cell of these views filters the card list
   // (store.state.bucketFilter = { dim, key, label }, reclick to clear).
-  var TYPES_VIEWS = [["types", "Types"], ["live", "Avant-match / live"], ["conf", "Confiance"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"], ["cross", "Type × moment"], ["close", "Clôture"], ["open", "En cours"]];
+  var TYPES_VIEWS = [["types", "Types"], ["live", "Avant-match / live"], ["conf", "Confiance"], ["magconf", "Confiance × ampleur"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"], ["cross", "Type × moment"], ["close", "Clôture"], ["open", "En cours"]];
   var PRICE_BUCKETS = [[0, 0.6, "Moins de 60 ¢"], [0.6, 0.75, "60 – 75 ¢"], [0.75, 0.85, "75 – 85 ¢"], [0.85, 0.92, "85 – 92 ¢"], [0.92, 2, "92 ¢ et plus"]];
   var STAKE_BUCKETS = [[0, 100, "Moins de 100 $"], [100, 300, "100 – 300 $"], [300, 1000, "300 – 1 000 $"], [1000, Infinity, "1 000 $ et plus"]];
   var BUCKET_COLORS = { price: "#6366f1", sport: "#0891b2", stake: "#d97706", live: LIVE_COLORS.live };
@@ -9446,10 +9446,10 @@ installPolyV2Compat(window);
   // (conviction, cote × confiance, par semaine, autres stats, traders), which
   // keep their own renderers and are simply opened one at a time from here.
   // Nothing is open until a button is pressed; pressing the open one folds it.
-  var STAT_NAV = [["types", "Types"], ["live", "Avant-match / live"], ["conf", "Confiance"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"],
+  var STAT_NAV = [["types", "Types"], ["live", "Avant-match / live"], ["conf", "Confiance"], ["magconf", "Confiance × ampleur"], ["price", "Cotes"], ["sport", "Sports"], ["stake", "Mises"],
     ["cross", "Type × moment"], ["close", "Clôture"], ["open", "En cours"], null,
     ["weekly", "Par semaine"], ["other", "Autres stats"], ["traders", "Traders"], ["dist", "Cote × confiance"]];
-  var STAT_NAV_COLORS = { types: "#f472b6", live: "#a855f7", conf: "#d4a017", price: "#6366f1", sport: "#0891b2", stake: "#d97706", cross: "#ec4899", close: "#16a34a", open: "#0ea5e9", weekly: "#34d399", other: "#94a3b8", traders: "#fb923c", dist: "#a78bfa" };
+  var STAT_NAV_COLORS = { types: "#f472b6", live: "#a855f7", conf: "#d4a017", magconf: "#e11d48", price: "#6366f1", sport: "#0891b2", stake: "#d97706", cross: "#ec4899", close: "#16a34a", open: "#0ea5e9", weekly: "#34d399", other: "#94a3b8", traders: "#fb923c", dist: "#a78bfa" };
   var STAT_LEGACY = { conf: "tierWinrateCollapsed", dist: "distCollapsed", weekly: "weeklyPnlCollapsed", other: "otherStatsCollapsed", traders: "traderTableCollapsed" };
   function statViewApply(store) {
     var st = store.state, v = st.statView || null;
@@ -9565,6 +9565,7 @@ installPolyV2Compat(window);
       types: ["Par type : manuel, suivi des whales, comparaison, props, fin de match", sim + ' — le trait noir sur chaque barre est le seuil de rentabilité ; clique une ligne pour filtrer, une pastille de confiance pour affiner.', function () { return verdictHtml + rows + filterNoteHtml; }],
       live: ["Avant-match ou live", "Les mêmes paris, selon le moment où ils ont été pris : avant le coup d'envoi ou pendant le match. Clique une carte ou une ligne pour ne voir que ces paris.", function () { return liveSplitHtml(list, store); }],
       conf: ["Le rendement de chaque lettre", sim + '.', function () { return confViewHtml(list, store); }],
+      magconf: ["Confiance au pari × ampleur du résultat", "La confiance annoncée avant le pari prédit-elle de plus grosses victoires (pas juste plus de victoires) ? Part de chaque ampleur (++ / + / - / --) parmi les paris de chaque lettre, avec le nombre de paris en dessous.", function () { return magnitudeByConfidenceHtml(list) || '<div class="empty-note">Il faut au moins 5 paris décidés portant à la fois une lettre de confiance et une ampleur.</div>'; }],
       price: ["Par tranche de cote", "Selon le prix payé. Le trait noir est le seuil de rentabilité de la tranche : la barre doit le dépasser pour gagner de l'argent.", function () { return bucketViewHtml(list, store, "price"); }],
       sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées.", function () { return bucketViewHtml(list, store, "sport"); }],
       stake: ["Par taille de mise", "Uniquement les paris dont la mise réelle est connue ; gains calculés avec ces mises réelles.", function () { return stakeEffectHtml(list) + bucketViewHtml(list, store, "stake"); }],
@@ -10230,8 +10231,8 @@ installPolyV2Compat(window);
       return '<tr><td><b style="color:' + tierColor + '">' + esc(tier) + '</b></td>' + cellsHtml + '<td class="num">' + items.length + '</td></tr>';
     }).join("");
     if (!rowsHtml) return "";
-    return '<div class="other-stats-section"><div class="pnl-chart-weekly-label">Confiance au pari × ampleur du résultat</div>' +
-      '<div class="empty-note" style="padding:0 0 8px;">La confiance annoncée avant le pari prédit-elle de plus grosses victoires (pas juste plus de victoires) ?</div>' +
+    // title and question are given by its own view of « Les analyses des paris »
+    return '<div class="other-stats-section">' +
       '<table class="weekly-data-table"><thead><tr><th>Confiance</th><th class="num">' + MAGNITUDE_TIERS.map(esc).join('</th><th class="num">') + '</th><th class="num">Total</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
       '</div>';
   }
@@ -10919,7 +10920,6 @@ installPolyV2Compat(window);
       coSignalMatrixHtml(list),
       dayOfWeekHtml(list, store),
       magnitudeDistributionHtml(list),
-      magnitudeByConfidenceHtml(list),
       magnitudeByManualAutoHtml(list)
     ].filter(function (b) { return !!b; }).join("");
     var dashboardHtml = buildSnapDashboardHtml(dashboardList || list, store, dashboardFilterLabels);
