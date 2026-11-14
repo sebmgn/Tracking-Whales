@@ -16564,7 +16564,7 @@ installPolyV2Compat(window);
   var AWS_COMPARATOR_URL = "https://n6ulxf7yidnnwgxi6fexcuzdj40ptxgt.lambda-url.eu-north-1.on.aws/";
   // "Foot connu" (on request, 2026-10-31): the competitions you follow —
   // also the "a" group of the email alert rule (ALERT_COMPS in the Lambda).
-  var CMP_KNOWN_COMPS = ["Ligue 1", "Coupe de France", "Premier League", "EFL Cup", "Champions League", "Europa League", "Conference League"];
+  var CMP_KNOWN_COMPS = ["Ligue 1", "Coupe de France", "Premier League", "EFL Cup", "Champions League", "Europa League", "Conference League", "Ligue des nations"]; // same list as ALERT_COMPS in the comparator Lambda
   function cmpIsKnown(r) { return (r.sport || "Football") === "Football" && CMP_KNOWN_COMPS.indexOf(r.comp) !== -1; }
   var CMP_SPORT_KEY = "vtCmpSport";
   var cmpData = null, cmpFetchedAt = 0, cmpDay = "all", cmpComp = "all", cmpSport = (function () { try { return localStorage.getItem(CMP_SPORT_KEY) || "all"; } catch (e) { return "all"; } })(), cmpAlertsOpen = false, cmpFiltersOpen = false, cmpLoading = false, cmpRetryTimer = null, cmpError = null;
@@ -17000,7 +17000,7 @@ installPolyV2Compat(window);
     var d = cr.draft;
     el.innerHTML = head + '<div class="cr-box">' +
       '<p class="cr-intro">Règle des mails d\'alerte. Les jauges rejouent la règle sur toutes les lignes que le Comparateur a montrées (résultat connu). « Enregistrer » l\'applique aux prochains mails.</p>' +
-      '<div class="cr-rules">' + crRuleHtml("a", "⭐ Foot connu : Ligue 1, Coupe de France, Premier League, EFL Cup, Ligue des champions, Europa League, Conference League", d.a) + crRuleHtml("b", "Tout le reste (autres championnats, tennis, NFL…)", d.b) + '</div>' +
+      '<div class="cr-rules">' + crRuleHtml("a", "⭐ Foot connu : Ligue 1, Coupe de France, Premier League, EFL Cup, Ligue des champions, Europa League, Conference League, Ligue des nations", d.a) + crRuleHtml("b", "Tout le reste (autres championnats, tennis, NFL…)", d.b) + '</div>' +
       '<div class="cr-actions"><button type="button" class="seb-btn" id="crSave">💾 Enregistrer cette règle</button><button type="button" class="seb-btn" id="crReset">↺ Revenir à la règle enregistrée</button><span class="cr-msg" id="crMsg"></span></div>' +
       '<div class="cr-tiles" id="crTiles"></div><div class="cr-note" id="crNote"></div>' +
       '<div id="crStats">' + (cr.loading && !cr.hist ? '<div class="cr-note">Chargement de l\'historique…</div>' : cr.error && !cr.hist ? '<div class="cr-note warn">Historique indisponible (' + esc(cr.error) + ').</div>' : crStatsHtml()) + '</div>' +
