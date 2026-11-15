@@ -2826,7 +2826,14 @@
   /* Monthly mini chips, in the pnl-chart-stats header row */
   .pnl-chart-stat-monthly { min-width: auto; padding: 4px 8px 5px; align-items: flex-start; }
   .month-mini-row { display: flex; gap: 5px; }
-  .month-mini-chip { display: flex; flex-direction: column; align-items: center; min-width: 30px; }
+  .month-mini-chip { display: flex; flex-direction: column; align-items: center; min-width: 30px; font: inherit; color: inherit; background: none; border: 1px solid transparent; border-radius: 6px; padding: 1px 3px; cursor: pointer; }
+  .month-mini-chip:hover { border-color: var(--panel-border); background: var(--row-hover); }
+  .month-mini-chip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .month-mini-hint { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 500; opacity: .8; }
+  .pnl-chart-stat.month-tag { border-color: var(--accent); }
+  .pnl-chart-stat.month-tag .pnl-chart-stat-value { text-transform: capitalize; font-size: 13px; }
+  .month-clear { font: inherit; font-size: 10px; background: none; border: 0; padding: 0; margin-top: 2px; color: var(--accent); text-decoration: underline; cursor: pointer; }
+  .pnl-chart-stats.month-on .pnl-chart-stat:not(.pnl-chart-stat-monthly):not(.month-tag) { border-color: var(--accent); }
   .month-mini-m { font-size: 8px; text-transform: uppercase; color: var(--text-dim); }
   .month-mini-v { font-family: "IBM Plex Mono", monospace; font-weight: 700; font-size: 10.5px; }
   /* Click a week (bar or table row) to highlight that week's own dots on
@@ -10073,16 +10080,21 @@ installPolyV2Compat(window);
   // Compact chips (last 6 months) living in the header stat row, to the
   // left of the Trades/PnL/ROI pills — moved out of a separate section
   // under the chart on request.
-  function monthlyMiniHtml(months) {
+  // A month's chip is a button (2026-11-15, on request): it isolates that
+  // month — its bets stand out on the curve and the key figures next to it
+  // become the month's own. selKey = "2026-10"-style key of the month on.
+  function monthKeyOf(d) { return d.getFullYear() + "-" + (d.getMonth() + 1); }
+  function monthlyMiniHtml(months, selKey) {
     if (months.length < 2) return "";
     var recent = months.slice(-6);
     var chips = recent.map(function (m) {
       var cls = m.roi == null ? "" : (m.roi >= 0 ? "pnl-pos" : "pnl-neg");
       var label = m.date.toLocaleDateString("fr-FR", { month: "short" });
       var title = m.date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) + " — " + m.count + " pari(s)";
-      return '<div class="month-mini-chip" title="' + esc(title) + '"><span class="month-mini-m">' + esc(label) + '</span><span class="month-mini-v ' + cls + '">' + (m.roi == null ? "—" : (m.roi >= 0 ? "+" : "") + m.roi.toFixed(0) + " %") + '</span></div>';
+      var key = monthKeyOf(m.date), on = key === selKey;
+      return '<button type="button" class="month-mini-chip' + (on ? ' active' : '') + '" data-month-key="' + key + '" aria-pressed="' + on + '" title="' + esc(title + (on ? " — reclique pour revenir à toute la période" : " — clique pour isoler ce mois")) + '"><span class="month-mini-m">' + esc(label) + '</span><span class="month-mini-v ' + cls + '">' + (m.roi == null ? "—" : (m.roi >= 0 ? "+" : "") + m.roi.toFixed(0) + " %") + '</span></button>';
     }).join("");
-    return '<div class="pnl-chart-stat pnl-chart-stat-monthly"><span class="pnl-chart-stat-label">Bilan mensuel</span><div class="month-mini-row">' + chips + '</div></div>';
+    return '<div class="pnl-chart-stat pnl-chart-stat-monthly"><span class="pnl-chart-stat-label">Bilan mensuel' + (selKey ? '' : ' <i class="month-mini-hint">clique un mois</i>') + '</span><div class="month-mini-row">' + chips + '</div></div>';
   }
   // Note actuelle (WEIGHT_BY_NAME, la note 1-10 recalibrée le 2026-09-13) ×
   // ROI à mise fixe 1000€ par trader — preuve visuelle, en direct sur les
@@ -11694,20 +11706,33 @@ installPolyV2Compat(window);
     // second aggregateFlatPnl(decided, ...) pass — that call always prices
     // every snapshot at the leader side, so it would silently ignore the
     // Traders filter and disagree with the curve it's captioning.
-    var statsCount = series.length;
-    var statsTotalPnl = statsCount ? series[series.length - 1].value : null;
-    var statsAvgRoi = statsStakeSum > 0 ? (cum / statsStakeSum * 100) : null;
-    var monthlyMini = monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries));
+    // Month picked in « Bilan mensuel »: kS is that month's bets as a series
+    // of its own (cumulative restarted at 0), the figures below read kS.
+    var selMonth = st.pnlChartMonth || null, selIdx = [];
+    if (selMonth) series.forEach(function (p, i) { if (monthKeyOf(p.date) === selMonth) selIdx.push(i); });
+    if (selMonth && !selIdx.length) selMonth = st.pnlChartMonth = null;
+    var kS = series, kStake = statsStakeSum, kPnl = cum, selMonthLabel = "";
+    if (selMonth) {
+      var mCum = 0;
+      kStake = 0;
+      kS = selIdx.map(function (i) { mCum += series[i].delta; kStake += weeklySeries[i].stake; return Object.assign({}, series[i], { value: mCum }); });
+      kPnl = mCum;
+      selMonthLabel = series[selIdx[0]].date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    }
+    var statsCount = kS.length;
+    var statsTotalPnl = statsCount ? kS[kS.length - 1].value : null;
+    var statsAvgRoi = kStake > 0 ? (kPnl / kStake * 100) : null;
+    var monthlyMini = monthlyMiniHtml(computeMonthlyFromSeries(weeklySeries), selMonth);
     // Chiffres clés (2026-11-11): success rate, drawdown and current streak
     // of the very series the curve draws, so they follow every filter too.
-    var statsHasWin = statsCount > 0 && series.every(function (p) { return p.win != null; });
-    var statsWins = statsHasWin ? series.filter(function (p) { return p.win; }).length : 0;
-    var statsDd = statsCount ? computeDrawdown(series) : null;
+    var statsHasWin = statsCount > 0 && kS.every(function (p) { return p.win != null; });
+    var statsWins = statsHasWin ? kS.filter(function (p) { return p.win; }).length : 0;
+    var statsDd = statsCount ? computeDrawdown(kS) : null;
     var statsStreak = 0, statsStreakWin = null;
     if (statsHasWin) {
-      for (var ski = series.length - 1; ski >= 0; ski--) {
-        if (statsStreakWin === null) statsStreakWin = !!series[ski].win;
-        if (!!series[ski].win !== statsStreakWin) break;
+      for (var ski = kS.length - 1; ski >= 0; ski--) {
+        if (statsStreakWin === null) statsStreakWin = !!kS[ski].win;
+        if (!!kS[ski].win !== statsStreakWin) break;
         statsStreak++;
       }
     }
@@ -11722,8 +11747,9 @@ installPolyV2Compat(window);
       : (st.pnlChartTraderFilter.length && !traderFilterCoversEveryone)
       ? "Paris décidés où le(s) trader(s) coché(s) ont une position sur un seul camp (hors paris en attente et hors couverture des deux camps) — le même ensemble que « PNL pour 1000€/trade » et « ROI/trade 1000$ » dans Le tableau des traders, qui peut être plus petit que sa colonne Snapshots."
       : (st.pnlChartTraderFilter.length ? "Paris décidés (hors paris en attente), tous traders suivis cochés — prix leader du marché, identique à « Suivi des whales » dans Manuel vs suivi auto, hors les paris manuels." : "Paris décidés (hors paris en attente) sur les filtres actuels.");
-    var statsHtml = '<div class="pnl-chart-stats">' +
+    var statsHtml = '<div class="pnl-chart-stats' + (selMonth ? ' month-on' : '') + '">' +
       monthlyMini +
+      (selMonth ? '<div class="pnl-chart-stat month-tag" title="Les chiffres à droite sont ceux de ce mois"><span class="pnl-chart-stat-label">Mois affiché</span><span class="pnl-chart-stat-value">' + esc(selMonthLabel) + '</span><button type="button" class="month-clear" data-month-key="">✕ toute la période</button></div>' : '') +
       '<div class="pnl-chart-stat" title="' + esc(statsCountTitle) + '"><span class="pnl-chart-stat-label">Trades</span><span class="pnl-chart-stat-value">' + (statsCount || "—") + '</span></div>' +
       '<div class="pnl-chart-stat"><span class="pnl-chart-stat-label">PnL réalisé</span><span class="pnl-chart-stat-value ' + (statsTotalPnl == null ? "" : (statsTotalPnl >= 0 ? "pnl-pos" : "pnl-neg")) + '">' + (statsTotalPnl == null ? "—" : esc(fmtUSDSigned(statsTotalPnl))) + '</span></div>' +
       // 1 décimale ici (contrairement à .toFixed(0) ailleurs sur le site) —
@@ -11747,7 +11773,7 @@ installPolyV2Compat(window);
       wireCompareConsole(el, cardsList, store);
       return;
     }
-    var chartHtml = buildHistoryChartSvg(series, { smooth: !!st.pnlChartSmooth, markers: cmpPolicyMarkers(cardsList, store) }) + buildStakeStripSvg(weeklySeries);
+    var chartHtml = buildHistoryChartSvg(series, { smooth: !!st.pnlChartSmooth, markers: cmpPolicyMarkers(cardsList, store), highlight: selMonth ? { from: selIdx[0], to: selIdx[selIdx.length - 1], label: selMonthLabel } : null }) + buildStakeStripSvg(weeklySeries);
     var hintHtml = '<div class="chart-hint">Clique un point ou une barre de mise pour aller au trade correspondant — reclique pour revenir.</div>';
     var weeks = computeWeeklyPnlAligned(weeklySeries);
     var weeklyHtml = '<div class="pnl-chart-weekly">' +
@@ -11903,6 +11929,13 @@ installPolyV2Compat(window);
       btn.addEventListener("click", function () {
         store.state.pnlChartMoment = btn.getAttribute("data-moment-chip");
         renderSnapPnlChart(cardsList, store);
+      });
+    });
+    if (tierChipsBox) tierChipsBox.querySelectorAll("[data-month-key]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var k = btn.getAttribute("data-month-key");
+        store.state.pnlChartMonth = !k || store.state.pnlChartMonth === k ? null : k;
+        renderSnapPnlChartOnly(cardsList, store);
       });
     });
     if (tierChipsBox) tierChipsBox.querySelectorAll("[data-compare]").forEach(function (btn) {
@@ -14427,6 +14460,17 @@ installPolyV2Compat(window);
       policyMarker += markerSvg(markerX(mk.date, mk.between), mk.color, mk.lines, mk.title, -1 - mki);
     });
 
+    // opts.highlight { from, to, label }: the bets of one month stand out —
+    // everything before and after is veiled, the month is framed and named.
+    var hl = opts && opts.highlight, hlHtml = "";
+    if (hl && hl.to >= hl.from) {
+      var hlHalf = n > 1 ? innerW / (n - 1) / 2 : 0, hx0 = Math.max(padL, x(hl.from) - hlHalf), hx1 = Math.min(W - padR, x(hl.to) + hlHalf);
+      var veil = function (a, b) { return b - a > 0.5 ? '<rect x="' + a.toFixed(1) + '" y="' + (padT - 22) + '" width="' + (b - a).toFixed(1) + '" height="' + (innerH + 24) + '" fill="var(--panel)" opacity="0.78" pointer-events="none"/>' : ''; };
+      hlHtml = veil(padL - 6, hx0) + veil(hx1, W - padR + 12) +
+        '<rect x="' + hx0.toFixed(1) + '" y="' + padT + '" width="' + (hx1 - hx0).toFixed(1) + '" height="' + innerH + '" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="5,4" rx="4" pointer-events="none"/>' +
+        // named just above the frame, clear of the dated markers at the bottom
+        '<text x="' + ((hx0 + hx1) / 2).toFixed(1) + '" y="' + (padT - 5) + '" font-size="10.5" font-weight="700" fill="var(--accent)" stroke="var(--panel)" stroke-width="3" paint-order="stroke" text-anchor="middle" pointer-events="none">' + esc(hl.label) + '</text>';
+    }
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
         '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
           '<stop offset="0%" stop-color="' + lineColor + '" stop-opacity="0.4"/>' +
@@ -14443,7 +14487,7 @@ installPolyV2Compat(window);
         // now — so the eye lands there first regardless of how the curve
         // wanders before it.
         '<circle cx="' + lastPt.x.toFixed(2) + '" cy="' + lastPt.y.toFixed(2) + '" r="11" fill="' + lineColor + '" opacity="0.16"/>' +
-        yLabels + xLabels + points + extremaLabels + policyMarker +
+        yLabels + xLabels + points + extremaLabels + policyMarker + hlHtml +
       '</svg>';
   }
   // Short match name in the chart's hover boxes (on request, 2026-11-07), read
