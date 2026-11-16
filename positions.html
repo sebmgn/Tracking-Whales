@@ -1707,6 +1707,7 @@
   /* the svg steps out of the box's padding and border, to be exactly as wide as the main curve above */
   .chart-box .pnl-compare.open svg.pnl-compare-svg { width: calc(100% + 30px); max-width: none; margin: 0 -15px; display: block; }
   .pnl-compare-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .pnl-chart-small-btn.active { background: var(--text); border-color: var(--text); color: var(--panel); }
   .pnl-compare-bar .pnl-chart-tier-chip.active { background: var(--text); border-color: var(--text); color: var(--panel); }
   .pnl-compare-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 6px; font-size: 12.5px; }
   .pnl-compare-key i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
@@ -11388,9 +11389,17 @@ installPolyV2Compat(window);
   // the console avancée's when it's open — applied to any list, so every
   // panel under the chart follows them too (on request, 2026-10-11). Pure
   // predicates: applying it twice changes nothing.
+  // Petites mises (2026-11-16, on request): a bet whose real stake is known
+  // and under SMALL_STAKE_USD is left out of the chart, the stats and the
+  // lists — on by default, one button on the chart turns it off
+  // (state.showSmallStakes). A bet with no known real stake always counts.
+  var SMALL_STAKE_USD = 50;
+  function isSmallStake(s) { var k = snapRealStake(s); return k != null && k < SMALL_STAKE_USD; }
+  function smallStakeHidden(st, s) { return !!st && !st.showSmallStakes && isSmallStake(s); }
   function pnlChartFilterList(list, store) {
     var st = store.state;
     if (!st) return list;
+    if (!st.showSmallStakes) list = list.filter(function (s) { return !isSmallStake(s); });
     if (st.pnlChartConsoleOpen) {
       var weekOptions = computeWeekFloorOptions(list.filter(function (s) { return !!s.winningSide; }));
       return list.filter(function (s) {
@@ -11441,6 +11450,8 @@ installPolyV2Compat(window);
     var el = store.els.pnlChart;
     if (!el) return;
     var st = store.state;
+    var smallN = cardsList.filter(isSmallStake).length;
+    if (!st.showSmallStakes) cardsList = cardsList.filter(function (s) { return !isSmallStake(s); });
     var decidedAll = cardsList.filter(function (s) { return !!s.winningSide; });
     // Independent of tierCardFilter/snapDistCellFilter/noteCardFilter above
     // (those narrow the card list below) — these three only ever touch this
@@ -11681,6 +11692,7 @@ installPolyV2Compat(window);
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + timeOptionsHtml + '</select></label>' +
       traderFilterHtml) +
       '<button type="button" id="' + idp + 'pnlChartSmoothBtn" class="pnl-chart-tier-chip pnl-chart-smooth-btn' + (st.pnlChartSmooth ? ' active' : '') + '" title="' + (st.pnlChartSmooth ? 'Revenir à la courbe avec un point par pari' : 'Lisser la courbe (moyenne glissante, sans les points)') + '">' + (st.pnlChartSmooth ? '• Afficher les points' : '〰 Courbe lissée') + '</button>' +
+      '<button type="button" id="' + idp + 'pnlChartSmallBtn" class="pnl-chart-tier-chip pnl-chart-smooth-btn pnl-chart-small-btn' + (st.showSmallStakes ? '' : ' active') + '" aria-pressed="' + !st.showSmallStakes + '" title="' + (st.showSmallStakes ? 'Les paris de moins de ' + SMALL_STAKE_USD + ' $ de mise réelle sont comptés. Clique pour les ignorer dans le graphique, les stats et les listes.' : 'Les paris de moins de ' + SMALL_STAKE_USD + ' $ de mise réelle sont ignorés dans le graphique, les stats et les listes' + (smallN ? ' (' + smallN + ' ici)' : '') + '. Clique pour les compter.') + '">' + (st.showSmallStakes ? 'Mises < ' + SMALL_STAKE_USD + ' $ comptées' : '✓ Sans les mises < ' + SMALL_STAKE_USD + ' $' + (smallN ? ' · ' + smallN + ' ignorée' + (smallN > 1 ? 's' : '') : '')) + '</button>' +
       (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
     // Console avancée (on request): big button above everything else —
@@ -11930,6 +11942,11 @@ installPolyV2Compat(window);
         store.state.pnlChartMoment = btn.getAttribute("data-moment-chip");
         renderSnapPnlChart(cardsList, store);
       });
+    });
+    var smallBtn = document.getElementById(idp + "pnlChartSmallBtn");
+    if (smallBtn) smallBtn.addEventListener("click", function () {
+      store.state.showSmallStakes = !store.state.showSmallStakes;
+      renderSnapPnlChart(cardsList, store);
     });
     if (tierChipsBox) tierChipsBox.querySelectorAll("[data-month-key]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -12929,8 +12946,10 @@ installPolyV2Compat(window);
     // still gets the pre-filter list: it applies them itself and builds
     // its trader/period choices from the whole pool.
     var chartCardsList = cardsList;
+    var smallHiddenN = st.showSmallStakes ? 0 : cardsList.filter(isSmallStake).length;
     cardsList = pnlChartFilterList(cardsList, store);
     activeFilterLabels = activeFilterLabels.concat(pnlChartFilterLabels(store));
+    if (smallHiddenN) activeFilterLabels.push("sans " + smallHiddenN + " mise" + (smallHiddenN > 1 ? "s" : "") + " < " + SMALL_STAKE_USD + " $");
     if (store.viewFilterLabels) activeFilterLabels = activeFilterLabels.concat(store.viewFilterLabels());
     store.els.count.textContent = activeFilterLabels.length
       ? cardsList.length + ' / ' + (preViewCount != null ? preViewCount : list.length) + ' ' + store.itemNoun + 's (filtré ' + activeFilterLabels.join(", ") + ')'
@@ -12957,7 +12976,7 @@ installPolyV2Compat(window);
     if (!a) return;
     var cardsList = snapSortCards(q ? snapSearchList(a.list, q) : a.cardsList, store), activeFilterLabels = a.labels;
     if (store.searchCount) store.searchCount.textContent = q ? cardsList.length + " résultat" + (cardsList.length > 1 ? "s" : "") : "";
-    var hasOpenFirst = !!store.openFirst && !q && a.list.some(function (s) { return s.sebOpen; });
+    var hasOpenFirst = !!store.openFirst && !q && a.list.some(function (s) { return s.sebOpen && !smallStakeHidden(store.state, s); });
     if (!cardsList.length && !hasOpenFirst) {
       store.els.list.innerHTML = '<div class="empty-note">' + (q ? "Aucun " + store.itemNoun + " pour « " + esc(q) + " »."
         : activeFilterLabels.length
@@ -12970,7 +12989,7 @@ installPolyV2Compat(window);
     // filter is about the finished bets' stats, a running bet must stay in
     // sight. Not during a search, which lists its own results.
     if (store.openFirst && !q) {
-      var openCards = a.list.filter(function (s) { return s.sebOpen; }).sort(function (x, y) { return (snapSortTime(y) || 0) - (snapSortTime(x) || 0); }); // settled last first: props on top (2026-11-11)
+      var openCards = a.list.filter(function (s) { return s.sebOpen && !smallStakeHidden(store.state, s); }).sort(function (x, y) { return (snapSortTime(y) || 0) - (snapSortTime(x) || 0); }); // settled last first: props on top (2026-11-11)
       if (openCards.length) {
         var restCards = cardsList.filter(function (s) { return !s.sebOpen; });
         store.els.list.innerHTML = '<div class="open-cards-title">⏳ Paris en cours · ' + openCards.length + ' <span>celui qui se règle le plus tard en premier</span></div>' +
@@ -19699,7 +19718,8 @@ installPolyV2Compat(window);
       // Bets still running are always listed; finished ones only once
       // "Voir les paris terminés" is clicked (on request, 2026-10-24). Props
       // are left out — very long term, they have their own ⏳ panel (2026-10-25).
-      var openT = open.filter(function (b) { return !isProps(b); }), doneT = done.filter(function (b) { return !isProps(b); });
+      var sebSmall = function (b) { return !SEB_STORE.state.showSmallStakes && b.stake > 0 && b.stake < SMALL_STAKE_USD; };
+      var openT = open.filter(function (b) { return !isProps(b) && !sebSmall(b); }), doneT = done.filter(function (b) { return !isProps(b) && !sebSmall(b); });
       var sorted = sebSorted(openT.concat(doneT));
       var openRows = sorted ? sorted.filter(function (b) { return b.status === "open"; }) : openT;
       var rowsList = sorted ? sorted.filter(function (b) { return b.status !== "open"; }) : doneT.slice().reverse();
