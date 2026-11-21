@@ -19,16 +19,18 @@ export const NAMES = [
   "SNAPSHOTS_STORE", "POSITIONS_STORE", "HYPOTHETICAL_FLAT_STAKE", "OTHER_SIDE_SENTINEL",
 ];
 
-export function loadPage() {
+// seed: { localStorage key: value } written before the page's script runs.
+export function loadPage(seed) {
   let html = readFileSync(PAGE, "utf8");
   if (!html.includes(TAIL)) throw new Error("positions.html : fin de script introuvable (tests/page.mjs à adapter)");
-  html = html.replace(TAIL, "window.__T = {__ls: localStorage, " + NAMES.map((n) => n + ": typeof " + n + " === 'undefined' ? undefined : " + n).join(",") + "};");
+  html = html.replace(TAIL, "window.__T = {__ls: localStorage, __doc: document, " + NAMES.map((n) => n + ": typeof " + n + " === 'undefined' ? undefined : " + n).join(",") + "};");
   const errors = [];
   const vc = new VirtualConsole();
   vc.on("jsdomError", (e) => errors.push(String((e.detail && e.detail.message) || e.message)));
   const dom = new JSDOM(html, {
     runScripts: "dangerously", url: "https://test.invalid/", pretendToBeVisual: true, virtualConsole: vc,
     beforeParse(w) {
+      if (seed) for (const k of Object.keys(seed)) w.localStorage.setItem(k, typeof seed[k] === "string" ? seed[k] : JSON.stringify(seed[k]));
       w.fetch = () => new Promise(() => {});
       w.matchMedia = w.matchMedia || (() => ({ matches: false, addEventListener() {}, addListener() {} }));
       w.scrollTo = () => {};

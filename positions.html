@@ -9251,6 +9251,7 @@ installPolyV2Compat(window);
   function snapMoment(s) { return snapLiveSeg(s) === "pre" ? "pre" : "live"; }
   var snapSportCache = typeof WeakMap === "function" ? new WeakMap() : null;
   function snapSportBucket(s) {
+    if (!AN_EXTRA_LEAGUES || !AN_EXTRA_FOOTBALL || !AN_SPORT_LABELS) return "…"; // page still starting: tables not there yet, nothing cached
     if (snapSportCache && snapSportCache.has(s)) return snapSportCache.get(s);
     var slug = s.eventSlug || (s.cmp && s.cmp.slug) || "";
     if (!slug) { var m = (s.cardHtml || "").match(/polymarket\.com\/(?:[a-z]{2}\/)?event\/([a-z0-9-]+)/i); slug = m ? m[1] : ""; }
@@ -9270,7 +9271,7 @@ installPolyV2Compat(window);
   }
   function bucketAttrs(store, dim, key, label) {
     var f = store.state.bucketFilter;
-    return { on: !!f && f.dim === dim && f.key === String(key),
+    return { on: dim === "sport" ? (store.state.pnlChartSports || []).indexOf(String(key)) !== -1 : !!f && f.dim === dim && f.key === String(key),
       html: ' data-bucket-dim="' + dim + '" data-bucket-key="' + esc(String(key)) + '" data-bucket-label="' + esc(label) + '" data-store="' + store.name + '"' };
   }
   function signedTxt(v, unit) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(0) + unit; }
@@ -9479,6 +9480,7 @@ installPolyV2Compat(window);
     }).join("");
   }
   function renderManualVsAuto(list, store) {
+    var listAllSports = pnlChartFilterList(list, store, true); // the Sports view: every filter but Sports
     list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.manualVsAuto;
     if (!el) return;
@@ -9575,7 +9577,10 @@ installPolyV2Compat(window);
       conf: ["Le rendement de chaque lettre", sim + '.', function () { return confViewHtml(list, store); }],
       magconf: ["Confiance au pari × ampleur du résultat", "La confiance annoncée avant le pari prédit-elle de plus grosses victoires (pas juste plus de victoires) ? Part de chaque ampleur (++ / + / - / --) parmi les paris de chaque lettre, avec le nombre de paris en dessous.", function () { return magnitudeByConfidenceHtml(list) || '<div class="empty-note">Il faut au moins 5 paris décidés portant à la fois une lettre de confiance et une ampleur.</div>'; }],
       price: ["Par tranche de cote", "Selon le prix payé. Le trait noir est le seuil de rentabilité de la tranche : la barre doit le dépasser pour gagner de l'argent.", function () { return bucketViewHtml(list, store, "price"); }],
-      sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées.", function () { return bucketViewHtml(list, store, "sport"); }],
+      sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées. Clique une ou plusieurs lignes : le graphique, les stats et les listes ne gardent que celles-là.", function () {
+        var sel = store.state.pnlChartSports || [];
+        return bucketViewHtml(listAllSports, store, "sport") + (sel.length ? '<div class="tier-wr-note">Graphique, stats et listes filtrés sur <b>' + esc(sel.join(", ")) + '</b> — <button type="button" class="bucket-clear" data-bucket-dim="sport" data-bucket-key="" data-bucket-label="" data-store="' + store.name + '">tout enlever</button></div>' : '');
+      }],
       stake: ["Par taille de mise", "Uniquement les paris dont la mise réelle est connue ; gains calculés avec ces mises réelles.", function () { return stakeEffectHtml(list) + bucketViewHtml(list, store, "stake"); }],
       cross: ["Chaque type, en avant-match et en live", "ROI de chaque case ; clique une case pour ne voir que ces paris.", function () { return crossViewHtml(list, store); }],
       close: ["As-tu battu le prix de clôture ?", "Pour les paris pris avant le match : ton prix comparé au prix du même camp au coup d'envoi sur Polymarket. Payer moins cher que la clôture, c'est avoir eu raison avant le marché ; sur la durée, c'est le meilleur signe d'un pari de valeur. Clique une carte pour ne voir que ces paris.", function () { return closeViewHtml(list, store); }],
@@ -11396,10 +11401,23 @@ installPolyV2Compat(window);
   var SMALL_STAKE_USD = 50;
   function isSmallStake(s) { var k = snapRealStake(s); return k != null && k < SMALL_STAKE_USD; }
   function smallStakeHidden(st, s) { return !!st && !st.showSmallStakes && isSmallStake(s); }
-  function pnlChartFilterList(list, store) {
+  // Sports (2026-11-21, on request): one or several sports / competitions
+  // (the Sports view's own buckets, snapSportBucket) picked on the chart or
+  // by clicking rows of that view — chart, stats, panels and lists follow.
+  // state.pnlChartSports = array of bucket labels, empty = all.
+  function sportFilterOn(st) { return !!(st && st.pnlChartSports && st.pnlChartSports.length); }
+  function sportFilterPasses(st, s) { return !sportFilterOn(st) || st.pnlChartSports.indexOf(snapSportBucket(s)) !== -1; }
+  function sportToggle(st, key) {
+    var cur = (st.pnlChartSports || []).slice(), i = cur.indexOf(key);
+    if (!key) cur = []; else if (i === -1) cur.push(key); else cur.splice(i, 1);
+    st.pnlChartSports = cur;
+  }
+  // noSport: every other filter but this one (the Sports view lists them all).
+  function pnlChartFilterList(list, store, noSport) {
     var st = store.state;
     if (!st) return list;
     if (!st.showSmallStakes) list = list.filter(function (s) { return !isSmallStake(s); });
+    if (!noSport && sportFilterOn(st)) list = list.filter(function (s) { return sportFilterPasses(st, s); });
     if (st.pnlChartConsoleOpen) {
       var weekOptions = computeWeekFloorOptions(list.filter(function (s) { return !!s.winningSide; }));
       return list.filter(function (s) {
@@ -11440,6 +11458,7 @@ installPolyV2Compat(window);
     var of = [].concat(st.pnlChartOriginFilter || []);
     if (of.length) out.push(of.map(function (k) { return ORIGIN_FILTER_LABELS[k]; }).join(" + "));
     if (st.pnlChartMoment) out.push(st.pnlChartMoment === "live" ? "live" : "avant-match");
+    if (sportFilterOn(st)) out.push(st.pnlChartSports.join(" + "));
     if (st.pnlChartOddsFilter) out.push("cote " + st.pnlChartOddsFilter[0] + "–" + st.pnlChartOddsFilter[1] + "¢");
     if (st.pnlChartNoteFilter != null) out.push("note " + st.pnlChartNoteFilter + "-" + (st.pnlChartNoteFilter + 1));
     if (st.pnlChartDays != null) out.push(st.pnlChartDays + " derniers jours");
@@ -11452,6 +11471,13 @@ installPolyV2Compat(window);
     var st = store.state;
     var smallN = cardsList.filter(isSmallStake).length;
     if (!st.showSmallStakes) cardsList = cardsList.filter(function (s) { return !isSmallStake(s); });
+    // Counted only when the Sports list is open or a sport is picked — never
+    // at the page's first draw, which runs before the sport tables exist
+    // (snapSportBucket needs them) and has no use for it.
+    var sportCounts = {};
+    if (st.pnlChartSportOpen || sportFilterOn(st)) cardsList.forEach(function (s) { var k = snapSportBucket(s); sportCounts[k] = (sportCounts[k] || 0) + 1; });
+    var sportKeys = Object.keys(sportCounts).sort(function (a, b) { return sportCounts[b] - sportCounts[a]; });
+    if (sportFilterOn(st)) cardsList = cardsList.filter(function (s) { return sportFilterPasses(st, s); });
     var decidedAll = cardsList.filter(function (s) { return !!s.winningSide; });
     // Independent of tierCardFilter/snapDistCellFilter/noteCardFilter above
     // (those narrow the card list below) — these three only ever touch this
@@ -11675,6 +11701,15 @@ installPolyV2Compat(window);
         return '<option value="' + o[0] + '"' + (String(st[key] == null ? "" : st[key]) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
       }).join("") + '</select></label>';
     }
+    var sportSel = st.pnlChartSports || [];
+    var sportFilterHtml = '<div class="pnl-chart-trader-filter">' +
+      '<button type="button" id="' + idp + 'pnlChartSportBtn" class="pnl-chart-trader-filter-btn' + (sportSel.length ? ' active' : '') + '" title="Ne garder qu\'un ou plusieurs sports ou compétitions : graphique, stats et listes suivent">Sports' + (sportSel.length ? ' <span class="pnl-chart-trader-filter-count">' + sportSel.length + '</span>' : '') + '</button>' +
+      (st.pnlChartSportOpen ? '<div class="pnl-chart-trader-popover">' +
+        '<div class="pnl-chart-trader-popover-actions">' + (sportSel.length ? '<button type="button" class="pnl-chart-trader-popover-reset" data-sport-pick="">✕ Tous les sports</button>' : '') + '<button type="button" class="pnl-chart-trader-popover-reset" id="' + idp + 'pnlChartSportClose">Fermer</button></div>' +
+        '<div class="pnl-chart-trader-popover-list">' + sportKeys.concat(sportSel.filter(function (k) { return sportKeys.indexOf(k) === -1; })).map(function (k) {
+          return '<label><input type="checkbox" data-sport-pick="' + esc(k) + '"' + (sportSel.indexOf(k) !== -1 ? ' checked' : '') + ' /> ' + esc(k) + ' <span class="type-dim">· ' + (sportCounts[k] || 0) + '</span></label>';
+        }).join("") + '</div></div>' : '') +
+    '</div>';
     var cmpMode = !!store.cmpChartFilters;
     var controlsHtml = '<div class="pnl-chart-filters">' +
       (cmpMode ? cmpSelect("cmpMinDelta", "Delta ≥", [100, 125, 150, 200]) + cmpSelect("cmpMinRoi", "ROI Polymarket ≥", [5, 7, 10, 15, 20]) + tierChipsHtml +
@@ -11692,6 +11727,7 @@ installPolyV2Compat(window);
       '<label>Période <select id="' + idp + 'pnlChartTimeSelect"' + (st.pnlChartConsoleOpen ? " disabled" : "") + '>' + timeOptionsHtml + '</select></label>' +
       traderFilterHtml) +
       '<button type="button" id="' + idp + 'pnlChartSmoothBtn" class="pnl-chart-tier-chip pnl-chart-smooth-btn' + (st.pnlChartSmooth ? ' active' : '') + '" title="' + (st.pnlChartSmooth ? 'Revenir à la courbe avec un point par pari' : 'Lisser la courbe (moyenne glissante, sans les points)') + '">' + (st.pnlChartSmooth ? '• Afficher les points' : '〰 Courbe lissée') + '</button>' +
+      sportFilterHtml +
       '<button type="button" id="' + idp + 'pnlChartSmallBtn" class="pnl-chart-tier-chip pnl-chart-smooth-btn pnl-chart-small-btn' + (st.showSmallStakes ? '' : ' active') + '" aria-pressed="' + !st.showSmallStakes + '" title="' + (st.showSmallStakes ? 'Les paris de moins de ' + SMALL_STAKE_USD + ' $ de mise réelle sont comptés. Clique pour les ignorer dans le graphique, les stats et les listes.' : 'Les paris de moins de ' + SMALL_STAKE_USD + ' $ de mise réelle sont ignorés dans le graphique, les stats et les listes' + (smallN ? ' (' + smallN + ' ici)' : '') + '. Clique pour les compter.') + '">' + (st.showSmallStakes ? 'Mises < ' + SMALL_STAKE_USD + ' $ comptées' : '✓ Sans les mises < ' + SMALL_STAKE_USD + ' $' + (smallN ? ' · ' + smallN + ' ignorée' + (smallN > 1 ? 's' : '') : '')) + '</button>' +
       (store.allowSimStakeSlider ? '<label class="pnl-chart-sim-slider" title="Recalcule la courbe et le tableau hebdo ci-dessous avec cette mise à plat au lieu de ' + fmtUSD(HYPOTHETICAL_FLAT_STAKE) + '">Et si je misais <input type="range" id="' + idp + 'pnlChartSimStakeRange" min="100" max="5000" step="100" value="' + simStake + '" /> <span class="pnl-chart-sim-stake-value mono" id="' + idp + 'pnlChartSimStakeValue">' + fmtUSD(simStake) + '</span> / pari ?</label>' : '') +
     '</div>';
@@ -11940,6 +11976,16 @@ installPolyV2Compat(window);
     if (tierChipsBox) tierChipsBox.querySelectorAll("[data-moment-chip]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         store.state.pnlChartMoment = btn.getAttribute("data-moment-chip");
+        renderSnapPnlChart(cardsList, store);
+      });
+    });
+    var sportBtn = document.getElementById(idp + "pnlChartSportBtn"), sportClose = document.getElementById(idp + "pnlChartSportClose");
+    [sportBtn, sportClose].forEach(function (b) {
+      if (b) b.addEventListener("click", function () { store.state.pnlChartSportOpen = b === sportBtn ? !store.state.pnlChartSportOpen : false; renderSnapPnlChartOnly(cardsList, store); });
+    });
+    if (tierChipsBox) tierChipsBox.querySelectorAll("[data-sport-pick]").forEach(function (elx) {
+      elx.addEventListener(elx.tagName === "INPUT" ? "change" : "click", function () {
+        sportToggle(store.state, elx.getAttribute("data-sport-pick"));
         renderSnapPnlChart(cardsList, store);
       });
     });
@@ -15880,7 +15926,9 @@ installPolyV2Compat(window);
     if (bucketEl) {
       var bucketStore = resolveStoreFromEl(bucketEl), bucketCur = bucketStore.state.bucketFilter;
       var bucketNext = { dim: bucketEl.getAttribute("data-bucket-dim"), key: bucketEl.getAttribute("data-bucket-key"), label: bucketEl.getAttribute("data-bucket-label") };
-      bucketStore.state.bucketFilter = bucketCur && bucketCur.dim === bucketNext.dim && bucketCur.key === bucketNext.key ? null : bucketNext;
+      // a sport row adds to / removes from the chart's Sports filter (several at once)
+      if (bucketNext.dim === "sport") sportToggle(bucketStore.state, bucketNext.key);
+      else bucketStore.state.bucketFilter = bucketCur && bucketCur.dim === bucketNext.dim && bucketCur.key === bucketNext.key ? null : bucketNext;
       renderStoreView(bucketStore);
       return;
     }

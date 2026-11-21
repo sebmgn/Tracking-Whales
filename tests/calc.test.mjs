@@ -179,3 +179,24 @@ test("stockage plein : la liste passe dans le stockage de secours et reste lisib
     assert.equal(T.readStoredList(key).length, 2);
   } finally { Object.getPrototypeOf(ls).setItem = orig; delete T.bigMem[key]; }
 });
+
+// A page with bets already stored draws charts, stats and cards at start-up,
+// before every table of the script exists: a function called there that
+// needs a later table breaks the whole page (seen 2026-11-21, sports).
+test("la page démarre aussi avec des paris déjà enregistrés", () => {
+  const base = { savedAt: "2026-11-01T18:00:00.000Z", eventDate: "2026-11-01T19:00:00.000Z", leaderPriceAtSnapshot: 0.8 };
+  const seed = { vtSnapshots: [
+    { ...base, id: "t1", question: "Will Arsenal FC win on 2026-11-01?", leaderName: "Yes", winningSide: "Yes", eventSlug: "epl-ars-che-2026-11-01", isManual: true, confidence: "A", realStake: 500 },
+    { ...base, id: "t2", question: "Lens – Lille", leaderName: "Lens", winningSide: "Lille", isManual: true, confidence: "B", stakeUsd: 300, liveMin: 75 },
+    { ...base, id: "t3", question: "Lyon – OM", leaderName: "Lyon", winningSide: "Lyon", isManual: true, cmp: { comp: "Ligue 1", delta: 120, slug: "fl1-lyo-om-2026-11-01" }, closePrice: 0.84 },
+    { ...base, id: "t4", question: "Will Nice be relegated from the 2026-27 Ligue 1?", leaderName: "No", eventSlug: "will-nice-be-relegated", isManual: true, stakeUsd: 20 },
+    { ...base, id: "t5", question: "Finland vs. San Marino", leaderName: "Finland", winningSide: "Finland", isManual: true, eventDate: "2026-10-12T19:00:00.000Z", savedAt: "2026-10-12T18:00:00.000Z" },
+  ] };
+  const p = loadPage(seed);
+  try {
+    assert.deepEqual(p.errors, []);
+    assert.equal(p.T.SNAPSHOTS_STORE.load().length, 5);
+    assert.ok(p.T.__doc.querySelector("#snapshots-snapPnlChartBox svg"), "le graphique de Saison est dessiné");
+    assert.ok(p.T.__doc.querySelectorAll(".snap-search-results > *").length >= 4, "les cartes sont affichées");
+  } finally { p.close(); }
+});
