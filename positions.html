@@ -9273,7 +9273,7 @@ installPolyV2Compat(window);
   }
   function bucketAttrs(store, dim, key, label) {
     var f = store.state.bucketFilter;
-    return { on: dim === "sport" ? (store.state.pnlChartSports || []).indexOf(String(key)) !== -1 : !!f && f.dim === dim && f.key === String(key),
+    return { on: dim === "sport" ? Object.prototype.hasOwnProperty.call(sportSel(store.state), String(key)) : !!f && f.dim === dim && f.key === String(key),
       html: ' data-bucket-dim="' + dim + '" data-bucket-key="' + esc(String(key)) + '" data-bucket-label="' + esc(label) + '" data-store="' + store.name + '"' };
   }
   function signedTxt(v, unit) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(0) + unit; }
@@ -9366,12 +9366,12 @@ installPolyV2Compat(window);
       if (!st.few && st.roi != null) verdicts.push({ label: k, roi: st.roi, n: st.decided });
       var chips = "";
       if (chipList) {
-        var sportOn = (store.state.pnlChartSports || []).indexOf(k) !== -1, tiersOn = store.state.pnlChartTierFilter || [];
+        var rule = sportRule(store.state, k); // undefined: sport left out · null: all its letters · array: these ones
         chips = CONFIDENCE_TIERS.map(function (tier) {
           var its = chipList.filter(function (s) { return s.confidence === tier && !!s.winningSide && bucketKeyOf(dim, s) === k; });
           if (!its.length) return "";
-          var w = its.filter(function (s) { return s.leaderName === s.winningSide; }).length, c = CONFIDENCE_COLORS[tier], on = sportOn && tiersOn.indexOf(tier) !== -1;
-          return '<button type="button" class="manual-auto-tier-chip sport-tier-chip' + (on ? ' active' : '') + '" data-sport-key="' + esc(k) + '" data-sport-tier="' + esc(tier) + '" data-store="' + store.name + '" style="' + (on ? 'background:' + c + ';border-color:' + c : 'color:' + c + ';border-color:' + c) + '" title="' + esc(k + " · " + tier + " : " + w + "/" + its.length + " gagnés — clique pour " + (on ? "retirer cette lettre du filtre" : "filtrer sur ce sport et cette lettre")) + '">' + esc(tier) + ' ' + Math.round(w / its.length * 100) + '% <span class="sport-tier-n">' + its.length + '</span></button>';
+          var w = its.filter(function (s) { return s.leaderName === s.winningSide; }).length, c = CONFIDENCE_COLORS[tier], on = rule === null || (!!rule && rule.indexOf(tier) !== -1);
+          return '<button type="button" class="manual-auto-tier-chip sport-tier-chip' + (on ? ' active' : '') + '" data-sport-key="' + esc(k) + '" data-sport-tier="' + esc(tier) + '" data-store="' + store.name + '" style="' + (on ? 'background:' + c + ';border-color:' + c : 'color:' + c + ';border-color:' + c) + '" title="' + esc(k + " · " + tier + " : " + w + "/" + its.length + " gagnés — clique pour " + (on ? "retirer cette lettre de ce sport" : "ajouter cette lettre de ce sport au filtre")) + '">' + esc(tier) + ' ' + Math.round(w / its.length * 100) + '% <span class="sport-tier-n">' + its.length + '</span></button>';
         }).join("");
       }
       return bucketRowHtml(store, dim, k, k, null, groups[k], BUCKET_COLORS[dim], stakeFn) + (chips ? '<div class="manual-auto-tier-chips sport-tier-chips">' + chips + '</div>' : '');
@@ -9592,8 +9592,8 @@ installPolyV2Compat(window);
       conf: ["Le rendement de chaque lettre", sim + '.', function () { return confViewHtml(list, store); }],
       magconf: ["Confiance au pari × ampleur du résultat", "La confiance annoncée avant le pari prédit-elle de plus grosses victoires (pas juste plus de victoires) ? Part de chaque ampleur (++ / + / - / --) parmi les paris de chaque lettre, avec le nombre de paris en dessous.", function () { return magnitudeByConfidenceHtml(list) || '<div class="empty-note">Il faut au moins 5 paris décidés portant à la fois une lettre de confiance et une ampleur.</div>'; }],
       price: ["Par tranche de cote", "Selon le prix payé. Le trait noir est le seuil de rentabilité de la tranche : la barre doit le dépasser pour gagner de l'argent.", function () { return bucketViewHtml(list, store, "price"); }],
-      sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées. Clique une ou plusieurs lignes : le graphique, les stats et les listes ne gardent que celles-là. Une lettre sous un sport ajoute ce sport et cette confiance au filtre.", function () {
-        var sel = store.state.pnlChartSports || [];
+      sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées. Clique une ou plusieurs lignes : le graphique, les stats et les listes ne gardent que celles-là. Une lettre sous un sport ne compte que pour ce sport : « A- » de Ligue 1 n'allume pas « A- » de Premier League.", function () {
+        var sel = sportSelLabels(store.state);
         return bucketViewHtml(listAllSports, store, "sport", listSportChips) + (sel.length ? '<div class="tier-wr-note">Graphique, stats et listes filtrés sur <b>' + esc(sel.join(", ")) + '</b> — <button type="button" class="bucket-clear" data-bucket-dim="sport" data-bucket-key="" data-bucket-label="" data-store="' + store.name + '">tout enlever</button></div>' : '');
       }],
       stake: ["Par taille de mise", "Uniquement les paris dont la mise réelle est connue ; gains calculés avec ces mises réelles.", function () { return stakeEffectHtml(list) + bucketViewHtml(list, store, "stake"); }],
@@ -11419,14 +11419,52 @@ installPolyV2Compat(window);
   // Sports (2026-11-21, on request): one or several sports / competitions
   // (the Sports view's own buckets, snapSportBucket) picked on the chart or
   // by clicking rows of that view — chart, stats, panels and lists follow.
-  // state.pnlChartSports = array of bucket labels, empty = all.
-  function sportFilterOn(st) { return !!(st && st.pnlChartSports && st.pnlChartSports.length); }
-  function sportFilterPasses(st, s) { return !sportFilterOn(st) || st.pnlChartSports.indexOf(snapSportBucket(s)) !== -1; }
-  function sportToggle(st, key) {
-    var cur = (st.pnlChartSports || []).slice(), i = cur.indexOf(key);
-    if (!key) cur = []; else if (i === -1) cur.push(key); else cur.splice(i, 1);
-    st.pnlChartSports = cur;
+  // state.pnlChartSportSel = { "<sport label>": null | ["S", "A"], "*": [...] }
+  // — one rule per sport, each with its own letters (2026-11-21, on request:
+  // « A- de Ligue 1 » must not switch on « A- de Premier League »): null =
+  // every bet of that sport, an array = only those confidence letters; "*" is
+  // the rule of every sport not named. Empty object = no sport filter.
+  var SPORT_OTHERS = "*";
+  function sportSel(st) { return (st && st.pnlChartSportSel) || {}; }
+  function sportFilterOn(st) { return Object.keys(sportSel(st)).length > 0; }
+  // the rule a sport falls under: undefined = left out, null = all of it, array = these letters
+  function sportRule(st, key) { var sel = sportSel(st); return Object.prototype.hasOwnProperty.call(sel, key) ? sel[key] : Object.prototype.hasOwnProperty.call(sel, SPORT_OTHERS) ? sel[SPORT_OTHERS] : undefined; }
+  function sportFilterPasses(st, s) {
+    if (!sportFilterOn(st)) return true;
+    var r = sportRule(st, snapSportBucket(s));
+    return r === null || (!!r && r.indexOf(s.confidence) !== -1);
   }
+  // a row or a tick of the list: the whole sport on / off ("" clears everything)
+  function sportToggle(st, key) {
+    var sel = Object.assign({}, sportSel(st));
+    if (!key) sel = {}; else if (Object.prototype.hasOwnProperty.call(sel, key)) delete sel[key]; else sel[key] = null;
+    st.pnlChartSportSel = sel;
+  }
+  // a letter under a sport: that letter of that sport only, on / off
+  function sportTierToggle(st, key, tier) {
+    var sel = Object.assign({}, sportSel(st)), r = sportRule(st, key);
+    var cur = r === undefined ? [] : r === null ? CONFIDENCE_TIERS.slice() : r.slice(), i = cur.indexOf(tier);
+    if (i === -1) cur.push(tier); else cur.splice(i, 1);
+    cur = CONFIDENCE_TIERS.filter(function (t) { return cur.indexOf(t) !== -1; });
+    if (cur.length || Object.prototype.hasOwnProperty.call(sel, SPORT_OTHERS)) sel[key] = cur; else delete sel[key];
+    st.pnlChartSportSel = sel;
+  }
+  function sportSelLabels(st) {
+    var sel = sportSel(st);
+    return Object.keys(sel).sort(function (a, b) { return (a === SPORT_OTHERS) - (b === SPORT_OTHERS); }).map(function (k) {
+      return (k === SPORT_OTHERS ? "autres sports" : k) + (sel[k] ? " (" + (sel[k].join("/") || "aucun") + ")" : "");
+    });
+  }
+  // Raccourcis (on request): Premier League + Ligue 1 only; or those two in
+  // full plus only the S and A of every other sport (A- and B dropped).
+  function sportLeagueLabel(prefix) { var i = LEAGUE_INFO[prefix]; return (i.emoji ? i.emoji + " " : "") + i.name; }
+  function sportPresets() {
+    var pl = sportLeagueLabel("epl"), l1 = sportLeagueLabel("fl1"), a = {}, b = {};
+    a[pl] = null; a[l1] = null; b[pl] = null; b[l1] = null; b[SPORT_OTHERS] = ["S", "A"];
+    return [{ key: "pl-l1", label: "Premier League + Ligue 1", title: "Ne garder que la Premier League et la Ligue 1", sel: a },
+      { key: "pl-l1-sa", label: "PL + L1 · S et A ailleurs", title: "Premier League et Ligue 1 en entier, et seulement les S et A des autres sports (sans les A- ni les B)", sel: b }];
+  }
+  function sportSelSame(x, y) { return JSON.stringify(Object.keys(x).sort().map(function (k) { return [k, x[k]]; })) === JSON.stringify(Object.keys(y).sort().map(function (k) { return [k, y[k]]; })); }
   // noSport: every other filter but this one (the Sports view lists them all).
   // { sport: 1, tier: 1 } also leaves the Confiance filter out (the letters shown under each sport).
   function pnlChartFilterList(list, store, noSport) {
@@ -11474,7 +11512,7 @@ installPolyV2Compat(window);
     var of = [].concat(st.pnlChartOriginFilter || []);
     if (of.length) out.push(of.map(function (k) { return ORIGIN_FILTER_LABELS[k]; }).join(" + "));
     if (st.pnlChartMoment) out.push(st.pnlChartMoment === "live" ? "live" : "avant-match");
-    if (sportFilterOn(st)) out.push(st.pnlChartSports.join(" + "));
+    if (sportFilterOn(st)) out.push(sportSelLabels(st).join(" + "));
     if (st.pnlChartOddsFilter) out.push("cote " + st.pnlChartOddsFilter[0] + "–" + st.pnlChartOddsFilter[1] + "¢");
     if (st.pnlChartNoteFilter != null) out.push("note " + st.pnlChartNoteFilter + "-" + (st.pnlChartNoteFilter + 1));
     if (st.pnlChartDays != null) out.push(st.pnlChartDays + " derniers jours");
@@ -11717,15 +11755,19 @@ installPolyV2Compat(window);
         return '<option value="' + o[0] + '"' + (String(st[key] == null ? "" : st[key]) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
       }).join("") + '</select></label>';
     }
-    var sportSel = st.pnlChartSports || [];
+    var spSel = sportSel(st), spKeys = Object.keys(spSel).filter(function (k) { return k !== SPORT_OTHERS; }), spN = Object.keys(spSel).length;
     var sportFilterHtml = '<div class="pnl-chart-trader-filter">' +
-      '<button type="button" id="' + idp + 'pnlChartSportBtn" class="pnl-chart-trader-filter-btn' + (sportSel.length ? ' active' : '') + '" title="Ne garder qu\'un ou plusieurs sports ou compétitions : graphique, stats et listes suivent">Sports' + (sportSel.length ? ' <span class="pnl-chart-trader-filter-count">' + sportSel.length + '</span>' : '') + '</button>' +
+      '<button type="button" id="' + idp + 'pnlChartSportBtn" class="pnl-chart-trader-filter-btn' + (spN ? ' active' : '') + '" title="Ne garder qu\'un ou plusieurs sports ou compétitions : graphique, stats et listes suivent">Sports' + (spN ? ' <span class="pnl-chart-trader-filter-count">' + spN + '</span>' : '') + '</button>' +
       (st.pnlChartSportOpen ? '<div class="pnl-chart-trader-popover">' +
-        '<div class="pnl-chart-trader-popover-actions">' + (sportSel.length ? '<button type="button" class="pnl-chart-trader-popover-reset" data-sport-pick="">✕ Tous les sports</button>' : '') + '<button type="button" class="pnl-chart-trader-popover-reset" id="' + idp + 'pnlChartSportClose">Fermer</button></div>' +
-        '<div class="pnl-chart-trader-popover-list">' + sportKeys.concat(sportSel.filter(function (k) { return sportKeys.indexOf(k) === -1; })).map(function (k) {
-          return '<label><input type="checkbox" data-sport-pick="' + esc(k) + '"' + (sportSel.indexOf(k) !== -1 ? ' checked' : '') + ' /> ' + esc(k) + ' <span class="type-dim">· ' + (sportCounts[k] || 0) + '</span></label>';
-        }).join("") + '</div></div>' : '') +
-    '</div>';
+        '<div class="pnl-chart-trader-popover-actions">' + (spN ? '<button type="button" class="pnl-chart-trader-popover-reset" data-sport-pick="">✕ Tous les sports</button>' : '') + '<button type="button" class="pnl-chart-trader-popover-reset" id="' + idp + 'pnlChartSportClose">Fermer</button></div>' +
+        '<div class="pnl-chart-trader-popover-list">' + sportKeys.concat(spKeys.filter(function (k) { return sportKeys.indexOf(k) === -1; })).map(function (k) {
+          var own = Object.prototype.hasOwnProperty.call(spSel, k);
+          return '<label><input type="checkbox" data-sport-pick="' + esc(k) + '"' + (own ? ' checked' : '') + ' /> ' + esc(k) + (own && spSel[k] ? ' <b>(' + esc(spSel[k].join("/") || "aucun") + ')</b>' : '') + ' <span class="type-dim">· ' + (sportCounts[k] || 0) + '</span></label>';
+        }).join("") + (spSel[SPORT_OTHERS] ? '<div class="type-dim" style="padding:4px 2px 0;">Autres sports : seulement ' + esc(spSel[SPORT_OTHERS].join(" et ")) + '</div>' : '') + '</div></div>' : '') +
+    '</div>' + sportPresets().map(function (pr) {
+      var on = sportSelSame(spSel, pr.sel);
+      return '<button type="button" class="pnl-chart-tier-chip pnl-chart-smooth-btn pnl-chart-small-btn' + (on ? ' active' : '') + '" data-sport-preset="' + pr.key + '" aria-pressed="' + on + '" title="' + esc(pr.title + (on ? " — reclique pour tout réafficher" : "")) + '">' + (on ? '✓ ' : '') + esc(pr.label) + '</button>';
+    }).join("");
     var cmpMode = !!store.cmpChartFilters;
     var controlsHtml = '<div class="pnl-chart-filters">' +
       (cmpMode ? cmpSelect("cmpMinDelta", "Delta ≥", [100, 125, 150, 200]) + cmpSelect("cmpMinRoi", "ROI Polymarket ≥", [5, 7, 10, 15, 20]) + tierChipsHtml +
@@ -11998,6 +12040,13 @@ installPolyV2Compat(window);
     var sportBtn = document.getElementById(idp + "pnlChartSportBtn"), sportClose = document.getElementById(idp + "pnlChartSportClose");
     [sportBtn, sportClose].forEach(function (b) {
       if (b) b.addEventListener("click", function () { store.state.pnlChartSportOpen = b === sportBtn ? !store.state.pnlChartSportOpen : false; renderSnapPnlChartOnly(cardsList, store); });
+    });
+    if (tierChipsBox) tierChipsBox.querySelectorAll("[data-sport-preset]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var pr = sportPresets().filter(function (x) { return x.key === btn.getAttribute("data-sport-preset"); })[0];
+        store.state.pnlChartSportSel = sportSelSame(sportSel(store.state), pr.sel) ? {} : Object.assign({}, pr.sel);
+        renderSnapPnlChart(cardsList, store);
+      });
     });
     if (tierChipsBox) tierChipsBox.querySelectorAll("[data-sport-pick]").forEach(function (elx) {
       elx.addEventListener(elx.tagName === "INPUT" ? "change" : "click", function () {
@@ -15912,15 +15961,12 @@ installPolyV2Compat(window);
     // so without an early return here a chip click would also fall through
     // and toggle the row's own manualVsAutoFilter.
     // A confidence letter under a sport (Sports view): that sport and that
-    // letter join the chart's filters; clicking a lit one removes the letter.
+    // letter of that sport only join the chart's Sports filter; a lit one leaves it.
     var sportTierChip = e.target.closest ? e.target.closest(".sport-tier-chip") : null;
     if (sportTierChip) {
       var stcStore = resolveStoreFromEl(sportTierChip), stcSt = stcStore.state;
       var stcKey = sportTierChip.getAttribute("data-sport-key"), stcTier = sportTierChip.getAttribute("data-sport-tier");
-      var stcTiers = (stcSt.pnlChartTierFilter || []).slice(), stcSportOn = (stcSt.pnlChartSports || []).indexOf(stcKey) !== -1;
-      if (stcSportOn && stcTiers.indexOf(stcTier) !== -1) stcTiers = stcTiers.filter(function (t) { return t !== stcTier; });
-      else { if (!stcSportOn) sportToggle(stcSt, stcKey); if (stcTiers.indexOf(stcTier) === -1) stcTiers.push(stcTier); }
-      stcSt.pnlChartTierFilter = CONFIDENCE_TIERS.filter(function (t) { return stcTiers.indexOf(t) !== -1; });
+      sportTierToggle(stcSt, stcKey, stcTier);
       renderStoreView(stcStore);
       return;
     }

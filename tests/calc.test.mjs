@@ -200,3 +200,32 @@ test("la page démarre aussi avec des paris déjà enregistrés", () => {
     assert.ok(p.T.__doc.querySelectorAll(".snap-search-results > *").length >= 4, "les cartes sont affichées");
   } finally { p.close(); }
 });
+
+test("filtre Sports : chaque sport a ses propres lettres, et les deux raccourcis", () => {
+  const bet = (slug, confidence) => ({ id: slug + confidence, question: "x", eventSlug: slug + "-aaa-bbb-2026-11-01", confidence });
+  const L1 = T.snapSportBucket(bet("fl1", "A")), PL = T.snapSportBucket(bet("epl", "A"));
+  assert.match(L1, /Ligue 1$/); assert.match(PL, /Premier League$/);
+  const st = {};
+  const pass = (slug, c) => T.sportFilterPasses(st, bet(slug, c));
+  assert.equal(pass("lal", "B"), true); // aucun filtre : tout passe
+  T.sportTierToggle(st, L1, "A-"); // « A- » de Ligue 1 seulement
+  assert.equal(pass("fl1", "A-"), true); assert.equal(pass("fl1", "A"), false);
+  assert.equal(pass("epl", "A-"), false, "A- de Premier League ne s'allume pas");
+  T.sportTierToggle(st, PL, "S");
+  assert.equal(pass("epl", "S"), true); assert.equal(pass("epl", "A-"), false); assert.equal(pass("fl1", "S"), false);
+  T.sportTierToggle(st, L1, "A-"); // on retire la seule lettre : le sport sort du filtre
+  assert.equal(pass("fl1", "A-"), false); assert.equal(T.sportSelLabels(st).join(" | "), PL + " (S)");
+  T.sportToggle(st, PL); T.sportToggle(st, L1); // ligne cliquée : sport entier
+  assert.equal(pass("fl1", "B"), true); assert.equal(pass("epl", "S"), false);
+  T.sportTierToggle(st, L1, "B"); // sport entier, on retire une lettre
+  assert.equal(pass("fl1", "B"), false); assert.equal(pass("fl1", "A-"), true);
+  const [onlyTwo, plusSA] = T.sportPresets();
+  st.pnlChartSportSel = onlyTwo.sel;
+  assert.equal(pass("fl1", "B"), true); assert.equal(pass("epl", null), true); assert.equal(pass("lal", "S"), false);
+  st.pnlChartSportSel = plusSA.sel;
+  assert.equal(pass("epl", "B"), true); assert.equal(pass("lal", "S"), true); assert.equal(pass("lal", "A"), true);
+  assert.equal(pass("lal", "A-"), false); assert.equal(pass("lal", "B"), false); assert.equal(pass("lal", null), false);
+  T.sportTierToggle(st, T.snapSportBucket(bet("lal", "A")), "A"); // avec « autres sports », une lettre retirée ne vaut que pour ce sport
+  assert.equal(pass("lal", "A"), false); assert.equal(pass("lal", "S"), true); assert.equal(pass("sea", "A"), true);
+  T.sportToggle(st, ""); assert.equal(pass("lal", "B"), true);
+});
