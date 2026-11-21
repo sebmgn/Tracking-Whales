@@ -1712,6 +1712,8 @@
   .pnl-compare-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 6px; font-size: 12.5px; }
   .pnl-compare-key i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
   .pnl-compare-key b { font-variant-numeric: tabular-nums; } .pnl-compare-key em { font-style: normal; color: var(--text-dim); font-size: 11.5px; }
+  .sport-tier-chips { margin: -2px 0 10px 163px; }
+  .sport-tier-n { opacity: .7; font-weight: 500; margin-left: 2px; }
   .open-cards-title { font-size: 13px; font-weight: 700; margin: 14px 2px 8px; }
   .open-cards-title:first-child { margin-top: 2px; }
   .open-cards-title span { font-weight: 500; font-size: 12px; color: var(--text-dim); margin-left: 6px; }
@@ -9345,7 +9347,9 @@ installPolyV2Compat(window);
     return verdict + '<div class="live-duo">' + card('🗓️ Avant-match', "pre", "avant-match", pre, LIVE_COLORS.pre) + card('📡 Live', "live", "live", live, LIVE_COLORS.live) + '</div>' +
       ladder + '<div class="live-seg-title"' + (ladder ? ' style="margin-top:18px;"' : '') + '>Le live, selon la minute de prise</div>' + segRows;
   }
-  function bucketViewHtml(list, store, dim) {
+  // chipList (Sports view): under each row, its confidence letters with their
+  // winrate — a click adds that sport and that letter to the chart's filters.
+  function bucketViewHtml(list, store, dim, chipList) {
     var stakeFn = dim === "stake" ? snapRealStake : null, groups = {}, order = [];
     list.forEach(function (s) { var k = bucketKeyOf(dim, s); if (k == null) return; if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(s); });
     var hidden = 0, hiddenN = 0;
@@ -9360,7 +9364,17 @@ installPolyV2Compat(window);
     var rows = order.map(function (k) {
       var st = liveSegStats(groups[k], store, stakeFn);
       if (!st.few && st.roi != null) verdicts.push({ label: k, roi: st.roi, n: st.decided });
-      return bucketRowHtml(store, dim, k, k, null, groups[k], BUCKET_COLORS[dim], stakeFn);
+      var chips = "";
+      if (chipList) {
+        var sportOn = (store.state.pnlChartSports || []).indexOf(k) !== -1, tiersOn = store.state.pnlChartTierFilter || [];
+        chips = CONFIDENCE_TIERS.map(function (tier) {
+          var its = chipList.filter(function (s) { return s.confidence === tier && !!s.winningSide && bucketKeyOf(dim, s) === k; });
+          if (!its.length) return "";
+          var w = its.filter(function (s) { return s.leaderName === s.winningSide; }).length, c = CONFIDENCE_COLORS[tier], on = sportOn && tiersOn.indexOf(tier) !== -1;
+          return '<button type="button" class="manual-auto-tier-chip sport-tier-chip' + (on ? ' active' : '') + '" data-sport-key="' + esc(k) + '" data-sport-tier="' + esc(tier) + '" data-store="' + store.name + '" style="' + (on ? 'background:' + c + ';border-color:' + c : 'color:' + c + ';border-color:' + c) + '" title="' + esc(k + " · " + tier + " : " + w + "/" + its.length + " gagnés — clique pour " + (on ? "retirer cette lettre du filtre" : "filtrer sur ce sport et cette lettre")) + '">' + esc(tier) + ' ' + Math.round(w / its.length * 100) + '% <span class="sport-tier-n">' + its.length + '</span></button>';
+        }).join("");
+      }
+      return bucketRowHtml(store, dim, k, k, null, groups[k], BUCKET_COLORS[dim], stakeFn) + (chips ? '<div class="manual-auto-tier-chips sport-tier-chips">' + chips + '</div>' : '');
     }).join("");
     verdicts.sort(function (x, y) { return y.roi - x.roi; });
     var vt = function (v) { return '<b>' + esc(v.label) + '</b> (' + signedTxt(v.roi, ' % de ROI') + ' sur ' + v.n + ' paris)'; };
@@ -9481,6 +9495,7 @@ installPolyV2Compat(window);
   }
   function renderManualVsAuto(list, store) {
     var listAllSports = pnlChartFilterList(list, store, true); // the Sports view: every filter but Sports
+    var listSportChips = pnlChartFilterList(list, store, { sport: 1, tier: 1 }); // its letters: nor Confiance
     list = pnlChartFilterList(list, store); // follows the chart's filters (2026-10-11)
     var el = store.els.manualVsAuto;
     if (!el) return;
@@ -9577,9 +9592,9 @@ installPolyV2Compat(window);
       conf: ["Le rendement de chaque lettre", sim + '.', function () { return confViewHtml(list, store); }],
       magconf: ["Confiance au pari × ampleur du résultat", "La confiance annoncée avant le pari prédit-elle de plus grosses victoires (pas juste plus de victoires) ? Part de chaque ampleur (++ / + / - / --) parmi les paris de chaque lettre, avec le nombre de paris en dessous.", function () { return magnitudeByConfidenceHtml(list) || '<div class="empty-note">Il faut au moins 5 paris décidés portant à la fois une lettre de confiance et une ampleur.</div>'; }],
       price: ["Par tranche de cote", "Selon le prix payé. Le trait noir est le seuil de rentabilité de la tranche : la barre doit le dépasser pour gagner de l'argent.", function () { return bucketViewHtml(list, store, "price"); }],
-      sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées. Clique une ou plusieurs lignes : le graphique, les stats et les listes ne gardent que celles-là.", function () {
+      sport: ["Par sport et par compétition", "Les compétitions reconnues sont détaillées, les autres paris sont regroupés par sport. Les 12 plus jouées sont affichées. Clique une ou plusieurs lignes : le graphique, les stats et les listes ne gardent que celles-là. Une lettre sous un sport ajoute ce sport et cette confiance au filtre.", function () {
         var sel = store.state.pnlChartSports || [];
-        return bucketViewHtml(listAllSports, store, "sport") + (sel.length ? '<div class="tier-wr-note">Graphique, stats et listes filtrés sur <b>' + esc(sel.join(", ")) + '</b> — <button type="button" class="bucket-clear" data-bucket-dim="sport" data-bucket-key="" data-bucket-label="" data-store="' + store.name + '">tout enlever</button></div>' : '');
+        return bucketViewHtml(listAllSports, store, "sport", listSportChips) + (sel.length ? '<div class="tier-wr-note">Graphique, stats et listes filtrés sur <b>' + esc(sel.join(", ")) + '</b> — <button type="button" class="bucket-clear" data-bucket-dim="sport" data-bucket-key="" data-bucket-label="" data-store="' + store.name + '">tout enlever</button></div>' : '');
       }],
       stake: ["Par taille de mise", "Uniquement les paris dont la mise réelle est connue ; gains calculés avec ces mises réelles.", function () { return stakeEffectHtml(list) + bucketViewHtml(list, store, "stake"); }],
       cross: ["Chaque type, en avant-match et en live", "ROI de chaque case ; clique une case pour ne voir que ces paris.", function () { return crossViewHtml(list, store); }],
@@ -11413,11 +11428,12 @@ installPolyV2Compat(window);
     st.pnlChartSports = cur;
   }
   // noSport: every other filter but this one (the Sports view lists them all).
+  // { sport: 1, tier: 1 } also leaves the Confiance filter out (the letters shown under each sport).
   function pnlChartFilterList(list, store, noSport) {
-    var st = store.state;
+    var st = store.state, skip = noSport === true ? { sport: 1 } : (noSport || {});
     if (!st) return list;
     if (!st.showSmallStakes) list = list.filter(function (s) { return !isSmallStake(s); });
-    if (!noSport && sportFilterOn(st)) list = list.filter(function (s) { return sportFilterPasses(st, s); });
+    if (!skip.sport && sportFilterOn(st)) list = list.filter(function (s) { return sportFilterPasses(st, s); });
     if (st.pnlChartConsoleOpen) {
       var weekOptions = computeWeekFloorOptions(list.filter(function (s) { return !!s.winningSide; }));
       return list.filter(function (s) {
@@ -11429,7 +11445,7 @@ installPolyV2Compat(window);
     var activeNoteBinIsLast = st.pnlChartNoteFilter != null && NOTE_WR_BINS[NOTE_WR_BINS.length - 1][0] === st.pnlChartNoteFilter;
     var cutoff = st.pnlChartDays != null ? Date.now() - st.pnlChartDays * 86400000 : null;
     return list.filter(function (s) {
-      if (st.pnlChartTierFilter && st.pnlChartTierFilter.length && st.pnlChartTierFilter.indexOf(s.confidence) === -1) return false;
+      if (!skip.tier && st.pnlChartTierFilter && st.pnlChartTierFilter.length && st.pnlChartTierFilter.indexOf(s.confidence) === -1) return false;
       if (!originFilterPasses(st, s)) return false;
       if (st.pnlChartMoment && snapMoment(s) !== st.pnlChartMoment) return false;
       if (st.pnlChartOddsFilter && !snapMatchesDistCell(s, st.pnlChartOddsFilter, null)) return false;
@@ -15895,6 +15911,19 @@ installPolyV2Compat(window);
     // Checked before .manual-auto-row below — the chip sits inside the row,
     // so without an early return here a chip click would also fall through
     // and toggle the row's own manualVsAutoFilter.
+    // A confidence letter under a sport (Sports view): that sport and that
+    // letter join the chart's filters; clicking a lit one removes the letter.
+    var sportTierChip = e.target.closest ? e.target.closest(".sport-tier-chip") : null;
+    if (sportTierChip) {
+      var stcStore = resolveStoreFromEl(sportTierChip), stcSt = stcStore.state;
+      var stcKey = sportTierChip.getAttribute("data-sport-key"), stcTier = sportTierChip.getAttribute("data-sport-tier");
+      var stcTiers = (stcSt.pnlChartTierFilter || []).slice(), stcSportOn = (stcSt.pnlChartSports || []).indexOf(stcKey) !== -1;
+      if (stcSportOn && stcTiers.indexOf(stcTier) !== -1) stcTiers = stcTiers.filter(function (t) { return t !== stcTier; });
+      else { if (!stcSportOn) sportToggle(stcSt, stcKey); if (stcTiers.indexOf(stcTier) === -1) stcTiers.push(stcTier); }
+      stcSt.pnlChartTierFilter = CONFIDENCE_TIERS.filter(function (t) { return stcTiers.indexOf(t) !== -1; });
+      renderStoreView(stcStore);
+      return;
+    }
     var manualAutoChip = e.target.closest ? e.target.closest(".manual-auto-tier-chip") : null;
     if (manualAutoChip) {
       var chipStore = resolveStoreFromEl(manualAutoChip);
