@@ -244,3 +244,39 @@ test("Confiance : réussite vs seuil de rentabilité (cote d'entrée moyenne)", 
   assert.deepEqual(r("Toutes"), [7, 5, 71.43, 74.29, -2.86]);
   assert.equal(T.confBreakEvenRows([bet(9, "A", 0.9, null)], T.SNAPSHOTS_STORE).length, 0);
 });
+
+test("Sports : la compétition d'un ancien pari sans lien se lit dans les équipes du titre", () => {
+  const g = (q, leader, date) => T.guessCompFromTeams(q, leader, date);
+  // même championnat
+  assert.equal(g("Rennes - Strasbourg", "Strasbourg +2,5 gagne (live)", "2026-10-25"), "fl1");
+  assert.equal(g("OM - RCSA", "RCSA +1,5", "2026-08-21"), "fl1");
+  assert.equal(g("Arsenal - Manchester CIty (live 2-0)", "City No", "2026-08-16"), "epl");
+  assert.equal(g("Bourmenouth - Sunderland", "Bournemouth -1,5 gagne (live)", "2026-10-18"), "epl"); // faute de frappe
+  assert.equal(g("Seville - FC Barcelone", "Barcelone", "2026-09-19"), "lal");
+  assert.equal(g("Exact Score: Deportivo Alavés 0 - 0 Getafe CF?", "No", "2026-08-15"), "lal");
+  // coupe d'Europe que les deux jouent
+  assert.equal(g("Vikingur - Bayern", "Bayern", "2026-10-13"), "ucl");
+  assert.equal(g("Bodo Glimt - Borussia", "Dortmund +2,5 gagne", "2026-10-14"), "ucl");
+  assert.equal(g("OL - Crystal Palace", "Crystal Palace ou Nul", "2026-10-15"), "uel");
+  assert.equal(g("Brighton - Tromso", "Brighton", "2026-08-27"), "col"); // adversaire inconnu, un jeudi
+  // même pays, pas le même championnat : la coupe
+  assert.equal(g("Arsenal - Fleetwood", "Arsenal", "2026-10-27"), "efl");
+  assert.equal(g("Osnabruck - Bayern", "Osnabruck -1,5 buts", "2026-09-02"), "dfb");
+  assert.equal(g("Hambourg - Verl", "Hamburg", "2026-08-24"), "dfb"); // adversaire inconnu, pas de coupe d'Europe
+  // sélections
+  assert.equal(g("Pays Bas - Allemagne", "Allemagne +2,5 gagne", "2026-09-21"), "unl");
+  assert.equal(g("Belarus - Saint Marin", "Belarus 1H", "2026-10-03"), "unl");
+  assert.equal(g("Tunisie - Botswana", "Tunisie", "2026-09-28"), "afcq");
+  // une seule équipe : championnat le week-end, coupe d'Europe en semaine
+  assert.equal(g("Will Sunderland AFC win on 2026-08-22?", "No", "2026-08-22"), "epl");
+  assert.equal(g("Will RB Leipzig win on 2026-09-10?", "No", "2026-09-10"), "ucl");
+  assert.equal(g("Will Vitória SC win on 2026-08-14?", "No", "2026-08-14"), "por"); // pas l'EC Vitória brésilien
+  // rien de sûr : pas d'avis
+  assert.equal(g("Cleveland Guardians vs. Cincinnati Reds", "Cincinnati Reds", "2026-07-28"), null); // baseball, pas le FC Cincinnati
+  assert.equal(g("SE Palmeiras vs. Club Cerro Porteño: O/U 2.5", "Under", "2026-08-12"), null);
+  assert.equal(g("Ancien snapshot A", "Oui", "2026-08-15"), null);
+  // dans la vue Sports : même libellé qu'un pari qui a son lien Polymarket
+  const typed = T.snapSportBucket({ id: "old1", question: "Lille - PSG", leaderName: "Lille -2,5", eventDate: "2026-08-28" });
+  assert.equal(typed, T.snapSportBucket({ id: "new1", question: "x", eventSlug: "fl1-lil-psg-2026-08-28" }));
+  assert.equal(T.snapSportBucket({ id: "old2", question: "Arsenal - Fleetwood", leaderName: "Arsenal", eventDate: "2026-10-27" }), "EFL Cup");
+});

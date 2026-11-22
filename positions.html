@@ -5268,7 +5268,7 @@ installPolyV2Compat(window);
     rus: { key: "rus", name: "Premier League russe", emoji: "🇷🇺" },
     bel1: { key: "bel1", name: "Pro League", emoji: "🇧🇪" },
     aut: { key: "aut", name: "Bundesliga autrichienne", emoji: "🇦🇹" },
-    spl: { key: "spl", name: "Premiership", emoji: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
+    spl: { key: "spl", name: "Saudi Pro League", emoji: "🇸🇦" }, // was labelled Scottish « Premiership »: the spl- events are Al-Hilal, Al-Nassr… (Scotland is scop)
     jap: { key: "jleague", name: "J-League", emoji: "🇯🇵" }, j1100: { key: "jleague", name: "J-League", emoji: "🇯🇵" }, j2100: { key: "jleague2", name: "J-League 2", emoji: "🇯🇵" },
     kor: { key: "kor", name: "K League", emoji: "🇰🇷" },
     swe: { key: "swe", name: "Allsvenskan", emoji: "🇸🇪" },
@@ -9252,6 +9252,175 @@ installPolyV2Compat(window);
   function snapRealStake(s) { var v = Number(s.stakeUsd || s.realStake); return v > 0 ? v : null; }
   function snapMoment(s) { return snapLiveSeg(s) === "pre" ? "pre" : "live"; }
   var snapSportCache = typeof WeakMap === "function" ? new WeakMap() : null;
+  // ---------- Compétition devinée par les équipes ----------
+  // On request (2026-11-23): an old bet with no Polymarket link (typed by
+  // hand: « Rennes - Strasbourg », « OM - RCSA », or an early snapshot saved
+  // without its event) had no competition, so the Sports view piled them
+  // into « Compétition non reconnue ». TEAM_COMPS lists, per competition
+  // (same codes as the Polymarket slug prefixes), the teams seen in it in
+  // the site's own data on 2026-11-22 (snapshots, Seb, Comparateur, Ne
+  // marque plus), names normalised by teamKey. guessCompFromTeams reads the
+  // two teams of a title and returns the code they share:
+  //   same championship → that championship; else the European cup both
+  //   play; else, same country → its national cup; different countries →
+  //   the European cup of the one that plays one. One team alone: its
+  //   championship at the weekend, its European cup in midweek.
+  // Nothing certain → null, and the bet stays « non reconnue ». A new
+  // season needs this table refreshed (promoted clubs, European line-ups).
+  var TEAM_COMPS = {
+    "acle": "al ittihad|al quwa al jawiya|jeonbuk|pakhtakor|vissel kobe",
+    "afcq": "algeria|algerie|botswana|burundi|ethiopia|ethiopie|ghana|senegal|tunisia|tunisie",
+    "arg": "aldosivi|argentinos juniors|atletico platense|atletico tucuman|banfield|barracas central|belgrano|boca juniors|central cordoba|defensa y justicia|deportivo riestra|estudiantes|estudiantes rio cuarto|gimnasia mendoza|gimnasia plata|huracan|independiente|independiente rivadavia|instituto cordoba|lanus|newell s old boys|platense|racing|river plate|rosario central|san lorenzo|sarmiento|talleres|tigre|union santa fe|velez sarsfield",
+    "aut": "austria lustenau|austria viena|grazer ak|lask|rapid viena|red bull salzburg|ried|salzbourg|scr altach|sturm graz|tsv hartberg|wolfsberger|wsg swarovski tirol",
+    "bel1": "anderlecht|beveren|bruges|brugge|cercle brugge|charleroi|circulo brujas|cortrique|gent|kaa gent|kortrijk|lommel|oh leuven|raal louviere|racing genk|rkv malinas|royal antwerp|saint trond|sint truiden|standard liege|standard lieja|union saint gilloise|westerlo|zulte waregem",
+    "bl2": "arminia bielefeld|bochum|darmstadt|dynamo dresden|eintracht braunschweig|eintracht brunswick|energie cottbus|hannover|hanover|heidenheim|hertha berlin|holstein kiel|kaiserslautern|karlsruhe|magdeburg|magdeburgo|nuremberg|osnabruck|spvgg furth|st pauli|wolfsburgo",
+    "bra": "associacao chapecoense futebol|athletico paranaense|atletico mineiro|bahia|botafogo|bragantino sp|chapecoense|corinthians|corinthians paulista|coritiba|cr flamengo|cr vasco da gama|cruzeiro|flamengo|fluminense|gremio|gremio fbpa|internacional|mirassol|palmeiras|paranaense|remo|santos|sao paulo|vasco da gama|vitoria",
+    "bra2": "cuiaba|gremio novorizontino|juventude",
+    "brco": "cr vasco da gama",
+    "bun": "augsbourg|augsburg|bayer leverkusen|bayern munchen|bayern munich|borussia dortmund|borussia monchengladbach|cologne|eintracht frankfurt|elversberg|freiburg|fribourg|hambourg|hamburger|hoffenheim|koln|mainz|paderborn|rb leipzig|schalke|stuttgart|union berlin|werder bremen",
+    "cde": "aviron bayonnais|bethune st|boulogne|cannes|chambery sf|clermont|dijon|dunkerque|fontenay|grenoble|montpellier atlas paillade|nancy|orleans|paris atletico|ptt dijon|quevilly rouen|red star|rodez|sag cestas|saint etienne|selongey|st ouen aumone|st pierre milizac|vallieres|versailles|vitre",
+    "cdr": "alaves|albacete|alcoyano|amorebieta|anaitasuna ft|arosa|atletico baleares|badajoz|barakaldo|cadiz|calamocha|calvo sotelo puertollano|cartagena|cda navalcarnero|ce europa|celta vigo|coruxo|deportiva minera|eibar|elche|eldense|espanyol barcelona|leganes|levante|logrones|mallorca|manacor|mijas las lagunas|pamplona|pontevedra|portugalete|racing santander|real betis|real jaen|real union|real zaragoza|reus reddis|ribadesella|sabadell|salamanca uds|tarancon|tenerife|trival valderas|tudelano|utebo|villarreal|xerez|zamora",
+    "chi": "beijing guoan|chengdu rongcheng|chongqing tonglianglong|dalian yingbo|henan|liaoning tieren|qingdao hainiu|qingdao west coast|shandong taishan|shanghai port|shanghai shenhua|shenzhen peng city|tianjin tigers|wuhan three towns|yunnan yukun|zhejiang professional",
+    "chi1": "cobresal|colo colo|limache|o higgins|universidad catolica",
+    "col": "aarhus gf|ajax|atalanta|atalanta bc|borac banja luka|braga|brann|brighton|brighton hove albion|cska sofia|egnatia rrogozhine|freiburg|fribourg|gent|getafe|hajduk split|heart midlothian|iberia|inter escaldes|jablonec|kairat|kauno zalgiris|kups|lincoln red imps|lugano|midtjylland|mjallby|monaco|nordsj lland|pafos|panathinaikos|riga|saint trond|thun|trabzonspor|twente|universitatea craiova",
+    "col1": "america cali|atletico nacional|deportivo pereira",
+    "cze1": "slavia praha",
+    "dfb": "bayer leverkusen|bayern munchen|bayern munich|bochum|borussia dortmund|dynamo dresden|fribourg|hannover|hanover|hertha berlin|kaiserslautern|magdeburg|magdeburgo|mainz|nuremberg|paderborn|rb leipzig|rot weiss essen|schalke|ssv jeddeloh ii|werder bremen|wolfsburgo",
+    "ecu1": "guayaquil city|manta|tecnico universitario",
+    "efa": "accrington stanley|aldershot town|altrincham|alvechurch|barnet|barnsley|barrow|berkhamsted|blackpool|boreham wood|bradford city|bristol rovers|bromley|burton albion|cambridge united|carlisle united|cheltenham town|chesterfield|colchester united|crawley town|cray wanderers|crewe alexandra|doncaster rovers|dover athletic|eastleigh|exeter city|fleetwood town|forest green rovers|fylde|gillingham|grimsby town|guiseley|halifax town|harborough town|harrogate town|hornchurch|huddersfield|kidderminster|leicester|leyton orient|luton town|macclesfield|mansfield town|marine|milton keynes|newport county|northampton town|notts county|oldham athletic|oxford city|oxford united|peterborough united|plymouth argyle|plymouth parkway|port vale|reading|rochdale|rotherham|rushden diamonds|salford city|salisbury city|scunthorpe united|sheffield wednesday|sholing|shrewsbury town|stafford rangers|stevenage|stockport county|sutton united|swindon town|tranmere rovers|walsall|wealdstone|wigan|wimbledon|wimborne town|worcester city|wycombe wanderers|yeovil town|york city",
+    "efl": "arsenal|aston villa|bournemouth|bradford city|brentford|brighton|brighton hove albion|chelsea|crystal palace|fleetwood town|fulham|liverpool|manchester city|norwich city|peterborough united|sheffield united|sunderland",
+    "el1": "barnsley|reading|wigan athletic",
+    "elc": "birmingham|blackburn|bolton|bristol city|burnley|cardiff|charlton|derby county|lincoln city|middlesbrough|millwall|norwich|portsmouth|preston north end|queens park rangers|sheffield united|southampton|stoke city|swansea|watford|west bromwich|west ham|wolverhampton|wrexham",
+    "epl": "arsenal|aston villa|bournemouth|brentford|brighton|brighton hove albion|chelsea|coventry city|crystal palace|everton|fulham|hull city|ipswich|ipswich town|leeds|leeds united|liverpool|manchester city|manchester united|newcastle|newcastle united|nottingham forest|sunderland|tottenham|tottenham hotspur",
+    "ere": "ado haya|ajax|az alkmaar|cambuur|excelsior rotterdam|feyenoord|fortuna sittard|go ahead eagles|groningen|heerenveen|nec|nec nijmegen|psv eindhoven|sparta rotterdam|telstar|twente|utrecht|willem ii|zwolle",
+    "es2": "ad ceuta|albacete|almeria|andorra|burgos|cadiz|castellon|celta fortuna|cordoba|eibar|eldense|girona|granada|las palmas|leganes|mallorca|real oviedo|real sociedad b|real valladolid|sabadell|sporting gijon|tenerife",
+    "fif": "argentina|benin|ir iran|peru",
+    "fl1": "angers|angers sco|auxerre|brest|havre|lens|lille|lille osc|lorient|lyon|mans|marseille|monaco|nice|olympique lyonnais|olympique marseille|paris|paris saint germain|racing lens|rennes|stade brestois|stade rennais|strasbourg|strasbourg alsace|toulouse|troyes",
+    "fr2": "annecy|boulogne|clermont|dijon|dunkerque|grenoble|guingamp|laval|metz|montpellier|nancy|nancy lorraine|nantes|pau|red star|reims|rodez|saint etienne|sochaux",
+    "gre1": "aek athenes|aris salonica|asteras tripolis|atromitos atenas|iraklis salonica|kalamata|kifisia|levadiakos|nfc volos|ofi crete|olympiacos|pae ps kalamata|panathinaikos|panetolikos|paok salonica",
+    "itc": "monza|torino",
+    "itsb": "arezzo|ascoli|avellino|benevento|carrarese|catanzaro|cesena|cremonese|empoli|entella|hellas verona|juve stabia|l r vicenza|mantova|modena|padua|palermo|pisa|sampdoria|sudtirol",
+    "ja2": "kataller toyama",
+    "jap": "kashima antlers|kyoto sanga|shimizu s pulse|tokyo",
+    "kor": "anyang|bucheon|daejeon citizen|gangwon|gimcheon sangmu|gwangju|incheon united|jeju united|jeonbuk motors|pohang steelers|seoul|ulsan hd",
+    "lal": "alaves|athletic|atletico madrid|barcelona|bilbao|celta vigo|deportivo a coruna|deportivo alaves|elche|espanyol|espanyol barcelona|getafe|levante|malaga|osasuna|racing santander|rayo vallecano|rayo vallecano madrid|real betis|real madrid|real racing|real sociedad|sevilla|seville|valencia|villarreal",
+    "lib": "cr flamengo",
+    "mex": "america|atlante|atlas|atletico san luis|cruz azul|guadalajara|juarez|leon|monterrey|necaxa|pachuca|puebla|pumas unam|queretaro|santos laguna|tigres|tijuana|toluca|u n a m",
+    "mls": "atlanta united|austin|charlotte|chicago fire|cincinnati|colorado rapids|columbus crew|d c united|dallas|dc united|houston dynamo|inter miami|kansas city|los angeles|los angeles galaxy|minnesota united|montreal|nashville|new england revolution|new york city|new york red bulls|orlando city|philadelphia union|portland timbers|real salt lake|san diego|san jose earthquakes|seattle sounders|sporting kansas city|st louis city|toronto|vancouver",
+    "nor": "lillestrom",
+    "par1": "cerro porteno|deportivo recoleta|guarani|libertad|mayo|nacional asuncion|olimpia|rubio nu|san lorenzo|sportivo ameliano|sportivo luqueno|sportivo trinidense",
+    "por": "academico viseu|alverca futebol|arouca|benfica|braga|casa pia|estoril|estoril praia|estrela amadora|famalicao|gil vicente|maritimo|moreirense|nacional madeira|porto|rio ave|santa clara|sporting portugal|vitoria guimaraes",
+    "scop": "aberdeen|celtic|dundee|dundee united|falkirk|glasgow rangers|heart midlothian|hibernian|kilmarnock|motherwell|st johnstone|st mirren",
+    "sea": "acf fiorentina|atalanta|atalanta bc|bologna|bologne|cagliari|como|fiorentina|frosinone|genes|genoa cfc|inter|internazionale milano|juventus|lazio|lecce|milan|monza|naples|napoli|parma|roma|sassuolo|torino|udinese|venezia|venise",
+    "spl": "abha|al ahli|al ahli saudi|al ettifaq|al ettifaq saudi|al faisaly|al fateh|al fateh saudi|al fayha saudi|al hazem|al hilal|al hilal saudi|al ittihad|al ittihad saudi|al khaleej|al khaleej saudi|al kholood|al kholood saudi|al nassr riyadh|al nassr saudi|al qadisiyah saudi|al riyadh|al riyadh saudi|al shabab|al taawon|al taawoun saudi|diriyah|neom",
+    "srb": "crvena zvezda|cukaricki|cukaricki belgrade|estrella roja belgrado|imt|imt novi beograd|macva sabac|mladost lucani|novi pazar|ofk belgrado|ofk beograd|partizan belgrado|radnicki|radnicki nis|radnik surdulica|vojvodina|zeleznicar|zemun",
+    "sud": "boca juniors|mineiro",
+    "swe": "djurgardens|halmstads|mjallby aif|vasteraas",
+    "tur": "alanyaspor|amedspor|besiktas|corum|erzurumspor|eyupspor|fenerbahce|galatasaray|gaziantep|gaziantep bld spor|genclerbirligi|goztepe|istanbul basaksehir|kasimpasa|kocaelispor|konyaspor|rizespor|samsunspor|trabzonspor",
+    "ucl": "aek|aek athenes|arsenal|aston villa|atletico madrid|barcelona|bayern munchen|bayern munich|bodo glimt|borussia dortmund|bruges|brugge|como|fenerbahce|feyenoord|feyenoord rotterdam|galatasaray|inter|internazionale milano|lask|lask linz|lens|lille|lille osc|liverpool|manchester city|manchester united|naples|napoli|paris saint germain|porto|psv|psv eindhoven|racing lens|rb leipzig|real betis|real madrid|roma|sabah|shakhtar donetsk|slavia prague|slavia praha|slovan bratislava|sporting|sporting portugal|stuttgart|viking|villarreal",
+    "uel": "anderlecht|ararat armenia|az alkmaar|bayer leverkusen|benfica|besiktas|besiktas jk|bournemouth|celje|celta vigo|celtic|crystal palace|dinamo zagreb|ferencvaros|ferencvarosi tc|hapoel be er sheva|hapoel beer sheva|hoffenheim|jagiellonia bialystok|juventus|lech poznan|levski sofia|lillestrom|lyon|marseille|milan|nec|nec nijmegen|ofi|ofi crete|olympiacos|olympiakos sfp|olympique lyonnais|olympique marseille|omonia|omonoia leukosias|puntigamer sturm graz|real sociedad|red bull salzburg|rennes|saint gilloise|salzbourg|sparta prague|sparta praha|sport lisboa e benfica|stade rennais|sturm graz|sunderland|torreense|uniao torreense|union saint gilloise|viktoria plzen",
+    "ukr1": "dynamo kyiv|rnk veres rivne|shakhtar donetsk",
+    "unl": "albania|albanie|alemania|allemagne|angleterre|armenia|armenie|autriche|belgica|belgique|belgium|bielorrusia|bielorussie|bosnia and herzegovina|bosnia y herzegovina|bosnie herzegovine|bulgaria|bulgarie|chipre|chypre|croacia|croatia|croatie|danemark|denmark|dinamarca|ecosse|england|escocia|eslovenia|espagne|espana|estonia|estonie|finland|finlande|finlandia|france|francia|gales|georgia|georgie|germany|gibraltar|grece|grecia|greece|hongrie|hungary|hungria|iles feroe|inglaterra|irlanda norte|irlande|irlande du nord|islande|islandia|islas feroe|israel|italia|italie|italy|kazakhstan|kosovo|letonia|lettonie|liechtenstein|lituania|lituanie|luxembourg|luxemburgo|macedoine du nord|macedonia norte|malta|malte|moldavia|moldavie|montenegro|netherlands|noruega|norvege|norway|paises bajos|pays bas|pays galles|poland|pologne|portugal|republica checa|republica irlanda|republique tcheque|roumanie|rumania|saint marin|san marino|scotland|serbia|serbie|slovaquie|slovenie|spain|suede|suisse|suiza|sweden|switzerland|turkiye|turquia|turquie|ukraine|wales",
+    "uru1": "albion|boston river|central espanol|cerro|cerro largo|danubio|defensor sporting|deportivo maldonado|juventud las piedras|liverpool montevideo|montevideo city torque|montevideo wanderers|nacional football|penarol|progreso|racing montevideo",
+    "uzb1": "andijon"
+  };
+  // nicknames, French names and the typos found in the hand-typed titles
+  var TEAM_ALIASES = { "om": "marseille", "ol": "lyon", "psg": "paris saint germain", "paris sg": "paris saint germain", "rcsa": "strasbourg", "rcl": "lens", "estac": "troyes", "losc": "lille", "asm": "monaco",
+    "barca": "barcelona", "barcelone": "barcelona", "man u": "manchester united", "man utd": "manchester united", "man united": "manchester united", "man city": "manchester city", "city": "manchester city",
+    "inter milan": "inter", "ipswitch": "ipswich", "bourmenouth": "bournemouth", "villareal": "villarreal", "shaktar": "shakhtar donetsk", "shakhtar": "shakhtar donetsk", "torensee": "torreense", "torrensee": "torreense",
+    "olympiakos": "olympiacos", "linz": "lask", "vikingur": "viking", "borussia": "borussia dortmund", "atletico": "atletico madrid", "bayern": "bayern munich", "dusseldorf": "fortuna dusseldorf",
+    "saint marin": "san marino", "tchequie": "republica checa", "belarus": "bielorrusia", "argentine": "argentina", "grece": "greece", "serbie": "serbia", "turquie": "turkiye" };
+  var TEAM_STOP = {}; "fc cf afc sc ac as ss us ssc rc rcd cd ca sv tsg vfb vfl bv fk sk nk kv club de del la le el of the fsv calcio balompie futbol ud sd if bk gnk pfk cs csd csyd mh kks ru rsc sl cp fa ogc aj es se ec fr aa".split(" ").forEach(function (w) { TEAM_STOP[w] = 1; });
+  function teamKey(name) {
+    return String(name || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ​]/g, "").replace(/ø/g, "o").replace(/ß/g, "ss").replace(/ı/g, "i").replace(/ł/g, "l")
+      .replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(function (t) { return t && !TEAM_STOP[t] && !/^\d+$/.test(t); }).join(" ");
+  }
+  // country of each national competition (championships and cups); the
+  // five with a complete line-up here are the ones a missing opponent can
+  // be read against (« not in the championship → a cup tie »)
+  var COMP_COUNTRY = { fl1: "FR", fr2: "FR", cde: "FR", epl: "EN", elc: "EN", el1: "EN", efl: "EN", efa: "EN", lal: "ES", es2: "ES", cdr: "ES", bun: "DE", bl2: "DE", dfb: "DE", sea: "IT", itsb: "IT", itc: "IT",
+    por: "PT", ere: "NL", bel1: "BE", tur: "TR", aut: "AT", scop: "SC", gre1: "GR", srb: "RS", swe: "SE", nor: "NO", ukr1: "UA", cze1: "CZ", mex: "MX", bra: "BR", bra2: "BR", brco: "BR", arg: "AR", mls: "US",
+    uru1: "UY", par1: "PY", chi1: "CL", col1: "CO", ecu1: "EC", chi: "CN", jap: "JP", ja2: "JP", kor: "KR", spl: "SA", uzb1: "UZ" };
+  var COMP_CUP = { efl: 1, efa: 1, cde: 1, cdr: 1, dfb: 1, itc: 1, brco: 1 };
+  var COMP_EURO = ["ucl", "uel", "col"], COMP_NATIONS = ["unl", "afcq", "fif"], COMP_BIG5 = { FR: "cde", ES: "cdr", DE: "dfb", IT: "itc", EN: "efl" };
+  var COMP_EUROPE = { FR: 1, EN: 1, ES: 1, DE: 1, IT: 1, PT: 1, NL: 1, BE: 1, TR: 1, AT: 1, SC: 1, GR: 1, RS: 1, SE: 1, NO: 1, UA: 1, CZ: 1 };
+  var COMP_EURO_UNKNOWN = "eu?"; // a European tie whose cup can't be told
+  var teamCompIndex = null;
+  function teamComps(name) {
+    if (!teamCompIndex) {
+      teamCompIndex = { exact: {}, keys: [] };
+      Object.keys(TEAM_COMPS).forEach(function (p) {
+        TEAM_COMPS[p].split("|").forEach(function (k) {
+          if (!teamCompIndex.exact[k]) { teamCompIndex.exact[k] = {}; teamCompIndex.keys.push({ k: k, t: k.split(" "), p: teamCompIndex.exact[k] }); }
+          teamCompIndex.exact[k][p] = 1;
+        });
+      });
+    }
+    var k = /^vit[oó]ria sc$/i.test(String(name || "").trim()) ? "vitoria guimaraes" : teamKey(name); // « SC » and « EC » are dropped: the Portuguese Vitória would read as the Brazilian one
+    k = TEAM_ALIASES[k] || k;
+    if (!k) return null;
+    if (teamCompIndex.exact[k]) return teamCompIndex.exact[k];
+    // « Lille » for « Lille OSC », « Slovan Bratislava » for « ŠK Slovan
+    // Bratislava » : every word typed is in the full name
+    var toks = k.split(" "), out = {}, hit = false;
+    teamCompIndex.keys.forEach(function (e) {
+      // (not the other way round: « Cincinnati Reds », baseball, holds every word of « FC Cincinnati »)
+      if (toks.every(function (t) { return e.t.indexOf(t) !== -1; })) { Object.keys(e.p).forEach(function (p) { out[p] = 1; }); hit = true; }
+    });
+    return hit ? out : null;
+  }
+  // the teams named in a bet's title, Polymarket's phrasings and hand-typed ones
+  function teamsInTitle(question, leaderName) {
+    var q = String(question || "").replace(/\([^)]*\)/g, function (m) { return /^\([+-]?\d/.test(m) ? m : " "; }).replace(/\s+/g, " ").trim(), m;
+    if ((m = q.match(/^Will (.+?) win on \d{4}/i))) return [m[1]];
+    if ((m = q.match(/^Will (.+?) vs\.? (.+?) end in a draw/i))) return [m[1], m[2]];
+    if ((m = q.match(/^Exact Score: (.+?) \d+ - \d+ (.+?)\?/i))) return [m[1], m[2]];
+    if ((m = q.match(/^Spread: (.+?) \(/i))) return /^(yes|no|over|under)$/i.test(leaderName || "") || !leaderName || teamKey(leaderName) === teamKey(m[1]) ? [m[1]] : [m[1], leaderName];
+    if ((m = q.match(/^(.+?) leading at halftime/i))) return [m[1]];
+    if ((m = q.match(/^(?:[^:]{3,40}: )?(.+?) vs\.? (.+?)(?::|$)/i))) return [m[1], m[2]];
+    if ((m = q.match(/^(.+?) [–-] (.+?)$/))) return [m[1], m[2]];
+    return [];
+  }
+  function guessCompFromTeams(question, leaderName, date) {
+    var teams = teamsInTitle(question, leaderName);
+    if (!teams.length) return null;
+    var has = function (set, p) { return !!set && set[p] === 1; };
+    var leaguesOf = function (set) { return Object.keys(set || {}).filter(function (p) { return COMP_COUNTRY[p] && !COMP_CUP[p]; }); };
+    var countriesOf = function (set) { var c = {}; Object.keys(set || {}).forEach(function (p) { if (COMP_COUNTRY[p]) c[COMP_COUNTRY[p]] = 1; }); return Object.keys(c); };
+    var euroOf = function (set) { return COMP_EURO.filter(function (p) { return has(set, p); }); };
+    var d = date ? new Date(date) : null, day = d && !isNaN(d) ? d.getUTCDay() : null, midweek = day === 2 || day === 3 || day === 4;
+    var cupOf = function (c) { return c === "EN" ? (midweek ? "efl" : "efa") : COMP_BIG5[c] || null; };
+    var A = teamComps(teams[0]), B = teams.length > 1 ? teamComps(teams[1]) : null;
+    if (teams.length > 1 && A && B) {
+      var common = Object.keys(A).filter(function (p) { return B[p]; });
+      var lg = common.filter(function (p) { return COMP_COUNTRY[p] && !COMP_CUP[p]; });
+      if (lg.length) return lg[0];
+      var eu = COMP_EURO.filter(function (p) { return common.indexOf(p) !== -1; });
+      if (eu.length) return eu[0];
+      var nat = COMP_NATIONS.filter(function (p) { return common.indexOf(p) !== -1; });
+      if (nat.length) return nat[0];
+      if (common.length) return common[0];
+      var cA = countriesOf(A), cB = countriesOf(B);
+      if (cA.length === 1 && cB.length === 1 && cA[0] === cB[0]) return cupOf(cA[0]);
+      var eAll = COMP_EURO.filter(function (p) { return has(A, p) || has(B, p); });
+      if (eAll.length === 1) return eAll[0];
+      var european = function (cs) { return cs.length > 0 && cs.every(function (c) { return COMP_EUROPE[c]; }); };
+      return eAll.length || (european(cA) && european(cB)) ? COMP_EURO_UNKNOWN : null; // two South American clubs: Libertadores or Sudamericana, can't tell
+    }
+    var K = A || B;
+    if (!K) return null;
+    var only = Object.keys(K);
+    if (only.length === 1 && COMP_NATIONS.indexOf(only[0]) !== -1) return teams.length > 1 ? null : only[0];
+    var lgs = leaguesOf(K), cs = countriesOf(K), eK = euroOf(K), big = cs.length === 1 && COMP_BIG5[cs[0]];
+    if (teams.length > 1) { // the other team is unknown: not in this one's championship
+      if (midweek && eK.length === 1) return eK[0];
+      if (big) return cupOf(cs[0]);
+      return lgs.length === 1 && !midweek ? lgs[0] : null; // elsewhere the line-ups here aren't complete: a weekend match is the championship
+    }
+    if (midweek && eK.length === 1) return eK[0]; // one team alone
+    if (lgs.length === 1 && (!midweek || !big)) return lgs[0];
+    return null;
+  }
   function snapSportBucket(s) {
     if (!AN_EXTRA_LEAGUES || !AN_EXTRA_FOOTBALL || !AN_SPORT_LABELS) return "…"; // page still starting: tables not there yet, nothing cached
     if (snapSportCache && snapSportCache.has(s)) return snapSportCache.get(s);
@@ -9259,8 +9428,11 @@ installPolyV2Compat(window);
     if (!slug) { var m = (s.cardHtml || "").match(/polymarket\.com\/(?:[a-z]{2}\/)?event\/([a-z0-9-]+)/i); slug = m ? m[1] : ""; }
     var prefix = String(slug).toLowerCase().split("-")[0];
     var info = prefix ? (LEAGUE_INFO[prefix] || AN_EXTRA_LEAGUES[prefix]) : null;
+    // no Polymarket link and no Comparateur line: the teams of the title say it
+    var guessed = !slug && !(s.cmp && s.cmp.comp) && /^(⚽|🎲)$/.test(sportEmojiFor(s.question, "")) ? guessCompFromTeams(s.question, s.leaderName, s.eventDate || s.savedAt) : null;
+    if (guessed && guessed !== COMP_EURO_UNKNOWN) info = LEAGUE_INFO[guessed] || AN_EXTRA_LEAGUES[guessed] || null;
     // a Comparateur bet names its competition itself
-    var v = info ? (info.emoji ? info.emoji + " " : "") + info.name : (s.cmp && s.cmp.comp) ? String(s.cmp.comp) : anSportLabel(anSportOf(s.question, slug));
+    var v = guessed === COMP_EURO_UNKNOWN ? "Coupe d'Europe (non précisée)" : info ? (info.emoji ? info.emoji + " " : "") + info.name : (s.cmp && s.cmp.comp) ? String(s.cmp.comp) : anSportLabel(anSportOf(s.question, slug));
     if (/Autres$/.test(v)) v = "Compétition non reconnue";
     if (snapSportCache) snapSportCache.set(s, v);
     return v;
@@ -18213,7 +18385,14 @@ installPolyV2Compat(window);
     col2: { name: "Colombie D2" }, mar1: { name: "Maroc D1" }, uslc: { name: "USL Championship" }, ja2: { name: "J2 League" },
     uwcl: { name: "Ligue des champions féminine" }, wsl: { name: "Women's Super League" }, el1: { name: "League One (Angleterre)" },
     enl: { name: "National League (Angleterre)" }, per1: { name: "Pérou D1" }, canpl: { name: "Canadian Premier League" },
-    afcq: { name: "Qualifs Mondial (Asie)" }, nor2: { name: "Norvège D2" }, chi2: { name: "Chili D2" }
+    afcq: { name: "Qualifs CAN" }, nor2: { name: "Norvège D2" }, chi2: { name: "Chili D2" },
+    // 2026-11-23: the codes seen in the site's data that had no name (the
+    // names are the Comparateur's own, so both spell a competition alike);
+    // afcq turned out to be African qualifiers (Tunisia, Ghana, Senegal…)
+    col: { name: "Conference League" }, cde: { name: "Coupe de France" }, cdr: { name: "Copa del Rey" }, dfb: { name: "DFB-Pokal" }, efa: { name: "FA Cup" }, efl: { name: "EFL Cup" },
+    elc: { name: "Championship" }, fr2: { name: "Ligue 2" }, itsb: { name: "Serie B" }, itc: { name: "Coupe d'Italie" }, scop: { name: "Scottish Premiership" }, gre1: { name: "Super League (Grèce)" },
+    srb: { name: "SuperLiga (Serbie)" }, par1: { name: "Primera División (Paraguay)" }, chi: { name: "Chinese Super League" }, chi1: { name: "Chili D1" }, ecu1: { name: "Équateur D1" },
+    ukr1: { name: "Ukraine D1" }, cze1: { name: "Tchéquie D1" }, sud: { name: "Copa Sudamericana" }, lib: { name: "Copa Libertadores" }, acle: { name: "Ligue des champions d'Asie" }, brco: { name: "Coupe du Brésil" }
   };
   // Football competitions these traders play that the site-wide isFootball
   // doesn't list (kept local: adding them there would change what Value
