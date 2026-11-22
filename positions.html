@@ -9314,8 +9314,35 @@ installPolyV2Compat(window);
     var groups = letters.map(function (t) { return [t || "Sans lettre", list.filter(function (s) { return (s.confidence || null) === t; }), t]; }).filter(function (g) { return g[1].length; });
     if (!groups.length) return '<div class="empty-note">Rien à analyser dans cette sélection.</div>';
     // the rows (winrate, count, gain per letter) are the conviction panel's, shown just above
-    return roiLadderHtml("Rendement par lettre de confiance", groups.map(function (g) { return [g[0], g[1]]; }), store) ||
-      '<div class="empty-note">Pas assez de lettres différentes pour comparer leur rendement.</div>';
+    return (roiLadderHtml("Rendement par lettre de confiance", groups.map(function (g) { return [g[0], g[1]]; }), store) ||
+      '<div class="empty-note">Pas assez de lettres différentes pour comparer leur rendement.</div>') + confBreakEvenHtml(list, store);
+  }
+  // Réussite vs seuil de rentabilité, per letter (on request, 2026-11-22):
+  // the seuil is the average entry price of the decided bets — at 90 ¢ a
+  // letter must win 90 % of the time just to break even, so a high winrate
+  // alone says nothing. Rows = [label, decided, won, réussite %, seuil %, écart in points].
+  function confBreakEvenRows(list, store) {
+    var rows = CONFIDENCE_TIERS.concat([null]).map(function (t) {
+      return [t || "Sans lettre", list.filter(function (s) { return (s.confidence || null) === t; })];
+    }).concat([["Toutes", list]]).map(function (g) {
+      var st = liveSegStats(g[1], store);
+      return st.gap == null ? null : [g[0], st.decided, st.win, st.wr, st.be, st.gap];
+    }).filter(Boolean);
+    return rows.length > 1 ? rows : []; // « Toutes » alone: nothing decided
+  }
+  function confBreakEvenHtml(list, store) {
+    var rows = confBreakEvenRows(list, store);
+    if (!rows.length) return "";
+    var pct = function (v) { return v.toFixed(0) + ' %'; };
+    return '<div class="live-seg-title roi-ladder-title" style="margin-top:16px;">Réussite vs seuil de rentabilité</div>' +
+      '<table class="weekly-data-table"><thead><tr><th>Lettre</th><th class="num">Paris décidés</th><th class="num">Réussite</th><th class="num">Seuil</th><th class="num">Écart</th><th></th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        var few = fewDecided(r[1]), pts = Math.round(r[5]);
+        return '<tr' + (r[0] === "Toutes" ? ' style="border-top:2px solid var(--border, #d4d4d8);"' : '') + '><td>' + esc(r[0]) + '</td><td class="num">' + r[2] + ' / ' + r[1] + '</td><td class="num">' + pct(r[3]) + '</td><td class="num">' + pct(r[4]) + '</td>' +
+          '<td class="num ' + (pts >= 0 ? "pnl-pos" : "pnl-neg") + '"><b>' + (pts >= 0 ? "+" : "−") + Math.abs(pts) + ' pt' + (Math.abs(pts) > 1 ? 's' : '') + '</b></td>' +
+          '<td>' + (few ? FEW_TAG_HTML : pts >= 0 ? 'au-dessus du seuil' : 'sous le seuil') + '</td></tr>';
+      }).join("") + '</tbody></table>' +
+      '<div class="cr-legend" style="margin-top:6px;"><span>Seuil = cote d\'entrée moyenne des paris décidés : la réussite qu\'il faut pour ne rien perdre. Écart = réussite − seuil, en points.</span></div>';
   }
   function liveSplitHtml(list, store) {
     var bySeg = {};

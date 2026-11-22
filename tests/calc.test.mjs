@@ -229,3 +229,18 @@ test("filtre Sports : chaque sport a ses propres lettres, et les deux raccourcis
   assert.equal(pass("lal", "A"), false); assert.equal(pass("lal", "S"), true); assert.equal(pass("sea", "A"), true);
   T.sportToggle(st, ""); assert.equal(pass("lal", "B"), true);
 });
+
+test("Confiance : réussite vs seuil de rentabilité (cote d'entrée moyenne)", () => {
+  const bet = (i, confidence, price, won) => ({ id: "be" + i, question: "x", leaderName: "Yes", winningSide: won == null ? null : won ? "Yes" : "No", leaderPriceAtSnapshot: price, confidence });
+  const list = [bet(1, "A", 0.9, true), bet(2, "A", 0.8, true), bet(3, "A", 0.7, false), bet(4, "A", 0.6, true), // 3 / 4 = 75 %, seuil 75 %
+    bet(5, "B", 0.9, false), bet(6, "B", 0.8, true), bet(7, "B", 0.5, null), // en cours : ne compte pas
+    bet(8, null, 0.5, true)];
+  const rows = T.confBreakEvenRows(list, T.SNAPSHOTS_STORE);
+  // Array.from : tableau de la page (autre « realm ») ; + 0 : pas de « -0 »
+  const r = (l) => Array.from(rows.find((x) => x[0] === l).slice(1), (v) => Math.round(v * 100) / 100 + 0);
+  assert.deepEqual(r("A"), [4, 3, 75, 75, 0]);
+  assert.deepEqual(r("B"), [2, 1, 50, 85, -35]);
+  assert.deepEqual(r("Sans lettre"), [1, 1, 100, 50, 50]);
+  assert.deepEqual(r("Toutes"), [7, 5, 71.43, 74.29, -2.86]);
+  assert.equal(T.confBreakEvenRows([bet(9, "A", 0.9, null)], T.SNAPSHOTS_STORE).length, 0);
+});

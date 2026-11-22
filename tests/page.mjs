@@ -16,7 +16,7 @@ export const NAMES = [
   "snapCashoutTag", "snapCashoutFinalHtml", "snapOrigin", "isLongTermSlug",
   "compactForStorage", "applyOpToList", "isCompleteRecord",
   "storeListSafely", "readStoredList", "bigMem",
-  "sportToggle", "sportTierToggle", "sportFilterPasses", "sportPresets", "sportSelLabels", "snapSportBucket",
+  "sportToggle", "sportTierToggle", "sportFilterPasses", "sportPresets", "sportSelLabels", "snapSportBucket", "confBreakEvenRows",
   "SNAPSHOTS_STORE", "POSITIONS_STORE", "HYPOTHETICAL_FLAT_STAKE", "OTHER_SIDE_SENTINEL",
 ];
 
