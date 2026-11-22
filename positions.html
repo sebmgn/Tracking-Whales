@@ -20336,15 +20336,35 @@ installPolyV2Compat(window);
     // score again and the break-even (average price) it has to beat; a click
     // sets the two filters above. Follows the « L'équipe » filter only.
     var sitLines = all.filter(function (l) { return !GT.sit || l.sit === GT.sit; }), mins = d.minutes || [70, 80, 90];
+    // What a cell is missing (2026-11-22, on request — « pas le même nombre
+    // de lignes à 70', 80' et 90' ») : lines the tracker never read (a match
+    // over for 3 h with no reading at that minute: 2 lines, one per team —
+    // unknown score, so only without the « L'équipe » filter) and lines read
+    // with nobody selling (no price, so left out of the stats).
+    var gtByMatch = {}, gtNow = Date.now() / 1000;
+    (d.rows || []).forEach(function (r) { var m = gtByMatch[r.m] = gtByMatch[r.m] || { c: r.c, ko: r.ko, got: {} }; m.got[r.min] = 1; });
+    var crossGaps = function (comp, T) {
+      var missed = 0;
+      if (!GT.sit) Object.keys(gtByMatch).forEach(function (k) {
+        var m = gtByMatch[k];
+        if ((comp && m.c !== comp) || !(m.ko + 3 * 3600 < gtNow)) return;
+        (T == null ? mins : [T]).forEach(function (t) { if (!m.got[t]) missed += 2; });
+      });
+      var unpriced = sitLines.filter(function (l) { return l.price == null && (!comp || l.r.c === comp) && (T == null || l.r.min === T); }).length;
+      if (!missed && !unpriced) return '';
+      return '<br><i class="gt-gaps" style="font-style:normal;opacity:.72" title="' + (missed ? missed + ' ligne' + (missed > 1 ? 's' : '') + ' jamais relevée' + (missed > 1 ? 's' : '') + ' : le suivi a raté cette minute sur ' + (missed / 2) + ' match' + (missed > 2 ? 's' : '') + '. ' : '') +
+        (unpriced ? unpriced + ' ligne' + (unpriced > 1 ? 's' : '') + ' relevée' + (unpriced > 1 ? 's' : '') + ' sans prix : personne ne vendait à cette seconde, ou le marché n\'existe pas.' : '') + '">manque : ' +
+        [missed ? missed + ' non relevée' + (missed > 1 ? 's' : '') : '', unpriced ? unpriced + ' sans prix' : ''].filter(Boolean).join(' · ') + '</i>';
+    };
     var crossCell = function (comp, T) {
       var st = gtStats(sitLines.filter(function (l) { return (!comp || l.r.c === comp) && (T == null || l.r.min === T); }));
-      if (!st.n) return '<td class="cross-cell cross-empty">' + (st.pending ? st.pending + ' en cours' : '—') + '</td>';
+      if (!st.n) return '<td class="cross-cell cross-empty">' + (st.pending ? st.pending + ' en cours' : '—') + crossGaps(comp, T) + '</td>';
       var few = st.n < 10, on = GT.comp === (comp || "") && GT.min === (T == null ? "" : String(T));
       return '<td class="cross-cell gt-cross-cell' + (few || st.roi == null ? '' : st.roi >= 0 ? ' tier-win' : ' tier-lose') + (on ? ' active' : '') + '"><button type="button" class="gt-cross" data-gt-comp="' + esc(comp || "") + '" data-gt-min="' + (T == null ? "" : T) + '" title="Afficher ces lignes">' +
         '<b class="' + (st.roi == null ? "" : st.roi >= 0 ? "pnl-pos" : "pnl-neg") + '">' + (st.roi == null ? "—" : (st.roi >= 0 ? "+" : "−") + gtDec(Math.abs(st.roi), 1) + " % ROI") + '</b>' +
-        '<span>' + gtDec(st.hit, 0) + ' % réussis · seuil ' + gtDec(st.price * 100, 0) + ' %<br>' + st.n + ' ligne' + (st.n > 1 ? 's' : '') + (few ? ' <i class="tier-wr-few">peu de lignes</i>' : '') + '</span></button></td>';
+        '<span>' + gtDec(st.hit, 0) + ' % réussis · seuil ' + gtDec(st.price * 100, 0) + ' %<br>' + st.n + ' ligne' + (st.n > 1 ? 's' : '') + (few ? ' <i class="tier-wr-few">peu de lignes</i>' : '') + crossGaps(comp, T) + '</span></button></td>';
     };
-    var cross = usedComps.length ? '<div class="gt-box"><div class="gt-h">Par compétition et par minute <small>lignes terminées ; « seuil » = part à dépasser pour être rentable au prix moyen ; clique une case pour voir ses lignes</small></div>' +
+    var cross = usedComps.length ? '<div class="gt-box"><div class="gt-h">Par compétition et par minute <small>lignes terminées ; « seuil » = part à dépasser pour être rentable au prix moyen ; clique une case pour voir ses lignes ; « manque » = lignes absentes du calcul (minute non relevée par le suivi, ou relevée sans vendeur)</small></div>' +
       '<table class="cross-tb gt-cross-tb"><tr><th></th>' + mins.map(function (T) { return '<th>' + T + "'</th>"; }).join("") + '<th>Toutes minutes</th></tr>' +
       usedComps.concat([""]).map(function (c) { return '<tr><th>' + esc(c || "Toutes compétitions") + '</th>' + mins.map(function (T) { return crossCell(c, T); }).join("") + crossCell(c, null) + '</tr>'; }).join("") + '</table></div>' : '';
     // every line
