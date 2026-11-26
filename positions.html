@@ -19620,7 +19620,12 @@ installPolyV2Compat(window);
     function sebCashout(b) {
       if (b.status !== "done" || !b.sold || !(b.sold.size > 0) || !(b.avg > 0)) return null;
       var hold = b.finalPrice === 1 ? b.stake / b.avg - b.stake : b.finalPrice === 0 ? -b.stake : null;
-      if (hold != null && Math.abs(b.pnl - hold) <= Math.max(1, b.stake * 0.01)) return null;
+      // Market not settled yet: sold at about 100 ¢ to get the money sooner
+      // (Escaldes O/U 4.5, 2026-11-26: sold at 99,9 ¢, +83 $ of a possible
+      // +84 $) is a win collected early, not a cashout — judged against the
+      // full win until the result is in.
+      var near = hold != null ? hold : b.stake / b.avg - b.stake;
+      if (Math.abs(b.pnl - near) <= Math.max(1, b.stake * 0.01)) return null;
       return { hold: hold, price: b.sold.usdc / b.sold.size, part: b.sold.size < b.stake / b.avg * 0.95 };
     }
     function sebResultSide(b) {
